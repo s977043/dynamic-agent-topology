@@ -32,7 +32,7 @@ spec:
     ruleset:
       required: true
       requirePullRequest: true
-      requiredApprovingReviewCount: 0
+      requiredApprovingReviewCountExact: 0
       requireConversationResolution: true
       blockForcePushes: true
       blockDeletion: true

@@ -37,7 +37,7 @@ def base_target():
                 "ruleset": {
                     "required": True,
                     "requirePullRequest": True,
-                    "requiredApprovingReviewCount": 0,
+                    "requiredApprovingReviewCountExact": 0,
                     "requireConversationResolution": True,
                     "blockForcePushes": True,
                     "blockDeletion": True,
@@ -116,7 +116,7 @@ def main() -> int:
     for name in (
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",
@@ -145,12 +145,23 @@ def main() -> int:
     bad = module.audit(target, repo, branch, [incomplete])
     assert_status(bad, "defaultBranch.ruleset.required", "PASS")
     assert_status(bad, "defaultBranch.ruleset.requirePullRequest", "PASS")
-    assert_status(bad, "defaultBranch.ruleset.requiredApprovingReviewCount", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.requireConversationResolution", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.blockForcePushes", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.blockDeletion", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.requiredStatusChecks", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.requireUpToDate", "DRIFT")
+
+    legacy_target = base_target()
+    legacy_ruleset = legacy_target["spec"]["defaultBranch"]["ruleset"]
+    legacy_ruleset["requiredApprovingReviewCount"] = legacy_ruleset.pop("requiredApprovingReviewCountExact")
+    legacy = module.audit(legacy_target, repo, branch, [compliant_ruleset()])
+    assert_status(legacy, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "PASS")
+
+    higher_target = base_target()
+    higher_target["spec"]["defaultBranch"]["ruleset"]["requiredApprovingReviewCountExact"] = 1
+    lower_actual = module.audit(higher_target, repo, branch, [compliant_ruleset()])
+    assert_status(lower_actual, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "DRIFT")
 
     ambiguous = compliant_ruleset()
     ambiguous["conditions"] = {
@@ -160,7 +171,7 @@ def main() -> int:
     for name in (
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",
@@ -181,7 +192,7 @@ def main() -> int:
     mixed_checks = module.audit(target, repo, branch, mixed)
     assert_status(mixed_checks, "defaultBranch.ruleset.requirePullRequest", "PASS")
     assert_status(mixed_checks, "defaultBranch.ruleset.blockForcePushes", "PASS")
-    assert_status(mixed_checks, "defaultBranch.ruleset.requiredApprovingReviewCount", "UNKNOWN")
+    assert_status(mixed_checks, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "UNKNOWN")
 
     unavailable = module.audit(
         target,
@@ -195,7 +206,7 @@ def main() -> int:
     for name in (
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",

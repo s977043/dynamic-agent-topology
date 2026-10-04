@@ -156,10 +156,13 @@ def audit_ruleset_semantics(
     rulesets_error: str | None,
 ) -> None:
     requirement = target["spec"]["defaultBranch"]["ruleset"]
+    if "requiredApprovingReviewCountExact" not in requirement and "requiredApprovingReviewCount" in requirement:
+        requirement = dict(requirement)
+        requirement["requiredApprovingReviewCountExact"] = requirement["requiredApprovingReviewCount"]
     names = [
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",
@@ -203,32 +206,25 @@ def audit_ruleset_semantics(
             approval_values.append(value)
         else:
             approval_unknown = True
-    if approval_values and max(approval_values) > requirement["requiredApprovingReviewCount"]:
+    if pull_rules and approval_values and not approval_unknown and not unknown_applicability:
         add_check(
             checks,
-            prefix + "requiredApprovingReviewCount",
-            requirement["requiredApprovingReviewCount"],
+            prefix + "requiredApprovingReviewCountExact",
+            requirement["requiredApprovingReviewCountExact"],
             max(approval_values),
-        )
-    elif pull_rules and not approval_unknown and not unknown_applicability:
-        add_check(
-            checks,
-            prefix + "requiredApprovingReviewCount",
-            requirement["requiredApprovingReviewCount"],
-            max(approval_values, default=0),
         )
     elif not pull_rules and not unknown_applicability:
         add_check(
             checks,
-            prefix + "requiredApprovingReviewCount",
-            requirement["requiredApprovingReviewCount"],
+            prefix + "requiredApprovingReviewCountExact",
+            requirement["requiredApprovingReviewCountExact"],
             None,
         )
     else:
         add_unknown(
             checks,
-            prefix + "requiredApprovingReviewCount",
-            requirement["requiredApprovingReviewCount"],
+            prefix + "requiredApprovingReviewCountExact",
+            requirement["requiredApprovingReviewCountExact"],
             "approval requirement cannot be proven across all applicable rulesets",
         )
 

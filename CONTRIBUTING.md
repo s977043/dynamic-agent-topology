@@ -62,6 +62,21 @@ Do not fabricate missing evidence or fill unknown values with guesses. Failed, a
 
 Do not commit secrets, private source code, confidential prompts, or unsanitized execution traces.
 
+## Releases
+
+A version advertised in `README.md`, `README_en.md`, or `CITATION.cff` should correspond to an immutable Git tag and a GitHub Release.
+
+Before publishing a release:
+
+1. verify the intended release commit and confirm CI, CodeQL, and Scorecard are green on the relevant `main` revision;
+2. update versioned documentation and `CITATION.cff` in the release PR;
+3. merge the release PR;
+4. create an annotated or signed `vX.Y.Z` tag at the verified release commit;
+5. publish a GitHub Release from that tag with concise user-facing notes;
+6. verify that README status and citation metadata match the published tag.
+
+Do not move an existing version tag to a newer commit. Publish a new patch or minor version instead.
+
 ## Review principles
 
 Review should separate correctness, judgment, and verification:

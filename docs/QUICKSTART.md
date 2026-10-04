@@ -127,3 +127,10 @@ A4 Canary / A5 Dynamicへ進む必要はありません。
 Validatorは `.dat/` とDAT specificationの整合を確認しますが、Manual Adapterとして設定した `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` 等の内容が、宣言Topologyを実際に実装していることまでは証明しません。
 
 A4 Canary以降ではExecutionTrace / Evidenceを使って実行時のTopology Adherenceを確認します。
+
+
+## 実導入Evidence
+
+Quick Start相当のManual Adoptionは、`s977043/notionnext-blog` でA2 Observeとしてdogfood済みです。
+
+導入条件・CI結果・非主張の範囲は [DOGFOODING.md](DOGFOODING.md) を参照してください。

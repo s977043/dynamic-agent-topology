@@ -22,6 +22,8 @@ Engineering Layerは成熟度順でも依存順でもありません。複数Lay
 
 `Harness` はDATの新しいArchitecture Planeではありません。複数の既存責務を横断して診断するための呼び名です。
 
+また、この診断ラベルの `Harness` とRepository内の `harness/` ディレクトリは同義ではありません。現在の `harness/` はExperiment Artifactの検証・集計を行うtoolingであり、Agent Runtimeの実行Harnessを実装しているわけではありません。
+
 ## Crosswalk
 
 | Architecture Plane | Prompt | Context | Harness | Loop | Graph | Evaluation |
@@ -71,7 +73,7 @@ Apply the smallest corrective change
   ↓
 Verify with deterministic / observable evidence
   ↓
-Escalate complexity only if the simpler layer cannot address the failure
+Escalate complexity only if a smaller intervention cannot address the failure
 ```
 
 次のような短絡を避けます。

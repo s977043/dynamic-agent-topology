@@ -17,13 +17,14 @@ for value in args.files:
         data = yaml.safe_load(f)
     if data.get("kind") != "RunEvaluation":
         raise SystemExit(f"{path}: expected kind RunEvaluation")
-    groups[data["metadata"]["condition"]].append(data)
+    key = (data["metadata"]["experiment"], data["metadata"]["condition"])
+    groups[key].append(data)
 
 def mean(values):
     return statistics.fmean(values) if values else None
 
 result = {}
-for condition, runs in sorted(groups.items()):
+for (experiment, condition), runs in sorted(groups.items()):
     total_tokens = [
         r["efficiency"]["inputTokens"] + r["efficiency"]["outputTokens"]
         for r in runs
@@ -34,12 +35,17 @@ for condition, runs in sorted(groups.items()):
         for r in runs
         if r["evidence"].get("verifierFalseAccept") is not None
     ]
-    result[condition] = {
+    adherence_values = [
+        r["collaboration"]["topologyAdherence"]
+        for r in runs
+        if r["collaboration"]["topologyAdherence"] is not None
+    ]
+    result.setdefault(experiment, {})[condition] = {
         "runs": len(runs),
         "taskSuccessRate": mean([1 if r["outcome"]["taskSuccess"] else 0 for r in runs]),
         "regressionRate": mean([1 if r["outcome"]["regressionDetected"] else 0 for r in runs]),
         "meanHumanInterventions": mean([r["collaboration"]["humanInterventions"] for r in runs]),
-        "meanTopologyAdherence": mean([r["collaboration"]["topologyAdherence"] for r in runs]),
+        "meanTopologyAdherence": mean(adherence_values),
         "meanEvidenceCompleteness": mean([r["evidence"]["completeness"] for r in runs]),
         "meanTotalTokens": mean(total_tokens),
         "meanWallClockMs": mean([r["efficiency"]["wallClockMs"] for r in runs]),

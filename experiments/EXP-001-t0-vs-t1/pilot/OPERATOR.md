@@ -49,6 +49,23 @@ runs/pilot-codex/<runId>/
 
 ## 3. Codexを実行
 
+`prepared` はGit管理されたmetadata / Promptの存在を示すだけで、現在のOperator hostに実workspaceが存在することは保証しません。開始前に、prepareが生成したworkspaceへアクセスでき、凍結fixtureのfresh copyであることを確認します。
+
+### First T0の実測前workspace復旧 — #48
+
+`EXP-001-train-normalize-name-r01-T0` は #25 / #32 の一時的なGitHub Actions runner上でprepareされました。runner外にworkspaceが引き継がれていないため、#48で追跡する**このRunだけの実測前インフラ復旧**を、再prepare禁止の例外として扱います。
+
+復旧は、この例外を記載したPRの独立レビュー・merge後にのみ実施します。#15と #32 が記録する実測未開始を根拠とし、操作者が過去のempirical invocationを発見した場合、または未開始を確認できない場合は停止します。結果ファイルの不在だけを未開始の証明にしません。
+
+1. 元のrun directory全体をDAT checkout / artifactRoot / 実測workspaceの外へ退避し、2つの準備ファイルのhashと旧workspaceIdを保存する。既存の作業checkoutには手を加えず、clean isolated checkoutを使う。
+2. 他の既存・退避済みworkspaceIdと異なる新ID、DAT checkout外の存在しないworkspace pathを指定し、凍結済み `prepare_pilot_run.py` を変更せず実行する。
+3. 生成Promptが退避した原本とbyte単位で一致し、YAML metadataが `spec.workspaceId` 以外同一であることを確認する。生成workspaceと凍結fixtureのファイル内容一致、Feature Freeze validationも確認する。
+4. #48に対応するGit管理文書へ、元prepareのPR / workflow、実測未開始の記録、旧・新workspaceId、hash、比較結果を保存し、準備差分をレビューする。その後、通常の初期Evidence FAIL確認とfresh Codex session実行へ進む。
+
+失敗時は部分生成物を隔離して保存し、退避した元のrun directoryを復元します。自動で復旧を再試行しません。この例外は実測済み / aborted / infrastructure-failed sessionの再実行、結果Artifactの置換、他Runの再prepareには使いません。復旧だけでexecution attestationや実測値を生成しません。
+
+### 通常の実行手順
+
 1. fresh workspaceでScenarioの初期deterministic Evidenceが失敗することを確認する。初期状態でPASSする場合はRunを開始せず、#15で停止理由を記録する。
 2. 新しいCodex session/contextを開始する。
 3. 対象Runの `prompt.md` だけを入力として使う。

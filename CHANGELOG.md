@@ -1,0 +1,55 @@
+# Changelog
+
+All notable user-facing changes to Dynamic Agent Topology (DAT) are documented here.
+
+This project follows [Semantic Versioning](https://semver.org/) for published releases. Repository `main` may contain unreleased work; a version is considered published only when an immutable Git tag and matching GitHub Release exist.
+
+## Unreleased
+
+### Added
+
+- EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
+- Pilot preparation and execution-attestation schemas and tooling.
+- Capability-level ablation guidance and contribution metrics.
+- Raven / evidence-gated executable-configuration research notes.
+- Public contribution, support, research-proposal, and security-reporting paths.
+- CodeQL, Dependabot, and OpenSSF Scorecard supply-chain checks.
+- Git-tracked public repository policy and release discipline.
+
+### Changed
+
+- EXP-001 preparation provenance is separated from runtime execution attestation.
+- Security reporting and coordinated-disclosure expectations are explicit.
+- GitHub Actions use least-privilege permissions and immutable action SHAs.
+
+### Security
+
+- Added CodeQL scanning and OpenSSF Scorecard reporting.
+- Hardened workflow credentials and dependency pinning.
+- Clarified that prompts and role names are not permission-enforcement boundaries.
+
+## 0.2.1 — 2026-10-04
+
+Historical content point: `717a03fa389fb77a47694b9cf8a0c6e97ac0888b`.
+
+### Added
+
+- Manual brownfield adoption kit.
+- Complete `.dat/` reference layout.
+- Runtime Binding and DAT Lock contracts.
+- External project validator.
+- GitHub Actions integration example.
+- Quick Start and manual-adapter guidance for supported runtimes.
+
+### Changed
+
+- Project adoption status moved to **Manual adoption-ready**.
+- README and citation metadata moved to version `0.2.1`.
+
+> Note: no immutable `v0.2.1` Git tag or GitHub Release had been published when this changelog was introduced. If the historical release is published later, the tag must point to the historical content point above rather than current `main`.
+
+## Release integrity
+
+Do not move a published version tag. If a released version needs additional fixes, publish a new patch or minor version.
+
+See [Public repository policy](docs/PUBLIC_REPOSITORY_POLICY.md) and [Contributing](CONTRIBUTING.md) for the release process.

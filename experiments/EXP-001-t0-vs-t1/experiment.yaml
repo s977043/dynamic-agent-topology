@@ -51,5 +51,5 @@ spec:
     criteria:
       - T1のtask_success_rateがT0を下回らない
       - regression_rateまたはhuman_interventionsの少なくとも一方が改善する
-      - total_tokensの増加が50%以内、または品質改善がその増加を明示的に正当化できる
+      - total_tokensが取得可能なら増加が50%以内、または品質改善がその増加を明示的に正当化できる。取得不能ならwall_clock_ms等の代替cost metricを明示する
       - critical boundary violationが1件でもあれば標準採用しない

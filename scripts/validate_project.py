@@ -82,6 +82,19 @@ def main() -> int:
         print(f"ERROR: {dat_dir} does not exist.", file=sys.stderr)
         return 1
 
+    required_dat_paths = [
+        dat_root / "schemas",
+        dat_root / "topologies" / "canonical",
+        dat_root / "adapters",
+        dat_root / "CITATION.cff",
+    ]
+    missing_dat_paths = [str(path) for path in required_dat_paths if not path.exists()]
+    if missing_dat_paths:
+        print("DAT checkout is incomplete:", file=sys.stderr)
+        for path in missing_dat_paths:
+            print(f"- ERROR: missing {path}", file=sys.stderr)
+        return 1
+
     required_base = {
         "project.yaml": "project-binding.schema.json",
         "runtimes.yaml": "runtime-binding.schema.json",
@@ -120,7 +133,12 @@ def main() -> int:
     policy = docs.get("policy.yaml")
     evidence = docs.get("evidence.yaml")
 
-    stage = policy["spec"]["rolloutStage"] if policy else "A0-assess"
+    if policy:
+        stage = policy["spec"]["rolloutStage"]
+    elif evidence:
+        stage = "A1-bind"
+    else:
+        stage = "A0-assess"
     stage_value = STAGE_ORDER[stage]
 
     if stage_value >= STAGE_ORDER["A1-bind"] and evidence is None:

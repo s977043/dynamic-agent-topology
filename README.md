@@ -6,7 +6,7 @@
 > **どのAgent Topologyが、どの条件で、どれだけのコストに対して有効なのか？**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: v0.2.1 Manual adoption-ready](https://img.shields.io/badge/Status-v0.2.1%20Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
+[![Status: Manual adoption-ready](https://img.shields.io/badge/Status-Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
 [![CI](https://github.com/s977043/dynamic-agent-topology/actions/workflows/spec-lint.yml/badge.svg)](https://github.com/s977043/dynamic-agent-topology/actions/workflows/spec-lint.yml)
 [![CodeQL](https://github.com/s977043/dynamic-agent-topology/actions/workflows/codeql.yml/badge.svg)](https://github.com/s977043/dynamic-agent-topology/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/s977043/dynamic-agent-topology/badge)](https://scorecard.dev/viewer/?uri=github.com/s977043/dynamic-agent-topology)
@@ -117,6 +117,8 @@ A2 / A3 / 固定T0・T1が最適なProjectも想定しています。
 
 まず試す場合は [Quick Start](docs/QUICKSTART.md)、設計詳細は [Brownfield Adoption Protocol](docs/ADOPTION.md) を参照してください。
 
+失敗の切り分けと複雑化判断には [Engineering Layer Diagnostics](docs/ENGINEERING_LAYERS.md) を使います。
+
 ## 対象Runtime
 
 DATはRuntime / Model / Roleを分離して扱います。
@@ -194,7 +196,7 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 
 ## 現在の状態
 
-**v0.2.1 Manual adoption-ready**
+**Manual adoption-ready（現在の `main` は未Release）**
 
 現在は、以下の土台を整備しています。
 
@@ -226,6 +228,10 @@ Topologyは「良さそうだから採用する」のではなく、Evidenceで�
 コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。Bug / Proposal / Research Proposal / Usage Question は用途別のIssue Formを利用してください。利用・導入相談は [SUPPORT.md](SUPPORT.md)、コミュニティ基準は [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) を参照してください。
 
 セキュリティ上の問題は公開Issueへ詳細を書かず、[SECURITY.md](SECURITY.md) の手順で報告してください。
+
+## Changelog
+
+公開済みversionと未Releaseの変更は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 ## License
 

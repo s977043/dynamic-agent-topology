@@ -69,7 +69,9 @@ DATはManual AdapterではRuntime設定を自動生成・上書きしません�
 
 ## 5. DAT revisionを固定する
 
-PoCでは`pinMode: floating`でも開始できますが、継続利用やCIではcommit SHAまたはtagへ固定してください。validatorを実行するDAT checkoutも、`dat.lock.yaml` と同じrevisionへcheckoutします。
+PoCでは`pinMode: floating`でも開始できますが、継続利用やCIではcommit SHAまたは実在するimmutable tagへ固定してください。validatorを実行するDAT checkoutも、`dat.lock.yaml` と同じrevisionへcheckoutします。
+
+`main` はUnreleased変更を含む場合があります。`version`文字列だけからGit tag / GitHub Releaseの存在を推測せず、Repository rootの`CHANGELOG.md`、tag、Releaseを確認してください。
 
 ```yaml
 spec:
@@ -85,7 +87,7 @@ spec:
 git -C /tmp/dynamic-agent-topology checkout "<commit-or-tag>"
 ```
 
-Version文字列だけでなく、実際に検証へ使うcheckout revisionも一致させることが重要です。
+Version文字列だけでなく、実際に検証へ使うcheckout revisionも一致させることが重要です。historical content pointを使う場合も、Release名ではなく対象commitを明示的にpinできます。
 
 ## 6. External Project Validatorを実行する
 

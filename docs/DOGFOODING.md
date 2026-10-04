@@ -53,6 +53,7 @@ Consumer PR #616 で次を確認しました。
 - Claude Code / Gemini CLI / Antigravityでも同じ導入結果になること
 - Runtime Adapterの自動compile/applyが成立すること
 - DATが任意のRepositoryへ無変更で導入できること
+- 独立した第三者maintainerでも同じ導入体験になること（今回のconsumerはDATと同一GitHub owner配下）
 
 ### Friction observed
 
@@ -62,6 +63,6 @@ Consumer側では、既存のTask/Spec/CI governanceへDAT Artifactを追加す�
 
 ### Judgment
 
-**Manual adoption path: PASS for one mature external repository.**
+**Manual adoption path: PASS for one existing consumer repository with established CI/governance.**
 
-これはv0.2.1のManual adoption contractに対する最初の外部dogfood Evidenceです。一般化には、別構成のRepositoryと別Runtimeでの追加dogfoodが必要です。
+これはv0.2.1のManual adoption contractに対する最初の外部dogfood Evidenceです。一般化には、別構成のRepository・別Runtime・可能なら独立maintainerによる追加dogfoodが必要です。

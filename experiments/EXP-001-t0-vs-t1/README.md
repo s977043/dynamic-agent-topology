@@ -30,3 +30,13 @@ Runtime / Model / Effort / Taskは条件間で揃え、Topologyだけを主変�
 ## 採否
 
 T1は「Verifierがいるから良い」とは判断しません。Task Success、Regression、Human Intervention、Token/Latency、Topology Adherence、Verifier False Acceptを合わせて判断します。
+
+## Fixture実行規約
+
+`evidenceCommands` は各Scenarioの `fixturePath` をcurrent working directoryとして実行します。
+
+Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗する状態をCIで確認します。これにより、fixtureが誤って「最初から成功するTask」へ変質することを防ぎます。
+
+## Decision status
+
+現時点では実験は未実施です。結果が揃うまでT0/T1の優劣は主張しません。採否記録は [DECISION.md](DECISION.md) に残します。

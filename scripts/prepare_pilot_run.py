@@ -34,11 +34,12 @@ def find_scenario(experiment, scenario_id: str):
     raise ValueError(f"unknown scenario {scenario_id!r}")
 
 
-def render_prompt(template: str, scenario: dict) -> str:
+def render_prompt(base_template: str, topology_contract: str, scenario: dict) -> str:
     acceptance = "\n".join(f"- {value}" for value in scenario["acceptanceCriteria"])
     evidence = "\n".join(f"- `{value}`" for value in scenario["evidenceCommands"])
     return (
-        template.replace("{{instruction}}", scenario["instruction"])
+        base_template.replace("{{topology_contract}}", topology_contract.strip())
+        .replace("{{instruction}}", scenario["instruction"])
         .replace("{{acceptance_criteria}}", acceptance)
         .replace("{{evidence_commands}}", evidence)
     )
@@ -106,16 +107,38 @@ def prepare_run(
     if not fixture.is_dir():
         raise ValueError(f"fixture does not exist: {fixture}")
 
-    prompt_path = (
-        ROOT
-        / "experiments"
-        / "EXP-001-t0-vs-t1"
-        / "pilot"
-        / "prompts"
-        / f"{item['condition']}.md"
-    )
+    prompt_dir = ROOT / "experiments" / "EXP-001-t0-vs-t1" / "pilot" / "prompts"
+    base_prompt_path = prompt_dir / "BASE.md"
+    prompt_path = prompt_dir / f"{item['condition']}.md"
+    if not base_prompt_path.is_file():
+        raise ValueError("base prompt template does not exist")
     if not prompt_path.is_file():
         raise ValueError(f"prompt template does not exist for condition {item['condition']!r}")
+
+    if item["executionOrder"] > 1:
+        prior = next(
+            (
+                value for value in matrix["spec"]["runs"]
+                if value["blockId"] == item["blockId"]
+                and value["executionOrder"] == item["executionOrder"] - 1
+            ),
+            None,
+        )
+        if prior is None:
+            raise ValueError("matrix is missing prior executionOrder within paired block")
+        prior_dir = artifact_root / prior["runId"]
+        prior_required = ("run-meta.yaml", "prompt.md", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt")
+        missing_prior = [
+            name for name in prior_required
+            if not (prior_dir / name).is_file()
+            or (name in {"trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"}
+                and (prior_dir / name).stat().st_size == 0)
+        ]
+        if missing_prior:
+            raise ValueError(
+                f"prior run {prior['runId']!r} must have result artifacts before executionOrder "
+                f"{item['executionOrder']}; missing/empty={missing_prior!r}"
+            )
 
     shutil.copytree(fixture, workspace)
     run_dir.mkdir(parents=True)
@@ -144,8 +167,9 @@ def prepare_run(
         encoding="utf-8",
     )
 
-    template = prompt_path.read_text(encoding="utf-8")
-    prompt = render_prompt(template, scenario)
+    base_template = base_prompt_path.read_text(encoding="utf-8")
+    topology_contract = prompt_path.read_text(encoding="utf-8")
+    prompt = render_prompt(base_template, topology_contract, scenario)
     header = (
         f"<!-- runId: {item['runId']} -->\n"
         f"<!-- blockId: {item['blockId']} -->\n"

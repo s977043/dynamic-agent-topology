@@ -75,12 +75,23 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     if status_result.returncode != 0 or '"prepared": 1' not in status_result.stdout:
         failures.append("status must report exactly one prepared run after preparation")
 
+    blocked_order = run_prepare(
+        pilot_path, matrix_path, second["runId"], tmp_path / "workspace-order-blocked",
+        "session-order", "workspace-order"
+    )
+    if blocked_order.returncode == 0:
+        failures.append("executionOrder=2 must be blocked until the prior run has result artifacts")
+
     duplicate_run = run_prepare(
         pilot_path, matrix_path, first["runId"], tmp_path / "workspace-dup-run",
         "session-002", "workspace-002"
     )
     if duplicate_run.returncode == 0:
         failures.append("re-preparing the same runId must fail")
+
+    prior_dir = artifact_root / first["runId"]
+    for name in ("trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"):
+        (prior_dir / name).write_text("test-artifact\n", encoding="utf-8")
 
     duplicate_session = run_prepare(
         pilot_path, matrix_path, second["runId"], tmp_path / "workspace-2",
@@ -124,6 +135,16 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     escaped = run_status(pilot_path, matrix_path)
     if escaped.returncode == 0:
         failures.append("status must reject artifactRoot path escape")
+
+
+base_prompt = (ROOT / "experiments" / "EXP-001-t0-vs-t1" / "pilot" / "prompts" / "BASE.md").read_text(encoding="utf-8")
+for condition in ("T0", "T1"):
+    overlay = (ROOT / "experiments" / "EXP-001-t0-vs-t1" / "pilot" / "prompts" / f"{condition}.md").read_text(encoding="utf-8")
+    for placeholder in ("{{instruction}}", "{{acceptance_criteria}}", "{{evidence_commands}}"):
+        if placeholder in overlay:
+            failures.append(f"{condition} overlay must not duplicate task/evidence placeholder {placeholder}")
+if "{{topology_contract}}" not in base_prompt:
+    failures.append("BASE prompt must own the topology contract insertion point")
 
 if failures:
     print("Operator Kit tests failed:")

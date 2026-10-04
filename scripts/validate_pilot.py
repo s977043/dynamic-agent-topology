@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 import sys
 
@@ -35,6 +36,10 @@ def main() -> int:
     parser.add_argument("--pilot", required=True)
     parser.add_argument("--matrix", required=True)
     parser.add_argument("--require-complete", action="store_true")
+    parser.add_argument(
+        "--run-id",
+        help="Validate artifacts for one run only. Used by the Operator Kit order gate.",
+    )
     args = parser.parse_args()
 
     pilot_path = (ROOT / args.pilot).resolve() if not Path(args.pilot).is_absolute() else Path(args.pilot)
@@ -119,7 +124,17 @@ def main() -> int:
     if len(run_ids) != len(set(run_ids)):
         errors.append("matrix: duplicate runId")
 
-    if args.require_complete:
+    validate_artifacts = args.require_complete or args.run_id is not None
+    items_to_validate = expected
+    if args.run_id is not None:
+        matches = [item for item in expected if item["runId"] == args.run_id]
+        if not matches:
+            errors.append(f"unknown runId for artifact validation: {args.run_id!r}")
+            items_to_validate = []
+        else:
+            items_to_validate = matches
+
+    if validate_artifacts:
         artifact_root = artifact_root_checked
         if artifact_root is None:
             artifact_root = ROOT / "__invalid_artifact_root__"
@@ -128,13 +143,14 @@ def main() -> int:
         meta_schema = ROOT / "schemas" / "pilot-run-meta.schema.json"
         workspace_ids = set()
         session_ids = set()
-        for item in expected:
+        for item in items_to_validate:
             run_dir = artifact_root / item["runId"]
-            required = ["run-meta.yaml", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"]
+            required = ["run-meta.yaml", "prompt.md", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"]
             for filename in required:
                 if not (run_dir / filename).is_file():
                     errors.append(f"{item['runId']}: missing {filename}")
             meta_path = run_dir / "run-meta.yaml"
+            prompt_path = run_dir / "prompt.md"
             trace_path = run_dir / "trace.yaml"
             eval_path = run_dir / "evaluation.yaml"
             if meta_path.is_file():
@@ -148,6 +164,10 @@ def main() -> int:
                 for field in ("repetition", "executionOrder"):
                     if spec.get(field) != item[field]:
                         errors.append(f"{meta_path}: {field} does not match matrix")
+                if prompt_path.is_file():
+                    prompt_digest = hashlib.sha256(prompt_path.read_bytes()).hexdigest()
+                    if spec.get("promptSha256") != prompt_digest:
+                        errors.append(f"{meta_path}: promptSha256 does not match prompt.md")
                 workspace_id = spec.get("workspaceId")
                 session_id = spec.get("sessionId")
                 if workspace_id in workspace_ids:
@@ -209,7 +229,7 @@ def main() -> int:
                         errors.append(f"{eval_path}: efficiency.{field} does not match trace summary")
                 if collaboration.get("humanInterventions") != trace_summary.get("humanInterventions"):
                     errors.append(f"{eval_path}: humanInterventions does not match trace summary")
-            for filename in ("patch.diff", "evidence.txt"):
+            for filename in ("prompt.md", "patch.diff", "evidence.txt"):
                 artifact = run_dir / filename
                 if artifact.is_file() and artifact.stat().st_size == 0:
                     errors.append(f"{item['runId']}: {filename} must not be empty")
@@ -220,7 +240,12 @@ def main() -> int:
             print(f"- {error}")
         return 1
 
-    mode = "complete artifacts" if args.require_complete else "plan/matrix"
+    if args.run_id is not None:
+        mode = f"single run {args.run_id}"
+    elif args.require_complete:
+        mode = "complete artifacts"
+    else:
+        mode = "plan/matrix"
     print(f"Pilot validation passed: {mode}, expected_runs={len(expected)}.")
     return 0
 

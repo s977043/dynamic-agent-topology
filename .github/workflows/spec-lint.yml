@@ -123,3 +123,6 @@ jobs:
 
       - name: Test experiment pilot validator
         run: python scripts/test_validate_pilot.py
+
+      - name: Test experiment operator kit
+        run: python scripts/test_operator_kit.py

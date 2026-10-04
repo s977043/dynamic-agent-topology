@@ -27,3 +27,10 @@ v0.2のHarnessは**Runtime実行器ではなく、Experiment Artifactの検証�
 EXP-001 Pilotは `scripts/validate_pilot.py` でplan/matrixをCI検証します。
 
 実Run完了時は `--require-complete` を付け、18 RunすべてのTrace / Evaluation / patch / Evidenceが揃い、Pilot固定Runtime / Model / Effortと一致することを確認します。
+
+
+## Operator support
+
+`scripts/prepare_pilot_run.py` は単一Pilot Runのfresh workspaceとpre-run Artifactだけを生成します。`scripts/pilot_status.py` は進捗を表示しますが、`artifacts-present` をsemantic completionとは扱いません。
+
+最終完了判定のSSoTは引き続き `validate_pilot.py --require-complete` です。

@@ -158,6 +158,11 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp, tempfile.TemporaryDirectory()
     )
     if bad_session_claim.returncode != 0:
         failures.append("attestation helper should record observed non-compliance rather than rewrite it")
+    else:
+        bad_attestation_path = artifact_root / second_first["runId"] / "execution-attestation.yaml"
+        bad_attestation = yaml.safe_load(bad_attestation_path.read_text(encoding="utf-8"))
+        if bad_attestation["spec"].get("freshSession") is not False:
+            failures.append("attestation helper must preserve observed freshSession=false without normalization")
 
     third_first = other_firsts[1]
     duplicate_workspace = run_prepare(

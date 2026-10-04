@@ -10,7 +10,13 @@ Security fixes are prioritized for the latest `main` revision and the latest pub
 
 Do **not** open a public issue containing exploit details, secrets, private source code, confidential prompts, or unsanitized traces.
 
-Use GitHub's private vulnerability reporting flow when the repository exposes **Security → Advisories → Report a vulnerability**. If that option is unavailable, contact the repository maintainer through a private channel associated with their GitHub profile and provide only the minimum information needed to establish contact.
+Start from the repository's GitHub Security page:
+
+https://github.com/s977043/dynamic-agent-topology/security
+
+When **Report a vulnerability** is available there, use GitHub's private vulnerability reporting flow. If private vulnerability reporting is not available, contact the repository maintainer through a private channel associated with their GitHub profile and provide only the minimum information needed to establish contact.
+
+Do not move sensitive details into a public Issue or Pull Request just because a private reporting option is unavailable.
 
 A useful report includes:
 
@@ -21,6 +27,18 @@ A useful report includes:
 - suggested mitigation, if known.
 
 Please avoid accessing data that does not belong to you or expanding a proof of concept beyond what is necessary to demonstrate the issue.
+
+## Response and disclosure expectations
+
+The project aims to:
+
+- acknowledge a vulnerability report within **7 calendar days**;
+- provide a status update within **14 calendar days** when investigation or remediation is still in progress;
+- coordinate public disclosure after a fix or mitigation is available, or on another date agreed with the reporter.
+
+These are response goals rather than a contractual SLA. Severity, exploitability, upstream dependencies, and maintainer availability can affect timing.
+
+Do not publicly disclose unresolved exploit details without coordinating with the maintainer first. The maintainer should likewise avoid unnecessary disclosure of reporter identity or sensitive reproduction material.
 
 ## Security boundaries
 

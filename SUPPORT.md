@@ -4,7 +4,7 @@ DAT is an experimental specification and evaluation repository. Support works be
 
 ## Usage and adoption questions
 
-Open a GitHub Issue when you have a reproducible question about:
+Use the repository **Usage or adoption question** Issue form when you have a reproducible question about:
 
 - adopting DAT in a repository;
 - schema or validator behavior;

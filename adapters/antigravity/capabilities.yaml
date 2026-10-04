@@ -2,7 +2,7 @@ apiVersion: dat/v1alpha1
 kind: RuntimeCapabilityManifest
 metadata:
   runtime: antigravity
-  variant: 2.0
+  variant: "2.0"
   verifiedAt: "2026-10-04"
 capabilities:
   custom_roles:

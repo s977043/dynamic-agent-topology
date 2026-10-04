@@ -79,6 +79,13 @@ Declared TopologyとObserved Executionの差は `topologyAdherence` やBoundary 
 
 単一の総合Scoreへ過度に集約せず、品質・安全性・協調コスト・実行コストのトレードオフを残します。
 
+## Engineering Layer Diagnostics
+
+上記のArchitecture Planeは責務分離のための構造です。障害解析では、これとは別軸の **Prompt / Context / Harness / Loop / Graph / Evaluation** を診断レンズとして使います。
+
+Engineering LayerはArchitecture Planeを置き換えるものではなく、成熟度順でもありません。失敗時に「どの最小Work Unitを直すべきか」を特定するための補助軸です。
+
+診断契約とCrosswalkは [Engineering Layer Diagnostics](ENGINEERING_LAYERS.md) を参照してください。
 ## Source of truth
 
 - 構造契約: `schemas/`

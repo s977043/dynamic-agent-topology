@@ -61,6 +61,9 @@ def main() -> int:
         errors.append("pilot: runtime is not allowed by experiment runtimeScope")
 
     expected_conditions = [item["id"] for item in experiment["spec"]["conditions"]]
+    execution_subject_by_condition = {
+        item["id"]: item["executionRef"] for item in experiment["spec"]["conditions"]
+    }
     if pilot["spec"]["conditions"] != expected_conditions:
         errors.append(f"pilot: conditions {pilot['spec']['conditions']!r} do not match experiment {expected_conditions!r}")
 
@@ -122,14 +125,39 @@ def main() -> int:
             artifact_root = ROOT / "__invalid_artifact_root__"
         trace_schema = ROOT / "schemas" / "execution-trace.schema.json"
         eval_schema = ROOT / "schemas" / "evaluation.schema.json"
+        meta_schema = ROOT / "schemas" / "pilot-run-meta.schema.json"
+        workspace_ids = set()
+        session_ids = set()
         for item in expected:
             run_dir = artifact_root / item["runId"]
-            required = ["trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"]
+            required = ["run-meta.yaml", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"]
             for filename in required:
                 if not (run_dir / filename).is_file():
                     errors.append(f"{item['runId']}: missing {filename}")
+            meta_path = run_dir / "run-meta.yaml"
             trace_path = run_dir / "trace.yaml"
             eval_path = run_dir / "evaluation.yaml"
+            if meta_path.is_file():
+                run_meta = load(meta_path)
+                validate(run_meta, meta_schema, str(meta_path), errors)
+                metadata = run_meta.get("metadata", {})
+                for field in ("runId", "blockId", "scenario", "condition"):
+                    if metadata.get(field) != item[field]:
+                        errors.append(f"{meta_path}: {field} does not match matrix")
+                spec = run_meta.get("spec", {})
+                for field in ("repetition", "executionOrder"):
+                    if spec.get(field) != item[field]:
+                        errors.append(f"{meta_path}: {field} does not match matrix")
+                workspace_id = spec.get("workspaceId")
+                session_id = spec.get("sessionId")
+                if workspace_id in workspace_ids:
+                    errors.append(f"{meta_path}: workspaceId must be unique across runs")
+                elif workspace_id:
+                    workspace_ids.add(workspace_id)
+                if session_id in session_ids:
+                    errors.append(f"{meta_path}: sessionId must be unique across runs")
+                elif session_id:
+                    session_ids.add(session_id)
             if trace_path.is_file():
                 trace = load(trace_path)
                 validate(trace, trace_schema, str(trace_path), errors)
@@ -137,6 +165,13 @@ def main() -> int:
                 for field in ("runId", "blockId", "scenario", "condition"):
                     if metadata.get(field) != item[field]:
                         errors.append(f"{trace_path}: {field} does not match matrix")
+                expected_subject = execution_subject_by_condition[item["condition"]]
+                subject = trace.get("executionSubject", {})
+                if subject.get("kind") != expected_subject["kind"] or subject.get("name") != expected_subject["name"]:
+                    errors.append(f"{trace_path}: executionSubject does not match experiment condition")
+                sequences = [event.get("sequence") for event in trace.get("events", [])]
+                if sequences != sorted(set(sequences)):
+                    errors.append(f"{trace_path}: event sequence must be unique and strictly increasing")
                 if trace.get("runtime", {}).get("name") != pilot["spec"]["runtime"]:
                     errors.append(f"{trace_path}: runtime does not match pilot")
                 if trace.get("model", {}).get("id") != pilot["spec"]["model"]:
@@ -157,6 +192,27 @@ def main() -> int:
                     errors.append(f"{eval_path}: model does not match pilot")
                 if context.get("effort") != pilot["spec"]["effort"]:
                     errors.append(f"{eval_path}: effort does not match pilot")
+                outcome = evaluation.get("outcome", {})
+                if outcome.get("acceptanceCriteriaPassed", 0) > outcome.get("acceptanceCriteriaTotal", 0):
+                    errors.append(f"{eval_path}: acceptanceCriteriaPassed exceeds acceptanceCriteriaTotal")
+                evidence = evaluation.get("evidence", {})
+                if evidence.get("passedGates", 0) > evidence.get("requiredGates", 0):
+                    errors.append(f"{eval_path}: passedGates exceeds requiredGates")
+            if trace_path.is_file() and eval_path.is_file():
+                trace = load(trace_path)
+                evaluation = load(eval_path)
+                trace_summary = trace.get("summary", {})
+                efficiency = evaluation.get("efficiency", {})
+                collaboration = evaluation.get("collaboration", {})
+                for field in ("agentInvocations", "coordinationTransitions", "wallClockMs"):
+                    if field in trace_summary and efficiency.get(field) != trace_summary[field]:
+                        errors.append(f"{eval_path}: efficiency.{field} does not match trace summary")
+                if collaboration.get("humanInterventions") != trace_summary.get("humanInterventions"):
+                    errors.append(f"{eval_path}: humanInterventions does not match trace summary")
+            for filename in ("patch.diff", "evidence.txt"):
+                artifact = run_dir / filename
+                if artifact.is_file() and artifact.stat().st_size == 0:
+                    errors.append(f"{item['runId']}: {filename} must not be empty")
 
     if errors:
         print("Pilot validation failed:")

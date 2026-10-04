@@ -54,7 +54,8 @@
         "crossRunFeedback",
         "conditions",
         "scenarios",
-        "artifactRoot"
+        "artifactRoot",
+        "matrixPath"
       ],
       "properties": {
         "runtime": {

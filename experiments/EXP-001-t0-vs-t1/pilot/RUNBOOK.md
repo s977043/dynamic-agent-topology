@@ -61,6 +61,7 @@ Codexのcustom roles / subagent model / effortはRuntime設定で固定し、Run
 
 ```text
 runs/pilot-codex/<runId>/
+├── run-meta.yaml
 ├── trace.yaml
 ├── evaluation.yaml
 ├── patch.diff
@@ -69,6 +70,7 @@ runs/pilot-codex/<runId>/
 
 ### tracked
 
+- `run-meta.yaml`
 - `trace.yaml`
 - `evaluation.yaml`
 - `patch.diff`
@@ -86,11 +88,12 @@ runs/pilot-codex/<runId>/
 
 Runは以下を満たすまでcompleteではありません。
 
-- trace/evaluationがSchema valid
+- run-meta/trace/evaluationがSchema valid
 - runId / blockId / scenario / conditionがmatrixと一致
 - deterministic Evidence結果が記録済み
 - patchが保存済み
-- fresh workspaceで実行された
+- `run-meta.yaml` でfresh workspace / fresh session / cross-run feedback未使用を記録する
+- workspaceId / sessionId は18 Run間で一意にする（秘密情報ではなくRun用opaque IDを使う）
 - T0/T1 paired blockのRuntime / Model / Effortが一致
 
 ## Pilot完了判定

@@ -68,6 +68,28 @@ def add_unknown(checks: list[dict[str, str]], name: str, expected: Any, reason: 
     })
 
 
+def ruleset_targets_default_branch(ruleset: dict[str, Any], branch_name: str) -> bool | None:
+    ref = f"refs/heads/{branch_name}"
+    ref_condition = ruleset.get("conditions", {}).get("ref_name")
+    if not isinstance(ref_condition, dict):
+        return None
+
+    includes = ref_condition.get("include", [])
+    excludes = ref_condition.get("exclude", [])
+    if not isinstance(includes, list) or not isinstance(excludes, list):
+        return None
+
+    exact_tokens = {"~ALL", "~DEFAULT_BRANCH", ref}
+    if any(item in exact_tokens for item in excludes):
+        return False
+    if any(item in exact_tokens for item in includes):
+        return True
+
+    if includes:
+        return None
+    return False
+
+
 def audit(
     target: dict[str, Any],
     repository: dict[str, Any],
@@ -132,12 +154,31 @@ def audit(
             item for item in rulesets
             if item.get("target") == "branch" and item.get("enforcement") == "active"
         ]
-        add_check(
-            checks,
-            "defaultBranch.activeRulesetRequired",
-            default_branch["activeRulesetRequired"],
-            bool(active_branch_rulesets),
-        )
+        applicability = [
+            ruleset_targets_default_branch(item, default_branch["name"])
+            for item in active_branch_rulesets
+        ]
+        if any(value is True for value in applicability):
+            add_check(
+                checks,
+                "defaultBranch.activeRulesetRequired",
+                default_branch["activeRulesetRequired"],
+                True,
+            )
+        elif any(value is None for value in applicability):
+            add_unknown(
+                checks,
+                "defaultBranch.activeRulesetRequired",
+                default_branch["activeRulesetRequired"],
+                "active branch ruleset exists but default-branch applicability is not provable",
+            )
+        else:
+            add_check(
+                checks,
+                "defaultBranch.activeRulesetRequired",
+                default_branch["activeRulesetRequired"],
+                False,
+            )
 
     return checks
 
@@ -176,13 +217,29 @@ def main() -> int:
 
     branch_name = target["spec"]["defaultBranch"]["name"]
     branch, branch_error = fetch_json(f"{api}/branches/{branch_name}", token)
-    rulesets, rulesets_error = fetch_json(f"{api}/rulesets", token)
+    ruleset_summaries, rulesets_error = fetch_json(f"{api}/rulesets", token)
+
+    rulesets = None
+    if isinstance(ruleset_summaries, list):
+        rulesets = []
+        for summary in ruleset_summaries:
+            ruleset_id = summary.get("id")
+            if not isinstance(ruleset_id, int):
+                rulesets.append(summary)
+                continue
+            detail, detail_error = fetch_json(f"{api}/rulesets/{ruleset_id}", token)
+            if isinstance(detail, dict):
+                rulesets.append(detail)
+            else:
+                unresolved = dict(summary)
+                unresolved["_detail_error"] = detail_error or "unavailable"
+                rulesets.append(unresolved)
 
     checks = audit(
         target,
         repository,
         branch if isinstance(branch, dict) else None,
-        rulesets if isinstance(rulesets, list) else None,
+        rulesets,
         branch_error=branch_error,
         rulesets_error=rulesets_error,
     )

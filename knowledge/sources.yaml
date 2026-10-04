@@ -26,3 +26,17 @@ sources:
     title: "How we built our multi-agent research system"
     url: "https://www.anthropic.com/engineering/multi-agent-research-system"
     adopted: [coordination-cost-awareness, task-dependent-parallelism]
+
+  - id: raven-2026
+    type: preprint
+    title: "Raven: The Harness of Harnesses for Composable Agentic Intelligence"
+    url: "https://arxiv.org/abs/2609.33439"
+    published_at: "2026-09-27"
+    adopted: []
+
+  - id: harnessbank-2026
+    type: preprint
+    title: "Self-Evolving Agent Harnesses via Gated Semantic Quality-Diversity"
+    url: "https://arxiv.org/abs/2607.13683"
+    published_at: "2026-07-15"
+    adopted: []

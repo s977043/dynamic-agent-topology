@@ -222,7 +222,7 @@ Topologyは「良さそうだから採用する」のではなく、Evidenceで�
 
 ## Contributing / Security
 
-コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。Bug / Proposal はIssue template、変更提案はPull Request templateに沿ってください。
+コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。Bug / Proposal / Research Proposal / Usage Question は用途別のIssue Formを利用してください。利用・導入相談は [SUPPORT.md](SUPPORT.md)、コミュニティ基準は [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) を参照してください。
 
 セキュリティ上の問題は公開Issueへ詳細を書かず、[SECURITY.md](SECURITY.md) の手順で報告してください。
 

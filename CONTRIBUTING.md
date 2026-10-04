@@ -16,6 +16,8 @@ Do not present an untested topology choice as a universal best practice.
 - Search existing issues and pull requests first.
 - For a bug, use the Bug report issue form and provide a minimal reproduction.
 - For a design or behavior change, use the Proposal issue form and start from the problem, hypothesis, and evidence.
+- If external research or a benchmark materially motivates the change, use the Research or design proposal form and separate the source claim from DAT interpretation.
+- For usage or adoption help, use the Usage or adoption question form rather than forcing the request into a bug or proposal.
 - For security-sensitive findings, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 - Check the active experiment freeze before touching experiment inputs, evaluation semantics, prompts, roles, scenarios, fixtures, or frozen validators.
 
@@ -44,6 +46,15 @@ Keep pull requests small enough to review. Use the pull request template and inc
 - evidence supporting behavioral changes.
 
 For topology, routing, role, verifier, or experiment-method changes, include the hypothesis and how the change can be evaluated or falsified.
+
+For research-derived changes, explicitly separate:
+
+- the source claim;
+- DAT interpretation;
+- what is proposed for evaluation;
+- what evidence would reject, simplify, or defer the proposal.
+
+A source citation is not evidence that a DAT design is effective.
 
 ## Generated and empirical artifacts
 

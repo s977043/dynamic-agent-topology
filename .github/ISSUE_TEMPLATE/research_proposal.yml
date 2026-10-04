@@ -1,0 +1,74 @@
+name: Research or design proposal
+description: Propose a DAT hypothesis motivated by research, benchmarks, or external evidence.
+title: "[Research Proposal]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DAT does not adopt a design because a source is persuasive. Separate source claims from DAT interpretation, then define how the hypothesis could be falsified.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or observed friction
+      description: What concrete DAT problem or limitation motivates this proposal?
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Primary source material
+      description: Link papers, benchmarks, official documentation, or repository evidence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: source_claim
+    attributes:
+      label: Source claim
+      description: What does the source itself establish? Avoid DAT interpretation here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: interpretation
+    attributes:
+      label: DAT interpretation
+      description: What does the source suggest for DAT without claiming adoption?
+    validations:
+      required: true
+
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: State the falsifiable hypothesis.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Cheapest useful evaluation
+      description: What is the smallest controlled test or observation that could reduce uncertainty?
+    validations:
+      required: true
+
+  - type: textarea
+    id: rejection
+    attributes:
+      label: Rejection or deferral evidence
+      description: What result would cause the proposal to be rejected, simplified, or deferred?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Checks
+      options:
+        - label: I checked active experiment freezes and understand implementation may be deferred.
+          required: true
+        - label: I am not presenting the source claim as proof that the DAT proposal is effective.
+          required: true

@@ -110,3 +110,10 @@ python scripts/validate_pilot.py \
 その後 `scripts/summarize_experiment.py` で集計し、`DECISION.md` を更新します。
 
 **18 Runが揃う前にT0/T1の優劣を判断せず、途中結果を後続Runへフィードバックしません。**
+
+
+## Operator Kit
+
+18 Runを手作業で直接組み立てず、[OPERATOR.md](OPERATOR.md) の手順で `prepare_pilot_run.py` / `pilot_status.py` を使用します。
+
+Operator KitはCodexを起動せず、fresh fixture / run-meta /固定Prompt /進捗だけを管理します。実測結果は実Runtime実行後に保存します。

@@ -16,6 +16,15 @@ def load(path: Path):
         return yaml.safe_load(f)
 
 
+def safe_repo_path(value: str):
+    path = (ROOT / value).resolve()
+    try:
+        path.relative_to(ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError(f"path escapes repository: {value!r}") from exc
+    return path
+
+
 def status_for(run_dir: Path):
     if not run_dir.exists():
         return "planned"
@@ -43,7 +52,7 @@ def main() -> int:
     matrix_path = (ROOT / args.matrix).resolve() if not Path(args.matrix).is_absolute() else Path(args.matrix)
     pilot = load(pilot_path)
     matrix = load(matrix_path)
-    artifact_root = (ROOT / pilot["spec"]["artifactRoot"]).resolve()
+    artifact_root = safe_repo_path(pilot["spec"]["artifactRoot"])
 
     rows = []
     counts = {}

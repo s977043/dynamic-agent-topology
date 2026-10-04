@@ -52,8 +52,8 @@ def existing_provenance(artifact_root: Path):
     for path in artifact_root.glob("*/run-meta.yaml"):
         try:
             data = load(path)
-        except Exception:
-            continue
+        except Exception as exc:
+            raise ValueError(f"cannot read existing provenance {path}: {exc}") from exc
         spec = data.get("spec", {})
         if spec.get("sessionId"):
             session_ids.add(spec["sessionId"])

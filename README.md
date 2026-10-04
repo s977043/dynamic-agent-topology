@@ -134,7 +134,8 @@ docs/         North Star / Architecture / Glossary / Metrics / Adoption
 knowledge/    研究・公式知見と採用した設計原則
 schemas/      DATのMachine-readableな仕様
 roles/        Canonical Role Contract
-topologies/   Baseline / Canonical Topology
+baselines/    Agentを使わないExecution Baseline
+topologies/   Canonical Agent Topology
 policies/     Routing / Escalation Policy
 adapters/     Runtime Adapter
 experiments/  実験プロトコル

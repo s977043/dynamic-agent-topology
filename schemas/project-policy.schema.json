@@ -14,9 +14,10 @@
     },
     "spec": {
       "type": "object",
-      "required": ["routingPolicy", "rolloutStage"],
+      "required": ["rolloutStage"],
       "properties": {
         "routingPolicy": {"type": "string"},
+        "escalationPolicy": {"type": "string"},
         "rolloutStage": {
           "enum": ["A0-assess", "A1-bind", "A2-observe", "A3-recommend", "A4-canary", "A5-dynamic"]
         },
@@ -30,6 +31,16 @@
           "additionalProperties": false
         }
       },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "rolloutStage": {"enum": ["A3-recommend", "A4-canary", "A5-dynamic"]}
+            }
+          },
+          "then": {"required": ["routingPolicy"]}
+        }
+      ],
       "additionalProperties": false
     }
   },

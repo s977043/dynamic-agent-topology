@@ -1,1 +1,30 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"DAT Routing Policy","type":"object","required":["apiVersion","kind","metadata","rules"],"properties":{"apiVersion":{"const":"dat/v1alpha1"},"kind":{"const":"RoutingPolicy"},"metadata":{"type":"object","required":["name"],"properties":{"name":{"type":"string"}}},"rules":{"type":"array","items":{"type":"object","required":["when","topology"],"properties":{"when":{"type":"object"},"topology":{"type":"string"}}}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Routing Policy",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "rules"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "RoutingPolicy"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"name": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["when", "topology"],
+        "properties": {
+          "when": {"type": "object", "minProperties": 1},
+          "topology": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

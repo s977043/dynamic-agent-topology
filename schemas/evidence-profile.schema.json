@@ -16,12 +16,23 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "level", "command"],
+        "required": ["id", "level"],
         "properties": {
           "id": {"type": "string"},
           "level": {"enum": ["deterministic", "observable", "judgment"]},
-          "command": {"type": "string"}
+          "command": {"type": "string"},
+          "description": {"type": "string"}
         },
+        "allOf": [
+          {
+            "if": {"properties": {"level": {"const": "deterministic"}}},
+            "then": {"required": ["command"]}
+          },
+          {
+            "if": {"properties": {"level": {"enum": ["observable", "judgment"]}}},
+            "then": {"required": ["description"]}
+          }
+        ],
         "additionalProperties": false
       }
     }

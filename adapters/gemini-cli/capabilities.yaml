@@ -6,13 +6,14 @@ metadata:
   verifiedAt: "2026-10-04"
 capabilities:
   custom_roles:
-    status: native
+    status: experimental
     source: https://github.com/google-gemini/gemini-cli/blob/main/docs/core/subagents.md
+    note: Subagents are documented as a preview/experimental capability.
   isolated_context:
-    status: native
+    status: experimental
     source: https://github.com/google-gemini/gemini-cli/discussions/25562
   parallel_subagents:
-    status: native
+    status: experimental
     source: https://github.com/google-gemini/gemini-cli/discussions/25562
   tool_scoping:
     status: native
@@ -24,8 +25,10 @@ capabilities:
     status: native
     source: https://github.com/google-gemini/gemini-cli/blob/main/docs/extensions/reference.md
   remote_agents:
-    status: native
+    status: experimental
     source: https://github.com/google-gemini/gemini-cli/blob/main/docs/core/remote-agents.md
-    note: Remote subagents use A2A.
+    note: Remote subagents use A2A and are exposed through experimental agent support.
   workspace_isolation:
-    status: unknown
+    status: experimental
+    source: https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/configuration.md
+    note: Automated Git worktree management is exposed as an experimental setting.

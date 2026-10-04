@@ -119,7 +119,8 @@ docs/         North Star, architecture, glossary, metrics, adoption
 knowledge/    Research, official guidance, adopted principles
 schemas/      Machine-readable DAT contracts
 roles/        Canonical role contracts
-topologies/   Baselines and canonical topology hypotheses
+baselines/    Non-agent execution baselines
+topologies/   Canonical agent topology hypotheses
 policies/     Routing and escalation policies
 adapters/     Runtime-specific mappings
 experiments/  Experimental protocol

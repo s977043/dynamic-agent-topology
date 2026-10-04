@@ -40,7 +40,7 @@ Agent Topologyは、Agent/RoleのNode、関係を表すEdge、Dependency、構�
 
 ## Execution Baseline
 
-P0 Deterministic PipelineはAgent Topologyではありません。Agentを使わない比較対象として、独立したExecutionBaselineとして定義します。
+P0 Deterministic PipelineはAgent Topologyではありません。Agentを使わない比較対象として、`baselines/` 配下の独立したExecutionBaselineとして定義します。
 
 ## Routing / Escalation
 

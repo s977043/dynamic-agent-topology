@@ -3,5 +3,6 @@ kind: ProjectPolicy
 metadata: {name: example-web-app}
 spec:
   routingPolicy: R0-dynamic
+  escalationPolicy: E0-default
   rolloutStage: A3-recommend
   escalation: {maxTopology: T2-worker-reviewer-verifier, maxAgents: 3}

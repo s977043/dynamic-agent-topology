@@ -25,7 +25,7 @@ jobs:
 
       - name: Validate execution baselines
         run: |
-          for file in topologies/baselines/*.yaml; do
+          for file in baselines/*.yaml; do
             check-jsonschema --schemafile schemas/execution-baseline.schema.json "$file"
           done
 

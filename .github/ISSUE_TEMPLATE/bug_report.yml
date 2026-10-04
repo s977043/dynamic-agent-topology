@@ -46,8 +46,8 @@ body:
     id: work_unit
     attributes:
       label: Broken Work Unit
-      description: Identify the smallest unit that appears broken, such as a role contract, handoff, adapter, policy, permission binding, validator, or evidence path.
-      placeholder: verifier capability binding
+      description: Identify the smallest unit that appears broken. If evidence is insufficient, write unknown rather than guessing.
+      placeholder: verifier capability binding, or unknown pending diagnosis
     validations:
       required: true
 

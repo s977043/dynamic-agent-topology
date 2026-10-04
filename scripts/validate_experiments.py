@@ -132,6 +132,39 @@ for path in sorted((ROOT / "examples" / "experiment-run").glob("*-evaluation.yam
     if evidence["passedGates"] > evidence["requiredGates"]:
         errors.append(f"{path}: passedGates exceeds requiredGates")
 
+
+# Cross-check matching Trace / Evaluation artifacts when both are present.
+traces_by_run = {}
+for path in sorted((ROOT / "examples" / "experiment-run").glob("*-trace.yaml")):
+    data = load(path)
+    run_id = data["metadata"]["runId"]
+    if run_id in traces_by_run:
+        errors.append(f"{path}: duplicate trace runId {run_id!r}")
+    traces_by_run[run_id] = (path, data)
+
+evaluations_by_run = {}
+for path in sorted((ROOT / "examples" / "experiment-run").glob("*-evaluation.yaml")):
+    data = load(path)
+    run_id = data["metadata"]["runId"]
+    if run_id in evaluations_by_run:
+        errors.append(f"{path}: duplicate evaluation runId {run_id!r}")
+    evaluations_by_run[run_id] = (path, data)
+
+for run_id in sorted(set(traces_by_run) & set(evaluations_by_run)):
+    trace_path, trace = traces_by_run[run_id]
+    evaluation_path, evaluation = evaluations_by_run[run_id]
+    for field in ("experiment", "scenario", "condition"):
+        if trace["metadata"][field] != evaluation["metadata"][field]:
+            errors.append(f"{evaluation_path}: {field} does not match trace {trace_path} for runId {run_id!r}")
+    trace_summary = trace["summary"]
+    efficiency = evaluation["efficiency"]
+    collaboration = evaluation["collaboration"]
+    for field in ("agentInvocations", "coordinationTransitions", "wallClockMs"):
+        if field in trace_summary and trace_summary[field] != efficiency[field]:
+            errors.append(f"{evaluation_path}: efficiency.{field} does not match trace summary for runId {run_id!r}")
+    if trace_summary["humanInterventions"] != collaboration["humanInterventions"]:
+        errors.append(f"{evaluation_path}: collaboration.humanInterventions does not match trace summary for runId {run_id!r}")
+
 if errors:
     print("Experiment semantic validation failed:")
     for error in errors:
@@ -141,5 +174,6 @@ if errors:
 print(
     "Experiment semantic validation passed: "
     f"{len(experiments)} experiments, "
-    f"{sum(len(v) for v in scenario_ids_by_experiment.values())} scenarios."
+    f"{sum(len(v) for v in scenario_ids_by_experiment.values())} scenarios, "
+    f"{len(traces_by_run)} traces, {len(evaluations_by_run)} evaluations."
 )

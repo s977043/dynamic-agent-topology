@@ -6,7 +6,7 @@
 > **Which agent topology works, under what conditions, and at what cost?**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: v0.2.1 Manual adoption-ready](https://img.shields.io/badge/Status-v0.2.1%20Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
+[![Status: Manual adoption-ready](https://img.shields.io/badge/Status-Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
 [![CI](https://github.com/s977043/dynamic-agent-topology/actions/workflows/spec-lint.yml/badge.svg)](https://github.com/s977043/dynamic-agent-topology/actions/workflows/spec-lint.yml)
 [![CodeQL](https://github.com/s977043/dynamic-agent-topology/actions/workflows/codeql.yml/badge.svg)](https://github.com/s977043/dynamic-agent-topology/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/s977043/dynamic-agent-topology/badge)](https://scorecard.dev/viewer/?uri=github.com/s977043/dynamic-agent-topology)
@@ -173,7 +173,7 @@ See [knowledge/sources.yaml](knowledge/sources.yaml).
 
 ## Status
 
-**v0.2.1 Manual adoption-ready**
+**Manual adoption-ready (current `main` is unreleased)**
 
 The repository currently provides:
 
@@ -203,6 +203,10 @@ Manual adoption into external repositories is supported. Automatic runtime compi
 See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the repository Issue Forms for bugs, general proposals, research-derived proposals, and usage/adoption questions. See [SUPPORT.md](SUPPORT.md) for routing and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
 
 Do not disclose sensitive vulnerabilities in a public issue. Follow [SECURITY.md](SECURITY.md) instead.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for published versions and unreleased changes on `main`.
 
 ## License
 

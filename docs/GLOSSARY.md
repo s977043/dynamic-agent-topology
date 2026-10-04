@@ -12,3 +12,7 @@
 - **Adherence**: How closely observed execution follows the declared topology.
 - **Ablation**: Removing a role/edge/mechanism to measure marginal value.
 - **Project Binding**: Project-specific DAT configuration under `.dat/`.
+
+- **Runtime Binding**: Project-specific mapping between DAT runtime names and existing runtime configuration files.
+- **DAT Lock**: Version/source binding used to make an adopting project's DAT contract explicit and reproducible.
+- **Manual Adapter**: A runtime integration mode where DAT validates the binding but does not generate or overwrite runtime-native configuration.

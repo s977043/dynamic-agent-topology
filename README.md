@@ -6,7 +6,7 @@
 > **どのAgent Topologyが、どの条件で、どれだけのコストに対して有効なのか？**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: v0.2 Experiment-ready](https://img.shields.io/badge/Status-v0.2%20Experiment--ready-green.svg)](docs/NORTH_STAR.md)
+[![Status: v0.2.1 Manual adoption-ready](https://img.shields.io/badge/Status-v0.2.1%20Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
 
 **Dynamic Agent Topology (DAT)** は、AI Agent Teamの構造を設計・選択・評価・改善するための、Provider非依存の仕様と実験基盤です。
 
@@ -112,7 +112,7 @@ A0 Assess
 **A5に到達すること自体が成功ではありません。**  
 A2 / A3 / 固定T0・T1が最適なProjectも想定しています。
 
-詳しくは [docs/ADOPTION.md](docs/ADOPTION.md) を参照してください。
+まず試す場合は [Quick Start](docs/QUICKSTART.md)、設計詳細は [Brownfield Adoption Protocol](docs/ADOPTION.md) を参照してください。
 
 ## 対象Runtime
 
@@ -165,7 +165,7 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 
 ## 現在の状態
 
-**v0.2 Experiment-ready**
+**v0.2.1 Manual adoption-ready**
 
 現在は、以下の土台を整備しています。
 
@@ -174,6 +174,9 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 - P0 Execution Baseline / Canonical Topology T0〜T3
 - Routing / Escalation Policy
 - Brownfield Adoption Protocol
+- External Project Validator
+- Runtime Binding / DAT Lock
+- GitHub Actions integration template
 - Runtime Adapter Contract
 - Knowledge Base
 - Schema / Semantic Validation CI
@@ -181,7 +184,7 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 - ExecutionTrace / RunEvaluation Schema
 - Run Evaluationの条件別集計
 
-Runtime Adapterの自動compile/applyとAgent実行オーケストレーションはまだ実装しません。まずEXP-001でArtifact契約と評価方法を検証します。
+別リポジトリへの手動導入と検証は可能です。Runtime Adapterの自動compile/applyとAgent実行オーケストレーションはまだ実装しません。
 
 ## Guiding Principle
 

@@ -6,7 +6,7 @@
 > **Which agent topology works, under what conditions, and at what cost?**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: v0.2 Experiment-ready](https://img.shields.io/badge/Status-v0.2%20Experiment--ready-green.svg)](docs/NORTH_STAR.md)
+[![Status: v0.2.1 Manual adoption-ready](https://img.shields.io/badge/Status-v0.2.1%20Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
 
 **Dynamic Agent Topology (DAT)** is a provider-agnostic specification and experimentation foundation for designing, selecting, evaluating, and evolving AI agent team structures.
 
@@ -99,7 +99,7 @@ A0 Assess
 
 A5 is not the goal by itself. A project may intentionally remain at A2, A3, or a fixed T0/T1 topology when the evidence supports that choice.
 
-See [docs/ADOPTION.md](docs/ADOPTION.md).
+Start with the [Quick Start](docs/QUICKSTART.md), then see the [Brownfield Adoption Protocol](docs/ADOPTION.md).
 
 ## Target runtimes
 
@@ -150,7 +150,7 @@ See [knowledge/sources.yaml](knowledge/sources.yaml).
 
 ## Status
 
-**v0.2 Experiment-ready**
+**v0.2.1 Manual adoption-ready**
 
 The repository currently provides:
 
@@ -159,6 +159,9 @@ The repository currently provides:
 - P0 execution baseline and canonical T0–T3 topologies
 - Routing and escalation policies
 - Brownfield adoption protocol
+- External project validator
+- Runtime Binding / DAT Lock
+- GitHub Actions integration template
 - Runtime adapter contracts
 - Initial knowledge base
 - Schema and semantic validation CI
@@ -166,7 +169,7 @@ The repository currently provides:
 - ExecutionTrace / RunEvaluation schemas
 - Per-condition RunEvaluation summary
 
-Automatic runtime compile/apply and agent execution orchestration remain out of scope. EXP-001 is used first to validate the artifact and evaluation contracts.
+Manual adoption into external repositories is supported. Automatic runtime compile/apply and agent execution orchestration remain out of scope.
 
 ## Guiding principle
 

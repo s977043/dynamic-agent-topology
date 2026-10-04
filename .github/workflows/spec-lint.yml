@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install check-jsonschema pyyaml
+      - run: pip install check-jsonschema jsonschema pyyaml
 
       - name: Validate JSON Schemas
         run: check-jsonschema --check-metaschema schemas/*.json
@@ -53,11 +53,18 @@ jobs:
             check-jsonschema --schemafile schemas/runtime-capability.schema.json "$file"
           done
 
-      - name: Validate brownfield example
+      - name: Validate brownfield example schemas
         run: |
           check-jsonschema --schemafile schemas/project-binding.schema.json examples/brownfield/.dat/project.yaml
           check-jsonschema --schemafile schemas/evidence-profile.schema.json examples/brownfield/.dat/evidence.yaml
           check-jsonschema --schemafile schemas/project-policy.schema.json examples/brownfield/.dat/policy.yaml
+          check-jsonschema --schemafile schemas/runtime-binding.schema.json examples/brownfield/.dat/runtimes.yaml
+          check-jsonschema --schemafile schemas/dat-lock.schema.json examples/brownfield/.dat/dat.lock.yaml
+
+      - name: Validate external project adoption
+        run: |
+          python scripts/validate_project.py --project examples/brownfield --dat-root .
+          python scripts/test_validate_project.py
 
       - name: Semantic validation
         run: python scripts/validate_semantics.py

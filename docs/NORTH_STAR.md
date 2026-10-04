@@ -30,3 +30,8 @@ Vocabulary, schemas, baseline topologies, evidence sources, brownfield adoption 
 ## v0.2 scope
 
 Reproducible experiment definitions, train/test/regression scenario separation, ExecutionTrace and RunEvaluation contracts, EXP-001 (T0 vs T1), and a minimal artifact validation/summary harness.
+
+
+## v0.2.1 scope
+
+Manual brownfield adoption into external repositories: complete `.dat/` reference layout, Runtime Binding, DAT Lock, external project validation, CI integration template, and explicit manual-adapter boundaries.

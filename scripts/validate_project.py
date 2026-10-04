@@ -170,6 +170,10 @@ def main() -> int:
 
     for binding in bindings:
         runtime = binding["runtime"]
+        if binding["mode"] == "generated":
+            errors.append(
+                f"runtimes.yaml: mode='generated' is not implemented in DAT v0.2.1; use mode='manual'"
+            )
         if runtime not in manifests:
             errors.append(f"runtimes.yaml: unknown runtime {runtime!r}")
             continue

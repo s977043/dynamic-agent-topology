@@ -54,7 +54,7 @@ DATは、既存プロジェクトをいきなりMulti-Agent化するための仕
 - A0〜A2ではRouting Policyは必須ではありません。
 - A3〜A5ではRouting Policyを必須とします。
 - A4〜A5ではEscalation Policyを必須とします。
-- Project側の明示的overrideは共通Policyより優先します。
+- Schemaで明示的に許可されるProject固有設定は、共有DefaultよりProject側を優先します。`overrides/` ディレクトリの自動mergeとは別概念です。
 - Routing Ruleが一致しない場合はProject Bindingの`defaultTopology`へfallbackします。
 
 ## Runtime Adapter rules

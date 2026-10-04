@@ -1,0 +1,32 @@
+apiVersion: dat/v1alpha1
+kind: RepositorySettingsTarget
+metadata:
+  repository: s977043/dynamic-agent-topology
+spec:
+  description: Provider-agnostic specifications, experiments, and evidence for adaptive AI agent team topologies in software engineering.
+  homepage: null
+  topics:
+    - ai-agents
+    - multi-agent-systems
+    - agentic-ai
+    - software-engineering
+    - ai-engineering
+    - evaluation
+    - benchmarking
+    - llm
+    - agent-topology
+  features:
+    wiki: false
+    discussions: false
+  merge:
+    squash: true
+    mergeCommit: false
+    rebase: false
+    autoMerge: true
+    deleteBranchOnMerge: true
+    updateBranch: true
+    squashPrTitleDefault: true
+  defaultBranch:
+    name: main
+    protected: true
+    activeRulesetRequired: true

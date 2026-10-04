@@ -75,14 +75,31 @@ See [Release readiness](RELEASE_READINESS.md) for the candidate-to-publication g
 
 ## Audit checklist
 
-During an audit, verify at least:
+The machine-readable target for settings that can be compared through the GitHub repository API is [`.github/repository-settings-target.yaml`](../.github/repository-settings-target.yaml).
 
-1. repository metadata and enabled collaboration surfaces;
-2. allowed merge methods and branch cleanup behavior;
-3. `main` ruleset / branch protection and required checks;
-4. Actions workflow permissions and immutable action references;
-5. security features and Dependabot configuration;
-6. release tag / GitHub Release / `CITATION.cff` consistency.
+Run the read-only audit with:
+
+```bash
+python scripts/audit_repository_settings.py \
+  --repository s977043/dynamic-agent-topology
+```
+
+Use `--strict` when drift or unavailable evidence should fail the command.
+
+The audit distinguishes:
+
+- `PASS` — observed state matches the target;
+- `DRIFT` — observed state differs from the target;
+- `UNKNOWN` — the API or current token cannot provide the required evidence.
+
+The script covers repository metadata, collaboration surfaces, merge-policy switches, the default-branch protected flag, and whether an active branch ruleset is observable. It intentionally does **not** claim to verify detailed ruleset semantics or security controls that require stronger permissions.
+
+During an audit, also verify manually or with an appropriately privileged GitHub API token:
+
+1. required status checks and pull-request requirements inside the `main` ruleset;
+2. Actions workflow permissions and immutable action references;
+3. private vulnerability reporting, secret scanning, push protection, dependency graph, Dependabot alerts, and security updates;
+4. release tag / GitHub Release / `CITATION.cff` consistency.
 
 Record configuration drift as an actionable issue or PR; do not silently update this document to match a weaker accidental state.
 

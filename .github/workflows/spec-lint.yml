@@ -129,3 +129,6 @@ jobs:
 
       - name: Validate EXP-001 feature freeze
         run: python scripts/validate_experiment_freeze.py
+
+      - name: Test EXP-001 feature freeze validator
+        run: python scripts/test_validate_experiment_freeze.py

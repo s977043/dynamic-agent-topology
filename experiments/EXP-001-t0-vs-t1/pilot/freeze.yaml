@@ -62,7 +62,11 @@ spec:
       gitBlobSha: 05ac3a4307924389fa292dafb9f892541ec6e6d9
     - path: scripts/generate_pilot_matrix.py
       gitBlobSha: 101031715a92bc573e2247c85ee8498725b1b579
+    - path: scripts/prepare_pilot_run.py
+      gitBlobSha: 934f16c88d19b4a419056376c8331a996a779ba4
     - path: scripts/validate_pilot.py
       gitBlobSha: 66929972b7c75ba6ec86dd9947d76795b5bbf51a
     - path: scripts/summarize_experiment.py
       gitBlobSha: 4817e99ff9385b8987b9f5df4517be9b510ce74f
+    - path: scripts/validate_experiment_freeze.py
+      gitBlobSha: 6b4a763913fa2589aebb699aafc6b542fb04ed25

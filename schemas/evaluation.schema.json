@@ -85,9 +85,16 @@
       ],
       "properties": {
         "topologyAdherence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "boundaryViolations": {
           "type": "integer",

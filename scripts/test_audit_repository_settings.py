@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "audit_repository_settings.py"
@@ -35,7 +34,16 @@ def base_target():
             "defaultBranch": {
                 "name": "main",
                 "protected": True,
-                "activeRulesetRequired": True,
+                "ruleset": {
+                    "required": True,
+                    "requirePullRequest": True,
+                    "requiredApprovingReviewCount": 0,
+                    "requireConversationResolution": True,
+                    "blockForcePushes": True,
+                    "blockDeletion": True,
+                    "requiredStatusChecks": ["validate", "Analyze Python"],
+                    "requireUpToDate": True,
+                },
             },
         },
     }
@@ -59,6 +67,36 @@ def compliant_repository():
     }
 
 
+def compliant_ruleset():
+    return {
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+        "rules": [
+            {
+                "type": "pull_request",
+                "parameters": {
+                    "required_approving_review_count": 0,
+                    "required_review_thread_resolution": True,
+                },
+            },
+            {"type": "non_fast_forward"},
+            {"type": "deletion"},
+            {
+                "type": "required_status_checks",
+                "parameters": {
+                    "required_status_checks": [
+                        {"context": "validate"},
+                        {"context": "Analyze Python"},
+                        {"context": "extra-check"},
+                    ],
+                    "strict_required_status_checks_policy": True,
+                },
+            },
+        ],
+    }
+
+
 def assert_status(checks, name, status):
     actual = next(item["status"] for item in checks if item["name"] == name)
     if actual != status:
@@ -69,50 +107,83 @@ def main() -> int:
     target = base_target()
     repo = compliant_repository()
     branch = {"protected": True}
-    rulesets = [{
-        "target": "branch",
-        "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
-    }]
 
-    checks = module.audit(target, repo, branch, rulesets)
+    checks = module.audit(target, repo, branch, [compliant_ruleset()])
     if any(item["status"] != "PASS" for item in checks):
         raise AssertionError(f"compliant fixture should PASS: {checks}")
 
-    drift_repo = dict(repo)
-    drift_repo["description"] = None
-    drift_repo["allow_merge_commit"] = True
-    drift = module.audit(target, drift_repo, {"protected": False}, [])
-    assert_status(drift, "description", "DRIFT")
-    assert_status(drift, "merge.mergeCommit", "DRIFT")
-    assert_status(drift, "defaultBranch.protected", "DRIFT")
-    assert_status(drift, "defaultBranch.activeRulesetRequired", "DRIFT")
+    no_ruleset = module.audit(target, repo, branch, [])
+    for name in (
+        "required",
+        "requirePullRequest",
+        "requiredApprovingReviewCount",
+        "requireConversationResolution",
+        "blockForcePushes",
+        "blockDeletion",
+        "requiredStatusChecks",
+        "requireUpToDate",
+    ):
+        assert_status(no_ruleset, f"defaultBranch.ruleset.{name}", "DRIFT")
 
-    wrong_branch_ruleset = [{
-        "target": "branch",
-        "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": []}},
-    }]
-    wrong_branch = module.audit(target, repo, branch, wrong_branch_ruleset)
-    assert_status(wrong_branch, "defaultBranch.activeRulesetRequired", "DRIFT")
+    incomplete = compliant_ruleset()
+    incomplete["rules"] = [
+        {
+            "type": "pull_request",
+            "parameters": {
+                "required_approving_review_count": 1,
+                "required_review_thread_resolution": False,
+            },
+        },
+        {
+            "type": "required_status_checks",
+            "parameters": {
+                "required_status_checks": [{"context": "validate"}],
+                "strict_required_status_checks_policy": False,
+            },
+        },
+    ]
+    bad = module.audit(target, repo, branch, [incomplete])
+    assert_status(bad, "defaultBranch.ruleset.required", "PASS")
+    assert_status(bad, "defaultBranch.ruleset.requirePullRequest", "PASS")
+    assert_status(bad, "defaultBranch.ruleset.requiredApprovingReviewCount", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.requireConversationResolution", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.blockForcePushes", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.blockDeletion", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.requiredStatusChecks", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.requireUpToDate", "DRIFT")
 
-    explicit_other_branch = [{
-        "target": "branch",
-        "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": ["~DEFAULT_BRANCH"]}},
-    }]
-    explicit_other = module.audit(target, repo, branch, explicit_other_branch)
-    assert_status(explicit_other, "defaultBranch.activeRulesetRequired", "DRIFT")
+    ambiguous = compliant_ruleset()
+    ambiguous["conditions"] = {
+        "ref_name": {"include": ["refs/heads/m*"], "exclude": []}
+    }
+    unknown = module.audit(target, repo, branch, [ambiguous])
+    for name in (
+        "required",
+        "requirePullRequest",
+        "requiredApprovingReviewCount",
+        "requireConversationResolution",
+        "blockForcePushes",
+        "blockDeletion",
+        "requiredStatusChecks",
+        "requireUpToDate",
+    ):
+        assert_status(unknown, f"defaultBranch.ruleset.{name}", "UNKNOWN")
 
-    ambiguous_exclude_ruleset = [{
-        "target": "branch",
-        "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": ["refs/heads/m*"]}},
-    }]
-    ambiguous_exclude = module.audit(target, repo, branch, ambiguous_exclude_ruleset)
-    assert_status(ambiguous_exclude, "defaultBranch.activeRulesetRequired", "UNKNOWN")
+    mixed = [
+        compliant_ruleset(),
+        {
+            "target": "branch",
+            "enforcement": "active",
+            "conditions": {"ref_name": {"include": ["refs/heads/m*"], "exclude": []}},
+            "rules": [],
+        },
+    ]
+    mixed_checks = module.audit(target, repo, branch, mixed)
+    assert_status(mixed_checks, "defaultBranch.ruleset.requirePullRequest", "PASS")
+    assert_status(mixed_checks, "defaultBranch.ruleset.blockForcePushes", "PASS")
+    assert_status(mixed_checks, "defaultBranch.ruleset.requiredApprovingReviewCount", "UNKNOWN")
 
-    unknown = module.audit(
+    unavailable = module.audit(
         target,
         repo,
         None,
@@ -120,8 +191,18 @@ def main() -> int:
         branch_error="HTTP 403",
         rulesets_error="HTTP 403",
     )
-    assert_status(unknown, "defaultBranch.protected", "UNKNOWN")
-    assert_status(unknown, "defaultBranch.activeRulesetRequired", "UNKNOWN")
+    assert_status(unavailable, "defaultBranch.protected", "UNKNOWN")
+    for name in (
+        "required",
+        "requirePullRequest",
+        "requiredApprovingReviewCount",
+        "requireConversationResolution",
+        "blockForcePushes",
+        "blockDeletion",
+        "requiredStatusChecks",
+        "requireUpToDate",
+    ):
+        assert_status(unavailable, f"defaultBranch.ruleset.{name}", "UNKNOWN")
 
     print("Repository settings audit tests passed.")
     return 0

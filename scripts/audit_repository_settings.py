@@ -6,7 +6,6 @@ import json
 import os
 import re
 from pathlib import Path
-import sys
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -68,6 +67,14 @@ def add_unknown(checks: list[dict[str, str]], name: str, expected: Any, reason: 
     })
 
 
+def unresolved_ref_pattern(value: Any) -> bool:
+    if not isinstance(value, str):
+        return True
+    if value.startswith("~"):
+        return value not in {"~ALL", "~DEFAULT_BRANCH"}
+    return any(char in value for char in "*?[")
+
+
 def ruleset_targets_default_branch(ruleset: dict[str, Any], branch_name: str) -> bool | None:
     ref = f"refs/heads/{branch_name}"
     ref_condition = ruleset.get("conditions", {}).get("ref_name")
@@ -83,24 +90,240 @@ def ruleset_targets_default_branch(ruleset: dict[str, Any], branch_name: str) ->
     if any(item in matching_tokens for item in excludes):
         return False
 
-    def unresolved_pattern(value: Any) -> bool:
-        if not isinstance(value, str):
-            return True
-        if value.startswith("~"):
-            return value not in {"~ALL", "~DEFAULT_BRANCH"}
-        return any(char in value for char in "*?[")
-
-    unknown_exclude = any(unresolved_pattern(item) for item in excludes)
+    unknown_exclude = any(unresolved_ref_pattern(item) for item in excludes)
     if any(item in matching_tokens for item in includes):
         return None if unknown_exclude else True
 
     if not includes:
         return False
 
-    if all(isinstance(item, str) and not unresolved_pattern(item) for item in includes):
+    if all(isinstance(item, str) and not unresolved_ref_pattern(item) for item in includes):
         return False
 
     return None
+
+
+def applicable_rulesets(
+    rulesets: list[dict[str, Any]],
+    branch_name: str,
+) -> tuple[list[dict[str, Any]], bool]:
+    known: list[dict[str, Any]] = []
+    unknown = False
+    for ruleset in rulesets:
+        if ruleset.get("target") != "branch" or ruleset.get("enforcement") != "active":
+            continue
+        applies = ruleset_targets_default_branch(ruleset, branch_name)
+        if applies is True:
+            known.append(ruleset)
+        elif applies is None:
+            unknown = True
+    return known, unknown
+
+
+def rules_of_type(rulesets: list[dict[str, Any]], rule_type: str) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    for ruleset in rulesets:
+        rules = ruleset.get("rules", [])
+        if not isinstance(rules, list):
+            continue
+        found.extend(
+            rule for rule in rules
+            if isinstance(rule, dict) and rule.get("type") == rule_type
+        )
+    return found
+
+
+def add_positive_ruleset_check(
+    checks: list[dict[str, str]],
+    name: str,
+    expected: bool,
+    actual: bool,
+    unknown_applicability: bool,
+) -> None:
+    if actual:
+        add_check(checks, name, expected, True)
+    elif unknown_applicability:
+        add_unknown(checks, name, expected, "an active ruleset may apply through an unresolved ref pattern")
+    else:
+        add_check(checks, name, expected, False)
+
+
+def audit_ruleset_semantics(
+    checks: list[dict[str, str]],
+    target: dict[str, Any],
+    rulesets: list[dict[str, Any]] | None,
+    branch_name: str,
+    rulesets_error: str | None,
+) -> None:
+    requirement = target["spec"]["defaultBranch"]["ruleset"]
+    names = [
+        "required",
+        "requirePullRequest",
+        "requiredApprovingReviewCount",
+        "requireConversationResolution",
+        "blockForcePushes",
+        "blockDeletion",
+        "requiredStatusChecks",
+        "requireUpToDate",
+    ]
+    prefix = "defaultBranch.ruleset."
+
+    if rulesets is None:
+        for name in names:
+            add_unknown(checks, prefix + name, requirement[name], rulesets_error or "unavailable")
+        return
+
+    applicable, unknown_applicability = applicable_rulesets(rulesets, branch_name)
+    if applicable:
+        add_check(checks, prefix + "required", requirement["required"], True)
+    elif unknown_applicability:
+        add_unknown(
+            checks,
+            prefix + "required",
+            requirement["required"],
+            "active branch ruleset exists but default-branch applicability is not provable",
+        )
+    else:
+        add_check(checks, prefix + "required", requirement["required"], False)
+
+    pull_rules = rules_of_type(applicable, "pull_request")
+    add_positive_ruleset_check(
+        checks,
+        prefix + "requirePullRequest",
+        requirement["requirePullRequest"],
+        bool(pull_rules),
+        unknown_applicability,
+    )
+
+    approval_values: list[int] = []
+    approval_unknown = False
+    for rule in pull_rules:
+        value = rule.get("parameters", {}).get("required_approving_review_count")
+        if isinstance(value, int):
+            approval_values.append(value)
+        else:
+            approval_unknown = True
+    if approval_values and max(approval_values) > requirement["requiredApprovingReviewCount"]:
+        add_check(
+            checks,
+            prefix + "requiredApprovingReviewCount",
+            requirement["requiredApprovingReviewCount"],
+            max(approval_values),
+        )
+    elif pull_rules and not approval_unknown and not unknown_applicability:
+        add_check(
+            checks,
+            prefix + "requiredApprovingReviewCount",
+            requirement["requiredApprovingReviewCount"],
+            max(approval_values, default=0),
+        )
+    elif not pull_rules and not unknown_applicability:
+        add_check(
+            checks,
+            prefix + "requiredApprovingReviewCount",
+            requirement["requiredApprovingReviewCount"],
+            None,
+        )
+    else:
+        add_unknown(
+            checks,
+            prefix + "requiredApprovingReviewCount",
+            requirement["requiredApprovingReviewCount"],
+            "approval requirement cannot be proven across all applicable rulesets",
+        )
+
+    thread_values = [
+        rule.get("parameters", {}).get("required_review_thread_resolution")
+        for rule in pull_rules
+    ]
+    thread_required = any(value is True for value in thread_values)
+    thread_unknown = any(value is None for value in thread_values)
+    if thread_required:
+        add_check(checks, prefix + "requireConversationResolution", requirement["requireConversationResolution"], True)
+    elif thread_unknown or unknown_applicability:
+        add_unknown(
+            checks,
+            prefix + "requireConversationResolution",
+            requirement["requireConversationResolution"],
+            "review-thread requirement cannot be proven",
+        )
+    else:
+        add_check(checks, prefix + "requireConversationResolution", requirement["requireConversationResolution"], False)
+
+    add_positive_ruleset_check(
+        checks,
+        prefix + "blockForcePushes",
+        requirement["blockForcePushes"],
+        bool(rules_of_type(applicable, "non_fast_forward")),
+        unknown_applicability,
+    )
+    add_positive_ruleset_check(
+        checks,
+        prefix + "blockDeletion",
+        requirement["blockDeletion"],
+        bool(rules_of_type(applicable, "deletion")),
+        unknown_applicability,
+    )
+
+    status_rules = rules_of_type(applicable, "required_status_checks")
+    contexts: set[str] = set()
+    status_unknown = False
+    strict_values: list[bool] = []
+    for rule in status_rules:
+        params = rule.get("parameters", {})
+        configured = params.get("required_status_checks")
+        if isinstance(configured, list):
+            for item in configured:
+                if isinstance(item, dict) and isinstance(item.get("context"), str):
+                    contexts.add(item["context"])
+                else:
+                    status_unknown = True
+        else:
+            status_unknown = True
+        strict = params.get("strict_required_status_checks_policy")
+        if isinstance(strict, bool):
+            strict_values.append(strict)
+        else:
+            status_unknown = True
+
+    expected_contexts = set(requirement["requiredStatusChecks"])
+    missing = expected_contexts - contexts
+    if not missing:
+        add_check(
+            checks,
+            prefix + "requiredStatusChecks",
+            sorted(expected_contexts),
+            sorted(contexts),
+            comparator=lambda expected, actual: set(expected).issubset(set(actual)),
+        )
+    elif status_unknown or unknown_applicability:
+        add_unknown(
+            checks,
+            prefix + "requiredStatusChecks",
+            sorted(expected_contexts),
+            f"cannot prove required contexts; observed={sorted(contexts)}",
+        )
+    else:
+        add_check(
+            checks,
+            prefix + "requiredStatusChecks",
+            sorted(expected_contexts),
+            sorted(contexts),
+            comparator=lambda expected, actual: set(expected).issubset(set(actual)),
+        )
+
+    strict_required = any(strict_values)
+    if strict_required:
+        add_check(checks, prefix + "requireUpToDate", requirement["requireUpToDate"], True)
+    elif status_unknown or unknown_applicability:
+        add_unknown(
+            checks,
+            prefix + "requireUpToDate",
+            requirement["requireUpToDate"],
+            "strict status-check policy cannot be proven",
+        )
+    else:
+        add_check(checks, prefix + "requireUpToDate", requirement["requireUpToDate"], False)
 
 
 def audit(
@@ -134,19 +357,9 @@ def audit(
     add_check(checks, "merge.mergeCommit", merge["mergeCommit"], repository.get("allow_merge_commit"))
     add_check(checks, "merge.rebase", merge["rebase"], repository.get("allow_rebase_merge"))
     add_check(checks, "merge.autoMerge", merge["autoMerge"], repository.get("allow_auto_merge"))
-    add_check(
-        checks,
-        "merge.deleteBranchOnMerge",
-        merge["deleteBranchOnMerge"],
-        repository.get("delete_branch_on_merge"),
-    )
+    add_check(checks, "merge.deleteBranchOnMerge", merge["deleteBranchOnMerge"], repository.get("delete_branch_on_merge"))
     add_check(checks, "merge.updateBranch", merge["updateBranch"], repository.get("allow_update_branch"))
-    add_check(
-        checks,
-        "merge.squashPrTitleDefault",
-        merge["squashPrTitleDefault"],
-        repository.get("use_squash_pr_title_as_default"),
-    )
+    add_check(checks, "merge.squashPrTitleDefault", merge["squashPrTitleDefault"], repository.get("use_squash_pr_title_as_default"))
 
     default_branch = spec["defaultBranch"]
     add_check(checks, "defaultBranch.name", default_branch["name"], repository.get("default_branch"))
@@ -155,58 +368,21 @@ def audit(
     else:
         add_check(checks, "defaultBranch.protected", default_branch["protected"], branch.get("protected"))
 
-    if rulesets is None:
-        add_unknown(
-            checks,
-            "defaultBranch.activeRulesetRequired",
-            default_branch["activeRulesetRequired"],
-            rulesets_error or "unavailable",
-        )
-    else:
-        active_branch_rulesets = [
-            item for item in rulesets
-            if item.get("target") == "branch" and item.get("enforcement") == "active"
-        ]
-        applicability = [
-            ruleset_targets_default_branch(item, default_branch["name"])
-            for item in active_branch_rulesets
-        ]
-        if any(value is True for value in applicability):
-            add_check(
-                checks,
-                "defaultBranch.activeRulesetRequired",
-                default_branch["activeRulesetRequired"],
-                True,
-            )
-        elif any(value is None for value in applicability):
-            add_unknown(
-                checks,
-                "defaultBranch.activeRulesetRequired",
-                default_branch["activeRulesetRequired"],
-                "active branch ruleset exists but default-branch applicability is not provable",
-            )
-        else:
-            add_check(
-                checks,
-                "defaultBranch.activeRulesetRequired",
-                default_branch["activeRulesetRequired"],
-                False,
-            )
-
+    audit_ruleset_semantics(
+        checks,
+        target,
+        rulesets,
+        default_branch["name"],
+        rulesets_error,
+    )
     return checks
 
 
 def print_report(checks: list[dict[str, str]]) -> None:
     for check in checks:
-        print(
-            f"{check['status']:7} {check['name']}: "
-            f"expected={check['expected']} actual={check['actual']}"
-        )
+        print(f"{check['status']:7} {check['name']}: expected={check['expected']} actual={check['actual']}")
     counts = {status: sum(item["status"] == status for item in checks) for status in ("PASS", "DRIFT", "UNKNOWN")}
-    print(
-        "Repository settings audit: "
-        f"PASS={counts['PASS']} DRIFT={counts['DRIFT']} UNKNOWN={counts['UNKNOWN']}"
-    )
+    print(f"Repository settings audit: PASS={counts['PASS']} DRIFT={counts['DRIFT']} UNKNOWN={counts['UNKNOWN']}")
 
 
 def main() -> int:

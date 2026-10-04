@@ -92,11 +92,11 @@ The audit distinguishes:
 - `DRIFT` — observed state differs from the target;
 - `UNKNOWN` — the API or current token cannot provide the required evidence.
 
-The script covers repository metadata, collaboration surfaces, merge-policy switches, the default-branch protected flag, and whether an active branch ruleset is observable. It intentionally does **not** claim to verify detailed ruleset semantics or security controls that require stronger permissions.
+The script covers repository metadata, collaboration surfaces, merge-policy switches, the default-branch protected flag, and observable default-branch ruleset semantics: pull-request enforcement, approving-review count, review-thread resolution, deletion and force-push blocking, required status checks, and strict/up-to-date status-check policy. Ambiguous ref patterns remain `UNKNOWN` rather than being guessed. It intentionally does **not** claim to verify security controls that require stronger permissions.
 
 During an audit, also verify manually or with an appropriately privileged GitHub API token:
 
-1. required status checks and pull-request requirements inside the `main` ruleset;
+1. maintainer bypass scope and any ruleset behavior not represented in `.github/repository-settings-target.yaml`;
 2. Actions workflow permissions and immutable action references;
 3. private vulnerability reporting, secret scanning, push protection, dependency graph, Dependabot alerts, and security updates;
 4. release tag / GitHub Release / `CITATION.cff` consistency.

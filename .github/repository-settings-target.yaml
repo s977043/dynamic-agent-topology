@@ -29,4 +29,14 @@ spec:
   defaultBranch:
     name: main
     protected: true
-    activeRulesetRequired: true
+    ruleset:
+      required: true
+      requirePullRequest: true
+      requiredApprovingReviewCount: 0
+      requireConversationResolution: true
+      blockForcePushes: true
+      blockDeletion: true
+      requiredStatusChecks:
+        - validate
+        - Analyze Python
+      requireUpToDate: true

@@ -4,7 +4,7 @@ metadata:
   name: EXP-001-feature-freeze
   experiment: EXP-001-t0-vs-t1
   status: active
-  revision: 1
+  revision: 2
 spec:
   baselineCommit: f172eb1e273af736ec1ecbd72f8b4c8874739808
   executionIssue: 15
@@ -70,4 +70,4 @@ spec:
     - path: scripts/summarize_experiment.py
       gitBlobSha: 4817e99ff9385b8987b9f5df4517be9b510ce74f
     - path: scripts/validate_experiment_freeze.py
-      gitBlobSha: 6b4a763913fa2589aebb699aafc6b542fb04ed25
+      gitBlobSha: 5584dc7426bf1cc49e3712315bf39a2fe74df8cb

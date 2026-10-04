@@ -1,7 +1,7 @@
 # EXP-001 Feature Freeze
 
 **Status: ACTIVE**  
-**Revision: 1**  
+**Revision: 2**  
 **Execution issue: #15**  
 **Freeze issue: #16**
 
@@ -135,3 +135,18 @@ Feature Freezeは「もう変更したいから」解除しません。
 - 変更理由と無効化したRunをIssueへ記録
 
 Feature FreezeのCIはガバナンス支援であり、悪意あるmaintainerに対するSecurity Boundaryではありません。最終的な変更可否はPRレビューで確認します。
+
+
+## Revision history
+
+### Revision 1
+- Initial Feature Freeze definition.
+- empirical runs: 0 / 18.
+
+### Revision 2
+- Freeze lifecycle validationを追加。
+- `active / completed` 以外のstatusを拒否。
+- Freeze validator自身とOperator prompt生成経路を凍結対象へ追加。
+- empirical runs: **0 / 18** のため既存データ無効化なし。
+
+Revision 2が最初のempirical run開始時点のfreeze revisionです。

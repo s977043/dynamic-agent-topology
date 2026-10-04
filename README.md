@@ -163,7 +163,7 @@ Topology全体だけでなく、Role / Skill / Verifierなど**内部Capability�
 現在の最優先は **EXP-001の一次データ取得**です。
 
 - Execution tracking: Issue #15
-- Empirical runs: **0 / 18**
+- Empirical runs: **live progress is tracked in Issue #15**
 - Feature Freeze: **ACTIVE**
 - `DECISION.md`: **NOT RUN**
 - 新Topology / Routing拡張 / Research・Production Profile設計: **EXP-001完了まで延期**

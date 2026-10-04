@@ -142,7 +142,7 @@ DAT also evaluates the **marginal contribution of internal capabilities** such a
 The highest priority is now **collecting empirical evidence for EXP-001**.
 
 - Execution tracking: Issue #15
-- Empirical runs: **0 / 18**
+- Empirical runs: **live progress is tracked in Issue #15**
 - Feature Freeze: **ACTIVE**
 - `DECISION.md`: **NOT RUN**
 - New topologies, routing extensions, and Research/Production profile design: **deferred until EXP-001 completes**

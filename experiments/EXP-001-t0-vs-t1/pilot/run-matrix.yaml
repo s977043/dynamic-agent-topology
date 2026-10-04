@@ -5,6 +5,7 @@ metadata:
   experiment: EXP-001-t0-vs-t1
 spec:
   expectedRuns: 18
+  orderPolicy: counterbalanced-paired
   runs:
     - runId: EXP-001-train-normalize-name-r01-T0
       blockId: EXP-001-train-normalize-name-r01
@@ -12,105 +13,123 @@ spec:
       split: train
       condition: T0
       repetition: 1
+      executionOrder: 1
     - runId: EXP-001-train-normalize-name-r01-T1
       blockId: EXP-001-train-normalize-name-r01
       scenario: train-normalize-name
       split: train
       condition: T1
       repetition: 1
-    - runId: EXP-001-train-normalize-name-r02-T0
-      blockId: EXP-001-train-normalize-name-r02
-      scenario: train-normalize-name
-      split: train
-      condition: T0
-      repetition: 2
+      executionOrder: 2
     - runId: EXP-001-train-normalize-name-r02-T1
       blockId: EXP-001-train-normalize-name-r02
       scenario: train-normalize-name
       split: train
       condition: T1
       repetition: 2
+      executionOrder: 1
+    - runId: EXP-001-train-normalize-name-r02-T0
+      blockId: EXP-001-train-normalize-name-r02
+      scenario: train-normalize-name
+      split: train
+      condition: T0
+      repetition: 2
+      executionOrder: 2
     - runId: EXP-001-train-normalize-name-r03-T0
       blockId: EXP-001-train-normalize-name-r03
       scenario: train-normalize-name
       split: train
       condition: T0
       repetition: 3
+      executionOrder: 1
     - runId: EXP-001-train-normalize-name-r03-T1
       blockId: EXP-001-train-normalize-name-r03
       scenario: train-normalize-name
       split: train
       condition: T1
       repetition: 3
-    - runId: EXP-001-test-clamp-boundaries-r01-T0
-      blockId: EXP-001-test-clamp-boundaries-r01
-      scenario: test-clamp-boundaries
-      split: test
-      condition: T0
-      repetition: 1
+      executionOrder: 2
     - runId: EXP-001-test-clamp-boundaries-r01-T1
       blockId: EXP-001-test-clamp-boundaries-r01
       scenario: test-clamp-boundaries
       split: test
       condition: T1
       repetition: 1
+      executionOrder: 1
+    - runId: EXP-001-test-clamp-boundaries-r01-T0
+      blockId: EXP-001-test-clamp-boundaries-r01
+      scenario: test-clamp-boundaries
+      split: test
+      condition: T0
+      repetition: 1
+      executionOrder: 2
     - runId: EXP-001-test-clamp-boundaries-r02-T0
       blockId: EXP-001-test-clamp-boundaries-r02
       scenario: test-clamp-boundaries
       split: test
       condition: T0
       repetition: 2
+      executionOrder: 1
     - runId: EXP-001-test-clamp-boundaries-r02-T1
       blockId: EXP-001-test-clamp-boundaries-r02
       scenario: test-clamp-boundaries
       split: test
       condition: T1
       repetition: 2
-    - runId: EXP-001-test-clamp-boundaries-r03-T0
-      blockId: EXP-001-test-clamp-boundaries-r03
-      scenario: test-clamp-boundaries
-      split: test
-      condition: T0
-      repetition: 3
+      executionOrder: 2
     - runId: EXP-001-test-clamp-boundaries-r03-T1
       blockId: EXP-001-test-clamp-boundaries-r03
       scenario: test-clamp-boundaries
       split: test
       condition: T1
       repetition: 3
+      executionOrder: 1
+    - runId: EXP-001-test-clamp-boundaries-r03-T0
+      blockId: EXP-001-test-clamp-boundaries-r03
+      scenario: test-clamp-boundaries
+      split: test
+      condition: T0
+      repetition: 3
+      executionOrder: 2
     - runId: EXP-001-regression-safe-divide-r01-T0
       blockId: EXP-001-regression-safe-divide-r01
       scenario: regression-safe-divide
       split: regression
       condition: T0
       repetition: 1
+      executionOrder: 1
     - runId: EXP-001-regression-safe-divide-r01-T1
       blockId: EXP-001-regression-safe-divide-r01
       scenario: regression-safe-divide
       split: regression
       condition: T1
       repetition: 1
-    - runId: EXP-001-regression-safe-divide-r02-T0
-      blockId: EXP-001-regression-safe-divide-r02
-      scenario: regression-safe-divide
-      split: regression
-      condition: T0
-      repetition: 2
+      executionOrder: 2
     - runId: EXP-001-regression-safe-divide-r02-T1
       blockId: EXP-001-regression-safe-divide-r02
       scenario: regression-safe-divide
       split: regression
       condition: T1
       repetition: 2
+      executionOrder: 1
+    - runId: EXP-001-regression-safe-divide-r02-T0
+      blockId: EXP-001-regression-safe-divide-r02
+      scenario: regression-safe-divide
+      split: regression
+      condition: T0
+      repetition: 2
+      executionOrder: 2
     - runId: EXP-001-regression-safe-divide-r03-T0
       blockId: EXP-001-regression-safe-divide-r03
       scenario: regression-safe-divide
       split: regression
       condition: T0
       repetition: 3
+      executionOrder: 1
     - runId: EXP-001-regression-safe-divide-r03-T1
       blockId: EXP-001-regression-safe-divide-r03
       scenario: regression-safe-divide
       split: regression
       condition: T1
       repetition: 3
+      executionOrder: 2

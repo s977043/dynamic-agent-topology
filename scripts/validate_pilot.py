@@ -67,10 +67,16 @@ def main() -> int:
             errors.append(f"pilot: split mismatch for scenario {scenario['id']!r}")
 
     expected = []
-    for scenario in plan_scenarios:
+    conditions = pilot["spec"]["conditions"]
+    if pilot["spec"]["orderPolicy"] != "counterbalanced-paired":
+        errors.append("pilot: unsupported orderPolicy")
+    for scenario_index, scenario in enumerate(plan_scenarios):
         for repetition in range(1, pilot["spec"]["repetitions"] + 1):
             block_id = f"EXP-001-{scenario['id']}-r{repetition:02d}"
-            for condition in pilot["spec"]["conditions"]:
+            ordered = list(conditions)
+            if (scenario_index + repetition) % 2 == 0:
+                ordered.reverse()
+            for execution_order, condition in enumerate(ordered, start=1):
                 expected.append({
                     "runId": f"{block_id}-{condition}",
                     "blockId": block_id,
@@ -78,6 +84,7 @@ def main() -> int:
                     "split": scenario["split"],
                     "condition": condition,
                     "repetition": repetition,
+                    "executionOrder": execution_order,
                 })
 
     if matrix.get("kind") != "PilotRunMatrix":
@@ -85,6 +92,8 @@ def main() -> int:
     actual = matrix.get("spec", {}).get("runs", [])
     if matrix.get("spec", {}).get("expectedRuns") != len(expected):
         errors.append(f"matrix: expectedRuns must be {len(expected)}")
+    if matrix.get("spec", {}).get("orderPolicy") != pilot["spec"]["orderPolicy"]:
+        errors.append("matrix: orderPolicy does not match pilot")
     if actual != expected:
         errors.append("matrix: run list does not exactly match deterministic pilot matrix")
 

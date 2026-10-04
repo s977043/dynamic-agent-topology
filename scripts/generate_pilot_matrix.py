@@ -13,11 +13,18 @@ pilot_path = (ROOT / args.pilot).resolve() if not Path(args.pilot).is_absolute()
 with pilot_path.open(encoding="utf-8") as f:
     pilot = yaml.safe_load(f)
 
+conditions = pilot["spec"]["conditions"]
+if pilot["spec"]["orderPolicy"] != "counterbalanced-paired":
+    raise SystemExit("unsupported orderPolicy")
+
 runs = []
-for scenario in pilot["spec"]["scenarios"]:
+for scenario_index, scenario in enumerate(pilot["spec"]["scenarios"]):
     for repetition in range(1, pilot["spec"]["repetitions"] + 1):
         block_id = f"EXP-001-{scenario['id']}-r{repetition:02d}"
-        for condition in pilot["spec"]["conditions"]:
+        ordered = list(conditions)
+        if (scenario_index + repetition) % 2 == 0:
+            ordered.reverse()
+        for execution_order, condition in enumerate(ordered, start=1):
             runs.append({
                 "runId": f"{block_id}-{condition}",
                 "blockId": block_id,
@@ -25,6 +32,7 @@ for scenario in pilot["spec"]["scenarios"]:
                 "split": scenario["split"],
                 "condition": condition,
                 "repetition": repetition,
+                "executionOrder": execution_order,
             })
 
 result = {
@@ -34,6 +42,10 @@ result = {
         "name": pilot["metadata"]["name"],
         "experiment": pilot["metadata"]["experiment"],
     },
-    "spec": {"expectedRuns": len(runs), "runs": runs},
+    "spec": {
+        "expectedRuns": len(runs),
+        "orderPolicy": pilot["spec"]["orderPolicy"],
+        "runs": runs,
+    },
 }
 print(yaml.safe_dump(result, sort_keys=False, allow_unicode=True), end="")

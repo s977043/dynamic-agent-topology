@@ -53,5 +53,7 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 - 3 scenarios
 - N=3
 - 18 runs
+- fresh session/context per run
+- counterbalanced paired order
 
 Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。

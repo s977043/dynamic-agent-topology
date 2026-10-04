@@ -10,6 +10,9 @@ spec:
   effort: high
   repetitions: 3
   freshWorkspacePerRun: true
+  freshSessionPerRun: true
+  orderPolicy: counterbalanced-paired
+  crossRunFeedback: disabled
   conditions:
     - T0
     - T1
@@ -22,4 +25,4 @@ spec:
       split: regression
   artifactRoot: experiments/EXP-001-t0-vs-t1/runs/pilot-codex
   matrixPath: experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml
-  notes: Pilotは実験Harnessの成立確認を目的とする。結果が揃うまでT0/T1の優劣を判断しない。
+  notes: status=readyはProtocol固定済みを意味し、実Run完了を意味しない。結果が揃うまでT0/T1の優劣を判断しない。

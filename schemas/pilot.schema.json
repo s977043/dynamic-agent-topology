@@ -49,13 +49,17 @@
         "effort",
         "repetitions",
         "freshWorkspacePerRun",
+        "freshSessionPerRun",
+        "orderPolicy",
+        "crossRunFeedback",
         "conditions",
         "scenarios",
         "artifactRoot"
       ],
       "properties": {
         "runtime": {
-          "const": "codex"
+          "type": "string",
+          "minLength": 1
         },
         "model": {
           "type": "string",
@@ -121,6 +125,19 @@
         },
         "notes": {
           "type": "string"
+        },
+        "freshSessionPerRun": {
+          "const": true
+        },
+        "orderPolicy": {
+          "enum": [
+            "counterbalanced-paired"
+          ]
+        },
+        "crossRunFeedback": {
+          "enum": [
+            "disabled"
+          ]
         }
       },
       "additionalProperties": false

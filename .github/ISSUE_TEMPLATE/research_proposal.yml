@@ -36,7 +36,7 @@ body:
     id: work_unit
     attributes:
       label: Affected Work Unit
-      description: Identify the smallest role, handoff, adapter, policy, permission boundary, validator, state transition, topology edge, or other unit implicated by the proposal.
+      description: Identify the smallest implicated unit if known. If the evidence does not localize it yet, write unknown rather than guessing.
     validations:
       required: true
 

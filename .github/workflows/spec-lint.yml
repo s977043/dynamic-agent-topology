@@ -120,3 +120,6 @@ jobs:
               raise SystemExit("generated pilot matrix differs semantically from committed matrix")
           print("deterministic pilot matrix OK")
           PY
+
+      - name: Test experiment pilot validator
+        run: python scripts/test_validate_pilot.py

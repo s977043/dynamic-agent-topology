@@ -199,7 +199,7 @@ Manual adoption into external repositories is supported. Automatic runtime compi
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the repository issue forms for bugs and proposals, and include reproducible evidence where possible.
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the repository Issue Forms for bugs, general proposals, research-derived proposals, and usage/adoption questions. See [SUPPORT.md](SUPPORT.md) for routing and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
 
 Do not disclose sensitive vulnerabilities in a public issue. Follow [SECURITY.md](SECURITY.md) instead.
 

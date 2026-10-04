@@ -28,7 +28,9 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Hardened workflow credentials and dependency pinning.
 - Clarified that prompts and role names are not permission-enforcement boundaries.
 
-## 0.2.1 — 2026-10-04
+## 0.2.1 — historical content point (unpublished)
+
+Metadata date: `2026-10-04`.
 
 Historical content point: `717a03fa389fb77a47694b9cf8a0c6e97ac0888b`.
 

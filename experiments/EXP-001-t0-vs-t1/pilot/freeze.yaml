@@ -70,7 +70,7 @@ spec:
     - path: scripts/prepare_pilot_run.py
       gitBlobSha: 97287e905fc1ddec06371cadf385b8905b664d5d
     - path: scripts/attest_pilot_run.py
-      gitBlobSha: c7473c41bb214932bff5d1b70bc750ff50922c08
+      gitBlobSha: 6350f647172e9ed2c41440c5de4cc5e6502e2da1
     - path: scripts/validate_pilot.py
       gitBlobSha: 6f2221e2ae9024ac8d20087a304102ef5b616772
     - path: scripts/pilot_status.py

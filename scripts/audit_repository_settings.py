@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import sys
 from typing import Any
@@ -163,8 +164,8 @@ def main() -> int:
 
     target = load_target(Path(args.target))
     repository_name = args.repository or target["metadata"]["repository"]
-    if "/" not in repository_name:
-        raise SystemExit("--repository must use owner/name form")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository_name):
+        raise SystemExit("--repository must use a valid owner/name form")
 
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     api = f"https://api.github.com/repos/{repository_name}"

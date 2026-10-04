@@ -152,6 +152,11 @@ def main() -> int:
     assert_status(bad, "defaultBranch.ruleset.requiredStatusChecks", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.requireUpToDate", "DRIFT")
 
+    higher_target = base_target()
+    higher_target["spec"]["defaultBranch"]["ruleset"]["requiredApprovingReviewCountExact"] = 1
+    lower_actual = module.audit(higher_target, repo, branch, [compliant_ruleset()])
+    assert_status(lower_actual, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "DRIFT")
+
     ambiguous = compliant_ruleset()
     ambiguous["conditions"] = {
         "ref_name": {"include": ["refs/heads/m*"], "exclude": []}

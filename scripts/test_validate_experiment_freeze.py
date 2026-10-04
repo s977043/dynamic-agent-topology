@@ -44,6 +44,7 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             "name": "test-freeze",
             "experiment": "EXP-TEST",
             "status": "active",
+            "revision": 1,
         },
         "spec": {
             "files": [

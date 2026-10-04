@@ -156,6 +156,9 @@ def audit_ruleset_semantics(
     rulesets_error: str | None,
 ) -> None:
     requirement = target["spec"]["defaultBranch"]["ruleset"]
+    if "requiredApprovingReviewCountExact" not in requirement and "requiredApprovingReviewCount" in requirement:
+        requirement = dict(requirement)
+        requirement["requiredApprovingReviewCountExact"] = requirement["requiredApprovingReviewCount"]
     names = [
         "required",
         "requirePullRequest",

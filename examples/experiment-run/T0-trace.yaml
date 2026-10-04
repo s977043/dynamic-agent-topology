@@ -6,7 +6,9 @@ metadata:
   scenario: train-normalize-name
   condition: T0
   blockId: sample-block-001
-topology: T0-single-agent
+executionSubject:
+  kind: AgentTopology
+  name: T0-single-agent
 runtime:
   name: claude-code
   version: sample

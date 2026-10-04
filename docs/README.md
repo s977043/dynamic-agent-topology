@@ -28,7 +28,8 @@
 
 ### 公開リポジトリ運用を確認する
 
-- [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) — Git外にあるGitHub設定の意図と監査方針
+1. [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) — Git外にあるGitHub設定の意図と監査方針
+2. [RELEASE_READINESS.md](RELEASE_READINESS.md) — release candidateの選定からtag / GitHub Release公開までのゲート
 
 ## Document roles
 
@@ -45,6 +46,7 @@
 | `METRICS.md` | 評価指標の意味 | 評価ガイド |
 | `EXP-001_*` | EXP-001の実行・記録補助 | ナビゲーション / 運用ガイド |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
+| `RELEASE_READINESS.md` | Release candidateのEvidence / metadata / publication gate | Release運用チェックリスト |
 
 ## Writing conventions
 

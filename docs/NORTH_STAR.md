@@ -6,32 +6,50 @@
 
 > **Do not assume a topology is better. Test it.**
 
+DATの中心課題は、Agent数やTopologyの複雑さを増やすことではありません。**タスクを十分な品質で解ける最小構成を見つけ、追加の協調コストをEvidenceで正当化すること**です。
+
 ## Ten engineering principles
 
-1. **Minimal Team First** — default to P0 or T0; added coordination must earn its cost.
-2. **Dynamic means Select, Escalate, De-escalate, Recompose** — v0.1 focuses on selection and escalation.
-3. **Role ≠ Model ≠ Runtime** — responsibility, model choice, and execution engine are independent.
-4. **Role Contract ≠ Permission Enforcement** — prompts express intent; runtime capabilities enforce boundaries.
-5. **Builder ≠ Judge** — non-trivial work separates authoring from independent judgment.
-6. **Verifier ≠ Ground Truth** — evidence outranks verifier confidence where stronger checks exist.
-7. **Context Isolation by Default** — use scoped context and explicit artifacts.
-8. **Explicit Dependency Modeling** — make handoffs auditable.
-9. **Observable Collaboration** — measure adherence, violations, handoffs, cost, and outcomes.
-10. **Ablation Before Adoption** — roles and topologies earn standard status through measured marginal value.
+1. **Minimal Team First** — P0またはT0を起点にし、追加coordinationは測定された価値で正当化する。
+2. **Dynamic means Select, Escalate, De-escalate, Recompose** — DynamicはAgent数の増加ではなく、状況に応じたTopologyの選択と再構成を意味する。現在の実装・評価は主にSelection / Escalationを扱い、De-escalation / Recompositionは将来の検証対象とする。
+3. **Role ≠ Model ≠ Runtime** — 責務、モデル選択、実行環境を独立に扱う。
+4. **Role Contract ≠ Permission Enforcement** — Prompt上の責務と、Runtimeが実際に強制できる権限境界を分離する。
+5. **Builder ≠ Judge** — 非自明な変更では、作成と独立判断を必要に応じて分離する。
+6. **Verifier ≠ Ground Truth** — Verifierの判断を真実そのものとみなさず、利用可能な場合はより強いdeterministic / observable Evidenceを優先する。
+7. **Context Isolation by Default** — Contextを必要範囲に限定し、Agent間の情報共有は明示Artifactを優先する。
+8. **Explicit Dependency Modeling** — Handoffと依存関係を明示し、後から追跡できるようにする。
+9. **Observable Collaboration** — Adherence、Violation、Handoff、Cost、Outcomeを観測可能にする。
+10. **Ablation Before Adoption** — RoleやCapabilityは「良さそう」ではなく、限界寄与を比較して標準採用を判断する。
 
 ## Non-goals
 
-DAT is not a generic agent framework, prompt library, model benchmark, or mandate to maximize agent count.
+DATは次を目的としません。
 
-## v0.1 scope
+- 汎用Agent Runtimeを新規実装すること
+- Prompt libraryを網羅すること
+- Model単体の性能ランキングを作ること
+- Multi-Agentを常にSingle Agentより優先すること
+- Agent自身の自己評価をGround Truthとして扱うこと
 
-Vocabulary, schemas, baseline topologies, evidence sources, brownfield adoption stages, and runtime adapter contracts.
+## Current implementation boundary
 
-## v0.2 scope
+現在のDATは、**仕様・導入契約・Runtime capability mapping・Trace / Evaluation・比較実験基盤**を中心に提供します。
 
-Reproducible experiment definitions, train/test/regression scenario separation, ExecutionTrace and RunEvaluation contracts, EXP-001 (T0 vs T1), and a minimal artifact validation/summary harness.
+- Canonical Topologyはベストプラクティス集ではなく、比較・検証するための仮説です。
+- Runtime Adapterは現時点ではManual Adapterが標準で、Runtime-native設定の自動compile/applyは行いません。
+- Dynamic adaptationの全機能を実装済みとは扱いません。
+- 実行可能であることと、Topologyが有効であることを別々に検証します。
 
+## Version scopes
 
-## v0.2.1 scope
+### v0.1
 
-Manual brownfield adoption into external repositories: complete `.dat/` reference layout, Runtime Binding, DAT Lock, external project validation, CI integration template, and explicit manual-adapter boundaries.
+Vocabulary、Schema、Baseline Topology、Evidence source、Brownfield adoption stage、Runtime Adapter contractの基礎を定義しました。
+
+### v0.2
+
+再現可能なExperiment定義、train / test / regressionの分離、`ExecutionTrace` / `RunEvaluation` 契約、EXP-001（T0 vs T1）、Artifact validation / summary harnessを追加しました。
+
+### v0.2.1
+
+外部RepositoryへのManual Brownfield Adoptionを追加しました。完全な`.dat/` Reference Layout、Runtime Binding、DAT Lock、External Project Validator、CI integration template、Manual Adapterの保証境界を含みます。

@@ -179,8 +179,7 @@
       "type": "object",
       "required": [
         "runtime",
-        "model",
-        "effort"
+        "model"
       ],
       "properties": {
         "runtime": {

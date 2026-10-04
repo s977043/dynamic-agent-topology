@@ -5,6 +5,11 @@ metadata:
   experiment: EXP-001-t0-vs-t1
   scenario: train-normalize-name
   condition: T1
+  blockId: sample-block-001
+executionContext:
+  runtime: claude-code
+  model: sample-model
+  effort: medium
 outcome:
   taskSuccess: true
   regressionDetected: false

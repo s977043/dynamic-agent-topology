@@ -16,7 +16,7 @@ DATはTask Outcomeだけでなく、組織構造が正しく機能したかと�
 |---|---|
 | `total_tokens` | input + output token。Runtimeが取得可能な場合に記録 |
 | `wall_clock_ms` | Run全体の経過時間 |
-| `topology_adherence` | 宣言Topologyに沿って実行された割合（0〜1） |
+| `topology_adherence` | 宣言Topologyに沿って実行された割合（0〜1）。P0など非Agent BaselineではN/A (`null`) |
 | `boundary_violations` | Role/Permission境界違反件数 |
 | `handoff_failures` | Handoff失敗件数 |
 | `evidence_completeness` | 必須Evidenceの収集率（0〜1） |

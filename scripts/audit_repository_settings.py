@@ -79,15 +79,28 @@ def ruleset_targets_default_branch(ruleset: dict[str, Any], branch_name: str) ->
     if not isinstance(includes, list) or not isinstance(excludes, list):
         return None
 
-    exact_tokens = {"~ALL", "~DEFAULT_BRANCH", ref}
-    if any(item in exact_tokens for item in excludes):
+    matching_tokens = {"~ALL", "~DEFAULT_BRANCH", ref}
+    if any(item in matching_tokens for item in excludes):
         return False
-    if any(item in exact_tokens for item in includes):
-        return True
 
-    if includes:
-        return None
-    return False
+    def unresolved_pattern(value: Any) -> bool:
+        if not isinstance(value, str):
+            return True
+        if value.startswith("~"):
+            return value not in {"~ALL", "~DEFAULT_BRANCH"}
+        return any(char in value for char in "*?[")
+
+    unknown_exclude = any(unresolved_pattern(item) for item in excludes)
+    if any(item in matching_tokens for item in includes):
+        return None if unknown_exclude else True
+
+    if not includes:
+        return False
+
+    if all(isinstance(item, str) and not unresolved_pattern(item) for item in includes):
+        return False
+
+    return None
 
 
 def audit(

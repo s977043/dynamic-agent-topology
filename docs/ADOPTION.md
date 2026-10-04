@@ -73,7 +73,7 @@ Promotion後も、Evidenceが追加コストを正当化しない場合はde-esc
 
 ## Runtime Adapter rule
 
-v0.2.1では**Manual Adapter**を標準とします。
+現在のManual-adoption contractでは**Manual Adapter**を標準とします。
 
 DATは既存の `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` 等を自動上書きしません。`.dat/` がDesired Stateであり、Runtime固有設定との差分は導入者が明示的に管理します。
 

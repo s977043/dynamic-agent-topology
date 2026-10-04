@@ -73,14 +73,14 @@ python scripts/prepare_pilot_run.py \
   --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
   --run-id EXP-001-train-normalize-name-r01-T0 \
   --workspace /tmp/dat-exp001-train-normalize-name-r01-t0 \
-  --session-id exp001-train-normalize-name-r01-t0-session \
   --workspace-id exp001-train-normalize-name-r01-t0-workspace
 ```
 
 次に、生成された `prompt.md` をfresh Codex sessionへ渡します。
 
-Run終了後、次を保存します。
+Run終了後、まず実行事実を `scripts/attest_pilot_run.py` で `execution-attestation.yaml` に記録します。その後、次を保存します。
 
+- `execution-attestation.yaml`
 - `trace.yaml`
 - `evaluation.yaml`
 - `patch.diff`
@@ -109,11 +109,10 @@ python scripts/prepare_pilot_run.py \
   --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
   --run-id EXP-001-train-normalize-name-r01-T1 \
   --workspace /tmp/dat-exp001-train-normalize-name-r01-t1 \
-  --session-id exp001-train-normalize-name-r01-t1-session \
   --workspace-id exp001-train-normalize-name-r01-t1-workspace
 ```
 
-T1もfresh Codex sessionで実行し、同じ4 Artifactを保存してsingle-run validationを行います。
+T1もfresh Codex sessionで実行し、execution attestationを含む結果Artifactを保存してsingle-run validationを行います。
 
 ## After the first pair
 

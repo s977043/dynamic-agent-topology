@@ -9,8 +9,5 @@ spec:
   repetition: 1
   executionOrder: 1
   workspaceId: exp001-train-normalize-name-r01-t0-workspace
-  sessionId: exp001-train-normalize-name-r01-t0-session
   freshWorkspace: true
-  freshSession: true
-  crossRunFeedbackUsed: false
   promptSha256: 13159407859bc4486d9f7a7e042c62a51e8605bcc24e1f57ed89b76e5e3e36c8

@@ -4,12 +4,14 @@ metadata:
   name: EXP-001-feature-freeze
   experiment: EXP-001-t0-vs-t1
   status: active
-  revision: 2
+  revision: 3
 spec:
   baselineCommit: f172eb1e273af736ec1ecbd72f8b4c8874739808
   executionIssue: 15
   freezeIssue: 16
   empiricalRunsAtFreeze: 0
+  revisionIssue: 26
+  revisionBaseCommit: 095641192730d5325f6df251fb54d7ce7d34a299
   files:
     - path: experiments/EXP-001-t0-vs-t1/experiment.yaml
       gitBlobSha: 6de1f902424fe4b386b1b2ab64986a291af32b1c
@@ -56,7 +58,9 @@ spec:
     - path: schemas/pilot.schema.json
       gitBlobSha: 30ae5713ffef8dd9c4cce75d9dcdf2305f7373a0
     - path: schemas/pilot-run-meta.schema.json
-      gitBlobSha: 2dec1dcf4179a2ea00ad4a05cddc74dd4e6bd0b8
+      gitBlobSha: 637721420375d70feab1e7498563c03ed7eeab48
+    - path: schemas/pilot-execution-attestation.schema.json
+      gitBlobSha: acb234872454346492ca61aca3928408f81d2f8c
     - path: schemas/execution-trace.schema.json
       gitBlobSha: ee224362edb0ef1073f1e96a696f4b44b76cf9b3
     - path: schemas/evaluation.schema.json
@@ -64,9 +68,13 @@ spec:
     - path: scripts/generate_pilot_matrix.py
       gitBlobSha: 101031715a92bc573e2247c85ee8498725b1b579
     - path: scripts/prepare_pilot_run.py
-      gitBlobSha: 934f16c88d19b4a419056376c8331a996a779ba4
+      gitBlobSha: 97287e905fc1ddec06371cadf385b8905b664d5d
+    - path: scripts/attest_pilot_run.py
+      gitBlobSha: c7473c41bb214932bff5d1b70bc750ff50922c08
     - path: scripts/validate_pilot.py
-      gitBlobSha: 66929972b7c75ba6ec86dd9947d76795b5bbf51a
+      gitBlobSha: 6f2221e2ae9024ac8d20087a304102ef5b616772
+    - path: scripts/pilot_status.py
+      gitBlobSha: 8d7253364ebd0d4c896aa0ac44e6cbc5a51cbd1c
     - path: scripts/summarize_experiment.py
       gitBlobSha: 4817e99ff9385b8987b9f5df4517be9b510ce74f
     - path: scripts/validate_experiment_freeze.py

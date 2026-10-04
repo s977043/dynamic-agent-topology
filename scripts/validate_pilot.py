@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import hashlib
 from pathlib import Path
 import sys
@@ -141,16 +142,33 @@ def main() -> int:
         trace_schema = ROOT / "schemas" / "execution-trace.schema.json"
         eval_schema = ROOT / "schemas" / "evaluation.schema.json"
         meta_schema = ROOT / "schemas" / "pilot-run-meta.schema.json"
+        attestation_schema = ROOT / "schemas" / "pilot-execution-attestation.schema.json"
         workspace_ids = set()
-        session_ids = set()
+
+        session_owners = {}
+        for expected_item in expected:
+            path = artifact_root / expected_item["runId"] / "execution-attestation.yaml"
+            if path.is_file():
+                try:
+                    data = load(path)
+                    session_id = data.get("spec", {}).get("sessionId")
+                    if session_id:
+                        session_owners.setdefault(session_id, []).append(expected_item["runId"])
+                except Exception:
+                    pass
+        for session_id, owners in session_owners.items():
+            if len(owners) > 1:
+                errors.append(f"duplicate execution sessionId {session_id!r}: {owners!r}")
+
         for item in items_to_validate:
             run_dir = artifact_root / item["runId"]
-            required = ["run-meta.yaml", "prompt.md", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"]
+            required = ["run-meta.yaml", "prompt.md", "execution-attestation.yaml", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"]
             for filename in required:
                 if not (run_dir / filename).is_file():
                     errors.append(f"{item['runId']}: missing {filename}")
             meta_path = run_dir / "run-meta.yaml"
             prompt_path = run_dir / "prompt.md"
+            attestation_path = run_dir / "execution-attestation.yaml"
             trace_path = run_dir / "trace.yaml"
             eval_path = run_dir / "evaluation.yaml"
             if meta_path.is_file():
@@ -169,15 +187,38 @@ def main() -> int:
                     if spec.get("promptSha256") != prompt_digest:
                         errors.append(f"{meta_path}: promptSha256 does not match prompt.md")
                 workspace_id = spec.get("workspaceId")
-                session_id = spec.get("sessionId")
                 if workspace_id in workspace_ids:
                     errors.append(f"{meta_path}: workspaceId must be unique across runs")
                 elif workspace_id:
                     workspace_ids.add(workspace_id)
-                if session_id in session_ids:
-                    errors.append(f"{meta_path}: sessionId must be unique across runs")
-                elif session_id:
-                    session_ids.add(session_id)
+
+            attestation = None
+            if attestation_path.is_file():
+                attestation = load(attestation_path)
+                validate(attestation, attestation_schema, str(attestation_path), errors)
+                metadata = attestation.get("metadata", {})
+                for field in ("runId", "blockId", "scenario", "condition"):
+                    if metadata.get(field) != item[field]:
+                        errors.append(f"{attestation_path}: {field} does not match matrix")
+                attested = attestation.get("spec", {})
+                if attested.get("freshSession") is not True:
+                    errors.append(f"{attestation_path}: freshSession must be true for a valid pilot run")
+                if attested.get("crossRunFeedbackUsed") is not False:
+                    errors.append(f"{attestation_path}: crossRunFeedbackUsed must be false for a valid pilot run")
+                if attested.get("runtime") != pilot["spec"]["runtime"]:
+                    errors.append(f"{attestation_path}: runtime does not match pilot")
+                if attested.get("model") != pilot["spec"]["model"]:
+                    errors.append(f"{attestation_path}: model does not match pilot")
+                if attested.get("effort") != pilot["spec"]["effort"]:
+                    errors.append(f"{attestation_path}: effort does not match pilot")
+                try:
+                    started = datetime.fromisoformat(attested.get("startedAt", "").replace("Z", "+00:00"))
+                    finished = datetime.fromisoformat(attested.get("finishedAt", "").replace("Z", "+00:00"))
+                    if finished <= started:
+                        errors.append(f"{attestation_path}: finishedAt must be later than startedAt")
+                except ValueError:
+                    pass
+
             if trace_path.is_file():
                 trace = load(trace_path)
                 validate(trace, trace_schema, str(trace_path), errors)
@@ -198,6 +239,14 @@ def main() -> int:
                     errors.append(f"{trace_path}: model does not match pilot")
                 if trace.get("model", {}).get("effort") != pilot["spec"]["effort"]:
                     errors.append(f"{trace_path}: effort does not match pilot")
+                if attestation is not None:
+                    attested = attestation.get("spec", {})
+                    if trace.get("runtime", {}).get("name") != attested.get("runtime"):
+                        errors.append(f"{trace_path}: runtime does not match execution attestation")
+                    if trace.get("model", {}).get("id") != attested.get("model"):
+                        errors.append(f"{trace_path}: model does not match execution attestation")
+                    if trace.get("model", {}).get("effort") != attested.get("effort"):
+                        errors.append(f"{trace_path}: effort does not match execution attestation")
             if eval_path.is_file():
                 evaluation = load(eval_path)
                 validate(evaluation, eval_schema, str(eval_path), errors)
@@ -212,6 +261,14 @@ def main() -> int:
                     errors.append(f"{eval_path}: model does not match pilot")
                 if context.get("effort") != pilot["spec"]["effort"]:
                     errors.append(f"{eval_path}: effort does not match pilot")
+                if attestation is not None:
+                    attested = attestation.get("spec", {})
+                    if context.get("runtime") != attested.get("runtime"):
+                        errors.append(f"{eval_path}: runtime does not match execution attestation")
+                    if context.get("model") != attested.get("model"):
+                        errors.append(f"{eval_path}: model does not match execution attestation")
+                    if context.get("effort") != attested.get("effort"):
+                        errors.append(f"{eval_path}: effort does not match execution attestation")
                 outcome = evaluation.get("outcome", {})
                 if outcome.get("acceptanceCriteriaPassed", 0) > outcome.get("acceptanceCriteriaTotal", 0):
                     errors.append(f"{eval_path}: acceptanceCriteriaPassed exceeds acceptanceCriteriaTotal")
@@ -229,7 +286,7 @@ def main() -> int:
                         errors.append(f"{eval_path}: efficiency.{field} does not match trace summary")
                 if collaboration.get("humanInterventions") != trace_summary.get("humanInterventions"):
                     errors.append(f"{eval_path}: humanInterventions does not match trace summary")
-            for filename in ("prompt.md", "patch.diff", "evidence.txt"):
+            for filename in ("prompt.md", "execution-attestation.yaml", "patch.diff", "evidence.txt"):
                 artifact = run_dir / filename
                 if artifact.is_file() and artifact.stat().st_size == 0:
                     errors.append(f"{item['runId']}: {filename} must not be empty")

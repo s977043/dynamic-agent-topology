@@ -22,7 +22,6 @@ python scripts/prepare_pilot_run.py \
   --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
   --run-id EXP-001-train-normalize-name-r01-T0 \
   --workspace /tmp/dat-exp001-r01-t0 \
-  --session-id exp001-r01-t0-session \
   --workspace-id exp001-r01-t0-workspace
 ```
 
@@ -30,7 +29,7 @@ python scripts/prepare_pilot_run.py \
 
 - `--workspace` は存在していてはいけません。
 - `--workspace` はDAT repositoryの外側に置きます。これによりCodex sessionから他Run Artifactへ親ディレクトリ経由で到達しにくくします。
-- session/workspace IDはPilot内で一意な**非秘密のopaque ID**にします。
+- workspace IDはPilot内で一意な**非秘密のopaque ID**にします。
 - providerのtoken、API key、private path等をIDへ入れません。
 - 同じrunIdを再prepareしません。再試行が必要ならRunを失敗として保存してから、実験計画を明示的に改訂します。
 - `prompt.md` のSHA-256を `run-meta.yaml` に保存し、完了検証時にPrompt改変を検出します。
@@ -56,7 +55,29 @@ runs/pilot-codex/<runId>/
 4. Run開始時点を記録し、終了時点との差分から `wallClockMs` を実測する。
 5. 他RunのArtifact/結果を参照しない。
 6. T0/T1のRole Contractを変更しない。
-7. Run終了後、Trace / Evaluation / patch / Evidenceを保存する。
+7. Run終了後、実際に観測したsession/runtime事実を `execution-attestation.yaml` として記録する。
+8. Trace / Evaluation / patch / Evidenceを保存する。
+
+### 実行後Attestation
+
+実Codex session終了後、preparation時の予定値ではなく**実際に観測した値**を記録します。
+
+```bash
+python scripts/attest_pilot_run.py \
+  --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
+  --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
+  --run-id <runId> \
+  --session-id <actual-opaque-session-id> \
+  --fresh-session true \
+  --cross-run-feedback-used false \
+  --runtime codex \
+  --model gpt-6.1-sol \
+  --effort high \
+  --started-at <ISO8601-with-timezone> \
+  --finished-at <ISO8601-with-timezone>
+```
+
+`fresh-session` や `cross-run-feedback-used` は期待値へ合わせて書き換えません。汚染があったなら実際の値を記録し、validatorにinvalid判定させます。
 
 ## 4. 進捗状態
 

@@ -1,7 +1,7 @@
 # EXP-001 Feature Freeze
 
 **Status: ACTIVE**  
-**Revision: 2**  
+**Revision: 3**  
 **Execution issue: #15**  
 **Freeze issue: #16**
 
@@ -33,8 +33,8 @@ Feature Freezeは、最初のempirical run開始前から次を満たすまで�
 - BASE / T0 / T1 Prompt Contract
 - Scenario Set / Fixture
 - T0 / T1 Topology / Worker / Verifier Role
-- Trace / Evaluation / Pilot Schema
-- Matrix生成 / Pilot validation / Experiment summary logic
+- Trace / Evaluation / Pilot / Run Preparation / Execution Attestation Schema
+- Matrix生成 / Pilot preparation / Execution attestation / Pilot validation / Experiment summary logic
 
 CIは各ArtifactのGit blob identityを検証し、意図しない変更を拒否します。
 
@@ -149,4 +149,14 @@ Feature FreezeのCIはガバナンス支援であり、悪意あるmaintainerに
 - Freeze validator自身とOperator prompt生成経路を凍結対象へ追加。
 - empirical runs: **0 / 18** のため既存データ無効化なし。
 
-Revision 2が最初のempirical run開始時点のfreeze revisionです。
+Revision 2では最初のRunをprepareしたが、empirical run開始前にpreparation metadataがruntime事実を先取りしていたBlocking defect (#26) を検出した。
+
+### Revision 3
+- preparation metadataとpost-run execution attestationを分離。
+- `run-meta.yaml` はworkspace/promptのpre-run事実だけを保持。
+- `execution-attestation.yaml` を追加し、fresh session / cross-run feedback / actual Runtime・Model・Effort / start-endを実行後に記録。
+- single-run / complete validationでattestationを必須化。
+- empirical runs: **0 / 18** のためデータ無効化なし。
+- Revision 2でprepare済みだった1 RunはRevision 3契約で再生成する。
+
+Revision 3がempirical run開始前の正本freeze revisionです。

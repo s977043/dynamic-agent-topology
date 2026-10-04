@@ -10,7 +10,7 @@ import sys
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULT_FILES = ("trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt")
+POST_RUN_FILES = ("execution-attestation.yaml", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt")
 
 
 def load(path: Path):
@@ -31,14 +31,14 @@ def status_for(run_dir: Path):
     if not run_dir.exists():
         return "planned"
     prepared = (run_dir / "run-meta.yaml").is_file() and (run_dir / "prompt.md").is_file()
-    present = [name for name in RESULT_FILES if (run_dir / name).is_file()]
+    present = [name for name in POST_RUN_FILES if (run_dir / name).is_file()]
     if not prepared:
         return "invalid"
     if not present:
         return "prepared"
-    if len(present) < len(RESULT_FILES):
+    if len(present) < len(POST_RUN_FILES):
         return "in-progress"
-    if any((run_dir / name).stat().st_size == 0 for name in RESULT_FILES):
+    if any((run_dir / name).stat().st_size == 0 for name in POST_RUN_FILES):
         return "invalid"
     return "artifacts-present"
 

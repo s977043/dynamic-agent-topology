@@ -227,6 +227,10 @@ Topologyは「良さそうだから採用する」のではなく、Evidenceで�
 
 セキュリティ上の問題は公開Issueへ詳細を書かず、[SECURITY.md](SECURITY.md) の手順で報告してください。
 
+## Changelog
+
+公開済みversionと未Releaseの変更は [CHANGELOG.md](CHANGELOG.md) を参照してください。
+
 ## License
 
 MIT

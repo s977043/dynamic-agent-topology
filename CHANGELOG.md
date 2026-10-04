@@ -10,8 +10,8 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 - EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
 - Pilot preparation and execution-attestation schemas and tooling.
-- Capability-level ablation guidance and contribution metrics.
 - Raven / evidence-gated executable-configuration research notes.
+- Dogfooding and EXP-001 execution/measurement guidance.
 - Public contribution, support, research-proposal, and security-reporting paths.
 - CodeQL, Dependabot, and OpenSSF Scorecard supply-chain checks.
 - Git-tracked public repository policy and release discipline.

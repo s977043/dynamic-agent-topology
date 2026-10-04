@@ -137,6 +137,20 @@ The evaluation considers not only task success, but regression, human interventi
 
 DAT also evaluates the **marginal contribution of internal capabilities** such as roles, skills, and verifiers through paired ablation. Being invoked is activation evidence, not effectiveness evidence. See [Experiment Protocol](docs/EXPERIMENTS.md#capability-level-ablation) and [Metrics](docs/METRICS.md#capability-contributionderived-comparison).
 
+## Current focus
+
+The highest priority is now **collecting empirical evidence for EXP-001**.
+
+- Execution tracking: Issue #15
+- Empirical runs: **0 / 18**
+- Feature Freeze: **ACTIVE**
+- `DECISION.md`: **NOT RUN**
+- New topologies, routing extensions, and Research/Production profile design: **deferred until EXP-001 completes**
+
+Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)
+
+DAT is currently in an **evidence-acquisition phase**, not a specification-expansion phase.
+
 ## Evidence base
 
 DAT separates source claims from DAT interpretations and implementation decisions.

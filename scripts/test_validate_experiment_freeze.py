@@ -79,6 +79,52 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     if result.returncode == 0:
         failures.append("missing frozen artifact must fail")
 
+
+
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+    manifest = Path(tmp) / "freeze.yaml"
+    data = {
+        "apiVersion": "dat/v1alpha1",
+        "kind": "ExperimentFreeze",
+        "metadata": {
+            "name": "test-freeze",
+            "experiment": "EXP-TEST",
+            "status": "activ",
+            "revision": 1,
+        },
+        "spec": {
+            "files": [
+                {"path": "README.md", "gitBlobSha": actual},
+            ]
+        },
+    }
+    manifest.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(manifest)
+    if result.returncode == 0:
+        failures.append("unknown freeze status must fail")
+
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+    manifest = Path(tmp) / "freeze.yaml"
+    data = {
+        "apiVersion": "dat/v1alpha1",
+        "kind": "ExperimentFreeze",
+        "metadata": {
+            "name": "test-freeze",
+            "experiment": "EXP-TEST",
+            "status": "active",
+            "revision": 0,
+        },
+        "spec": {
+            "files": [
+                {"path": "README.md", "gitBlobSha": actual},
+            ]
+        },
+    }
+    manifest.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(manifest)
+    if result.returncode == 0:
+        failures.append("freeze revision < 1 must fail")
+
 if failures:
     print("Feature freeze validator tests failed:")
     for failure in failures:

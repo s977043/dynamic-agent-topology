@@ -41,9 +41,21 @@ def main() -> int:
         print("Freeze validation failed: kind must be ExperimentFreeze", file=sys.stderr)
         return 1
 
-    status = manifest.get("metadata", {}).get("status")
-    if status != "active":
-        print(f"Freeze inactive: status={status!r}")
+    metadata = manifest.get("metadata", {})
+    status = metadata.get("status")
+    revision = metadata.get("revision")
+    if status not in {"active", "completed"}:
+        print(
+            f"Freeze validation failed: unsupported status {status!r}; "
+            "expected 'active' or 'completed'",
+            file=sys.stderr,
+        )
+        return 1
+    if not isinstance(revision, int) or revision < 1:
+        print("Freeze validation failed: metadata.revision must be >= 1", file=sys.stderr)
+        return 1
+    if status == "completed":
+        print(f"Freeze completed: revision={revision}")
         return 0
 
     errors = []

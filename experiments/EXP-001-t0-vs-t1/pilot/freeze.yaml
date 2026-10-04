@@ -4,6 +4,7 @@ metadata:
   name: EXP-001-feature-freeze
   experiment: EXP-001-t0-vs-t1
   status: active
+  revision: 1
 spec:
   baselineCommit: f172eb1e273af736ec1ecbd72f8b4c8874739808
   executionIssue: 15

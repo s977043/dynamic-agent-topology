@@ -1,6 +1,7 @@
 # EXP-001 Feature Freeze
 
 **Status: ACTIVE**  
+**Revision: 1**  
 **Execution issue: #15**  
 **Freeze issue: #16**
 
@@ -100,3 +101,37 @@ EXP-001について結果記事・Benchmark claimを出すのは、次の後で�
 - review merge
 
 最初の結果は一般化されたBenchmarkではなく、**Pilot observation** として扱います。
+
+
+## Unfreeze
+
+Feature Freezeは「もう変更したいから」解除しません。
+
+解除条件は次です。
+
+1. #15の18 / 18 Runが完了
+2. `validate_pilot.py --require-complete` PASS
+3. 集計結果を再生成
+4. `DECISION.md` 更新
+5. 結果レビューPRをmerge
+6. main CI green
+
+その後:
+
+- `freeze.yaml metadata.status` を `completed` に変更する
+- Freeze manifestは削除せず、実験時点のsnapshotとして保持する
+- EXP-001から得たfriction / Evidenceを次の設計Issueへ分離する
+- Research / Production Profile、新Topology、EXP-002等はこの時点から検討可能とする
+
+### Blocking defectでFreezeを更新する場合
+
+凍結Artifact変更が必要な場合は:
+
+- #15を停止
+- defect Issueを作成
+- `freeze.yaml metadata.revision` を増やす
+- baseline / blob identityを更新
+- empirical run開始後なら原則0 / 18へreset
+- 変更理由と無効化したRunをIssueへ記録
+
+Feature FreezeのCIはガバナンス支援であり、悪意あるmaintainerに対するSecurity Boundaryではありません。最終的な変更可否はPRレビューで確認します。

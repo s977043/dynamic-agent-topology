@@ -24,7 +24,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Security reporting and coordinated-disclosure expectations are explicit.
 - GitHub Actions use least-privilege permissions and immutable action SHAs.
 - Current README/CITATION metadata no longer advertises an unpublished version; version metadata is added only with an immutable tag and GitHub Release.
-- Brownfield adoption now requires evidence-based complexity promotion instead of treating additional agents, loops, or graph structure as default progress.
+- Brownfield adoption now documents an evidence-based complexity-promotion rule instead of treating additional agents, loops, or graph structure as default progress.
 - Documentation terminology, source-of-truth boundaries, evidence claims, experiment semantics, and release-boundary wording were reviewed and hardened.
 
 ### Security

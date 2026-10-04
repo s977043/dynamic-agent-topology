@@ -9,10 +9,14 @@ spec:
   hypothesis: T1はT0よりtoken/latencyを増やすが、regressionまたはhuman interventionを減らし、task successを悪化させない。
   conditions:
     - id: T0
-      topologyRef: T0-single-agent
+      executionRef:
+        kind: AgentTopology
+        name: T0-single-agent
       description: Single Agent baseline
     - id: T1
-      topologyRef: T1-worker-verifier
+      executionRef:
+        kind: AgentTopology
+        name: T1-worker-verifier
       description: Worker + independent Verifier
   runtimeScope:
     - claude-code

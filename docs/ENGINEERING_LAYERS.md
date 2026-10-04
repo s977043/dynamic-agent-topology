@@ -85,7 +85,6 @@ Escalate complexity only if a smaller intervention cannot address the failure
 - Evaluation不足をReviewerの主観的承認で補う
 - 単発Failureだけを根拠にGraphを複雑化する
 
-
 ## Deferred evolution
 
 Loop / Graphの診断項目が存在することは、DAT coreへ汎用Loop engineやGraph recovery contractを追加する根拠にはなりません。

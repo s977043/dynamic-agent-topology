@@ -71,7 +71,7 @@ Before publishing a release:
 1. verify the intended release commit and confirm CI, CodeQL, and Scorecard are green on the relevant `main` revision;
 2. update versioned documentation and `CITATION.cff` in the release PR;
 3. merge the release PR;
-4. create an annotated or signed `vX.Y.Z` tag at the verified release commit;
+4. create an immutable `vX.Y.Z` tag at the verified release commit; sign or annotate it when the release process supports that reliably;
 5. publish a GitHub Release from that tag with concise user-facing notes;
 6. verify that README status and citation metadata match the published tag.
 

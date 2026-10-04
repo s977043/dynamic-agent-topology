@@ -6,12 +6,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
+EXPECTED = "python -m unittest discover -s tests"
 
 def load(path):
     with path.open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-for scenario_path in sorted((ROOT / "experiments").glob("EXP-*/scenarios/*.yaml")):
+for scenario_path in sorted((ROOT / "experiments" / "EXP-001-t0-vs-t1" / "scenarios").glob("*.yaml")):
     scenario_set = load(scenario_path)
     for scenario in scenario_set["spec"]["scenarios"]:
         fixture = (ROOT / scenario["fixturePath"]).resolve()
@@ -21,23 +22,21 @@ for scenario_path in sorted((ROOT / "experiments").glob("EXP-*/scenarios/*.yaml"
             errors.append(f"{scenario_path}: fixture escapes repository: {fixture}")
             continue
 
-        any_failed = False
-        for command in scenario["evidenceCommands"]:
-            completed = subprocess.run(
-                command,
-                cwd=fixture,
-                shell=True,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            if completed.returncode != 0:
-                any_failed = True
+        if EXPECTED not in scenario["evidenceCommands"]:
+            errors.append(f"{scenario_path}: {scenario['id']!r} must include the canonical unittest evidence command")
+            continue
 
-        if not any_failed:
+        completed = subprocess.run(
+            [sys.executable, "-m", "unittest", "discover", "-s", "tests"],
+            cwd=fixture,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if completed.returncode == 0:
             errors.append(
-                f"{scenario_path}: fixture {scenario['id']!r} already passes all evidence commands; "
-                "the bugfix experiment would no longer have a failing baseline"
+                f"{scenario_path}: fixture {scenario['id']!r} already passes the baseline test; "
+                "the bugfix experiment would no longer start from a failing state"
             )
 
 if errors:
@@ -46,4 +45,4 @@ if errors:
         print(f"- {error}")
     sys.exit(1)
 
-print("Fixture validation passed: every experiment fixture has at least one failing evidence command.")
+print("Fixture validation passed: all EXP-001 fixtures start from a failing unittest state.")

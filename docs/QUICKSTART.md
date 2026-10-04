@@ -22,6 +22,11 @@
 
 最初は [examples/brownfield/.dat](../examples/brownfield/.dat) をコピーして編集できます。
 
+```bash
+git clone https://github.com/s977043/dynamic-agent-topology.git /tmp/dynamic-agent-topology
+cp -R /tmp/dynamic-agent-topology/examples/brownfield/.dat ./.dat
+```
+
 ## 2. Project Bindingを設定する
 
 `.dat/project.yaml` で利用可能なTopologyとRuntimeを宣言します。
@@ -80,6 +85,8 @@ PASSすれば、SchemaとDAT参照の整合が確認できています。`pinMod
 ## 7. CIへ追加する
 
 [examples/github-actions/dat-validate.yml](../examples/github-actions/dat-validate.yml) を参考に、DATを固定revisionでcheckoutしてvalidatorを実行します。
+
+CIでは `--require-pinned` を使い、`dat.lock.yaml` がfloatingのままなら失敗させます。Actionsの `ref` と `dat.lock.yaml.spec.dat.revision` は同じcommit SHAまたはtagを指定してください。
 
 ## 8. A0 → A3まで段階導入する
 

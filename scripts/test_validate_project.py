@@ -13,7 +13,7 @@ SCRIPT = ROOT / "scripts" / "validate_project.py"
 EXAMPLE = ROOT / "examples" / "brownfield"
 
 
-def run(project):
+def run(project, *extra_args):
     return subprocess.run(
         [
             sys.executable,
@@ -22,6 +22,7 @@ def run(project):
             str(project),
             "--dat-root",
             str(ROOT),
+            *extra_args,
         ],
         text=True,
         stdout=subprocess.PIPE,
@@ -157,6 +158,14 @@ with tempfile.TemporaryDirectory() as tmp:
     result = run(project)
     if result.returncode == 0:
         failures.append("floating DAT lock must not carry a revision")
+
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    result = run(project, "--require-pinned")
+    if result.returncode == 0:
+        failures.append("--require-pinned must reject floating locks")
 
 if failures:
     print("External project validator tests failed:")

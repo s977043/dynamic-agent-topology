@@ -48,7 +48,9 @@ def validate_schema(path: Path, schema_path: Path, errors: list[str]):
         return data
 
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
-    for error in sorted(validator.iter_errors(data), key=lambda e: list(e.path)):
+    for error in sorted(
+        validator.iter_errors(data), key=lambda e: tuple(str(part) for part in e.path)
+    ):
         location = ".".join(str(x) for x in error.path) or "<root>"
         errors.append(f"{path}: schema error at {location}: {error.message}")
     return data
@@ -74,6 +76,11 @@ def main() -> int:
         "--dat-root",
         default=str(Path(__file__).resolve().parents[1]),
         help="Path to the Dynamic Agent Topology repository checkout.",
+    )
+    parser.add_argument(
+        "--require-pinned",
+        action="store_true",
+        help="Fail when dat.lock.yaml uses pinMode=floating. Recommended for CI.",
     )
     args = parser.parse_args()
 
@@ -284,9 +291,11 @@ def main() -> int:
             )
 
     if dat_lock["pinMode"] == "floating":
-        warnings.append(
-            "dat.lock.yaml: pinMode is floating; use a commit SHA or tag for reproducible CI"
-        )
+        message = "dat.lock.yaml: pinMode is floating; use a commit SHA or tag for reproducible CI"
+        if args.require_pinned:
+            errors.append(message)
+        else:
+            warnings.append(message)
     else:
         revision = dat_lock["revision"]
         try:

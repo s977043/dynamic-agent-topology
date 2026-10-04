@@ -50,12 +50,13 @@ runs/pilot-codex/<runId>/
 
 ## 3. Codexを実行
 
-1. 新しいCodex session/contextを開始する。
-2. 対象Runの `prompt.md` だけを入力として使う。
-3. Run開始時点を記録し、終了時点との差分から `wallClockMs` を実測する。
-4. 他RunのArtifact/結果を参照しない。
-5. T0/T1のRole Contractを変更しない。
-6. Run終了後、Trace / Evaluation / patch / Evidenceを保存する。
+1. fresh workspaceでScenarioの初期deterministic Evidenceが失敗することを確認する。初期状態でPASSする場合はRunを開始せず、#15で停止理由を記録する。
+2. 新しいCodex session/contextを開始する。
+3. 対象Runの `prompt.md` だけを入力として使う。
+4. Run開始時点を記録し、終了時点との差分から `wallClockMs` を実測する。
+5. 他RunのArtifact/結果を参照しない。
+6. T0/T1のRole Contractを変更しない。
+7. Run終了後、Trace / Evaluation / patch / Evidenceを保存する。
 
 ## 4. 進捗状態
 

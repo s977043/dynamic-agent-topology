@@ -97,6 +97,8 @@ python scripts/validate_pilot.py \
 
 この検証がPASSするまでT1をprepareしません。
 
+Gitにprepare済みArtifactがあっても、Operator hostの実workspaceが利用可能かは別途確認します。最初のT0で一時runnerのworkspaceが失われている場合は、[Operator Kitの #48 復旧例外](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md)に従います。例外の独立レビュー・merge前に同じrunIdを再prepareしません。
+
 ### 2. T1 — executionOrder 2
 
 `EXP-001-train-normalize-name-r01-T1`

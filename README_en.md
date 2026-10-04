@@ -173,7 +173,7 @@ See [knowledge/sources.yaml](knowledge/sources.yaml).
 
 ## Status
 
-**v0.2.1 Manual adoption-ready**
+**Manual adoption-ready (current `main` is unreleased)**
 
 The repository currently provides:
 

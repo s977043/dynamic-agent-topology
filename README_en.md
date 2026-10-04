@@ -175,7 +175,7 @@ See [knowledge/sources.yaml](knowledge/sources.yaml).
 
 ## Status
 
-**v0.2.1 Manual adoption-ready**
+**Manual adoption-ready (current `main` is unreleased)**
 
 The repository currently provides:
 
@@ -205,6 +205,10 @@ Manual adoption into external repositories is supported. Automatic runtime compi
 See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the repository Issue Forms for bugs, general proposals, research-derived proposals, and usage/adoption questions. See [SUPPORT.md](SUPPORT.md) for routing and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
 
 Do not disclose sensitive vulnerabilities in a public issue. Follow [SECURITY.md](SECURITY.md) instead.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for published versions and unreleased changes on `main`.
 
 ## License
 

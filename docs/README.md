@@ -11,6 +11,7 @@
 1. [NORTH_STAR.md](NORTH_STAR.md) — 何を解きたいか、何を最適化しないか
 2. [ARCHITECTURE.md](ARCHITECTURE.md) — Topology / Policy / Runtime / Trace / Evaluation の責務分離
 3. [GLOSSARY.md](GLOSSARY.md) — DATで使う主要用語
+4. [ENGINEERING_LAYERS.md](ENGINEERING_LAYERS.md) — 失敗箇所をPrompt / Context / Harness / Loop / Graph / Evaluationで診断する補助レンズ
 
 ### 既存リポジトリへ導入する
 
@@ -36,6 +37,7 @@
 | `NORTH_STAR.md` | 目的・原則・非目標 | 設計原則 |
 | `ARCHITECTURE.md` | 責務境界・Plane分離 | 設計原則 |
 | `GLOSSARY.md` | 用語定義 | 用語上の基準 |
+| `ENGINEERING_LAYERS.md` | 障害診断の補助レンズ | 診断ガイド |
 | `ADOPTION.md` | 段階導入の契約 | 導入ガイド |
 | `QUICKSTART.md` | 最短の導入手順 | 実行ガイド |
 | `DOGFOODING.md` | 観測済みEvidenceと非主張 | Evidence記録 |

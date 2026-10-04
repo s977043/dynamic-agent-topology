@@ -88,6 +88,9 @@ jobs:
           python scripts/validate_project.py --project examples/brownfield --dat-root .
           python scripts/test_validate_project.py
 
+      - name: Test repository settings audit
+        run: python scripts/test_audit_repository_settings.py
+
       - name: Semantic validation
         run: python scripts/validate_semantics.py
 

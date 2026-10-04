@@ -29,6 +29,7 @@ runtimes = {
 }
 
 experiments = {}
+experiment_controls = {}
 scenario_ids_by_experiment = {}
 condition_ids_by_experiment = {}
 condition_topology_by_experiment = {}
@@ -40,6 +41,7 @@ for experiment_path in sorted((ROOT / "experiments").glob("EXP-*/experiment.yaml
         errors.append(f"{experiment_path}: duplicate experiment name {name!r}")
         continue
     experiments[name] = experiment_path
+    experiment_controls[name] = experiment["spec"]["controls"]
 
     conditions = experiment["spec"]["conditions"]
     condition_ids = [item["id"] for item in conditions]
@@ -153,17 +155,55 @@ for path in sorted((ROOT / "examples" / "experiment-run").glob("*-evaluation.yam
 for run_id in sorted(set(traces_by_run) & set(evaluations_by_run)):
     trace_path, trace = traces_by_run[run_id]
     evaluation_path, evaluation = evaluations_by_run[run_id]
-    for field in ("experiment", "scenario", "condition"):
+    for field in ("experiment", "scenario", "condition", "blockId"):
         if trace["metadata"][field] != evaluation["metadata"][field]:
             errors.append(f"{evaluation_path}: {field} does not match trace {trace_path} for runId {run_id!r}")
     trace_summary = trace["summary"]
     efficiency = evaluation["efficiency"]
     collaboration = evaluation["collaboration"]
+    context = evaluation["executionContext"]
+    if context["runtime"] != trace["runtime"]["name"]:
+        errors.append(f"{evaluation_path}: executionContext.runtime does not match trace runtime for runId {run_id!r}")
+    if context["model"] != trace["model"]["id"]:
+        errors.append(f"{evaluation_path}: executionContext.model does not match trace model for runId {run_id!r}")
+    if context["effort"] != trace["model"].get("effort"):
+        errors.append(f"{evaluation_path}: executionContext.effort does not match trace model effort for runId {run_id!r}")
     for field in ("agentInvocations", "coordinationTransitions", "wallClockMs"):
         if field in trace_summary and trace_summary[field] != efficiency[field]:
             errors.append(f"{evaluation_path}: efficiency.{field} does not match trace summary for runId {run_id!r}")
     if trace_summary["humanInterventions"] != collaboration["humanInterventions"]:
         errors.append(f"{evaluation_path}: collaboration.humanInterventions does not match trace summary for runId {run_id!r}")
+
+# Every sample evaluation must have a trace, and every sample trace must have an evaluation.
+for run_id in sorted(set(evaluations_by_run) - set(traces_by_run)):
+    errors.append(f"evaluation runId {run_id!r} has no matching trace")
+for run_id in sorted(set(traces_by_run) - set(evaluations_by_run)):
+    errors.append(f"trace runId {run_id!r} has no matching evaluation")
+
+# Verify paired comparison controls inside each experiment/scenario/block.
+blocks = {}
+for run_id, (path, evaluation) in evaluations_by_run.items():
+    metadata = evaluation["metadata"]
+    key = (metadata["experiment"], metadata["scenario"], metadata["blockId"])
+    blocks.setdefault(key, []).append((path, evaluation))
+
+for (experiment, scenario, block_id), items in sorted(blocks.items()):
+    expected_conditions = condition_ids_by_experiment.get(experiment, set())
+    actual_conditions = {evaluation["metadata"]["condition"] for _, evaluation in items}
+    if actual_conditions != expected_conditions:
+        errors.append(
+            f"comparison block {(experiment, scenario, block_id)!r} has conditions "
+            f"{sorted(actual_conditions)!r}, expected {sorted(expected_conditions)!r}"
+        )
+        continue
+    controls = experiment_controls[experiment]
+    contexts = [evaluation["executionContext"] for _, evaluation in items]
+    if controls["sameRuntime"] and len({c["runtime"] for c in contexts}) != 1:
+        errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes runtimes")
+    if controls["sameModel"] and len({c["model"] for c in contexts}) != 1:
+        errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes models")
+    if controls["sameEffort"] and len({c["effort"] for c in contexts}) != 1:
+        errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes effort levels")
 
 if errors:
     print("Experiment semantic validation failed:")

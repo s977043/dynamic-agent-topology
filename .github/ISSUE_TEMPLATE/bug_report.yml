@@ -1,0 +1,69 @@
+name: Bug report
+description: Report a reproducible defect in DAT specifications, validators, examples, or documentation.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a defect. Do not include secrets, private source code, or sensitive vulnerability details here. See SECURITY.md for security reports.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+      placeholder: A concise description of the defect.
+    validations:
+      required: true
+
+  - type: input
+    id: revision
+    attributes:
+      label: DAT version or commit
+      description: Tag, version, or commit SHA where you observed the problem.
+      placeholder: v0.2.1 or a commit SHA
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible sequence.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Sanitized logs, validator output, trace excerpts, or a minimal fixture. Remove confidential information.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This report does not contain secrets or sensitive vulnerability details.
+          required: true

@@ -1,0 +1,5 @@
+# CI-only validation dependencies.
+# Keep exact top-level versions here; Dependabot maintains updates.
+check-jsonschema==0.38.2
+jsonschema==4.26.0
+PyYAML==6.0.3

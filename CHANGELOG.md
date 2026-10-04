@@ -21,6 +21,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - EXP-001 preparation provenance is separated from runtime execution attestation.
 - Security reporting and coordinated-disclosure expectations are explicit.
 - GitHub Actions use least-privilege permissions and immutable action SHAs.
+- Current README/CITATION metadata no longer advertises an unpublished version; version metadata is added only with an immutable tag and GitHub Release.
 
 ### Security
 

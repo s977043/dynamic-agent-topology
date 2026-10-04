@@ -39,6 +39,14 @@
             }
           },
           "then": {"required": ["routingPolicy"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "rolloutStage": {"enum": ["A4-canary", "A5-dynamic"]}
+            }
+          },
+          "then": {"required": ["escalationPolicy"]}
         }
       ],
       "additionalProperties": false

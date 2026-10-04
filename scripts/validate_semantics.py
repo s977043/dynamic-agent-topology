@@ -84,8 +84,9 @@ for path in sorted((ROOT / "adapters").glob("*/capabilities.yaml")):
 
 example_root = ROOT / "examples" / "brownfield" / ".dat"
 project = load(example_root / "project.yaml")
-supported = set(project["spec"].get("supportedTopologies", []))
 default = project["spec"]["defaultTopology"]
+supported_values = project["spec"].get("supportedTopologies")
+supported = set(supported_values) if supported_values else {default}
 
 if default not in topologies:
     errors.append(f"project binding: unknown defaultTopology {default!r}")

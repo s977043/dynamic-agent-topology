@@ -60,7 +60,7 @@ DATではTopologyを単なるPrompt Graphとして扱いません。
 6. **Routing & Escalation** — Topologyそのものと、Topology選択ポリシーを分離
 7. **Topology Adherence** — 宣言した組織構造と、実際の実行結果の一致度を評価
 
-## Canonical Topology
+## Baseline / Canonical Topology
 
 | ID | 構成 | 目的 |
 |---|---|---|

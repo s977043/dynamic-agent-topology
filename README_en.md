@@ -58,7 +58,7 @@ A topology should not be adopted only because it looks reasonable. DAT treats it
 6. **Routing & Escalation** — separate topology definition from topology selection
 7. **Topology Adherence** — compare declared organization with observed execution
 
-## Canonical topologies
+## Baselines and canonical topologies
 
 | ID | Shape | Purpose |
 |---|---|---|

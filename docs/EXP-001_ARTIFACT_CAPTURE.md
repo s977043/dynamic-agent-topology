@@ -104,9 +104,11 @@ eventは、外部から確認できる出来事だけを記録します。
 - `coordinationTransitions`
 - `humanInterventions`
 - `inputTokens` / `outputTokens` — Runtimeから取得できた場合のみ
-- `wallClockMs` — 実測できた場合
+- `wallClockMs` — complete Runでは必須。Run開始/終了から実測する
 
 取得できないoptional metricは省略します。**0は「観測値0」の場合だけ使用**します。
+
+`wallClockMs` は `evaluation.schema.json` の必須fieldです。complete Runとして扱うには、推測ではなく実測値を記録します。
 
 ## 2. evaluation.yaml
 
@@ -150,7 +152,7 @@ T0など、該当しない場合はSchemaが許す範囲で `null` を使いま�
 trace summaryと一致する値を記録します。
 
 - token metrics — 観測できた場合のみ
-- `wallClockMs`
+- `wallClockMs` — complete Runでは必須
 - `agentInvocations`
 - `coordinationTransitions`
 

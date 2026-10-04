@@ -62,6 +62,7 @@ Codexのcustom roles / subagent model / effortはRuntime設定で固定し、Run
 ```text
 runs/pilot-codex/<runId>/
 ├── run-meta.yaml
+├── prompt.md
 ├── trace.yaml
 ├── evaluation.yaml
 ├── patch.diff
@@ -71,6 +72,7 @@ runs/pilot-codex/<runId>/
 ### tracked
 
 - `run-meta.yaml`
+- `prompt.md`
 - `trace.yaml`
 - `evaluation.yaml`
 - `patch.diff`

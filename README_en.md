@@ -204,6 +204,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the re
 
 Do not disclose sensitive vulnerabilities in a public issue. Follow [SECURITY.md](SECURITY.md) instead.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for published versions and unreleased changes on `main`.
+
 ## License
 
 MIT

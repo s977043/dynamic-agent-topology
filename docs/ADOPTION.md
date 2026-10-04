@@ -60,7 +60,7 @@ DATでは、Agent数、Topology edge、Routing rule、Loop、state、retry、bra
 より複雑な仕組みへ進む前に、少なくとも次を確認します。
 
 1. **Need is evidenced** — 同種の失敗や制約が複数Run / Taskで再現している、またはSecurity / Permission / data integrityなどのhigh-severity invariant breachが観測されている。重大な境界違反を再発待ちにしない。
-2. **Simpler layer is insufficient** — Prompt、Context、Harnessなど、より小さい修正では十分に解決できない。
+2. **Smaller intervention is insufficient** — Prompt、Context、Harnessなど、より小さいWork Unitへの修正では十分に解決できない。Engineering Layer自体に成熟度順や上下関係があるとはみなさない。
 3. **Benefit justifies coordination cost** — Task success、安全性、品質、Human Interventionなどの改善が、Token、Latency、運用負荷、handoff failureなどの追加コストを正当化できる見込みがある。Security / correctness上のcritical risk低減は単純なcost増より優先される場合がある。
 4. **Workflow is stable enough to encode** — まだ頻繁に変化している手順を早期に固定化しない。重大リスクへの暫定guardrailは例外として導入できるが、恒久設計とは分離する。
 5. **The change is falsifiable** — 何を測れば採用・棄却・単純化できるかを事前に定義できる。

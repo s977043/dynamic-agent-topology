@@ -195,6 +195,18 @@ Manual adoption into external repositories is supported. Automatic runtime compi
 
 > **Do not assume a topology is better. Test it.**
 
+
+## Contributing / Support
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before contributing to DAT.
+
+- Bugs / research proposals: GitHub Issue templates
+- Support: [SUPPORT.md](SUPPORT.md)
+- Security: [SECURITY.md](SECURITY.md)
+- Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+While the EXP-001 Feature Freeze is active, check the freeze policy before changing any frozen artifact.
+
 ## License
 
 MIT

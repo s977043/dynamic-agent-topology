@@ -1,0 +1,11 @@
+apiVersion: dat/v1alpha1
+kind: DatLock
+metadata:
+  name: example-web-app
+spec:
+  dat:
+    version: "0.2.1"
+    apiVersion: dat/v1alpha1
+    source: https://github.com/s977043/dynamic-agent-topology
+    pinMode: floating
+    revision: main

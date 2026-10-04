@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Lock",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "DatLock"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"name": {"type": "string", "minLength": 1}},
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": ["dat"],
+      "properties": {
+        "dat": {
+          "type": "object",
+          "required": ["version", "apiVersion", "source", "pinMode"],
+          "properties": {
+            "version": {"type": "string", "pattern": "^0\\.2(?:\\.[0-9]+)?$"},
+            "apiVersion": {"const": "dat/v1alpha1"},
+            "source": {"type": "string", "format": "uri"},
+            "pinMode": {"enum": ["pinned", "floating"]},
+            "revision": {"type": "string", "minLength": 1}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"pinMode": {"const": "pinned"}}},
+              "then": {"required": ["revision"]}
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -111,4 +111,12 @@ jobs:
           python scripts/generate_pilot_matrix.py \
             --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
             > /tmp/run-matrix.yaml
-          diff -u experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml /tmp/run-matrix.yaml
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+          expected = yaml.safe_load(Path("experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml").read_text())
+          generated = yaml.safe_load(Path("/tmp/run-matrix.yaml").read_text())
+          if expected != generated:
+              raise SystemExit("generated pilot matrix differs semantically from committed matrix")
+          print("deterministic pilot matrix OK")
+          PY

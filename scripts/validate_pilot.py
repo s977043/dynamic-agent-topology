@@ -14,6 +14,15 @@ def load(path: Path):
     with path.open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
+def safe_repo_path(value: str, label: str, errors: list[str]):
+    path = (ROOT / value).resolve()
+    try:
+        path.relative_to(ROOT.resolve())
+    except ValueError:
+        errors.append(f"{label}: path escapes repository: {value!r}")
+        return None
+    return path
+
 def validate(data, schema_path: Path, label: str, errors: list[str]):
     schema = load(schema_path)
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
@@ -35,6 +44,12 @@ def main() -> int:
     pilot = load(pilot_path)
     matrix = load(matrix_path)
     validate(pilot, ROOT / "schemas" / "pilot.schema.json", str(pilot_path), errors)
+
+    declared_matrix = safe_repo_path(pilot["spec"]["matrixPath"], "pilot.matrixPath", errors)
+    if declared_matrix is not None and declared_matrix != matrix_path.resolve():
+        errors.append("pilot: --matrix does not match spec.matrixPath")
+
+    artifact_root_checked = safe_repo_path(pilot["spec"]["artifactRoot"], "pilot.artifactRoot", errors)
 
     experiment_name = pilot["metadata"]["experiment"]
     experiment_path = ROOT / "experiments" / "EXP-001-t0-vs-t1" / "experiment.yaml"
@@ -102,7 +117,9 @@ def main() -> int:
         errors.append("matrix: duplicate runId")
 
     if args.require_complete:
-        artifact_root = (ROOT / pilot["spec"]["artifactRoot"]).resolve()
+        artifact_root = artifact_root_checked
+        if artifact_root is None:
+            artifact_root = ROOT / "__invalid_artifact_root__"
         trace_schema = ROOT / "schemas" / "execution-trace.schema.json"
         eval_schema = ROOT / "schemas" / "evaluation.schema.json"
         for item in expected:

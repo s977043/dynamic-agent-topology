@@ -32,3 +32,9 @@ Traceは「何が起きたか」、Evaluationは「どう評価したか」を�
 同じScenarioの比較条件は `blockId` で束ねます。同一block内ではExperimentのControl設定に従い、Runtime / Model / Effortを一致させます。
 
 これにより、Topology差とRuntime/Model差を混同しにくくします。
+
+## Execution subject
+
+Experiment conditionは `AgentTopology` だけでなく `ExecutionBaseline` も参照できます。これによりP0 vs T0のような比較を同じExperiment Contractで表現できます。
+
+P0のような非Agent baselineでは `topologyAdherence` は `null` とし、0として扱いません。

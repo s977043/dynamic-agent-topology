@@ -1,0 +1,65 @@
+name: Proposal
+description: Propose a change to DAT based on a concrete problem, hypothesis, or observed friction.
+title: "[Proposal]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DAT is evidence-driven. Please start from the problem and evidence, not from a preferred topology or implementation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What concrete problem or limitation are you trying to solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or observation
+      description: What data, reproduction, experiment result, or operational friction supports the proposal?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the smallest useful change.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include a no-change option when relevant.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Documentation
+        - Schema or contract
+        - Validator or harness
+        - Runtime adapter
+        - Topology or role
+        - Routing or escalation
+        - Experiment methodology
+        - Repository operations
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked the current EXP-001 feature-freeze constraints before proposing changes to frozen artifacts.
+          required: true
+        - label: I am not presenting an untested topology choice as a universal best practice.
+          required: true

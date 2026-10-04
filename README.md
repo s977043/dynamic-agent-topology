@@ -7,6 +7,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: v0.2.1 Manual adoption-ready](https://img.shields.io/badge/Status-v0.2.1%20Manual%20adoption--ready-green.svg)](docs/NORTH_STAR.md)
+[![CI](https://github.com/s977043/dynamic-agent-topology/actions/workflows/spec-lint.yml/badge.svg)](https://github.com/s977043/dynamic-agent-topology/actions/workflows/spec-lint.yml)
+[![CodeQL](https://github.com/s977043/dynamic-agent-topology/actions/workflows/codeql.yml/badge.svg)](https://github.com/s977043/dynamic-agent-topology/actions/workflows/codeql.yml)
 
 **Dynamic Agent Topology (DAT)** は、AI Agent Teamの構造を設計・選択・評価・改善するための、Provider非依存の仕様と実験基盤です。
 
@@ -217,6 +219,12 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 > **Do not assume a topology is better. Test it.**
 
 Topologyは「良さそうだから採用する」のではなく、Evidenceで比較し、必要ならAblationし、採用・棄却・改善を判断します。
+
+## Contributing / Security
+
+コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。Bug / Proposal はIssue template、変更提案はPull Request templateに沿ってください。
+
+セキュリティ上の問題は公開Issueへ詳細を書かず、[SECURITY.md](SECURITY.md) の手順で報告してください。
 
 ## License
 

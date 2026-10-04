@@ -152,6 +152,12 @@ def main() -> int:
     assert_status(bad, "defaultBranch.ruleset.requiredStatusChecks", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.requireUpToDate", "DRIFT")
 
+    legacy_target = base_target()
+    legacy_ruleset = legacy_target["spec"]["defaultBranch"]["ruleset"]
+    legacy_ruleset["requiredApprovingReviewCount"] = legacy_ruleset.pop("requiredApprovingReviewCountExact")
+    legacy = module.audit(legacy_target, repo, branch, [compliant_ruleset()])
+    assert_status(legacy, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "PASS")
+
     higher_target = base_target()
     higher_target["spec"]["defaultBranch"]["ruleset"]["requiredApprovingReviewCountExact"] = 1
     lower_actual = module.audit(higher_target, repo, branch, [compliant_ruleset()])

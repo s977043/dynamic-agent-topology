@@ -70,6 +70,7 @@ DATでは、Agent数、Topology edge、Routing rule、Loop、state、retry、bra
 診断には [Engineering Layer Diagnostics](ENGINEERING_LAYERS.md) を使い、最小のBroken Work UnitとExpected Invariantを特定してからPromotionを検討します。
 
 Promotion後も、Evidenceが追加コストを正当化しない場合はde-escalate / simplifyします。A5やMulti-Agent化は成熟度のゴールではありません。
+
 ## Runtime Adapter rule
 
 v0.2.1では**Manual Adapter**を標準とします。

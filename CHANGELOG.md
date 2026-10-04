@@ -2,7 +2,7 @@
 
 All notable user-facing changes to Dynamic Agent Topology (DAT) are documented here.
 
-This project follows [Semantic Versioning](https://semver.org/) for published releases. Repository `main` may contain unreleased work; a version is considered published only when an immutable Git tag and matching GitHub Release exist.
+This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the compatibility policy is still evolving. Repository `main` may contain unreleased work; a version is considered published only when an immutable Git tag and matching GitHub Release exist.
 
 ## Unreleased
 

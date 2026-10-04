@@ -23,6 +23,14 @@ topologies = {
     load(path)["metadata"]["name"]: path
     for path in sorted((ROOT / "topologies" / "canonical").glob("*.yaml"))
 }
+baselines = {
+    load(path)["metadata"]["name"]: path
+    for path in sorted((ROOT / "baselines").glob("*.yaml"))
+}
+execution_subjects = {
+    "AgentTopology": topologies,
+    "ExecutionBaseline": baselines,
+}
 runtimes = {
     load(path)["metadata"]["runtime"]: path
     for path in sorted((ROOT / "adapters").glob("*/capabilities.yaml"))
@@ -32,7 +40,7 @@ experiments = {}
 experiment_controls = {}
 scenario_ids_by_experiment = {}
 condition_ids_by_experiment = {}
-condition_topology_by_experiment = {}
+condition_execution_by_experiment = {}
 
 for experiment_path in sorted((ROOT / "experiments").glob("EXP-*/experiment.yaml")):
     experiment = load(experiment_path)
@@ -48,15 +56,18 @@ for experiment_path in sorted((ROOT / "experiments").glob("EXP-*/experiment.yaml
     if len(condition_ids) != len(set(condition_ids)):
         errors.append(f"{experiment_path}: duplicate condition id")
     condition_ids_by_experiment[name] = set(condition_ids)
-    condition_topology_by_experiment[name] = {
-        item["id"]: item["topologyRef"] for item in conditions
+    condition_execution_by_experiment[name] = {
+        item["id"]: (item["executionRef"]["kind"], item["executionRef"]["name"])
+        for item in conditions
     }
 
     for condition in conditions:
-        if condition["topologyRef"] not in topologies:
+        ref = condition["executionRef"]
+        registry = execution_subjects[ref["kind"]]
+        if ref["name"] not in registry:
             errors.append(
-                f"{experiment_path}: condition {condition['id']!r} references unknown topology "
-                f"{condition['topologyRef']!r}"
+                f"{experiment_path}: condition {condition['id']!r} references unknown "
+                f"{ref['kind']} {ref['name']!r}"
             )
 
     for runtime in experiment["spec"].get("runtimeScope", []):
@@ -116,10 +127,14 @@ for path in sorted((ROOT / "examples" / "experiment-run").glob("*-trace.yaml")):
     validate_run_ref(path, data)
     experiment = data["metadata"]["experiment"]
     condition = data["metadata"]["condition"]
-    if experiment in condition_topology_by_experiment and condition in condition_topology_by_experiment[experiment]:
-        expected = condition_topology_by_experiment[experiment][condition]
-        if data["topology"] != expected:
-            errors.append(f"{path}: topology {data['topology']!r} does not match condition topology {expected!r}")
+    if experiment in condition_execution_by_experiment and condition in condition_execution_by_experiment[experiment]:
+        expected_kind, expected_name = condition_execution_by_experiment[experiment][condition]
+        subject = data["executionSubject"]
+        if subject["kind"] != expected_kind or subject["name"] != expected_name:
+            errors.append(
+                f"{path}: executionSubject {(subject['kind'], subject['name'])!r} does not match "
+                f"condition subject {(expected_kind, expected_name)!r}"
+            )
     sequences = [event["sequence"] for event in data["events"]]
     if sequences != sorted(set(sequences)):
         errors.append(f"{path}: event sequence must be unique and strictly increasing")
@@ -166,7 +181,9 @@ for run_id in sorted(set(traces_by_run) & set(evaluations_by_run)):
         errors.append(f"{evaluation_path}: executionContext.runtime does not match trace runtime for runId {run_id!r}")
     if context["model"] != trace["model"]["id"]:
         errors.append(f"{evaluation_path}: executionContext.model does not match trace model for runId {run_id!r}")
-    if context["effort"] != trace["model"].get("effort"):
+    context_effort = context.get("effort")
+    trace_effort = trace["model"].get("effort")
+    if context_effort != trace_effort:
         errors.append(f"{evaluation_path}: executionContext.effort does not match trace model effort for runId {run_id!r}")
     for field in ("agentInvocations", "coordinationTransitions", "wallClockMs"):
         if field in trace_summary and trace_summary[field] != efficiency[field]:
@@ -202,8 +219,12 @@ for (experiment, scenario, block_id), items in sorted(blocks.items()):
         errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes runtimes")
     if controls["sameModel"] and len({c["model"] for c in contexts}) != 1:
         errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes models")
-    if controls["sameEffort"] and len({c["effort"] for c in contexts}) != 1:
-        errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes effort levels")
+    if controls["sameEffort"]:
+        efforts = [c.get("effort") for c in contexts]
+        if any(value is None for value in efforts):
+            errors.append(f"comparison block {(experiment, scenario, block_id)!r} requires effort values")
+        elif len(set(efforts)) != 1:
+            errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes effort levels")
 
 if errors:
     print("Experiment semantic validation failed:")
@@ -213,7 +234,7 @@ if errors:
 
 print(
     "Experiment semantic validation passed: "
-    f"{len(experiments)} experiments, "
+    f"{len(experiments)} experiments, {len(topologies)} topologies, {len(baselines)} baselines, "
     f"{sum(len(v) for v in scenario_ids_by_experiment.values())} scenarios, "
     f"{len(traces_by_run)} traces, {len(evaluations_by_run)} evaluations."
 )

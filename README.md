@@ -158,6 +158,20 @@ v0.2.1 Manual adoption kitは、外部Repository `s977043/notionnext-blog` にA2
 
 Topology全体だけでなく、Role / Skill / Verifierなど**内部Capabilityの限界寄与**もpaired ablationで評価します。「呼ばれた」は効果の証拠ではありません。詳細は [Experiment Protocol — Capability-level ablation](docs/EXPERIMENTS.md#capability-level-ablation) と [Metrics — Capability contribution](docs/METRICS.md#capability-contributionderived-comparison) を参照してください。
 
+## Current Focus
+
+現在の最優先は **EXP-001の一次データ取得**です。
+
+- Execution tracking: Issue #15
+- Empirical runs: **live progress is tracked in Issue #15**
+- Feature Freeze: **ACTIVE**
+- `DECISION.md`: **NOT RUN**
+- 新Topology / Routing拡張 / Research・Production Profile設計: **EXP-001完了まで延期**
+
+Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)
+
+DATはいま仕様追加フェーズではなく、**Evidence acquisitionフェーズ**にあります。
+
 ## Evidence Base
 
 DATは既存研究・公式知見をそのまま流用せず、**Source ClaimとDAT側の採用判断を分離**して管理します。

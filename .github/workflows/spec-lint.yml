@@ -8,8 +8,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install check-jsonschema jsonschema pyyaml
@@ -126,3 +126,9 @@ jobs:
 
       - name: Test experiment operator kit
         run: python scripts/test_operator_kit.py
+
+      - name: Validate EXP-001 feature freeze
+        run: python scripts/validate_experiment_freeze.py
+
+      - name: Test EXP-001 feature freeze validator
+        run: python scripts/test_validate_experiment_freeze.py

@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"DAT Evaluation","type":"object","required":["apiVersion","kind","metadata","metrics"],"properties":{"apiVersion":{"const":"dat/v1alpha1"},"kind":{"const":"Evaluation"},"metadata":{"type":"object"},"metrics":{"type":"object"},"decision":{"enum":["adopt","reject","continue","rollback"]}}}

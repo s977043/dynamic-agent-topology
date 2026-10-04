@@ -1,0 +1,8 @@
+apiVersion: dat/v1alpha1
+kind: EscalationPolicy
+metadata: {name: E0-default}
+spec:
+  maxTopology: T2-worker-reviewer-verifier
+  maxAgents: 3
+  maxTransitions: 2
+  note: Project bindings should define task-specific token and time budgets.

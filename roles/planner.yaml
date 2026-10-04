@@ -1,0 +1,9 @@
+apiVersion: dat/v1alpha1
+kind: Role
+metadata:
+  name: planner
+  description: Produces a scoped implementation plan for non-trivial work.
+spec:
+  responsibilities: [clarify scope and dependencies, identify risks and assumptions, define implementation slices]
+  outputs: [implementation plan]
+  requiredCapabilities: [repository.read]

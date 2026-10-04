@@ -1,0 +1,5 @@
+apiVersion: dat/v1alpha1
+kind: AgentTopology
+metadata: {name: T0-single-agent, version: "0.1.0"}
+nodes:
+  - {id: worker, role: worker}

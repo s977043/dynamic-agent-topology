@@ -1,0 +1,6 @@
+.dat/generated/
+.dat/state/
+**/.dat/generated/
+**/.dat/state/
+.env
+.env.*

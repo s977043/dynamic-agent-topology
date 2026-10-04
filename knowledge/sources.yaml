@@ -1,0 +1,28 @@
+version: "1.0"
+sources:
+  - id: opencollab-2026
+    type: preprint
+    title: "OpenCollab: A Multi-Agent Coding Framework with Programmable Collaboration and Controllable Runtime"
+    url: "https://arxiv.org/abs/2609.38345"
+    published_at: "2026-09-29"
+    adopted: [topology-adherence, declared-vs-observed-separation]
+
+  - id: teambench-2026
+    type: preprint
+    title: "TeamBench: Evaluating Agent Coordination under Enforced Role Separation"
+    url: "https://arxiv.org/abs/2605.07073"
+    published_at: "2026-05-08"
+    adopted: [role-permission-separation, deterministic-evidence, role-ablation]
+
+  - id: asyncodebench-2026
+    type: preprint
+    title: "AsynCodeBench: Benchmarking Collaboration of Asynchronous Multi-Agent Systems in Software Engineering"
+    url: "https://arxiv.org/abs/2609.32662"
+    published_at: "2026-09-26"
+    adopted: [explicit-dependency-modeling, dependency-pass-rate, dependency-resolution-steps]
+
+  - id: anthropic-multi-agent-research
+    type: engineering-report
+    title: "How we built our multi-agent research system"
+    url: "https://www.anthropic.com/engineering/multi-agent-research-system"
+    adopted: [coordination-cost-awareness, task-dependent-parallelism]

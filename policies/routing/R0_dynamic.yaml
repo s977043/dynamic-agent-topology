@@ -1,0 +1,10 @@
+apiVersion: dat/v1alpha1
+kind: RoutingPolicy
+metadata: {name: R0-dynamic}
+rules:
+  - when: {complexity: low, ambiguity: low}
+    topology: T0-single-agent
+  - when: {existingEvidence: strong, risk: medium}
+    topology: T1-worker-verifier
+  - when: {risk: high}
+    topology: T2-worker-reviewer-verifier

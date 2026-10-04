@@ -1,0 +1,10 @@
+apiVersion: dat/v1alpha1
+kind: AgentTopology
+metadata: {name: T1-worker-verifier, version: "0.1.0"}
+nodes:
+  - {id: worker, role: worker}
+  - {id: verifier, role: verifier}
+edges:
+  - {from: worker, to: verifier, relation: verify}
+constraints:
+  - {type: separation, subjects: [worker, verifier]}

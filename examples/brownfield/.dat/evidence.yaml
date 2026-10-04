@@ -1,0 +1,6 @@
+apiVersion: dat/v1alpha1
+kind: EvidenceProfile
+metadata: {name: example-web-app}
+gates:
+  - {id: unit-test, level: deterministic, command: "npm test"}
+  - {id: typecheck, level: deterministic, command: "npm run typecheck"}

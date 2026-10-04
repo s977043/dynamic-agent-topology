@@ -1,0 +1,9 @@
+apiVersion: dat/v1alpha1
+kind: Role
+metadata:
+  name: reviewer
+  description: Independently reviews requirements, design, and implementation.
+spec:
+  responsibilities: [identify defects and risks, challenge assumptions, assess maintainability and security]
+  outputs: [findings, recommendation]
+  requiredCapabilities: [repository.read]

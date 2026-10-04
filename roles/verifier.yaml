@@ -1,0 +1,9 @@
+apiVersion: dat/v1alpha1
+kind: Role
+metadata:
+  name: verifier
+  description: Gathers and interprets evidence without acting as ground truth.
+spec:
+  responsibilities: [run or inspect available evidence, verify acceptance conditions, report evidence gaps]
+  outputs: [evidence report]
+  requiredCapabilities: [repository.read, evidence.execute]

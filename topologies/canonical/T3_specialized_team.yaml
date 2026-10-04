@@ -1,0 +1,15 @@
+apiVersion: dat/v1alpha1
+kind: AgentTopology
+metadata:
+  name: T3-specialized-team
+  version: "0.1.0"
+  description: High-coordination hypothesis; not a default.
+nodes:
+  - {id: planner, role: planner}
+  - {id: worker, role: worker}
+  - {id: reviewer, role: reviewer}
+  - {id: verifier, role: verifier}
+edges:
+  - {from: planner, to: worker, relation: delegate}
+  - {from: worker, to: reviewer, relation: review}
+  - {from: reviewer, to: verifier, relation: verify}

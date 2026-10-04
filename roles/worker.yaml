@@ -1,0 +1,9 @@
+apiVersion: dat/v1alpha1
+kind: Role
+metadata:
+  name: worker
+  description: Implements an assigned change.
+spec:
+  responsibilities: [implement scoped changes, add or update tests]
+  outputs: [implementation, implementation notes]
+  requiredCapabilities: [repository.read, repository.write]

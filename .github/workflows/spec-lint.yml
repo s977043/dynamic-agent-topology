@@ -1,0 +1,22 @@
+name: spec-lint
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install check-jsonschema
+      - name: Validate JSON Schemas
+        run: check-jsonschema --check-metaschema schemas/*.json
+      - name: Validate topologies
+        run: |
+          for file in topologies/canonical/*.yaml topologies/baselines/*.yaml; do
+            check-jsonschema --schemafile schemas/topology.schema.json "$file"
+          done
+      - name: Validate roles
+        run: |
+          for file in roles/*.yaml; do
+            check-jsonschema --schemafile schemas/role.schema.json "$file"
+          done

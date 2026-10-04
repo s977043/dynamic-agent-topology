@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use Dynamic Agent Topology in research or published engineering work, please cite this repository."
+title: "Dynamic Agent Topology"
+type: software
+authors:
+  - family-names: "s977043"
+repository-code: "https://github.com/s977043/dynamic-agent-topology"
+license: MIT
+version: 0.1.0
+date-released: 2026-10-04

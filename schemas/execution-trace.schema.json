@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"DAT Execution Trace","type":"object","required":["apiVersion","kind","topology","events"],"properties":{"apiVersion":{"const":"dat/v1alpha1"},"kind":{"const":"ExecutionTrace"},"topology":{"type":"string"},"runtime":{"type":"string"},"events":{"type":"array","items":{"type":"object"}}}}

@@ -1,0 +1,10 @@
+apiVersion: dat/v1alpha1
+kind: AgentTopology
+metadata: {name: T2-worker-reviewer-verifier, version: "0.1.0"}
+nodes:
+  - {id: worker, role: worker}
+  - {id: reviewer, role: reviewer}
+  - {id: verifier, role: verifier}
+edges:
+  - {from: worker, to: reviewer, relation: review}
+  - {from: reviewer, to: verifier, relation: verify}

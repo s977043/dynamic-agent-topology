@@ -1,0 +1,7 @@
+apiVersion: dat/v1alpha1
+kind: ProjectBinding
+metadata: {name: example-web-app}
+spec:
+  defaultTopology: T0-single-agent
+  supportedTopologies: [T0-single-agent, T1-worker-verifier, T2-worker-reviewer-verifier]
+  runtimes: [claude-code, codex, gemini-cli]

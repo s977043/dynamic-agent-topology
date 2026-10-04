@@ -146,6 +146,30 @@ for condition in ("T0", "T1"):
 if "{{topology_contract}}" not in base_prompt:
     failures.append("BASE prompt must own the topology contract insertion point")
 
+
+
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+    tmp_path = Path(tmp)
+    pilot = yaml.safe_load(PILOT.read_text(encoding="utf-8"))
+    matrix = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
+    pilot_path = tmp_path / "pilot.yaml"
+    matrix_path = tmp_path / "matrix.yaml"
+    pilot["spec"]["artifactRoot"] = str((tmp_path / "artifacts").relative_to(ROOT))
+    pilot["spec"]["matrixPath"] = str(matrix_path.relative_to(ROOT))
+    matrix["spec"]["runs"][0]["condition"] = "BROKEN"
+    pilot_path.write_text(yaml.safe_dump(pilot, sort_keys=False), encoding="utf-8")
+    matrix_path.write_text(yaml.safe_dump(matrix, sort_keys=False), encoding="utf-8")
+    result = run_prepare(
+        pilot_path,
+        matrix_path,
+        matrix["spec"]["runs"][0]["runId"],
+        tmp_path / "workspace-tampered",
+        "session-tampered",
+        "workspace-tampered",
+    )
+    if result.returncode == 0:
+        failures.append("prepare must reject a matrix that validate_pilot rejects")
+
 if failures:
     print("Operator Kit tests failed:")
     for failure in failures:

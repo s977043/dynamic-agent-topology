@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 
 import yaml
@@ -63,6 +64,26 @@ def existing_provenance(artifact_root: Path):
     return session_ids, workspace_ids
 
 
+def assert_valid_plan(pilot_path: Path, matrix_path: Path):
+    validator = ROOT / "scripts" / "validate_pilot.py"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(validator),
+            "--pilot",
+            str(pilot_path),
+            "--matrix",
+            str(matrix_path),
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        raise ValueError("pilot plan/matrix validation failed:\n" + result.stdout)
+
+
 def prepare_run(
     pilot_path: Path,
     matrix_path: Path,
@@ -71,6 +92,7 @@ def prepare_run(
     session_id: str,
     workspace_id: str,
 ):
+    assert_valid_plan(pilot_path, matrix_path)
     pilot = load(pilot_path)
     matrix = load(matrix_path)
 

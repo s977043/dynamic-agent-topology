@@ -12,7 +12,8 @@ DAT is currently in the EXP-001 evidence-acquisition phase. Any normative archit
 
 - Paper: [Raven: The Harness of Harnesses for Composable Agentic Intelligence](https://arxiv.org/abs/2609.33439)
 - Reference implementation: [EverMind-AI/Raven](https://github.com/EverMind-AI/Raven)
-- Published: 2026-09-27
+- Harness evolution source: [Self-Evolving Agent Harnesses via Gated Semantic Quality-Diversity](https://arxiv.org/abs/2607.13683)
+- Raven published: 2026-09-27
 - Repository status when reviewed on 2026-10-05: pre-alpha
 
 ## Source claims
@@ -22,6 +23,14 @@ The Raven paper treats an executable **model–harness pair** as a composable un
 Its Host Agent decomposes goals, assigns subtasks to specialized agents, coordinates execution dependencies, and integrates results. Raven also describes self-evolution of harnesses: candidate changes are generated from experience, evaluated, and only accepted when they pass validation.
 
 These are source claims, not DAT benchmark results.
+
+### Evidence provenance
+
+Raven's published harness self-evolution benchmark table is reproduced from HarnessBank rather than being an independent Raven orchestration experiment.
+
+The evidence therefore supports the **harness-evolution method** separately from Raven's **multi-agent orchestration** claims. DAT should not use the HarnessBank gains as evidence that Raven orchestration itself is superior.
+
+Raven also notes that the reproduced harness-evolution results do not provide a complete per-run manifest for every screening subset, proposal order, and run-specific setting. DAT should treat those results as external evidence with reproducibility limits, not as a drop-in benchmark baseline.
 
 ## Terminology boundary
 

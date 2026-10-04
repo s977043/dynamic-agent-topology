@@ -104,6 +104,8 @@ A5 is not the goal by itself. A project may intentionally remain at A2, A3, or a
 
 Start with the [Quick Start](docs/QUICKSTART.md), then see the [Brownfield Adoption Protocol](docs/ADOPTION.md).
 
+Use [Engineering Layer Diagnostics](docs/ENGINEERING_LAYERS.md) to localize failures before adding coordination or topology complexity.
+
 ## Target runtimes
 
 Initial targets:

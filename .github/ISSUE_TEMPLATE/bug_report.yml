@@ -20,8 +20,8 @@ body:
     id: revision
     attributes:
       label: DAT version or commit
-      description: Tag, version, or commit SHA where you observed the problem.
-      placeholder: v0.2.1 or a commit SHA
+      description: Published tag/release or exact commit SHA where you observed the problem.
+      placeholder: vX.Y.Z (published) or an exact commit SHA
     validations:
       required: true
 

@@ -194,7 +194,7 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 
 ## 現在の状態
 
-**v0.2.1 Manual adoption-ready**
+**Manual adoption-ready（現在の `main` は未Release）**
 
 現在は、以下の土台を整備しています。
 

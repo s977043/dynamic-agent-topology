@@ -2,43 +2,103 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DAT Experiment",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
   "properties": {
-    "apiVersion": {"const": "dat/v1alpha1"},
-    "kind": {"const": "Experiment"},
+    "apiVersion": {
+      "const": "dat/v1alpha1"
+    },
+    "kind": {
+      "const": "Experiment"
+    },
     "metadata": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "properties": {
-        "name": {"type": "string"},
-        "version": {"type": "string"},
-        "description": {"type": "string"}
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "spec": {
       "type": "object",
-      "required": ["question", "hypothesis", "conditions", "scenarioSets", "metrics", "controls", "decisionPolicy"],
+      "required": [
+        "question",
+        "hypothesis",
+        "conditions",
+        "scenarioSets",
+        "metrics",
+        "controls",
+        "decisionPolicy"
+      ],
       "properties": {
-        "question": {"type": "string", "minLength": 1},
-        "hypothesis": {"type": "string", "minLength": 1},
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1
+        },
         "conditions": {
           "type": "array",
           "minItems": 2,
           "items": {
             "type": "object",
-            "required": ["id", "topologyRef"],
+            "required": [
+              "id",
+              "executionRef"
+            ],
             "properties": {
-              "id": {"type": "string"},
-              "topologyRef": {"type": "string"},
-              "description": {"type": "string"}
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "executionRef": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "AgentTopology",
+                      "ExecutionBaseline"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
             },
             "additionalProperties": false
           }
         },
         "runtimeScope": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         },
         "scenarioSets": {
@@ -46,27 +106,44 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["split", "path"],
+            "required": [
+              "split",
+              "path"
+            ],
             "properties": {
-              "split": {"enum": ["train", "test", "regression"]},
-              "path": {"type": "string"}
+              "split": {
+                "enum": [
+                  "train",
+                  "test",
+                  "regression"
+                ]
+              },
+              "path": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
         },
         "metrics": {
           "type": "object",
-          "required": ["primary"],
+          "required": [
+            "primary"
+          ],
           "properties": {
             "primary": {
               "type": "array",
               "minItems": 1,
-              "items": {"type": "string"},
+              "items": {
+                "type": "string"
+              },
               "uniqueItems": true
             },
             "secondary": {
               "type": "array",
-              "items": {"type": "string"},
+              "items": {
+                "type": "string"
+              },
               "uniqueItems": true
             }
           },
@@ -74,24 +151,45 @@
         },
         "controls": {
           "type": "object",
-          "required": ["sameRuntime", "sameModel", "sameEffort", "freshWorkspacePerRun"],
+          "required": [
+            "sameRuntime",
+            "sameModel",
+            "sameEffort",
+            "freshWorkspacePerRun"
+          ],
           "properties": {
-            "sameRuntime": {"type": "boolean"},
-            "sameModel": {"type": "boolean"},
-            "sameEffort": {"type": "boolean"},
-            "freshWorkspacePerRun": {"type": "boolean"}
+            "sameRuntime": {
+              "type": "boolean"
+            },
+            "sameModel": {
+              "type": "boolean"
+            },
+            "sameEffort": {
+              "type": "boolean"
+            },
+            "freshWorkspacePerRun": {
+              "type": "boolean"
+            }
           },
           "additionalProperties": false
         },
         "decisionPolicy": {
           "type": "object",
-          "required": ["minimumRunsPerScenarioPerCondition", "criteria"],
+          "required": [
+            "minimumRunsPerScenarioPerCondition",
+            "criteria"
+          ],
           "properties": {
-            "minimumRunsPerScenarioPerCondition": {"type": "integer", "minimum": 1},
+            "minimumRunsPerScenarioPerCondition": {
+              "type": "integer",
+              "minimum": 1
+            },
             "criteria": {
               "type": "array",
               "minItems": 1,
-              "items": {"type": "string"}
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false

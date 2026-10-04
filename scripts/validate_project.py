@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
+import subprocess
 
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
@@ -268,6 +269,31 @@ def main() -> int:
         warnings.append(
             "dat.lock.yaml: pinMode is floating; use a commit SHA or tag for reproducible CI"
         )
+    else:
+        revision = dat_lock["revision"]
+        head_result = subprocess.run(
+            ["git", "-C", str(dat_root), "rev-parse", "HEAD"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        revision_result = subprocess.run(
+            ["git", "-C", str(dat_root), "rev-parse", f"{revision}^{commit}"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if head_result.returncode != 0:
+            errors.append("dat.lock.yaml: pinned mode requires dat-root to be a Git checkout")
+        elif revision_result.returncode != 0:
+            errors.append(
+                f"dat.lock.yaml: pinned revision {revision!r} cannot be resolved in DAT checkout"
+            )
+        elif head_result.stdout.strip() != revision_result.stdout.strip():
+            errors.append(
+                f"dat.lock.yaml: pinned revision {revision!r} does not match checked-out DAT HEAD "
+                f"{head_result.stdout.strip()!r}"
+            )
 
     gitignore_path = project_root / ".gitignore"
     if gitignore_path.is_file():

@@ -75,7 +75,7 @@ python /path/to/dynamic-agent-topology/scripts/validate_project.py \
   --dat-root /path/to/dynamic-agent-topology
 ```
 
-PASSすれば、SchemaとDAT参照の整合が確認できています。
+PASSすれば、SchemaとDAT参照の整合が確認できています。`pinMode: pinned` の場合は、`dat.lock.yaml` のrevisionと実際のDAT checkout HEADも一致していることを検証します。
 
 ## 7. CIへ追加する
 

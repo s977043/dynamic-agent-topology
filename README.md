@@ -170,6 +170,8 @@ Topology全体だけでなく、Role / Skill / Verifierなど**内部Capability�
 
 Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)
 
+Execution handoff: [EXP-001 Execution Handoff](docs/EXP-001_EXECUTION.md)
+
 DATはいま仕様追加フェーズではなく、**Evidence acquisitionフェーズ**にあります。
 
 ## Evidence Base

@@ -156,6 +156,8 @@ v0.2.1 Manual adoption kitは、外部Repository `s977043/notionnext-blog` にA2
 
 同一Task / Runtime / Model / EffortでT0とT1を繰り返し実行し、Task SuccessだけでなくRegression、Human Intervention、Token、Latency、Topology Adherence、Verifier False Acceptを合わせて評価します。
 
+Topology全体だけでなく、Role / Skill / Verifierなど**内部Capabilityの限界寄与**もpaired ablationで評価します。「呼ばれた」は効果の証拠ではありません。詳細は [Experiment Protocol — Capability-level ablation](docs/EXPERIMENTS.md#capability-level-ablation) と [Metrics — Capability contribution](docs/METRICS.md#capability-contributionderived-comparison) を参照してください。
+
 ## Evidence Base
 
 DATは既存研究・公式知見をそのまま流用せず、**Source ClaimとDAT側の採用判断を分離**して管理します。

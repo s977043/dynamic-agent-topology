@@ -144,6 +144,12 @@ harness/      Experiment Artifactの検証・集計Harness
 examples/     Brownfield導入例
 ```
 
+## Dogfooding
+
+v0.2.1 Manual adoption kitは、外部Repository `s977043/notionnext-blog` にA2 Observe / Codex / T0固定で導入し、consumer PRとmerge後mainのDAT validationが成功しています。
+
+詳細: [Dogfooding Evidence](docs/DOGFOODING.md)
+
 ## 最初の実験
 
 [EXP-001: T0 vs T1](experiments/EXP-001-t0-vs-t1/README.md) では、Single Agentに独立Verifierを追加する価値を比較します。

@@ -145,7 +145,7 @@ def main() -> int:
     bad = module.audit(target, repo, branch, [incomplete])
     assert_status(bad, "defaultBranch.ruleset.required", "PASS")
     assert_status(bad, "defaultBranch.ruleset.requirePullRequest", "PASS")
-    assert_status(bad, "defaultBranch.ruleset.requiredApprovingReviewCount", "DRIFT")
+    assert_status(bad, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.requireConversationResolution", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.blockForcePushes", "DRIFT")
     assert_status(bad, "defaultBranch.ruleset.blockDeletion", "DRIFT")
@@ -192,7 +192,7 @@ def main() -> int:
     mixed_checks = module.audit(target, repo, branch, mixed)
     assert_status(mixed_checks, "defaultBranch.ruleset.requirePullRequest", "PASS")
     assert_status(mixed_checks, "defaultBranch.ruleset.blockForcePushes", "PASS")
-    assert_status(mixed_checks, "defaultBranch.ruleset.requiredApprovingReviewCount", "UNKNOWN")
+    assert_status(mixed_checks, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "UNKNOWN")
 
     unavailable = module.audit(
         target,

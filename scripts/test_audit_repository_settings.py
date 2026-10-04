@@ -69,7 +69,11 @@ def main() -> int:
     target = base_target()
     repo = compliant_repository()
     branch = {"protected": True}
-    rulesets = [{"target": "branch", "enforcement": "active"}]
+    rulesets = [{
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+    }]
 
     checks = module.audit(target, repo, branch, rulesets)
     if any(item["status"] != "PASS" for item in checks):
@@ -83,6 +87,22 @@ def main() -> int:
     assert_status(drift, "merge.mergeCommit", "DRIFT")
     assert_status(drift, "defaultBranch.protected", "DRIFT")
     assert_status(drift, "defaultBranch.activeRulesetRequired", "DRIFT")
+
+    wrong_branch_ruleset = [{
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": []}},
+    }]
+    wrong_branch = module.audit(target, repo, branch, wrong_branch_ruleset)
+    assert_status(wrong_branch, "defaultBranch.activeRulesetRequired", "UNKNOWN")
+
+    explicit_other_branch = [{
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": ["~DEFAULT_BRANCH"]}},
+    }]
+    explicit_other = module.audit(target, repo, branch, explicit_other_branch)
+    assert_status(explicit_other, "defaultBranch.activeRulesetRequired", "DRIFT")
 
     unknown = module.audit(
         target,

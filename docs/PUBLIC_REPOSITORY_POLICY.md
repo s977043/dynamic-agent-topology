@@ -71,6 +71,8 @@ A version advertised in README or `CITATION.cff` must map to an immutable Git ta
 
 Repository policy, release metadata, and the actual GitHub Release must describe the same boundary. If `main` has moved beyond the latest release, document that work as unreleased rather than rewriting the historical release point.
 
+See [Release readiness](RELEASE_READINESS.md) for the candidate-to-publication gate.
+
 ## Audit checklist
 
 During an audit, verify at least:

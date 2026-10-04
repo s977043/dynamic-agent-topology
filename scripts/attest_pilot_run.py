@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime
 import hashlib
 from pathlib import Path
+import subprocess
 import sys
 
 import yaml
@@ -34,6 +35,26 @@ def parse_datetime(value: str) -> datetime:
     return parsed
 
 
+def assert_valid_plan(pilot_path: Path, matrix_path: Path):
+    validator = ROOT / "scripts" / "validate_pilot.py"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(validator),
+            "--pilot",
+            str(pilot_path),
+            "--matrix",
+            str(matrix_path),
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        raise ValueError("pilot plan/matrix validation failed:\n" + result.stdout)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Record post-run execution attestation from observed operator/runtime facts."
@@ -55,6 +76,7 @@ def main() -> int:
     matrix_path = (ROOT / args.matrix).resolve() if not Path(args.matrix).is_absolute() else Path(args.matrix).resolve()
 
     try:
+        assert_valid_plan(pilot_path, matrix_path)
         pilot = load(pilot_path)
         matrix = load(matrix_path)
         started = parse_datetime(args.started_at)

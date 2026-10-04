@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -64,7 +65,7 @@ def existing_provenance(artifact_root: Path):
     return session_ids, workspace_ids
 
 
-def assert_valid_plan(pilot_path: Path, matrix_path: Path):
+def run_validator(pilot_path: Path, matrix_path: Path, *extra_args: str):
     validator = ROOT / "scripts" / "validate_pilot.py"
     result = subprocess.run(
         [
@@ -74,6 +75,7 @@ def assert_valid_plan(pilot_path: Path, matrix_path: Path):
             str(pilot_path),
             "--matrix",
             str(matrix_path),
+            *extra_args,
         ],
         cwd=ROOT,
         text=True,
@@ -81,7 +83,11 @@ def assert_valid_plan(pilot_path: Path, matrix_path: Path):
         stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:
-        raise ValueError("pilot plan/matrix validation failed:\n" + result.stdout)
+        raise ValueError("pilot validation failed:\n" + result.stdout)
+
+
+def assert_valid_plan(pilot_path: Path, matrix_path: Path):
+    run_validator(pilot_path, matrix_path)
 
 
 def prepare_run(
@@ -104,6 +110,15 @@ def prepare_run(
     if run_id not in entries:
         raise ValueError(f"unknown runId {run_id!r}")
     item = entries[run_id]
+
+    try:
+        workspace.relative_to(ROOT.resolve())
+    except ValueError:
+        pass
+    else:
+        raise ValueError(
+            f"workspace must be outside the DAT repository to isolate runs: {workspace}"
+        )
 
     if workspace.exists():
         raise ValueError(f"workspace must not already exist: {workspace}")
@@ -161,6 +176,18 @@ def prepare_run(
                 f"prior run {prior['runId']!r} must have result artifacts before executionOrder "
                 f"{item['executionOrder']}; missing/empty={missing_prior!r}"
             )
+        run_validator(pilot_path, matrix_path, "--run-id", prior["runId"])
+
+    base_template = base_prompt_path.read_text(encoding="utf-8")
+    topology_contract = prompt_path.read_text(encoding="utf-8")
+    prompt = render_prompt(base_template, topology_contract, scenario)
+    header = (
+        f"<!-- runId: {item['runId']} -->\n"
+        f"<!-- blockId: {item['blockId']} -->\n"
+        f"<!-- executionOrder: {item['executionOrder']} -->\n\n"
+    )
+    rendered_prompt = header + prompt
+    prompt_sha256 = hashlib.sha256(rendered_prompt.encode("utf-8")).hexdigest()
 
     shutil.copytree(fixture, workspace)
     run_dir.mkdir(parents=True)
@@ -182,6 +209,7 @@ def prepare_run(
             "freshWorkspace": True,
             "freshSession": True,
             "crossRunFeedbackUsed": False,
+            "promptSha256": prompt_sha256,
         },
     }
     (run_dir / "run-meta.yaml").write_text(
@@ -189,15 +217,7 @@ def prepare_run(
         encoding="utf-8",
     )
 
-    base_template = base_prompt_path.read_text(encoding="utf-8")
-    topology_contract = prompt_path.read_text(encoding="utf-8")
-    prompt = render_prompt(base_template, topology_contract, scenario)
-    header = (
-        f"<!-- runId: {item['runId']} -->\n"
-        f"<!-- blockId: {item['blockId']} -->\n"
-        f"<!-- executionOrder: {item['executionOrder']} -->\n\n"
-    )
-    (run_dir / "prompt.md").write_text(header + prompt, encoding="utf-8")
+    (run_dir / "prompt.md").write_text(rendered_prompt, encoding="utf-8")
 
     print(f"Prepared {run_id}")
     print(f"Workspace: {workspace}")

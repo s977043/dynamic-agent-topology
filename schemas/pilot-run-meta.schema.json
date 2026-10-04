@@ -52,7 +52,8 @@
         "sessionId",
         "freshWorkspace",
         "freshSession",
-        "crossRunFeedbackUsed"
+        "crossRunFeedbackUsed",
+        "promptSha256"
       ],
       "properties": {
         "repetition": {
@@ -87,6 +88,10 @@
         "finishedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "promptSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         }
       },
       "additionalProperties": false

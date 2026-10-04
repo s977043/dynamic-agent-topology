@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -44,8 +45,9 @@ def run_status(pilot, matrix):
 
 failures = []
 
-with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp, tempfile.TemporaryDirectory() as ws_tmp:
     tmp_path = Path(tmp)
+    ws_root = Path(ws_tmp)
     pilot = yaml.safe_load(PILOT.read_text(encoding="utf-8"))
     matrix = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
     pilot_path = tmp_path / "pilot.yaml"
@@ -58,70 +60,86 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
 
     first = matrix["spec"]["runs"][0]
     second = matrix["spec"]["runs"][1]
-    ws1 = tmp_path / "workspace-1"
+    another_first = next(
+        item for item in matrix["spec"]["runs"][2:]
+        if item["executionOrder"] == 1 and item["blockId"] != first["blockId"]
+    )
+
+    ws1 = ws_root / "workspace-1"
     result = run_prepare(
         pilot_path, matrix_path, first["runId"], ws1, "session-001", "workspace-001"
     )
     if result.returncode != 0:
         failures.append("valid prepare must pass\n" + result.stdout)
     if not (ws1 / "tests").exists():
-        failures.append("prepare must copy the fixture into a fresh workspace")
-    if not (artifact_root / first["runId"] / "run-meta.yaml").is_file():
+        failures.append("prepare must copy the fixture into a fresh external workspace")
+    run_dir = artifact_root / first["runId"]
+    meta_path = run_dir / "run-meta.yaml"
+    prompt_path = run_dir / "prompt.md"
+    if not meta_path.is_file():
         failures.append("prepare must create run-meta.yaml")
-    if not (artifact_root / first["runId"] / "prompt.md").is_file():
+    if not prompt_path.is_file():
         failures.append("prepare must create prompt.md")
+    if meta_path.is_file() and prompt_path.is_file():
+        meta = yaml.safe_load(meta_path.read_text(encoding="utf-8"))
+        actual_hash = hashlib.sha256(prompt_path.read_bytes()).hexdigest()
+        if meta["spec"].get("promptSha256") != actual_hash:
+            failures.append("run-meta promptSha256 must match generated prompt.md")
 
     status_result = run_status(pilot_path, matrix_path)
     if status_result.returncode != 0 or '"prepared": 1' not in status_result.stdout:
         failures.append("status must report exactly one prepared run after preparation")
 
     blocked_order = run_prepare(
-        pilot_path, matrix_path, second["runId"], tmp_path / "workspace-order-blocked",
+        pilot_path, matrix_path, second["runId"], ws_root / "workspace-order-blocked",
         "session-order", "workspace-order"
     )
     if blocked_order.returncode == 0:
-        failures.append("executionOrder=2 must be blocked until the prior run has result artifacts")
+        failures.append("executionOrder=2 must be blocked until the prior run validates")
 
     duplicate_run = run_prepare(
-        pilot_path, matrix_path, first["runId"], tmp_path / "workspace-dup-run",
+        pilot_path, matrix_path, first["runId"], ws_root / "workspace-dup-run",
         "session-002", "workspace-002"
     )
     if duplicate_run.returncode == 0:
         failures.append("re-preparing the same runId must fail")
 
-    prior_dir = artifact_root / first["runId"]
-    for name in ("trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt"):
-        (prior_dir / name).write_text("test-artifact\n", encoding="utf-8")
-
     duplicate_session = run_prepare(
-        pilot_path, matrix_path, second["runId"], tmp_path / "workspace-2",
+        pilot_path, matrix_path, another_first["runId"], ws_root / "workspace-2",
         "session-001", "workspace-003"
     )
     if duplicate_session.returncode == 0:
         failures.append("duplicate sessionId must fail")
 
     duplicate_workspace = run_prepare(
-        pilot_path, matrix_path, second["runId"], tmp_path / "workspace-3",
+        pilot_path, matrix_path, another_first["runId"], ws_root / "workspace-3",
         "session-003", "workspace-001"
     )
     if duplicate_workspace.returncode == 0:
         failures.append("duplicate workspaceId must fail")
 
     unknown = run_prepare(
-        pilot_path, matrix_path, "does-not-exist", tmp_path / "workspace-unknown",
+        pilot_path, matrix_path, "does-not-exist", ws_root / "workspace-unknown",
         "session-004", "workspace-004"
     )
     if unknown.returncode == 0:
         failures.append("unknown runId must fail")
 
-    existing_ws = tmp_path / "already-exists"
+    existing_ws = ws_root / "already-exists"
     existing_ws.mkdir()
     non_fresh = run_prepare(
-        pilot_path, matrix_path, second["runId"], existing_ws,
+        pilot_path, matrix_path, another_first["runId"], existing_ws,
         "session-005", "workspace-005"
     )
     if non_fresh.returncode == 0:
         failures.append("existing workspace must fail even when empty")
+
+    inside_repo = run_prepare(
+        pilot_path, matrix_path, another_first["runId"], tmp_path / "workspace-inside-repo",
+        "session-006", "workspace-006"
+    )
+    if inside_repo.returncode == 0:
+        failures.append("workspace inside DAT repository must fail")
 
 with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     tmp_path = Path(tmp)
@@ -136,7 +154,6 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     if escaped.returncode == 0:
         failures.append("status must reject artifactRoot path escape")
 
-
 base_prompt = (ROOT / "experiments" / "EXP-001-t0-vs-t1" / "pilot" / "prompts" / "BASE.md").read_text(encoding="utf-8")
 for condition in ("T0", "T1"):
     overlay = (ROOT / "experiments" / "EXP-001-t0-vs-t1" / "pilot" / "prompts" / f"{condition}.md").read_text(encoding="utf-8")
@@ -146,9 +163,7 @@ for condition in ("T0", "T1"):
 if "{{topology_contract}}" not in base_prompt:
     failures.append("BASE prompt must own the topology contract insertion point")
 
-
-
-with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp, tempfile.TemporaryDirectory() as ws_tmp:
     tmp_path = Path(tmp)
     pilot = yaml.safe_load(PILOT.read_text(encoding="utf-8"))
     matrix = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
@@ -163,7 +178,7 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
         pilot_path,
         matrix_path,
         matrix["spec"]["runs"][0]["runId"],
-        tmp_path / "workspace-tampered",
+        Path(ws_tmp) / "workspace-tampered",
         "session-tampered",
         "workspace-tampered",
     )

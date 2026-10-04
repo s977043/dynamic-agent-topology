@@ -94,6 +94,8 @@ Runは以下を満たすまでcompleteではありません。
 - patchが保存済み
 - `run-meta.yaml` でfresh workspace / fresh session / cross-run feedback未使用を記録する
 - workspaceId / sessionId は18 Run間で一意にする（秘密情報ではなくRun用opaque IDを使う）
+- workspaceはDAT repository外に置く
+- prompt.mdはrun-meta.yamlのpromptSha256と一致する
 - T0/T1 paired blockのRuntime / Model / Effortが一致
 
 ## Pilot完了判定

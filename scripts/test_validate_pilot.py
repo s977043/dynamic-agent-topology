@@ -54,6 +54,17 @@ incomplete = run(PILOT, MATRIX, "--require-complete")
 if incomplete.returncode == 0:
     failures.append("require-complete must fail before 18 run artifacts exist")
 
+
+
+first_run = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))["spec"]["runs"][0]["runId"]
+single_incomplete = run(PILOT, MATRIX, "--run-id", first_run)
+if single_incomplete.returncode == 0:
+    failures.append("single-run artifact validation must fail before run artifacts exist")
+
+unknown_run = run(PILOT, MATRIX, "--run-id", "does-not-exist")
+if unknown_run.returncode == 0:
+    failures.append("single-run artifact validation must reject unknown runId")
+
 if failures:
     print("Pilot validator tests failed:")
     for failure in failures:

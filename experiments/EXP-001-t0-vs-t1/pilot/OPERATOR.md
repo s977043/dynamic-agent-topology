@@ -52,9 +52,10 @@ runs/pilot-codex/<runId>/
 
 1. 新しいCodex session/contextを開始する。
 2. 対象Runの `prompt.md` だけを入力として使う。
-3. 他RunのArtifact/結果を参照しない。
-4. T0/T1のRole Contractを変更しない。
-5. Run終了後、Trace / Evaluation / patch / Evidenceを保存する。
+3. Run開始時点を記録し、終了時点との差分から `wallClockMs` を実測する。
+4. 他RunのArtifact/結果を参照しない。
+5. T0/T1のRole Contractを変更しない。
+6. Run終了後、Trace / Evaluation / patch / Evidenceを保存する。
 
 ## 4. 進捗状態
 
@@ -68,7 +69,18 @@ runs/pilot-codex/<runId>/
 
 **artifacts-present ≠ complete** です。
 
-Semantic completionは必ず:
+各Run終了後は、そのRunだけをsemantic validationします。
+
+```bash
+python scripts/validate_pilot.py \
+  --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
+  --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
+  --run-id <runId>
+```
+
+このsingle-run validationがPASSするまで、paired blockの次Runへ進みません。
+
+18 Runすべての最終completionは:
 
 ```bash
 python scripts/validate_pilot.py \

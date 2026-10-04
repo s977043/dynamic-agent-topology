@@ -13,7 +13,7 @@
 - `scripts/validate_pilot.py`
 - `experiments/EXP-001-t0-vs-t1/pilot/RUNBOOK.md`
 
-内容が矛盾する場合は正本を優先します。
+内容が矛盾する場合は正本を優先します。Schemaはfield contract、Runbookは実行順序、この文書は実Run後の記録判断を補助する役割です。
 
 ## Capture boundary
 
@@ -124,7 +124,7 @@ eventは、外部から確認できる出来事だけを記録します。
 
 取得できないoptional metricは省略します。**0は「観測値0」の場合だけ使用**します。
 
-`wallClockMs` は `evaluation.schema.json` の必須fieldです。complete Runとして扱うには、推測ではなく実測値を記録します。
+`RunEvaluation.efficiency.wallClockMs` は `evaluation.schema.json` で必須です。`ExecutionTrace.summary.wallClockMs` はSchema上optionalですが、このEXP-001記録ガイドではcomplete RunのTrace/Evaluation整合のため記録対象とします。どちらも推測値ではなく実測値を使用します。
 
 ## 2. evaluation.yaml
 

@@ -1,6 +1,6 @@
 # EXP-001 Execution Handoff
 
-この文書は、EXP-001の実行を開始するための**ナビゲーション専用**です。
+この文書は、EXP-001の実行を開始するための**ナビゲーション専用**です。実験条件や評価意味論を定義する文書ではありません。
 
 > **この文書は実験条件のSource of Truthではありません。**
 
@@ -13,7 +13,7 @@
 5. Runbook: `experiments/EXP-001-t0-vs-t1/pilot/RUNBOOK.md`
 6. Live progress: GitHub Issue #15
 
-内容が矛盾した場合は、上記の正本を優先します。
+内容が矛盾した場合は、上記の正本を優先します。この文書の役割は、正本へ安全に到達し、実Run開始前後の操作順を迷わないようにすることです。
 
 ## Current boundary
 
@@ -166,5 +166,3 @@ Live progressと次アクションはIssue #15で管理します。
 ## Result capture
 
 実Codex Run終了後のArtifact記録は [EXP-001 Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) を参照してください。
-
-Artifact capture: `docs/EXP-001_ARTIFACT_CAPTURE.md`

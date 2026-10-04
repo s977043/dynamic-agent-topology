@@ -1,0 +1,31 @@
+apiVersion: dat/v1alpha1
+kind: RuntimeCapabilityManifest
+metadata:
+  runtime: gemini-cli
+  variant: cli
+  verifiedAt: "2026-10-04"
+capabilities:
+  custom_roles:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/blob/main/docs/core/subagents.md
+  isolated_context:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/discussions/25562
+  parallel_subagents:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/discussions/25562
+  tool_scoping:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/policy-engine.md
+  permission_scoping:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/policy-engine.md
+  runtime_hooks:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/blob/main/docs/extensions/reference.md
+  remote_agents:
+    status: native
+    source: https://github.com/google-gemini/gemini-cli/blob/main/docs/core/remote-agents.md
+    note: Remote subagents use A2A.
+  workspace_isolation:
+    status: unknown

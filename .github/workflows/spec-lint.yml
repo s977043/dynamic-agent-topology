@@ -1,22 +1,63 @@
 name: spec-lint
-on: [push, pull_request]
+
+on:
+  push:
+  pull_request:
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: "3.12"}
-      - run: pip install check-jsonschema
+        with:
+          python-version: "3.12"
+      - run: pip install check-jsonschema pyyaml
+
       - name: Validate JSON Schemas
         run: check-jsonschema --check-metaschema schemas/*.json
-      - name: Validate topologies
+
+      - name: Validate canonical topologies
         run: |
-          for file in topologies/canonical/*.yaml topologies/baselines/*.yaml; do
+          for file in topologies/canonical/*.yaml; do
             check-jsonschema --schemafile schemas/topology.schema.json "$file"
           done
+
+      - name: Validate execution baselines
+        run: |
+          for file in topologies/baselines/*.yaml; do
+            check-jsonschema --schemafile schemas/execution-baseline.schema.json "$file"
+          done
+
       - name: Validate roles
         run: |
           for file in roles/*.yaml; do
             check-jsonschema --schemafile schemas/role.schema.json "$file"
           done
+
+      - name: Validate routing policies
+        run: |
+          for file in policies/routing/*.yaml; do
+            check-jsonschema --schemafile schemas/routing-policy.schema.json "$file"
+          done
+
+      - name: Validate escalation policies
+        run: |
+          for file in policies/escalation/*.yaml; do
+            check-jsonschema --schemafile schemas/escalation-policy.schema.json "$file"
+          done
+
+      - name: Validate runtime capability manifests
+        run: |
+          for file in adapters/*/capabilities.yaml; do
+            check-jsonschema --schemafile schemas/runtime-capability.schema.json "$file"
+          done
+
+      - name: Validate brownfield example
+        run: |
+          check-jsonschema --schemafile schemas/project-binding.schema.json examples/brownfield/.dat/project.yaml
+          check-jsonschema --schemafile schemas/evidence-profile.schema.json examples/brownfield/.dat/evidence.yaml
+          check-jsonschema --schemafile schemas/project-policy.schema.json examples/brownfield/.dat/policy.yaml
+
+      - name: Semantic validation
+        run: python scripts/validate_semantics.py

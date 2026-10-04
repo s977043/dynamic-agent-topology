@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Escalation Policy",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "EscalationPolicy"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"name": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": ["maxTopology", "maxAgents", "maxTransitions"],
+      "properties": {
+        "maxTopology": {"type": "string"},
+        "maxAgents": {"type": "integer", "minimum": 1},
+        "maxTransitions": {"type": "integer", "minimum": 0},
+        "note": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

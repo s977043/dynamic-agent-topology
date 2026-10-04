@@ -1,0 +1,34 @@
+apiVersion: dat/v1alpha1
+kind: RuntimeCapabilityManifest
+metadata:
+  runtime: antigravity
+  variant: 2.0
+  verifiedAt: "2026-10-04"
+capabilities:
+  custom_roles:
+    status: native
+    source: https://www.antigravity.google/blog/introducing-custom-agents
+  isolated_context:
+    status: native
+    source: https://www.antigravity.google/docs/subagents/
+  parallel_subagents:
+    status: native
+    source: https://www.antigravity.google/docs/subagents/
+  tool_scoping:
+    status: native
+    source: https://www.antigravity.google/blog/introducing-custom-agents
+  permission_scoping:
+    status: native
+    source: https://www.antigravity.google/blog/introducing-custom-agents
+  runtime_hooks:
+    status: native
+    source: https://www.antigravity.google/blog/google-io-2026-feature-deep-dive
+  workspace_isolation:
+    status: native
+    source: https://www.antigravity.google/docs/subagents/
+    note: Isolated Git worktrees are supported for subagents.
+  asynchronous_subagents:
+    status: native
+    source: https://www.antigravity.google/blog/google-io-2026-feature-deep-dive
+  remote_agents:
+    status: unknown

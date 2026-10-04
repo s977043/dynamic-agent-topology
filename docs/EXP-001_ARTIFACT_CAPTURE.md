@@ -56,7 +56,9 @@ experiments/EXP-001-t0-vs-t1/runs/pilot-codex/<runId>/
 
 ## 0. execution-attestation.yaml
 
-実Codex session終了後に、実際に観測した実行事実を記録します。
+実Codex session終了後に、実行者/Runtime側で観測した実行事実をattestします。
+
+**Attestation != Verification.** このArtifactは「実行条件について何が観測・申告されたか」を外部化するもので、fresh sessionやcross-run isolationを独立に証明するGround Truthではありません。validatorはSchema・Pilot条件・他Artifactとの整合を検査しますが、申告内容そのものの真実性を生成しません。
 
 - `sessionId` — 実際のsessionへ割り当てた非秘密opaque ID
 - `freshSession` — 実際にfreshだったか

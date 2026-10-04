@@ -6,12 +6,45 @@ body:
     attributes:
       value: |
         DAT does not adopt a design because a source is persuasive. Separate source claims from DAT interpretation, then define how the hypothesis could be falsified.
+        Use the Engineering Layer fields to localize the problem before proposing additional coordination or topology complexity.
 
   - type: textarea
     id: problem
     attributes:
       label: Problem or observed friction
       description: What concrete DAT problem or limitation motivates this proposal?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engineering_layer
+    attributes:
+      label: Affected Engineering Layer
+      description: Select the primary diagnostic layer. Choose Cross-layer / Unknown when the proposal spans layers or evidence is insufficient.
+      options:
+        - Prompt
+        - Context
+        - Harness
+        - Loop
+        - Graph
+        - Evaluation
+        - Cross-layer / Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: work_unit
+    attributes:
+      label: Affected Work Unit
+      description: Identify the smallest role, handoff, adapter, policy, permission boundary, validator, state transition, topology edge, or other unit implicated by the proposal.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_invariant
+    attributes:
+      label: Expected invariant or design property
+      description: What property should the proposed design preserve or establish?
     validations:
       required: true
 
@@ -50,8 +83,8 @@ body:
   - type: textarea
     id: evaluation
     attributes:
-      label: Cheapest useful evaluation
-      description: What is the smallest controlled test or observation that could reduce uncertainty?
+      label: Cheapest useful verification method
+      description: What is the smallest controlled test or observation that could verify the expected property or reduce uncertainty?
     validations:
       required: true
 

@@ -26,3 +26,9 @@ DATのExperimentは、Topologyを「良さそうだから採用する」ので�
 2. `RunEvaluation`
 
 Traceは「何が起きたか」、Evaluationは「どう評価したか」を分離します。
+
+## Paired comparison block
+
+同じScenarioの比較条件は `blockId` で束ねます。同一block内ではExperimentのControl設定に従い、Runtime / Model / Effortを一致させます。
+
+これにより、Topology差とRuntime/Model差を混同しにくくします。

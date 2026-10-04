@@ -218,6 +218,18 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 
 Topologyは「良さそうだから採用する」のではなく、Evidenceで比較し、必要ならAblationし、採用・棄却・改善を判断します。
 
+
+## Contributing / Support
+
+DATへのContributionは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+- Bug / Research Proposal: GitHub Issue templates
+- Support: [SUPPORT.md](SUPPORT.md)
+- Security: [SECURITY.md](SECURITY.md)
+- Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+EXP-001のFeature Freeze中は、凍結Artifactを変更する前に必ずFreeze policyを確認してください。
+
 ## License
 
 MIT

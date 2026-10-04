@@ -47,22 +47,19 @@ def render_prompt(base_template: str, topology_contract: str, scenario: dict) ->
     )
 
 
-def existing_provenance(artifact_root: Path):
-    session_ids = set()
+def existing_workspace_ids(artifact_root: Path):
     workspace_ids = set()
     if not artifact_root.exists():
-        return session_ids, workspace_ids
+        return workspace_ids
     for path in artifact_root.glob("*/run-meta.yaml"):
         try:
             data = load(path)
         except Exception as exc:
-            raise ValueError(f"cannot read existing provenance {path}: {exc}") from exc
-        spec = data.get("spec", {})
-        if spec.get("sessionId"):
-            session_ids.add(spec["sessionId"])
-        if spec.get("workspaceId"):
-            workspace_ids.add(spec["workspaceId"])
-    return session_ids, workspace_ids
+            raise ValueError(f"cannot read existing preparation metadata {path}: {exc}") from exc
+        workspace_id = data.get("spec", {}).get("workspaceId")
+        if workspace_id:
+            workspace_ids.add(workspace_id)
+    return workspace_ids
 
 
 def run_validator(pilot_path: Path, matrix_path: Path, *extra_args: str):
@@ -95,7 +92,6 @@ def prepare_run(
     matrix_path: Path,
     run_id: str,
     workspace: Path,
-    session_id: str,
     workspace_id: str,
 ):
     assert_valid_plan(pilot_path, matrix_path)
@@ -128,9 +124,7 @@ def prepare_run(
     if run_dir.exists():
         raise ValueError(f"run artifact directory already exists: {run_dir}")
 
-    sessions, workspaces = existing_provenance(artifact_root)
-    if session_id in sessions:
-        raise ValueError(f"sessionId already used by another run: {session_id!r}")
+    workspaces = existing_workspace_ids(artifact_root)
     if workspace_id in workspaces:
         raise ValueError(f"workspaceId already used by another run: {workspace_id!r}")
 
@@ -164,7 +158,7 @@ def prepare_run(
         if prior is None:
             raise ValueError("matrix is missing prior executionOrder within paired block")
         prior_dir = artifact_root / prior["runId"]
-        prior_required = ("run-meta.yaml", "prompt.md", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt")
+        prior_required = ("run-meta.yaml", "prompt.md", "execution-attestation.yaml", "trace.yaml", "evaluation.yaml", "patch.diff", "evidence.txt")
         missing_prior = [
             name for name in prior_required
             if not (prior_dir / name).is_file()
@@ -205,10 +199,7 @@ def prepare_run(
             "repetition": item["repetition"],
             "executionOrder": item["executionOrder"],
             "workspaceId": workspace_id,
-            "sessionId": session_id,
             "freshWorkspace": True,
-            "freshSession": True,
-            "crossRunFeedbackUsed": False,
             "promptSha256": prompt_sha256,
         },
     }
@@ -223,7 +214,7 @@ def prepare_run(
     print(f"Workspace: {workspace}")
     print(f"Artifacts: {run_dir}")
     print(f"Condition: {item['condition']} (executionOrder={item['executionOrder']})")
-    print("Next: start a fresh Codex session using prompt.md. Do not inspect other run artifacts.")
+    print("Next: start a fresh Codex session using prompt.md, then create execution-attestation.yaml from observed execution facts.")
 
 
 def main() -> int:
@@ -232,16 +223,15 @@ def main() -> int:
     parser.add_argument("--matrix", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--workspace", required=True)
-    parser.add_argument("--session-id", required=True, help="Opaque, non-secret ID unique to this run.")
-    parser.add_argument("--workspace-id", required=True, help="Opaque, non-secret ID unique to this run.")
+    parser.add_argument("--workspace-id", required=True, help="Opaque, non-secret ID unique to this prepared workspace.")
     args = parser.parse_args()
 
     pilot_path = (ROOT / args.pilot).resolve() if not Path(args.pilot).is_absolute() else Path(args.pilot).resolve()
     matrix_path = (ROOT / args.matrix).resolve() if not Path(args.matrix).is_absolute() else Path(args.matrix).resolve()
     workspace = Path(args.workspace).resolve()
 
-    if not args.session_id.strip() or not args.workspace_id.strip():
-        print("session-id and workspace-id must be non-empty", file=sys.stderr)
+    if not args.workspace_id.strip():
+        print("workspace-id must be non-empty", file=sys.stderr)
         return 1
 
     try:
@@ -250,7 +240,6 @@ def main() -> int:
             matrix_path,
             args.run_id,
             workspace,
-            args.session_id.strip(),
             args.workspace_id.strip(),
         )
     except Exception as exc:

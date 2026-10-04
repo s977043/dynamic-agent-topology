@@ -59,7 +59,9 @@ if incomplete.returncode == 0:
 first_run = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))["spec"]["runs"][0]["runId"]
 single_incomplete = run(PILOT, MATRIX, "--run-id", first_run)
 if single_incomplete.returncode == 0:
-    failures.append("single-run artifact validation must fail before run artifacts exist")
+    failures.append("single-run artifact validation must fail before result artifacts exist")
+if "missing execution-attestation.yaml" not in single_incomplete.stdout:
+    failures.append("single-run validation must require post-run execution attestation")
 
 unknown_run = run(PILOT, MATRIX, "--run-id", "does-not-exist")
 if unknown_run.returncode == 0:

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "DAT Pilot Run Preparation Metadata",
+  "title": "DAT Pilot Execution Attestation",
   "type": "object",
   "required": [
     "apiVersion",
@@ -13,7 +13,7 @@
       "const": "dat/v1alpha1"
     },
     "kind": {
-      "const": "PilotRunMetadata"
+      "const": "PilotExecutionAttestation"
     },
     "metadata": {
       "type": "object",
@@ -46,31 +46,50 @@
     "spec": {
       "type": "object",
       "required": [
-        "repetition",
-        "executionOrder",
-        "workspaceId",
-        "freshWorkspace",
-        "promptSha256"
+        "sessionId",
+        "freshSession",
+        "crossRunFeedbackUsed",
+        "runtime",
+        "model",
+        "effort",
+        "startedAt",
+        "finishedAt"
       ],
       "properties": {
-        "repetition": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "executionOrder": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "workspaceId": {
+        "sessionId": {
           "type": "string",
           "minLength": 1
         },
-        "freshWorkspace": {
-          "const": true
+        "freshSession": {
+          "type": "boolean"
         },
-        "promptSha256": {
+        "crossRunFeedbackUsed": {
+          "type": "boolean"
+        },
+        "runtime": {
           "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false

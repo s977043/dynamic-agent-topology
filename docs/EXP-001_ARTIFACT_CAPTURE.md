@@ -9,6 +9,7 @@
 - `schemas/execution-trace.schema.json`
 - `schemas/evaluation.schema.json`
 - `schemas/pilot-run-meta.schema.json`
+- `schemas/pilot-execution-attestation.schema.json`
 - `scripts/validate_pilot.py`
 - `experiments/EXP-001-t0-vs-t1/pilot/RUNBOOK.md`
 
@@ -44,13 +45,26 @@ DATへ保存するのは、実Runから観測・再構成できる**外部化さ
 experiments/EXP-001-t0-vs-t1/runs/pilot-codex/<runId>/
 ├── run-meta.yaml
 ├── prompt.md
+├── execution-attestation.yaml
 ├── trace.yaml
 ├── evaluation.yaml
 ├── patch.diff
 └── evidence.txt
 ```
 
-`run-meta.yaml` と `prompt.md` はprepare時に生成済みです。Run終了後に追加するのは主に4つです。
+`run-meta.yaml` と `prompt.md` はprepare時に生成済みです。prepare時点ではfresh sessionやcross-run feedbackを確定事実として記録しません。実Codex終了後に `execution-attestation.yaml` と結果Artifactを追加します。
+
+## 0. execution-attestation.yaml
+
+実Codex session終了後に、実際に観測した実行事実を記録します。
+
+- `sessionId` — 実際のsessionへ割り当てた非秘密opaque ID
+- `freshSession` — 実際にfreshだったか
+- `crossRunFeedbackUsed` — 他Run情報を使用したか
+- `runtime / model / effort` — 実際に使った値
+- `startedAt / finishedAt` — timezone付き実測時刻
+
+期待値と異なっていてもPilot値へ書き換えません。実際の値を保存し、validatorがpolicy違反を判定します。
 
 ## 1. trace.yaml
 
@@ -195,12 +209,13 @@ Evidenceの全文が不要な場合でも、結果を再確認できる情報は
 ## Capture sequence
 
 1. Codex Runを終了する
-2. deterministic Evidenceを実行・記録する
-3. patch.diffを保存する
-4. trace.yamlを観測事実から作成する
-5. evaluation.yamlをEvidenceに基づいて作成する
-6. secret / private data / hidden reasoningがないことを確認する
-7. single-run validationを実行する
+2. `execution-attestation.yaml` を実際の実行事実から作成する
+3. deterministic Evidenceを実行・記録する
+4. patch.diffを保存する
+5. trace.yamlを観測事実から作成する
+6. evaluation.yamlをEvidenceに基づいて作成する
+7. secret / private data / hidden reasoningがないことを確認する
+8. single-run validationを実行する
 
 ```bash
 python scripts/validate_pilot.py \

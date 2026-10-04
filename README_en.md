@@ -151,6 +151,8 @@ Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZ
 
 Execution handoff: [EXP-001 Execution Handoff](docs/EXP-001_EXECUTION.md)
 
+Artifact capture: [EXP-001 Artifact Capture Guide](docs/EXP-001_ARTIFACT_CAPTURE.md)
+
 DAT is currently in an **evidence-acquisition phase**, not a specification-expansion phase.
 
 ## Evidence base

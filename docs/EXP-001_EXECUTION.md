@@ -162,3 +162,10 @@ python scripts/validate_pilot.py \
 - 他RunのArtifactをfresh sessionへ持ち込まない
 
 Live progressと次アクションはIssue #15で管理します。
+
+
+## Result capture
+
+実Codex Run終了後のArtifact記録は [EXP-001 Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) を参照してください。
+
+Artifact capture: `docs/EXP-001_ARTIFACT_CAPTURE.md`

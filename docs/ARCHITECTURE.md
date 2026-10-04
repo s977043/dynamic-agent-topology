@@ -48,7 +48,7 @@ RoutingはTopologyを選択し、Escalationは許容する複雑度の上限を�
 
 ## Runtime Adapter
 
-AdapterはDATの抽象CapabilityとRoleをRuntime固有の設定へ写像します。v0.1ではClaude Code / Codex / Gemini CLI / AntigravityのCapability Manifestを持ち、未確認事項は`unknown`として明示します。
+AdapterはDATの抽象CapabilityとRoleをRuntime固有の設定へ写像します。v0.2.1ではClaude Code / Codex / Gemini CLI / AntigravityのCapability Manifestを持ち、未確認事項は`unknown`として明示します。
 
 ## Execution Trace
 

@@ -203,19 +203,12 @@ def audit_ruleset_semantics(
             approval_values.append(value)
         else:
             approval_unknown = True
-    if approval_values and max(approval_values) > requirement["requiredApprovingReviewCountExact"]:
+    if pull_rules and approval_values and not approval_unknown and not unknown_applicability:
         add_check(
             checks,
             prefix + "requiredApprovingReviewCountExact",
             requirement["requiredApprovingReviewCountExact"],
             max(approval_values),
-        )
-    elif pull_rules and not approval_unknown and not unknown_applicability:
-        add_check(
-            checks,
-            prefix + "requiredApprovingReviewCountExact",
-            requirement["requiredApprovingReviewCountExact"],
-            max(approval_values, default=0),
         )
     elif not pull_rules and not unknown_applicability:
         add_check(

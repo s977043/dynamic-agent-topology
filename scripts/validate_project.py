@@ -41,7 +41,12 @@ def validate_schema(path: Path, schema_path: Path, errors: list[str]):
         errors.append(f"{path}: failed to parse YAML: {exc}")
         return None
 
-    schema = load_yaml(schema_path)
+    try:
+        schema = load_yaml(schema_path)
+    except Exception as exc:
+        errors.append(f"{schema_path}: failed to load schema: {exc}")
+        return data
+
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     for error in sorted(validator.iter_errors(data), key=lambda e: list(e.path)):
         location = ".".join(str(x) for x in error.path) or "<root>"
@@ -284,29 +289,33 @@ def main() -> int:
         )
     else:
         revision = dat_lock["revision"]
-        head_result = subprocess.run(
-            ["git", "-C", str(dat_root), "rev-parse", "HEAD"],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        revision_result = subprocess.run(
-            ["git", "-C", str(dat_root), "rev-parse", f"{revision}^{{commit}}"],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if head_result.returncode != 0:
-            errors.append("dat.lock.yaml: pinned mode requires dat-root to be a Git checkout")
-        elif revision_result.returncode != 0:
-            errors.append(
-                f"dat.lock.yaml: pinned revision {revision!r} cannot be resolved in DAT checkout"
+        try:
+            head_result = subprocess.run(
+                ["git", "-C", str(dat_root), "rev-parse", "HEAD"],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
-        elif head_result.stdout.strip() != revision_result.stdout.strip():
-            errors.append(
-                f"dat.lock.yaml: pinned revision {revision!r} does not match checked-out DAT HEAD "
-                f"{head_result.stdout.strip()!r}"
+            revision_result = subprocess.run(
+                ["git", "-C", str(dat_root), "rev-parse", f"{revision}^{{commit}}"],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
+        except OSError as exc:
+            errors.append(f"dat.lock.yaml: cannot execute git to verify pinned revision: {exc}")
+        else:
+            if head_result.returncode != 0:
+                errors.append("dat.lock.yaml: pinned mode requires dat-root to be a Git checkout")
+            elif revision_result.returncode != 0:
+                errors.append(
+                    f"dat.lock.yaml: pinned revision {revision!r} cannot be resolved in DAT checkout"
+                )
+            elif head_result.stdout.strip() != revision_result.stdout.strip():
+                errors.append(
+                    f"dat.lock.yaml: pinned revision {revision!r} does not match checked-out DAT HEAD "
+                    f"{head_result.stdout.strip()!r}"
+                )
 
     gitignore_path = project_root / ".gitignore"
     if gitignore_path.is_file():

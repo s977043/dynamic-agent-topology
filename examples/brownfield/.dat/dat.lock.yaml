@@ -8,4 +8,3 @@ spec:
     apiVersion: dat/v1alpha1
     source: https://github.com/s977043/dynamic-agent-topology
     pinMode: floating
-    revision: main

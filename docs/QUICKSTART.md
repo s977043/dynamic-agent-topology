@@ -99,7 +99,7 @@ A4 Canary / A5 Dynamicへ進む必要はありません。
 - Evidence: 既存CIを再利用
 - Runtime設定: manual
 - generated/state: Git管理しない
-- Routing: A3まで不要
+- Routing: A2までは不要。A3から必要
 
 ## 導入完了の最小条件
 

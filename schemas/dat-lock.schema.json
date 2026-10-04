@@ -78,6 +78,13 @@
                 "required": [
                   "revision"
                 ]
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "revision"
+                  ]
+                }
               }
             }
           ],

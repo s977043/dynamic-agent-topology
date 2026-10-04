@@ -146,6 +146,18 @@ with tempfile.TemporaryDirectory() as tmp:
     if result.returncode == 0:
         failures.append("A4 manual adoption with missing runtime config files must fail")
 
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    lock_path = project / ".dat" / "dat.lock.yaml"
+    data = yaml.safe_load(lock_path.read_text(encoding="utf-8"))
+    data["spec"]["dat"]["revision"] = "main"
+    lock_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("floating DAT lock must not carry a revision")
+
 if failures:
     print("External project validator tests failed:")
     for failure in failures:

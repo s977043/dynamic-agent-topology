@@ -37,7 +37,7 @@ def base_target():
                 "ruleset": {
                     "required": True,
                     "requirePullRequest": True,
-                    "requiredApprovingReviewCount": 0,
+                    "requiredApprovingReviewCountExact": 0,
                     "requireConversationResolution": True,
                     "blockForcePushes": True,
                     "blockDeletion": True,
@@ -116,7 +116,7 @@ def main() -> int:
     for name in (
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",
@@ -160,7 +160,7 @@ def main() -> int:
     for name in (
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",
@@ -195,7 +195,7 @@ def main() -> int:
     for name in (
         "required",
         "requirePullRequest",
-        "requiredApprovingReviewCount",
+        "requiredApprovingReviewCountExact",
         "requireConversationResolution",
         "blockForcePushes",
         "blockDeletion",

@@ -278,7 +278,7 @@ def main() -> int:
             stderr=subprocess.PIPE,
         )
         revision_result = subprocess.run(
-            ["git", "-C", str(dat_root), "rev-parse", f"{revision}^{commit}"],
+            ["git", "-C", str(dat_root), "rev-parse", f"{revision}^{{commit}}"],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

@@ -20,3 +20,10 @@ v0.2のHarnessは**Runtime実行器ではなく、Experiment Artifactの検証�
 ## 集計時のControl
 
 `summarize_experiment.py` は、同じExperimentに複数のRuntime / Model / Effortが混在する入力を拒否します。Execution Contextごとに分けて集計し、Runtime差とTopology差を混同しないことを優先します。
+
+
+## Pilot completeness validation
+
+EXP-001 Pilotは `scripts/validate_pilot.py` でplan/matrixをCI検証します。
+
+実Run完了時は `--require-complete` を付け、18 RunすべてのTrace / Evaluation / patch / Evidenceが揃い、Pilot固定Runtime / Model / Effortと一致することを確認します。

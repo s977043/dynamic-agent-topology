@@ -40,3 +40,18 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 ## Decision status
 
 現時点では実験は未実施です。結果が揃うまでT0/T1の優劣は主張しません。採否記録は [DECISION.md](DECISION.md) に残します。
+
+
+## Pilot
+
+最初の実Runtime Pilotは [pilot/RUNBOOK.md](pilot/RUNBOOK.md) に固定します。
+
+- Codex
+- GPT-6.1 Sol
+- High effort
+- T0 / T1
+- 3 scenarios
+- N=3
+- 18 runs
+
+Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。

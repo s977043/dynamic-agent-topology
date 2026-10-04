@@ -95,3 +95,20 @@ jobs:
 
       - name: Validate failing experiment fixtures
         run: python scripts/validate_fixtures.py
+
+      - name: Validate experiment pilot schema
+        run: |
+          check-jsonschema --schemafile schemas/pilot.schema.json experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml
+
+      - name: Validate experiment pilot plan
+        run: |
+          python scripts/validate_pilot.py \
+            --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
+            --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml
+
+      - name: Verify deterministic pilot matrix
+        run: |
+          python scripts/generate_pilot_matrix.py \
+            --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
+            > /tmp/run-matrix.yaml
+          diff -u experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml /tmp/run-matrix.yaml

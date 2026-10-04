@@ -50,6 +50,8 @@ Vocabulary、Schema、Baseline Topology、Evidence source、Brownfield adoption 
 
 再現可能なExperiment定義、train / test / regressionの分離、`ExecutionTrace` / `RunEvaluation` 契約、EXP-001（T0 vs T1）、Artifact validation / summary harnessを追加しました。
 
-### v0.2.1
+### v0.2.1 historical content point (unpublished)
 
-外部RepositoryへのManual Brownfield Adoptionを追加しました。完全な`.dat/` Reference Layout、Runtime Binding、DAT Lock、External Project Validator、CI integration template、Manual Adapterの保証境界を含みます。
+外部RepositoryへのManual Brownfield Adoptionを追加したhistorical content pointです。完全な`.dat/` Reference Layout、Runtime Binding、DAT Lock、External Project Validator、CI integration template、Manual Adapterの保証境界を含みます。
+
+`v0.2.1` は現在の`main`全体を表す公開Releaseではありません。Release境界はRepository rootの`CHANGELOG.md`とimmutable Git tag / GitHub Releaseを優先します。

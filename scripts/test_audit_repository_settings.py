@@ -94,7 +94,7 @@ def main() -> int:
         "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": []}},
     }]
     wrong_branch = module.audit(target, repo, branch, wrong_branch_ruleset)
-    assert_status(wrong_branch, "defaultBranch.activeRulesetRequired", "UNKNOWN")
+    assert_status(wrong_branch, "defaultBranch.activeRulesetRequired", "DRIFT")
 
     explicit_other_branch = [{
         "target": "branch",
@@ -103,6 +103,14 @@ def main() -> int:
     }]
     explicit_other = module.audit(target, repo, branch, explicit_other_branch)
     assert_status(explicit_other, "defaultBranch.activeRulesetRequired", "DRIFT")
+
+    ambiguous_exclude_ruleset = [{
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": ["refs/heads/m*"]}},
+    }]
+    ambiguous_exclude = module.audit(target, repo, branch, ambiguous_exclude_ruleset)
+    assert_status(ambiguous_exclude, "defaultBranch.activeRulesetRequired", "UNKNOWN")
 
     unknown = module.audit(
         target,

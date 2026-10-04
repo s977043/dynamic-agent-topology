@@ -1,0 +1,62 @@
+name: Research or design proposal
+description: Propose a research-backed or evidence-backed DAT change for evaluation.
+title: "[Proposal]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DAT treats proposals as hypotheses until evidence supports adoption. During an active experiment freeze, a proposal may be recorded while implementation remains deferred.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or observed friction
+      description: What concrete problem, limitation, or observation motivates this proposal?
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Source material
+      description: Link primary sources, benchmarks, or repository evidence when applicable.
+  - type: textarea
+    id: source_claim
+    attributes:
+      label: Source claim
+      description: What does the source or observation actually establish? Keep this separate from DAT interpretation.
+    validations:
+      required: true
+  - type: textarea
+    id: interpretation
+    attributes:
+      label: DAT interpretation
+      description: What does this suggest for DAT, without claiming adoption yet?
+    validations:
+      required: true
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: State the falsifiable hypothesis.
+    validations:
+      required: true
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Cheapest useful evaluation
+      description: How should DAT test this before adoption?
+    validations:
+      required: true
+  - type: textarea
+    id: rejection
+    attributes:
+      label: Rejection evidence
+      description: What result would cause this proposal to be rejected, deferred, or simplified?
+    validations:
+      required: true
+  - type: checkboxes
+    id: freeze
+    attributes:
+      label: Experiment boundary
+      options:
+        - label: I checked active experiment freezes and understand that implementation may be deferred.
+          required: true

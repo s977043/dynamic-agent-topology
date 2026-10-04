@@ -1,0 +1,15 @@
+apiVersion: dat/v1alpha1
+kind: RuntimeBinding
+metadata:
+  name: example-web-app
+spec:
+  bindings:
+    - runtime: codex
+      mode: manual
+      configPath: AGENTS.md
+    - runtime: claude-code
+      mode: manual
+      configPath: CLAUDE.md
+    - runtime: gemini-cli
+      mode: manual
+      configPath: GEMINI.md

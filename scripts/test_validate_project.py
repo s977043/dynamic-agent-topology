@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+
+import yaml
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts" / "validate_project.py"
+EXAMPLE = ROOT / "examples" / "brownfield"
+
+
+def run(project, *extra_args):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--project",
+            str(project),
+            "--dat-root",
+            str(ROOT),
+            *extra_args,
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+
+def copy_example(tmp):
+    target = Path(tmp) / "project"
+    shutil.copytree(EXAMPLE, target)
+    return target
+
+
+failures = []
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    result = run(project)
+    if result.returncode != 0:
+        failures.append("valid brownfield example must pass\n" + result.stdout)
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    runtimes_path = project / ".dat" / "runtimes.yaml"
+    data = yaml.safe_load(runtimes_path.read_text(encoding="utf-8"))
+    data["spec"]["bindings"][0]["runtime"] = "does-not-exist"
+    runtimes_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("unknown runtime must fail")
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    evidence_path = project / ".dat" / "evidence.yaml"
+    evidence_path.unlink()
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("A3 project without evidence must fail")
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    policy_path = project / ".dat" / "policy.yaml"
+    policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    policy["spec"]["escalation"]["maxTopology"] = "T3-specialized-team"
+    policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("unsupported escalation maxTopology must fail")
+
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    runtimes_path = project / ".dat" / "runtimes.yaml"
+    data = yaml.safe_load(runtimes_path.read_text(encoding="utf-8"))
+    data["spec"]["bindings"][0]["mode"] = "generated"
+    runtimes_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("generated runtime binding must fail until compiler support exists")
+
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    lock_path = project / ".dat" / "dat.lock.yaml"
+    data = yaml.safe_load(lock_path.read_text(encoding="utf-8"))
+    head = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    ).stdout.strip()
+    data["spec"]["dat"]["pinMode"] = "pinned"
+    data["spec"]["dat"]["revision"] = head
+    lock_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode != 0:
+        failures.append("pinned current DAT revision must pass\n" + result.stdout)
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    lock_path = project / ".dat" / "dat.lock.yaml"
+    data = yaml.safe_load(lock_path.read_text(encoding="utf-8"))
+    data["spec"]["dat"]["pinMode"] = "pinned"
+    data["spec"]["dat"]["revision"] = "revision-that-does-not-exist"
+    lock_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("unresolvable pinned DAT revision must fail")
+
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    runtimes_path = project / ".dat" / "runtimes.yaml"
+    data = yaml.safe_load(runtimes_path.read_text(encoding="utf-8"))
+    data["metadata"]["name"] = "copied-from-another-project"
+    runtimes_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("mismatched project artifact names must fail")
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    runtimes_path = project / ".dat" / "runtimes.yaml"
+    data = yaml.safe_load(runtimes_path.read_text(encoding="utf-8"))
+    data["spec"]["bindings"].append({"runtime": "antigravity", "mode": "manual"})
+    runtimes_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("runtime bindings not declared by project.yaml must fail")
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    policy_path = project / ".dat" / "policy.yaml"
+    policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    policy["spec"]["rolloutStage"] = "A4-canary"
+    policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("A4 manual adoption with missing runtime config files must fail")
+
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    lock_path = project / ".dat" / "dat.lock.yaml"
+    data = yaml.safe_load(lock_path.read_text(encoding="utf-8"))
+    data["spec"]["dat"]["revision"] = "main"
+    lock_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("floating DAT lock must not carry a revision")
+
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    result = run(project, "--require-pinned")
+    if result.returncode == 0:
+        failures.append("--require-pinned must reject floating locks")
+
+if failures:
+    print("External project validator tests failed:")
+    for failure in failures:
+        print(f"- {failure}")
+    raise SystemExit(1)
+
+print("External project validator tests passed.")

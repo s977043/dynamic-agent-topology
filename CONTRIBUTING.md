@@ -64,18 +64,14 @@ Do not commit secrets, private source code, confidential prompts, or unsanitized
 
 ## Releases
 
-A version advertised in `README.md`, `README_en.md`, or `CITATION.cff` should correspond to an immutable Git tag and a GitHub Release.
+Release operation follows [Release readiness](docs/RELEASE_READINESS.md). That document is the operational Source of Truth for candidate selection, Evidence gates, metadata, publication, and publication failure handling.
 
-Before publishing a release:
+At a minimum:
 
-1. verify the intended release commit and confirm CI, CodeQL, and Scorecard are green on the relevant `main` revision;
-2. update versioned documentation and `CITATION.cff` in the release PR;
-3. merge the release PR;
-4. create an immutable `vX.Y.Z` tag at the verified release commit; sign or annotate it when the release process supports that reliably;
-5. publish a GitHub Release from that tag with concise user-facing notes;
-6. verify that README status and citation metadata match the published tag.
-
-Do not move an existing version tag to a newer commit. Publish a new patch or minor version instead.
+- never move an existing published version tag;
+- do not treat a release as evidence that an experiment or Topology succeeded;
+- keep README / `CHANGELOG.md` / `CITATION.cff` / Git tag / GitHub Release on the same published boundary;
+- do not infer a published version from a historical content point or an unreleased `main` revision.
 
 ## Review principles
 

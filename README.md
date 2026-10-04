@@ -60,7 +60,7 @@ DATではTopologyを単なるPrompt Graphとして扱いません。
 6. **Routing & Escalation** — Topologyそのものと、Topology選択ポリシーを分離
 7. **Topology Adherence** — 宣言した組織構造と、実際の実行結果の一致度を評価
 
-## Canonical Topology
+## Baseline / Canonical Topology
 
 | ID | 構成 | 目的 |
 |---|---|---|
@@ -134,7 +134,8 @@ docs/         North Star / Architecture / Glossary / Metrics / Adoption
 knowledge/    研究・公式知見と採用した設計原則
 schemas/      DATのMachine-readableな仕様
 roles/        Canonical Role Contract
-topologies/   Baseline / Canonical Topology
+baselines/    Agentを使わないExecution Baseline
+topologies/   Canonical Agent Topology
 policies/     Routing / Escalation Policy
 adapters/     Runtime Adapter
 experiments/  実験プロトコル

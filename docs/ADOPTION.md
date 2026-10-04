@@ -30,3 +30,12 @@ A5 is not the goal. The optimal steady state may be A2, A3, or a fixed T0/T1 top
 `generated/` and `state/` should normally be excluded from Git.
 
 Each stage should define entry, exit, and rollback criteria. Dynamic coordination must have explicit budgets for agents, transitions, tokens, and time.
+
+
+## StageごとのPolicy要件
+
+- A0〜A2ではRouting Policyは必須ではありません。
+- A3〜A5ではTopology recommendation / executionのためRouting Policyを必須とします。
+- A4〜A5では実行時の上限を明示するためEscalation Policyを必須とします。
+- Escalation Policyは共通Policyを参照し、Project側では必要な上書きだけを持たせます。Project側の明示的な上書きを優先します。
+- Routing Ruleが一致しない場合はProject Bindingの`defaultTopology`へフォールバックします。

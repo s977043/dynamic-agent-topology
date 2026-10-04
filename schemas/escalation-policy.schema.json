@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "DAT Project Binding",
+  "title": "DAT Escalation Policy",
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
     "apiVersion": {"const": "dat/v1alpha1"},
-    "kind": {"const": "ProjectBinding"},
+    "kind": {"const": "EscalationPolicy"},
     "metadata": {
       "type": "object",
       "required": ["name"],
@@ -14,20 +14,12 @@
     },
     "spec": {
       "type": "object",
-      "required": ["defaultTopology"],
+      "required": ["maxTopology", "maxAgents", "maxTransitions"],
       "properties": {
-        "defaultTopology": {"type": "string"},
-        "supportedTopologies": {
-          "type": "array",
-          "items": {"type": "string"},
-          "minItems": 1,
-          "uniqueItems": true
-        },
-        "runtimes": {
-          "type": "array",
-          "items": {"type": "string"},
-          "uniqueItems": true
-        }
+        "maxTopology": {"type": "string"},
+        "maxAgents": {"type": "integer", "minimum": 1},
+        "maxTransitions": {"type": "integer", "minimum": 0},
+        "note": {"type": "string"}
       },
       "additionalProperties": false
     }

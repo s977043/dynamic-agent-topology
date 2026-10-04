@@ -1,1 +1,34 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"DAT Runtime Capability Manifest","type":"object","required":["apiVersion","kind","metadata","capabilities"],"properties":{"apiVersion":{"const":"dat/v1alpha1"},"kind":{"const":"RuntimeCapabilityManifest"},"metadata":{"type":"object","required":["runtime"],"properties":{"runtime":{"type":"string"},"version":{"type":"string"}}},"capabilities":{"type":"object","additionalProperties":{"enum":["native","emulated","degraded","unsupported"]}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Runtime Capability Manifest",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "capabilities"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "RuntimeCapabilityManifest"},
+    "metadata": {
+      "type": "object",
+      "required": ["runtime", "verifiedAt"],
+      "properties": {
+        "runtime": {"type": "string"},
+        "variant": {"type": "string"},
+        "verifiedAt": {"type": "string", "format": "date"}
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {"enum": ["native", "experimental", "emulated", "degraded", "unsupported", "unknown"]},
+          "note": {"type": "string"},
+          "source": {"type": "string", "format": "uri"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

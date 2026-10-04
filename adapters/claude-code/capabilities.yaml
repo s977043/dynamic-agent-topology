@@ -1,0 +1,35 @@
+apiVersion: dat/v1alpha1
+kind: RuntimeCapabilityManifest
+metadata:
+  runtime: claude-code
+  variant: cli
+  verifiedAt: "2026-10-04"
+capabilities:
+  custom_roles:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+    note: Project-level custom subagents can be defined under .claude/agents/.
+  isolated_context:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+    note: Each subagent runs in its own context window.
+  tool_scoping:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+    note: Subagent frontmatter can restrict available tools.
+  permission_scoping:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+    note: Subagents support independent permission modes and restrictions.
+  parallel_subagents:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+  runtime_hooks:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+  workspace_isolation:
+    status: native
+    source: https://code.claude.com/docs/en/sub-agents
+    note: Worktree isolation is supported for subagents.
+  remote_agents:
+    status: unknown

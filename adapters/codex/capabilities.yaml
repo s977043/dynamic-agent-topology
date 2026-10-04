@@ -1,0 +1,33 @@
+apiVersion: dat/v1alpha1
+kind: RuntimeCapabilityManifest
+metadata:
+  runtime: codex
+  variant: cli
+  verifiedAt: "2026-10-04"
+capabilities:
+  custom_roles:
+    status: native
+    source: https://developers.openai.com/ja-JP/docs/config-file/config-reference
+    note: agents.<name> declares custom multi-agent roles with role-specific config files.
+  isolated_context:
+    status: unknown
+    note: DAT does not infer CLI context-isolation semantics from the managed Agents API.
+  parallel_subagents:
+    status: native
+    source: https://developers.openai.com/ja-JP/docs/config-file/config-reference
+    note: Codex exposes stable multi-agent tools and configurable concurrent agent threads.
+  permission_scoping:
+    status: native
+    source: https://developers.openai.com/ja-JP/docs/config-file/config-reference
+    note: Role config layers can carry sandbox and approval settings.
+  tool_scoping:
+    status: unknown
+    note: DAT will not assume per-role tool scoping until a stable CLI contract is verified.
+  runtime_hooks:
+    status: native
+    source: https://developers.openai.com/ja-JP/docs/config-file/config-reference
+    note: Codex exposes lifecycle hooks including SubagentStart and SubagentStop.
+  workspace_isolation:
+    status: unknown
+  remote_agents:
+    status: unknown

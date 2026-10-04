@@ -1,0 +1,9 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionBaseline
+metadata:
+  name: P0-deterministic-pipeline
+  version: "0.1.0"
+  description: Agentを使わない比較用の最小Baseline。
+spec:
+  executionMode: deterministic-pipeline
+  description: Deterministic tools and scripts execute without an autonomous agent topology.

@@ -1,9 +1,0 @@
-apiVersion: dat/v1alpha1
-kind: AgentTopology
-metadata:
-  name: P0-deterministic-pipeline
-  version: "0.1.0"
-  description: Non-agent baseline represented for comparative evaluation.
-nodes:
-  - id: deterministic-pipeline
-    role: deterministic-pipeline

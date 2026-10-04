@@ -149,6 +149,8 @@ The highest priority is now **collecting empirical evidence for EXP-001**.
 
 Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)
 
+Execution handoff: [EXP-001 Execution Handoff](docs/EXP-001_EXECUTION.md)
+
 DAT is currently in an **evidence-acquisition phase**, not a specification-expansion phase.
 
 ## Evidence base

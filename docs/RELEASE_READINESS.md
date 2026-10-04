@@ -13,7 +13,7 @@ Before opening a release PR:
 - confirm `CHANGELOG.md` accurately describes the candidate;
 - confirm no frozen experiment input or evaluation semantic was changed unintentionally.
 
-For the current post-0.2.1 line, evaluate `0.3.0` as the default candidate because the repository has gained material experiment-execution, attestation, documentation, and public-repository capabilities. This is a candidate, not a published version.
+For the current post-0.2.1 line, treat `0.3.0` as a strong candidate because the repository has gained material experiment-execution, attestation, documentation, and public-repository capabilities. Confirm the final bump in the release PR after reviewing compatibility impact. This is a candidate, not a published version.
 
 ## Evidence gate
 

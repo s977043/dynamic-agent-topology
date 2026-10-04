@@ -26,3 +26,7 @@ DAT is not a generic agent framework, prompt library, model benchmark, or mandat
 ## v0.1 scope
 
 Vocabulary, schemas, baseline topologies, evidence sources, brownfield adoption stages, and runtime adapter contracts.
+
+## v0.2 scope
+
+Reproducible experiment definitions, train/test/regression scenario separation, ExecutionTrace and RunEvaluation contracts, EXP-001 (T0 vs T1), and a minimal artifact validation/summary harness.

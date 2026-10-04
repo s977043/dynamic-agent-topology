@@ -1,0 +1,55 @@
+apiVersion: dat/v1alpha1
+kind: Experiment
+metadata:
+  name: EXP-001-t0-vs-t1
+  version: "0.2.0"
+  description: T0 Single AgentとT1 Worker + Verifierの限界効用を比較する最初のDAT実験。
+spec:
+  question: Verifierを独立Roleとして追加することで、追加coordination costに見合う品質改善が得られるか？
+  hypothesis: T1はT0よりtoken/latencyを増やすが、regressionまたはhuman interventionを減らし、task successを悪化させない。
+  conditions:
+    - id: T0
+      executionRef:
+        kind: AgentTopology
+        name: T0-single-agent
+      description: Single Agent baseline
+    - id: T1
+      executionRef:
+        kind: AgentTopology
+        name: T1-worker-verifier
+      description: Worker + independent Verifier
+  runtimeScope:
+    - claude-code
+    - codex
+    - gemini-cli
+    - antigravity
+  scenarioSets:
+    - split: train
+      path: experiments/EXP-001-t0-vs-t1/scenarios/train.yaml
+    - split: test
+      path: experiments/EXP-001-t0-vs-t1/scenarios/test.yaml
+    - split: regression
+      path: experiments/EXP-001-t0-vs-t1/scenarios/regression.yaml
+  metrics:
+    primary:
+      - task_success_rate
+      - regression_rate
+      - human_interventions
+    secondary:
+      - total_tokens
+      - wall_clock_ms
+      - topology_adherence
+      - evidence_completeness
+      - verifier_false_accept_rate
+  controls:
+    sameRuntime: true
+    sameModel: true
+    sameEffort: true
+    freshWorkspacePerRun: true
+  decisionPolicy:
+    minimumRunsPerScenarioPerCondition: 3
+    criteria:
+      - T1のtask_success_rateがT0を下回らない
+      - regression_rateまたはhuman_interventionsの少なくとも一方が改善する
+      - total_tokensが取得可能なら増加が50%以内、または品質改善がその増加を明示的に正当化できる。取得不能ならwall_clock_ms等の代替cost metricを明示する
+      - critical boundary violationが1件でもあれば標準採用しない

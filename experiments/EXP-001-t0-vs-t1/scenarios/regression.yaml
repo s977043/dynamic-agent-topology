@@ -1,0 +1,18 @@
+apiVersion: dat/v1alpha1
+kind: ScenarioSet
+metadata:
+  name: EXP-001-regression
+  split: regression
+spec:
+  scenarios:
+    - id: regression-safe-divide
+      title: safe_divideのゼロ除算契約を維持する
+      taskClass: regression
+      fixturePath: fixtures/exp-001/regression/safe-divide
+      instruction: safe_divide(a, b)はbが0のとき0.0を返し、それ以外では通常の除算結果を返すように修正する。
+      acceptanceCriteria:
+        - ゼロ除算時に0.0を返す
+        - 通常除算の結果を壊さない
+        - 全テストが成功する
+      evidenceCommands:
+        - python -m unittest discover -s tests

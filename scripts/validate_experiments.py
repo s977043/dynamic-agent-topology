@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import sys
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+errors = []
+
+def load(path):
+    with path.open(encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+def safe_repo_path(value, owner_path):
+    path = (ROOT / value).resolve()
+    try:
+        path.relative_to(ROOT.resolve())
+    except ValueError:
+        errors.append(f"{owner_path}: path escapes repository: {value!r}")
+        return None
+    return path
+
+topologies = {
+    load(path)["metadata"]["name"]: path
+    for path in sorted((ROOT / "topologies" / "canonical").glob("*.yaml"))
+}
+baselines = {
+    load(path)["metadata"]["name"]: path
+    for path in sorted((ROOT / "baselines").glob("*.yaml"))
+}
+execution_subjects = {
+    "AgentTopology": topologies,
+    "ExecutionBaseline": baselines,
+}
+runtimes = {
+    load(path)["metadata"]["runtime"]: path
+    for path in sorted((ROOT / "adapters").glob("*/capabilities.yaml"))
+}
+
+experiments = {}
+experiment_controls = {}
+scenario_ids_by_experiment = {}
+condition_ids_by_experiment = {}
+condition_execution_by_experiment = {}
+
+for experiment_path in sorted((ROOT / "experiments").glob("EXP-*/experiment.yaml")):
+    experiment = load(experiment_path)
+    name = experiment["metadata"]["name"]
+    if name in experiments:
+        errors.append(f"{experiment_path}: duplicate experiment name {name!r}")
+        continue
+    experiments[name] = experiment_path
+    experiment_controls[name] = experiment["spec"]["controls"]
+
+    conditions = experiment["spec"]["conditions"]
+    condition_ids = [item["id"] for item in conditions]
+    if len(condition_ids) != len(set(condition_ids)):
+        errors.append(f"{experiment_path}: duplicate condition id")
+    condition_ids_by_experiment[name] = set(condition_ids)
+    condition_execution_by_experiment[name] = {
+        item["id"]: (item["executionRef"]["kind"], item["executionRef"]["name"])
+        for item in conditions
+    }
+
+    for condition in conditions:
+        ref = condition["executionRef"]
+        registry = execution_subjects[ref["kind"]]
+        if ref["name"] not in registry:
+            errors.append(
+                f"{experiment_path}: condition {condition['id']!r} references unknown "
+                f"{ref['kind']} {ref['name']!r}"
+            )
+
+    for runtime in experiment["spec"].get("runtimeScope", []):
+        if runtime not in runtimes:
+            errors.append(f"{experiment_path}: unknown runtime {runtime!r}")
+
+    declared_splits = [item["split"] for item in experiment["spec"]["scenarioSets"]]
+    if len(declared_splits) != len(set(declared_splits)):
+        errors.append(f"{experiment_path}: duplicate scenario split")
+    required_splits = {"train", "test", "regression"}
+    missing_splits = required_splits - set(declared_splits)
+    if missing_splits:
+        errors.append(f"{experiment_path}: missing scenario splits {sorted(missing_splits)!r}")
+
+    all_scenario_ids = set()
+    for item in experiment["spec"]["scenarioSets"]:
+        scenario_path = safe_repo_path(item["path"], experiment_path)
+        if scenario_path is None:
+            continue
+        if not scenario_path.is_file():
+            errors.append(f"{experiment_path}: scenario set does not exist: {item['path']!r}")
+            continue
+        scenario_set = load(scenario_path)
+        if scenario_set["metadata"]["split"] != item["split"]:
+            errors.append(
+                f"{scenario_path}: split {scenario_set['metadata']['split']!r} does not match "
+                f"experiment declaration {item['split']!r}"
+            )
+        for scenario in scenario_set["spec"]["scenarios"]:
+            scenario_id = scenario["id"]
+            if scenario_id in all_scenario_ids:
+                errors.append(f"{scenario_path}: duplicate scenario id {scenario_id!r}")
+            all_scenario_ids.add(scenario_id)
+            fixture_path = safe_repo_path(scenario["fixturePath"], scenario_path)
+            if fixture_path is not None and not fixture_path.is_dir():
+                errors.append(
+                    f"{scenario_path}: fixture path does not exist for {scenario_id!r}: "
+                    f"{scenario['fixturePath']!r}"
+                )
+    scenario_ids_by_experiment[name] = all_scenario_ids
+
+def validate_run_ref(path, data):
+    metadata = data["metadata"]
+    experiment = metadata["experiment"]
+    if experiment not in experiments:
+        errors.append(f"{path}: unknown experiment {experiment!r}")
+        return
+    scenario = metadata["scenario"]
+    condition = metadata["condition"]
+    if scenario not in scenario_ids_by_experiment[experiment]:
+        errors.append(f"{path}: unknown scenario {scenario!r} for experiment {experiment!r}")
+    if condition not in condition_ids_by_experiment[experiment]:
+        errors.append(f"{path}: unknown condition {condition!r} for experiment {experiment!r}")
+
+for path in sorted((ROOT / "examples" / "experiment-run").glob("*-trace.yaml")):
+    data = load(path)
+    validate_run_ref(path, data)
+    experiment = data["metadata"]["experiment"]
+    condition = data["metadata"]["condition"]
+    if experiment in condition_execution_by_experiment and condition in condition_execution_by_experiment[experiment]:
+        expected_kind, expected_name = condition_execution_by_experiment[experiment][condition]
+        subject = data["executionSubject"]
+        if subject["kind"] != expected_kind or subject["name"] != expected_name:
+            errors.append(
+                f"{path}: executionSubject {(subject['kind'], subject['name'])!r} does not match "
+                f"condition subject {(expected_kind, expected_name)!r}"
+            )
+    sequences = [event["sequence"] for event in data["events"]]
+    if sequences != sorted(set(sequences)):
+        errors.append(f"{path}: event sequence must be unique and strictly increasing")
+
+for path in sorted((ROOT / "examples" / "experiment-run").glob("*-evaluation.yaml")):
+    data = load(path)
+    validate_run_ref(path, data)
+    outcome = data["outcome"]
+    if outcome["acceptanceCriteriaPassed"] > outcome["acceptanceCriteriaTotal"]:
+        errors.append(f"{path}: acceptanceCriteriaPassed exceeds acceptanceCriteriaTotal")
+    evidence = data["evidence"]
+    if evidence["passedGates"] > evidence["requiredGates"]:
+        errors.append(f"{path}: passedGates exceeds requiredGates")
+
+
+# Cross-check matching Trace / Evaluation artifacts when both are present.
+traces_by_run = {}
+for path in sorted((ROOT / "examples" / "experiment-run").glob("*-trace.yaml")):
+    data = load(path)
+    run_id = data["metadata"]["runId"]
+    if run_id in traces_by_run:
+        errors.append(f"{path}: duplicate trace runId {run_id!r}")
+    traces_by_run[run_id] = (path, data)
+
+evaluations_by_run = {}
+for path in sorted((ROOT / "examples" / "experiment-run").glob("*-evaluation.yaml")):
+    data = load(path)
+    run_id = data["metadata"]["runId"]
+    if run_id in evaluations_by_run:
+        errors.append(f"{path}: duplicate evaluation runId {run_id!r}")
+    evaluations_by_run[run_id] = (path, data)
+
+for run_id in sorted(set(traces_by_run) & set(evaluations_by_run)):
+    trace_path, trace = traces_by_run[run_id]
+    evaluation_path, evaluation = evaluations_by_run[run_id]
+    for field in ("experiment", "scenario", "condition", "blockId"):
+        if trace["metadata"][field] != evaluation["metadata"][field]:
+            errors.append(f"{evaluation_path}: {field} does not match trace {trace_path} for runId {run_id!r}")
+    trace_summary = trace["summary"]
+    efficiency = evaluation["efficiency"]
+    collaboration = evaluation["collaboration"]
+    context = evaluation["executionContext"]
+    if context["runtime"] != trace["runtime"]["name"]:
+        errors.append(f"{evaluation_path}: executionContext.runtime does not match trace runtime for runId {run_id!r}")
+    if context["model"] != trace["model"]["id"]:
+        errors.append(f"{evaluation_path}: executionContext.model does not match trace model for runId {run_id!r}")
+    context_effort = context.get("effort")
+    trace_effort = trace["model"].get("effort")
+    if context_effort != trace_effort:
+        errors.append(f"{evaluation_path}: executionContext.effort does not match trace model effort for runId {run_id!r}")
+    for field in ("agentInvocations", "coordinationTransitions", "wallClockMs"):
+        if field in trace_summary and trace_summary[field] != efficiency[field]:
+            errors.append(f"{evaluation_path}: efficiency.{field} does not match trace summary for runId {run_id!r}")
+    if trace_summary["humanInterventions"] != collaboration["humanInterventions"]:
+        errors.append(f"{evaluation_path}: collaboration.humanInterventions does not match trace summary for runId {run_id!r}")
+
+# Every sample evaluation must have a trace, and every sample trace must have an evaluation.
+for run_id in sorted(set(evaluations_by_run) - set(traces_by_run)):
+    errors.append(f"evaluation runId {run_id!r} has no matching trace")
+for run_id in sorted(set(traces_by_run) - set(evaluations_by_run)):
+    errors.append(f"trace runId {run_id!r} has no matching evaluation")
+
+# Verify paired comparison controls inside each experiment/scenario/block.
+blocks = {}
+for run_id, (path, evaluation) in evaluations_by_run.items():
+    metadata = evaluation["metadata"]
+    key = (metadata["experiment"], metadata["scenario"], metadata["blockId"])
+    blocks.setdefault(key, []).append((path, evaluation))
+
+for (experiment, scenario, block_id), items in sorted(blocks.items()):
+    expected_conditions = condition_ids_by_experiment.get(experiment, set())
+    actual_conditions = {evaluation["metadata"]["condition"] for _, evaluation in items}
+    if actual_conditions != expected_conditions:
+        errors.append(
+            f"comparison block {(experiment, scenario, block_id)!r} has conditions "
+            f"{sorted(actual_conditions)!r}, expected {sorted(expected_conditions)!r}"
+        )
+        continue
+    controls = experiment_controls[experiment]
+    contexts = [evaluation["executionContext"] for _, evaluation in items]
+    if controls["sameRuntime"] and len({c["runtime"] for c in contexts}) != 1:
+        errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes runtimes")
+    if controls["sameModel"] and len({c["model"] for c in contexts}) != 1:
+        errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes models")
+    if controls["sameEffort"]:
+        efforts = [c.get("effort") for c in contexts]
+        if any(value is None for value in efforts):
+            errors.append(f"comparison block {(experiment, scenario, block_id)!r} requires effort values")
+        elif len(set(efforts)) != 1:
+            errors.append(f"comparison block {(experiment, scenario, block_id)!r} mixes effort levels")
+
+if errors:
+    print("Experiment semantic validation failed:")
+    for error in errors:
+        print(f"- {error}")
+    sys.exit(1)
+
+print(
+    "Experiment semantic validation passed: "
+    f"{len(experiments)} experiments, {len(topologies)} topologies, {len(baselines)} baselines, "
+    f"{sum(len(v) for v in scenario_ids_by_experiment.values())} scenarios, "
+    f"{len(traces_by_run)} traces, {len(evaluations_by_run)} evaluations."
+)

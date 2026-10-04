@@ -1,0 +1,19 @@
+apiVersion: dat/v1alpha1
+kind: ScenarioSet
+metadata:
+  name: EXP-001-test
+  split: test
+spec:
+  scenarios:
+    - id: test-clamp-boundaries
+      title: clampの上下限処理を修正する
+      taskClass: bugfix
+      fixturePath: fixtures/exp-001/test/clamp-boundaries
+      instruction: clamp(value, low, high)がlow未満をlow、high超過をhighへ丸め、範囲内の値はそのまま返すように修正する。
+      acceptanceCriteria:
+        - 下限未満はlowになる
+        - 上限超過はhighになる
+        - 範囲内の値は変更されない
+        - 全テストが成功する
+      evidenceCommands:
+        - python -m unittest discover -s tests

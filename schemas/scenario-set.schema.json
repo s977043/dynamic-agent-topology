@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Scenario Set",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "ScenarioSet"},
+    "metadata": {
+      "type": "object",
+      "required": ["name", "split"],
+      "properties": {
+        "name": {"type": "string"},
+        "split": {"enum": ["train", "test", "regression"]}
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": ["scenarios"],
+      "properties": {
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "taskClass", "fixturePath", "instruction", "acceptanceCriteria", "evidenceCommands"],
+            "properties": {
+              "id": {"type": "string"},
+              "title": {"type": "string"},
+              "taskClass": {"type": "string"},
+              "fixturePath": {"type": "string"},
+              "instruction": {"type": "string"},
+              "acceptanceCriteria": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string"}
+              },
+              "evidenceCommands": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string"}
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

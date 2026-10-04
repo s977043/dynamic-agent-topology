@@ -6,7 +6,7 @@
 > **Which agent topology works, under what conditions, and at what cost?**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: v0.1 Foundation](https://img.shields.io/badge/Status-v0.1%20Foundation-orange.svg)](docs/NORTH_STAR.md)
+[![Status: v0.2 Experiment-ready](https://img.shields.io/badge/Status-v0.2%20Experiment--ready-green.svg)](docs/NORTH_STAR.md)
 
 **Dynamic Agent Topology (DAT)** is a provider-agnostic specification and experimentation foundation for designing, selecting, evaluating, and evolving AI agent team structures.
 
@@ -82,7 +82,7 @@ Select
 → Evaluate
 ```
 
-v0.1 focuses first on topology selection and escalation. Later versions may evaluate runtime de-escalation and recomposition.
+The current scope focuses first on topology selection and escalation. Later versions may evaluate runtime de-escalation and recomposition.
 
 ## Brownfield adoption
 
@@ -123,10 +123,17 @@ baselines/    Non-agent execution baselines
 topologies/   Canonical agent topology hypotheses
 policies/     Routing and escalation policies
 adapters/     Runtime-specific mappings
-experiments/  Experimental protocol
-harness/      Future execution/evaluation harness
+experiments/  Experiment definitions and scenario sets
+fixtures/     Small reproducible scenario fixtures
+harness/      Experiment artifact validation and summary harness
 examples/     Brownfield adoption examples
 ```
+
+## First experiment
+
+[EXP-001: T0 vs T1](experiments/EXP-001-t0-vs-t1/README.md) compares a Single Agent with Worker + independent Verifier under controlled Task / Runtime / Model / Effort conditions.
+
+The evaluation considers not only task success, but regression, human intervention, tokens, latency, topology adherence, and verifier false accepts.
 
 ## Evidence base
 
@@ -143,20 +150,23 @@ See [knowledge/sources.yaml](knowledge/sources.yaml).
 
 ## Status
 
-**v0.1 Foundation**
+**v0.2 Experiment-ready**
 
 The repository currently provides:
 
 - North Star, architecture, and glossary
 - Role / topology / runtime / evaluation schemas
-- Canonical P0–T3 topologies
+- P0 execution baseline and canonical T0–T3 topologies
 - Routing and escalation policies
 - Brownfield adoption protocol
 - Runtime adapter contracts
 - Initial knowledge base
-- Schema validation CI
+- Schema and semantic validation CI
+- EXP-001: T0 vs T1
+- ExecutionTrace / RunEvaluation schemas
+- Per-condition RunEvaluation summary
 
-Runtime adapter implementations and the execution/evaluation harness will be added incrementally after the contracts and evaluation protocol stabilize.
+Automatic runtime compile/apply and agent execution orchestration remain out of scope. EXP-001 is used first to validate the artifact and evaluation contracts.
 
 ## Guiding principle
 

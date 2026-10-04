@@ -1,0 +1,35 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: sample-t1-001
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+  blockId: sample-block-001
+executionContext:
+  runtime: claude-code
+  model: sample-model
+  effort: medium
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  inputTokens: 1000
+  outputTokens: 250
+  wallClockMs: 12000
+  agentInvocations: 2
+  coordinationTransitions: 1
+verdict: pass
+notes: Example fixture only; not empirical DAT evidence.

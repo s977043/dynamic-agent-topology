@@ -47,6 +47,12 @@ python scripts/pilot_status.py \
 
 Preflightが失敗した場合はRunを開始せず、Issue #15を停止して原因を確認します。
 
+## Runtime boundary
+
+このRepositoryとOperator Kitは、Codex sessionを起動・代替しません。
+
+実測Runとして認めるには、Pilotで固定されたRuntime / Model / Effortを満たす**実際のCodex session**が必要です。GitHub CIやArtifact生成だけではempirical runになりません。
+
 ## First paired block
 
 最初に実行するblockは:
@@ -66,9 +72,9 @@ python scripts/prepare_pilot_run.py \
   --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
   --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
   --run-id EXP-001-train-normalize-name-r01-T0 \
-  --workspace <external-fresh-workspace> \
-  --session-id <unique-non-secret-session-id> \
-  --workspace-id <unique-non-secret-workspace-id>
+  --workspace /tmp/dat-exp001-train-normalize-name-r01-t0 \
+  --session-id exp001-train-normalize-name-r01-t0-session \
+  --workspace-id exp001-train-normalize-name-r01-t0-workspace
 ```
 
 次に、生成された `prompt.md` をfresh Codex sessionへ渡します。
@@ -102,9 +108,9 @@ python scripts/prepare_pilot_run.py \
   --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
   --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
   --run-id EXP-001-train-normalize-name-r01-T1 \
-  --workspace <different-external-fresh-workspace> \
-  --session-id <different-unique-non-secret-session-id> \
-  --workspace-id <different-unique-non-secret-workspace-id>
+  --workspace /tmp/dat-exp001-train-normalize-name-r01-t1 \
+  --session-id exp001-train-normalize-name-r01-t1-session \
+  --workspace-id exp001-train-normalize-name-r01-t1-workspace
 ```
 
 T1もfresh Codex sessionで実行し、同じ4 Artifactを保存してsingle-run validationを行います。

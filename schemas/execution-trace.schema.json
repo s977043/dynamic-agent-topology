@@ -6,7 +6,7 @@
     "apiVersion",
     "kind",
     "metadata",
-    "topology",
+    "executionSubject",
     "runtime",
     "model",
     "events",
@@ -47,9 +47,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "topology": {
-      "type": "string"
     },
     "runtime": {
       "type": "object",
@@ -159,6 +156,26 @@
         "wallClockMs": {
           "type": "integer",
           "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "executionSubject": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "AgentTopology",
+            "ExecutionBaseline"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": false

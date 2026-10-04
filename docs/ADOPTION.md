@@ -53,6 +53,23 @@ DATは、既存プロジェクトをいきなりMulti-Agent化するための仕
 - Project側の明示的overrideを共通Policyより優先します
 - Routing Ruleが一致しない場合はProject Bindingの`defaultTopology`へfallbackします
 
+## Complexity Promotion Rule
+
+DATでは、Agent数、Topology edge、Routing rule、Loop、state、retry、branch/joinなどの協調機構を、便利そうという理由だけで追加しません。
+
+より複雑な仕組みへ進む前に、少なくとも次を確認します。
+
+1. **Failure is recurrent** — 単発ではなく、同種の失敗や制約が複数Run / Taskで観測されている。
+2. **Simpler layer is insufficient** — Prompt、Context、Harnessなど、より小さい修正では十分に解決できない。
+3. **Benefit justifies coordination cost** — Task success、安全性、品質、Human Interventionなどの改善が、Token、Latency、運用負荷、handoff failureなどの追加コストを正当化できる見込みがある。
+4. **Workflow is stable enough to encode** — まだ頻繁に変化している手順を早期に固定化しない。
+5. **The change is falsifiable** — 何を測れば採用・棄却・単純化できるかを事前に定義できる。
+
+条件を満たさない場合の既定動作は、**現状維持または単純化**です。複雑化しないことも正しい設計判断として扱います。
+
+診断には [Engineering Layer Diagnostics](ENGINEERING_LAYERS.md) を使い、最小のBroken Work UnitとExpected Invariantを特定してからPromotionを検討します。
+
+Promotion後も、Evidenceが追加コストを正当化しない場合はde-escalate / simplifyします。A5やMulti-Agent化は成熟度のゴールではありません。
 ## Runtime Adapter rule
 
 v0.2.1では**Manual Adapter**を標準とします。

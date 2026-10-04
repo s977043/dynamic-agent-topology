@@ -1,0 +1,65 @@
+name: Usage or adoption question
+description: Ask a reproducible public question about adopting or using DAT.
+title: "[Question]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for public, non-security questions. Remove credentials, private source code, hidden reasoning, and unrelated user data.
+
+  - type: input
+    id: revision
+    attributes:
+      label: DAT version or commit
+      description: Tag, release, or commit SHA you are using.
+      placeholder: v0.2.1 or a commit SHA
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Adoption stage
+      options:
+        - A0 Assess
+        - A1 Bind Evidence
+        - A2 Observe
+        - A3 Recommend
+        - A4 Canary
+        - A5 Dynamic
+        - Experiment / research use
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What are you trying to achieve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Minimal public context
+      description: Include relevant runtime, topology, validator command, or configuration without private data.
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      description: Include relevant commands, documentation sections, or observed results.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing Issues and documentation first.
+          required: true
+        - label: This report contains no credentials, private source, hidden reasoning, or security vulnerability details.
+          required: true

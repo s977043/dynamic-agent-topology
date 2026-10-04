@@ -135,6 +135,8 @@ examples/     Brownfield adoption examples
 
 The evaluation considers not only task success, but regression, human intervention, tokens, latency, topology adherence, and verifier false accepts.
 
+DAT also evaluates the **marginal contribution of internal capabilities** such as roles, skills, and verifiers through paired ablation. Being invoked is activation evidence, not effectiveness evidence. See [Experiment Protocol](docs/EXPERIMENTS.md#capability-level-ablation) and [Metrics](docs/METRICS.md#capability-contributionderived-comparison).
+
 ## Evidence base
 
 DAT separates source claims from DAT interpretations and implementation decisions.

@@ -23,7 +23,7 @@ Runtime / Model / Effort / Taskは条件間で揃え、Topologyだけを主変�
 
 ## 実行単位
 
-各scenario × conditionを独立したfresh workspaceで複数回実行し、RunごとにExecutionTraceとRunEvaluationを保存します。
+各scenarioを比較blockとして扱い、同じ`blockId`のT0/T1はRuntime / Model / Effortを揃えたfresh workspaceで実行します。RunごとにExecutionTraceとRunEvaluationを保存します。
 
 最低実行回数は `experiment.yaml` の `minimumRunsPerScenarioPerCondition` に従います。
 

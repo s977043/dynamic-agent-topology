@@ -25,8 +25,9 @@ def mean(values):
 result = {}
 for condition, runs in sorted(groups.items()):
     total_tokens = [
-        r["efficiency"].get("inputTokens", 0) + r["efficiency"].get("outputTokens", 0)
+        r["efficiency"]["inputTokens"] + r["efficiency"]["outputTokens"]
         for r in runs
+        if "inputTokens" in r["efficiency"] and "outputTokens" in r["efficiency"]
     ]
     false_accept_values = [
         r["evidence"].get("verifierFalseAccept")

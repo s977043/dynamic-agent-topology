@@ -60,4 +60,8 @@ Review should separate correctness, judgment, and verification:
 - candidate generation is not evidence that a candidate is better;
 - changes to authority or permissions require explicit scrutiny.
 
+## Getting help
+
+For reproducible adoption or usage questions, use the Usage or adoption question Issue form and see [SUPPORT.md](SUPPORT.md). Security-sensitive reports must follow [SECURITY.md](SECURITY.md).
+
 By participating in this project, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

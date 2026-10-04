@@ -197,11 +197,11 @@ Manual adoption into external repositories is supported. Automatic runtime compi
 
 > **Do not assume a topology is better. Test it.**
 
-## Contributing and security
+## Contributing, support, and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the repository issue forms for bugs and proposals, and include reproducible evidence where possible.
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the repository issue forms for bugs, proposals, and usage questions, and include reproducible evidence where possible.
 
-Do not disclose sensitive vulnerabilities in a public issue. Follow [SECURITY.md](SECURITY.md) instead.
+For adoption and usage questions, see [SUPPORT.md](SUPPORT.md). Do not disclose sensitive vulnerabilities in a public issue; follow [SECURITY.md](SECURITY.md) instead.
 
 ## License
 

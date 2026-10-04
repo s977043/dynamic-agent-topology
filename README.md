@@ -220,11 +220,11 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 
 Topologyは「良さそうだから採用する」のではなく、Evidenceで比較し、必要ならAblationし、採用・棄却・改善を判断します。
 
-## Contributing / Security
+## Contributing / Support / Security
 
-コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。Bug / Proposal はIssue template、変更提案はPull Request templateに沿ってください。
+コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。Bug / Proposal / Usage question はIssue template、変更提案はPull Request templateに沿ってください。
 
-セキュリティ上の問題は公開Issueへ詳細を書かず、[SECURITY.md](SECURITY.md) の手順で報告してください。
+利用・導入に関する質問は [SUPPORT.md](SUPPORT.md) を参照してください。セキュリティ上の問題は公開Issueへ詳細を書かず、[SECURITY.md](SECURITY.md) の手順で報告してください。
 
 ## License
 

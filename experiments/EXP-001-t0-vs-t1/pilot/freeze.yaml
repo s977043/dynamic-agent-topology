@@ -1,0 +1,68 @@
+apiVersion: dat/v1alpha1
+kind: ExperimentFreeze
+metadata:
+  name: EXP-001-feature-freeze
+  experiment: EXP-001-t0-vs-t1
+  status: active
+spec:
+  baselineCommit: f172eb1e273af736ec1ecbd72f8b4c8874739808
+  executionIssue: 15
+  freezeIssue: 16
+  empiricalRunsAtFreeze: 0
+  files:
+    - path: experiments/EXP-001-t0-vs-t1/experiment.yaml
+      gitBlobSha: 6de1f902424fe4b386b1b2ab64986a291af32b1c
+    - path: experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml
+      gitBlobSha: 7f92c677d81ebf293593dbdbaefcf05a2b11a323
+    - path: experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml
+      gitBlobSha: 313419d18c79f144e51fa4e80829f91aac567110
+    - path: experiments/EXP-001-t0-vs-t1/pilot/prompts/BASE.md
+      gitBlobSha: 0f7168872adb70e7917976606b051283880d7e2a
+    - path: experiments/EXP-001-t0-vs-t1/pilot/prompts/T0.md
+      gitBlobSha: f4116986555ccc0e3ab3f1cb9cb1d2b758a19c22
+    - path: experiments/EXP-001-t0-vs-t1/pilot/prompts/T1.md
+      gitBlobSha: 980e3a55c827ae206c775bcf5169206bfca5d8e0
+    - path: experiments/EXP-001-t0-vs-t1/scenarios/train.yaml
+      gitBlobSha: 475638b3287d80a1b659476e5b2d1e7de3c672e9
+    - path: experiments/EXP-001-t0-vs-t1/scenarios/test.yaml
+      gitBlobSha: 6b08881de0fc40131b262eefab4b427b4513c21a
+    - path: experiments/EXP-001-t0-vs-t1/scenarios/regression.yaml
+      gitBlobSha: dd23bb2c8b41d7d2ba6c6cc91a3fc88f7770dec9
+    - path: fixtures/exp-001/train/normalize-name/app.py
+      gitBlobSha: fd376b2ba74662a4732dee77bbc24ce64502c970
+    - path: fixtures/exp-001/train/normalize-name/tests/test_app.py
+      gitBlobSha: 3a22d58cd11fda0005813276af345e1b7426d13e
+    - path: fixtures/exp-001/test/clamp-boundaries/app.py
+      gitBlobSha: c5d373ebc3817069cb26f02e0d188c2fda1aa9fb
+    - path: fixtures/exp-001/test/clamp-boundaries/tests/test_app.py
+      gitBlobSha: a65bbd5e802e08e35091cb760d26a212d850bd87
+    - path: fixtures/exp-001/regression/safe-divide/app.py
+      gitBlobSha: 62c1b16bf9c910a53a9e34c80076dabc12ffc109
+    - path: fixtures/exp-001/regression/safe-divide/tests/test_app.py
+      gitBlobSha: a992829a40fbcde2c9436366d2e589ff3c6e44bb
+    - path: topologies/canonical/T0_single_agent.yaml
+      gitBlobSha: d958f4b0d62c558d338afd292499c0c94901fb64
+    - path: topologies/canonical/T1_worker_verifier.yaml
+      gitBlobSha: 1697a8c1407254d16903ce1eb352fa1cb6f2e28b
+    - path: roles/worker.yaml
+      gitBlobSha: c37e93419edb1281618ab15fd51e9cb8eb4526d7
+    - path: roles/verifier.yaml
+      gitBlobSha: 8ff65aff6d1d66c082073f9c22791bf175944c8a
+    - path: schemas/experiment.schema.json
+      gitBlobSha: 0358267ebcf390e6dc680cdec6d74fc44fdb4fd2
+    - path: schemas/scenario-set.schema.json
+      gitBlobSha: 5d375a915c7b1c0f8b28b424591cd45be3bb1e00
+    - path: schemas/pilot.schema.json
+      gitBlobSha: 30ae5713ffef8dd9c4cce75d9dcdf2305f7373a0
+    - path: schemas/pilot-run-meta.schema.json
+      gitBlobSha: 2dec1dcf4179a2ea00ad4a05cddc74dd4e6bd0b8
+    - path: schemas/execution-trace.schema.json
+      gitBlobSha: ee224362edb0ef1073f1e96a696f4b44b76cf9b3
+    - path: schemas/evaluation.schema.json
+      gitBlobSha: 05ac3a4307924389fa292dafb9f892541ec6e6d9
+    - path: scripts/generate_pilot_matrix.py
+      gitBlobSha: 101031715a92bc573e2247c85ee8498725b1b579
+    - path: scripts/validate_pilot.py
+      gitBlobSha: 66929972b7c75ba6ec86dd9947d76795b5bbf51a
+    - path: scripts/summarize_experiment.py
+      gitBlobSha: 4817e99ff9385b8987b9f5df4517be9b510ce74f

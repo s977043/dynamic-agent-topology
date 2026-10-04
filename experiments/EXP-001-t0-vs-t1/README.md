@@ -57,3 +57,14 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 - counterbalanced paired order
 
 Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。
+
+
+## Feature Freeze
+
+EXP-001は実測フェーズに入ったため、18 Run完了まで実験条件を凍結します。
+
+- Freeze policy: [pilot/FREEZE.md](pilot/FREEZE.md)
+- Freeze manifest: [pilot/freeze.yaml](pilot/freeze.yaml)
+- Execution tracking: Issue #15
+
+Prompt / Topology / Scenario / Fixture / Evaluation semanticsは途中結果を見て変更しません。Blocking defect時は実行を停止し、Freeze policyの例外手続きに従います。

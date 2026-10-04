@@ -126,3 +126,6 @@ jobs:
 
       - name: Test experiment operator kit
         run: python scripts/test_operator_kit.py
+
+      - name: Validate EXP-001 feature freeze
+        run: python scripts/validate_experiment_freeze.py

@@ -1,0 +1,28 @@
+apiVersion: dat/v1alpha1
+kind: ExperimentPilot
+metadata:
+  name: EXP-001-codex-pilot
+  experiment: EXP-001-t0-vs-t1
+  status: ready
+spec:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+  repetitions: 3
+  freshWorkspacePerRun: true
+  freshSessionPerRun: true
+  orderPolicy: counterbalanced-paired
+  crossRunFeedback: disabled
+  conditions:
+    - T0
+    - T1
+  scenarios:
+    - id: train-normalize-name
+      split: train
+    - id: test-clamp-boundaries
+      split: test
+    - id: regression-safe-divide
+      split: regression
+  artifactRoot: experiments/EXP-001-t0-vs-t1/runs/pilot-codex
+  matrixPath: experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml
+  notes: status=readyはProtocol固定済みを意味し、実Run完了を意味しない。結果が揃うまでT0/T1の優劣を判断しない。

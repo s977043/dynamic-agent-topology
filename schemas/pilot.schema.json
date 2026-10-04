@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Experiment Pilot",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "dat/v1alpha1"
+    },
+    "kind": {
+      "const": "ExperimentPilot"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "name",
+        "experiment"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "experiment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "ready",
+            "running",
+            "completed"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "runtime",
+        "model",
+        "effort",
+        "repetitions",
+        "freshWorkspacePerRun",
+        "freshSessionPerRun",
+        "orderPolicy",
+        "crossRunFeedback",
+        "conditions",
+        "scenarios",
+        "artifactRoot",
+        "matrixPath"
+      ],
+      "properties": {
+        "runtime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "repetitions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "freshWorkspacePerRun": {
+          "const": true
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "split"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "split": {
+                "enum": [
+                  "train",
+                  "test",
+                  "regression"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "artifactRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "matrixPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string"
+        },
+        "freshSessionPerRun": {
+          "const": true
+        },
+        "orderPolicy": {
+          "enum": [
+            "counterbalanced-paired"
+          ]
+        },
+        "crossRunFeedback": {
+          "enum": [
+            "disabled"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

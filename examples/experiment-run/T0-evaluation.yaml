@@ -1,0 +1,30 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: sample-t0-001
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T0
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 1
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  inputTokens: 800
+  outputTokens: 200
+  wallClockMs: 9000
+  agentInvocations: 1
+  coordinationTransitions: 0
+verdict: pass
+notes: Example fixture only; not empirical DAT evidence.

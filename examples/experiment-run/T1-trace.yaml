@@ -1,0 +1,40 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: sample-t1-001
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+topology: T1-worker-verifier
+runtime:
+  name: claude-code
+  version: sample
+model:
+  id: sample-model
+  effort: medium
+events:
+  - sequence: 0
+    type: start
+    actor: worker
+  - sequence: 1
+    type: action
+    actor: worker
+    artifact: app.py
+  - sequence: 2
+    type: handoff
+    actor: worker
+    target: verifier
+  - sequence: 3
+    type: evidence
+    actor: verifier
+    artifact: python -m unittest discover -s tests
+  - sequence: 4
+    type: finish
+    actor: verifier
+summary:
+  agentInvocations: 2
+  coordinationTransitions: 1
+  humanInterventions: 0
+  inputTokens: 1000
+  outputTokens: 250
+  wallClockMs: 12000

@@ -1,1 +1,69 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"DAT Evaluation","type":"object","required":["apiVersion","kind","metadata","metrics"],"properties":{"apiVersion":{"const":"dat/v1alpha1"},"kind":{"const":"Evaluation"},"metadata":{"type":"object"},"metrics":{"type":"object"},"decision":{"enum":["adopt","reject","continue","rollback"]}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Run Evaluation",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "outcome", "collaboration", "evidence", "efficiency", "verdict"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "RunEvaluation"},
+    "metadata": {
+      "type": "object",
+      "required": ["runId", "experiment", "scenario", "condition"],
+      "properties": {
+        "runId": {"type": "string"},
+        "experiment": {"type": "string"},
+        "scenario": {"type": "string"},
+        "condition": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "outcome": {
+      "type": "object",
+      "required": ["taskSuccess", "regressionDetected", "acceptanceCriteriaPassed", "acceptanceCriteriaTotal"],
+      "properties": {
+        "taskSuccess": {"type": "boolean"},
+        "regressionDetected": {"type": "boolean"},
+        "acceptanceCriteriaPassed": {"type": "integer", "minimum": 0},
+        "acceptanceCriteriaTotal": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "collaboration": {
+      "type": "object",
+      "required": ["topologyAdherence", "boundaryViolations", "handoffFailures", "humanInterventions"],
+      "properties": {
+        "topologyAdherence": {"type": "number", "minimum": 0, "maximum": 1},
+        "boundaryViolations": {"type": "integer", "minimum": 0},
+        "handoffFailures": {"type": "integer", "minimum": 0},
+        "humanInterventions": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["requiredGates", "passedGates", "completeness"],
+      "properties": {
+        "requiredGates": {"type": "integer", "minimum": 0},
+        "passedGates": {"type": "integer", "minimum": 0},
+        "completeness": {"type": "number", "minimum": 0, "maximum": 1},
+        "verifierFalseAccept": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "efficiency": {
+      "type": "object",
+      "required": ["agentInvocations", "coordinationTransitions", "wallClockMs"],
+      "properties": {
+        "inputTokens": {"type": "integer", "minimum": 0},
+        "outputTokens": {"type": "integer", "minimum": 0},
+        "wallClockMs": {"type": "integer", "minimum": 0},
+        "agentInvocations": {"type": "integer", "minimum": 0},
+        "coordinationTransitions": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "verdict": {"enum": ["pass", "fail", "inconclusive"]},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+apiVersion: dat/v1alpha1
+kind: ScenarioSet
+metadata:
+  name: EXP-001-train
+  split: train
+spec:
+  scenarios:
+    - id: train-normalize-name
+      title: normalize_nameの空白・大小文字処理を修正する
+      taskClass: bugfix
+      fixturePath: fixtures/exp-001/train/normalize-name
+      instruction: normalize_nameが前後空白を除去し、小文字へ正規化するように修正する。既存APIを変更しないこと。
+      acceptanceCriteria:
+        - 前後空白が除去される
+        - 英字が小文字へ正規化される
+        - 既存テストを含む全テストが成功する
+      evidenceCommands:
+        - python -m unittest discover -s tests

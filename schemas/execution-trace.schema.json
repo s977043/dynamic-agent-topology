@@ -1,1 +1,74 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"DAT Execution Trace","type":"object","required":["apiVersion","kind","topology","events"],"properties":{"apiVersion":{"const":"dat/v1alpha1"},"kind":{"const":"ExecutionTrace"},"topology":{"type":"string"},"runtime":{"type":"string"},"events":{"type":"array","items":{"type":"object"}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Execution Trace",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "topology", "runtime", "model", "events", "summary"],
+  "properties": {
+    "apiVersion": {"const": "dat/v1alpha1"},
+    "kind": {"const": "ExecutionTrace"},
+    "metadata": {
+      "type": "object",
+      "required": ["runId", "experiment", "scenario", "condition"],
+      "properties": {
+        "runId": {"type": "string"},
+        "experiment": {"type": "string"},
+        "scenario": {"type": "string"},
+        "condition": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "topology": {"type": "string"},
+    "runtime": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {"type": "string"},
+        "effort": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["sequence", "type", "actor"],
+        "properties": {
+          "sequence": {"type": "integer", "minimum": 0},
+          "timestamp": {"type": "string", "format": "date-time"},
+          "type": {
+            "enum": ["start", "action", "handoff", "review", "verify", "evidence", "violation", "finish"]
+          },
+          "actor": {"type": "string"},
+          "target": {"type": "string"},
+          "artifact": {"type": "string"},
+          "details": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["agentInvocations", "coordinationTransitions", "humanInterventions"],
+      "properties": {
+        "agentInvocations": {"type": "integer", "minimum": 0},
+        "coordinationTransitions": {"type": "integer", "minimum": 0},
+        "humanInterventions": {"type": "integer", "minimum": 0},
+        "inputTokens": {"type": "integer", "minimum": 0},
+        "outputTokens": {"type": "integer", "minimum": 0},
+        "wallClockMs": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

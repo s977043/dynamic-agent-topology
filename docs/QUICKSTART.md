@@ -56,7 +56,7 @@ DATはまだRuntime設定を自動生成・上書きしません。
 
 ## 5. DAT revisionを固定する
 
-PoCでは `pinMode: floating` でも開始できますが、継続利用ではcommit SHAまたはtagへ固定してください。
+PoCでは `pinMode: floating` でも開始できますが、継続利用ではcommit SHAまたはtagへ固定してください。validatorを実行するDAT checkoutも、必ず同じrevisionへcheckoutします。
 
 ```yaml
 spec:
@@ -66,6 +66,10 @@ spec:
     source: https://github.com/s977043/dynamic-agent-topology
     pinMode: pinned
     revision: "<commit-or-tag>"
+```
+
+```bash
+git -C /tmp/dynamic-agent-topology checkout "<commit-or-tag>"
 ```
 
 ## 6. 外部Project Validatorを実行する

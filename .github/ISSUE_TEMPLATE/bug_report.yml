@@ -6,6 +6,7 @@ body:
     attributes:
       value: |
         Thanks for reporting a defect. Do not include secrets, private source code, or sensitive vulnerability details here. See SECURITY.md for security reports.
+        Use the Engineering Layer fields to identify the smallest broken unit before proposing more topology or coordination.
 
   - type: textarea
     id: summary
@@ -25,6 +26,31 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: engineering_layer
+    attributes:
+      label: Affected Engineering Layer
+      description: Select the primary diagnostic layer. Choose Cross-layer / Unknown if evidence is not sufficient yet.
+      options:
+        - Prompt
+        - Context
+        - Harness
+        - Loop
+        - Graph
+        - Evaluation
+        - Cross-layer / Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: work_unit
+    attributes:
+      label: Broken Work Unit
+      description: Identify the smallest unit that appears broken, such as a role contract, handoff, adapter, policy, permission binding, validator, or evidence path.
+      placeholder: verifier capability binding
+    validations:
+      required: true
+
   - type: textarea
     id: reproduce
     attributes:
@@ -38,9 +64,11 @@ body:
       required: true
 
   - type: textarea
-    id: expected
+    id: expected_invariant
     attributes:
-      label: Expected behavior
+      label: Expected invariant
+      description: What property or behavior should always hold?
+      placeholder: The verifier must not receive write-capable tools.
     validations:
       required: true
 
@@ -54,9 +82,18 @@ body:
   - type: textarea
     id: evidence
     attributes:
-      label: Evidence
+      label: Observed evidence
       description: Sanitized logs, validator output, trace excerpts, or a minimal fixture. Remove confidential information.
       render: shell
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification method
+      description: How should the invariant be checked after the fix? Prefer deterministic or observable evidence where possible.
+      placeholder: capability manifest validation + runtime trace
+    validations:
+      required: true
 
   - type: checkboxes
     id: checks

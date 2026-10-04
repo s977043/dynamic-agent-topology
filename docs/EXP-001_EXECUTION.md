@@ -29,6 +29,24 @@ DATが担当するのは:
 
 実際のCodex sessionはOperatorが外部で起動します。
 
+## Preflight
+
+実Run開始前にFreezeがintactであることを確認します。
+
+```bash
+python scripts/validate_experiment_freeze.py
+```
+
+次に現在のRun状態を確認します。
+
+```bash
+python scripts/pilot_status.py \
+  --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
+  --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml
+```
+
+Preflightが失敗した場合はRunを開始せず、Issue #15を停止して原因を確認します。
+
 ## First paired block
 
 最初に実行するblockは:

@@ -20,8 +20,9 @@ For the current post-0.2.1 line, evaluate `0.3.0` as the default candidate becau
 The candidate commit must have successful:
 
 - `spec-lint / validate`;
-- `codeql / Analyze Python`;
-- `Scorecard supply-chain security / Scorecard analysis`.
+- `codeql / Analyze Python`.
+
+Review the latest successful `Scorecard supply-chain security / Scorecard analysis` result as supply-chain evidence. Re-run it before release when the available result is stale or the release changes workflow/dependency posture; do not make a transient Scorecard publication failure an unrelated release blocker.
 
 A reviewer should also verify that failed, cancelled, or stale workflow runs are not being treated as successful evidence.
 

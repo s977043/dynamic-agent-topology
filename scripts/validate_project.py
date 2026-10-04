@@ -134,6 +134,13 @@ def main() -> int:
     policy = docs.get("policy.yaml")
     evidence = docs.get("evidence.yaml")
 
+    project_name = project["metadata"]["name"]
+    for filename, document in docs.items():
+        if document and document.get("metadata", {}).get("name") != project_name:
+            errors.append(
+                f"{filename}: metadata.name must match project.yaml metadata.name {project_name!r}"
+            )
+
     if policy:
         stage = policy["spec"]["rolloutStage"]
     elif evidence:
@@ -185,7 +192,7 @@ def main() -> int:
 
     extra_bindings = sorted(binding_set - project_runtimes)
     if extra_bindings:
-        warnings.append(f"runtimes.yaml: bindings not listed in project.yaml: {extra_bindings!r}")
+        errors.append(f"runtimes.yaml: bindings not listed in project.yaml: {extra_bindings!r}")
 
     for binding in bindings:
         runtime = binding["runtime"]
@@ -217,14 +224,20 @@ def main() -> int:
                 )
 
         config_path = binding.get("configPath")
+        if binding["mode"] == "manual" and stage_value >= STAGE_ORDER["A4-canary"] and not config_path:
+            errors.append(
+                f"runtimes.yaml: manual runtime {runtime!r} requires configPath from A4 onward"
+            )
         if config_path:
             resolved = safe_project_path(project_root, config_path)
             if resolved is None:
                 errors.append(f"runtimes.yaml: configPath escapes project root: {config_path!r}")
             elif binding["mode"] == "manual" and not resolved.exists():
-                warnings.append(
-                    f"runtimes.yaml: manual configPath does not exist yet: {config_path!r}"
-                )
+                message = f"runtimes.yaml: manual configPath does not exist: {config_path!r}"
+                if stage_value >= STAGE_ORDER["A4-canary"]:
+                    errors.append(message)
+                else:
+                    warnings.append(message)
 
     if policy:
         spec = policy["spec"]
@@ -297,7 +310,11 @@ def main() -> int:
 
     gitignore_path = project_root / ".gitignore"
     if gitignore_path.is_file():
-        ignored = gitignore_path.read_text(encoding="utf-8")
+        ignored = {
+            line.strip()
+            for line in gitignore_path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
         for entry in (".dat/generated/", ".dat/state/"):
             if entry not in ignored:
                 warnings.append(f".gitignore: recommended entry is missing: {entry}")

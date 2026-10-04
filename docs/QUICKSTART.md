@@ -109,3 +109,10 @@ A4 Canary / A5 Dynamicへ進む必要はありません。
 - A1以降なら `.dat/evidence.yaml` がvalid
 - A3以降ならRouting Policyがvalid
 - External Project ValidatorがPASS
+
+
+## Validatorが保証しないこと
+
+Validatorは `.dat/` とDAT specificationの整合を確認しますが、Manual Adapterとして設定した `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` 等の内容が、宣言Topologyを実際に実装していることまでは証明しません。
+
+A4 Canary以降ではExecutionTrace / Evidenceを使って実行時のTopology Adherenceを確認します。

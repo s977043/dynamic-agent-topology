@@ -24,7 +24,6 @@ DATは、既存プロジェクトをいきなりMulti-Agent化するための仕
 ├── policy.yaml
 ├── runtimes.yaml
 ├── dat.lock.yaml
-├── overrides/
 ├── generated/
 └── state/
 ```
@@ -36,7 +35,6 @@ DATは、既存プロジェクトをいきなりMulti-Agent化するための仕
 - `policy.yaml`: Project Policy
 - `runtimes.yaml`: Runtime Binding
 - `dat.lock.yaml`: DAT spec/version binding
-- `overrides/`: Project固有差分
 - `generated/`: Runtime向け生成物。原則Git管理しない
 - `state/`: Trace/Evaluationなどのlocal state。原則Git管理しない
 
@@ -70,3 +68,12 @@ python scripts/validate_project.py --project /path/to/project --dat-root /path/t
 ```
 
 詳細は [QUICKSTART.md](QUICKSTART.md) を参照してください。
+
+
+## Validation Boundary
+
+External Project Validatorが保証するのは、DAT ArtifactのSchema・参照・Version・Runtime capability contractの整合です。
+
+**Manual AdapterのRuntime設定が、宣言したRole / Permission / Topologyを実際に守って動くことまでは保証しません。** A4以降では実RuntimeのTrace / Evidenceを取得し、Topology Adherenceとして別途検証してください。
+
+`overrides/` の自動merge semanticsはv0.2.1では未実装です。Project固有差分は各Artifactへ明示的に記述してください。

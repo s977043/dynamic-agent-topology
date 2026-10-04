@@ -7,10 +7,15 @@ on:
       - "AGENTS.md"
       - "CLAUDE.md"
       - "GEMINI.md"
+      - ".antigravity/**"
   push:
     branches: [main]
     paths:
       - ".dat/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - ".antigravity/**"
 
 jobs:
   validate:

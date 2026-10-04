@@ -114,6 +114,38 @@ with tempfile.TemporaryDirectory() as tmp:
     if result.returncode == 0:
         failures.append("unresolvable pinned DAT revision must fail")
 
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    runtimes_path = project / ".dat" / "runtimes.yaml"
+    data = yaml.safe_load(runtimes_path.read_text(encoding="utf-8"))
+    data["metadata"]["name"] = "copied-from-another-project"
+    runtimes_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("mismatched project artifact names must fail")
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    runtimes_path = project / ".dat" / "runtimes.yaml"
+    data = yaml.safe_load(runtimes_path.read_text(encoding="utf-8"))
+    data["spec"]["bindings"].append({"runtime": "antigravity", "mode": "manual"})
+    runtimes_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("runtime bindings not declared by project.yaml must fail")
+
+with tempfile.TemporaryDirectory() as tmp:
+    project = copy_example(tmp)
+    policy_path = project / ".dat" / "policy.yaml"
+    policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    policy["spec"]["rolloutStage"] = "A4-canary"
+    policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
+    result = run(project)
+    if result.returncode == 0:
+        failures.append("A4 manual adoption with missing runtime config files must fail")
+
 if failures:
     print("External project validator tests failed:")
     for failure in failures:

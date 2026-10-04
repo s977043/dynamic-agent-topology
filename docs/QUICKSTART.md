@@ -2,7 +2,7 @@
 
 この手順は、既存プロジェクトへDATを**非破壊・Manual Adapter方式**で導入する最短経路です。
 
-> 最初の目的はMulti-Agent化ではありません。  
+> 最初の目的はMulti-Agent化ではありません。
 > **プロジェクトのAgent実行を、構造化・検証可能・比較可能にすること**です。
 
 ## Before you start

@@ -85,6 +85,15 @@ Escalate complexity only if a smaller intervention cannot address the failure
 - Evaluation不足をReviewerの主観的承認で補う
 - 単発Failureだけを根拠にGraphを複雑化する
 
+
+## Deferred evolution
+
+Loop / Graphの診断項目が存在することは、DAT coreへ汎用Loop engineやGraph recovery contractを追加する根拠にはなりません。
+
+EXP-001完了後に、実測したfrictionから停止条件、retry、budget、persistent state、branch/join、recovery semanticsの必要性を評価します。追跡は [Issue #42](https://github.com/s977043/dynamic-agent-topology/issues/42) で行います。
+
+Issue #42はroadmap commitmentではなく、**既存のより単純な契約で十分なら棄却・延期するための評価課題**です。
+
 ## Relationship to EXP-001
 
 この診断レンズは既存概念の整理であり、EXP-001のPrompt、Topology、Role、Scenario、Fixture、Schema、validator、Run Matrix、Metric、Decision semanticsを変更しません。

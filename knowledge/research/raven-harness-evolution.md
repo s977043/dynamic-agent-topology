@@ -13,7 +13,7 @@ DAT is currently in the EXP-001 evidence-acquisition phase. Any normative archit
 - Paper: [Raven: The Harness of Harnesses for Composable Agentic Intelligence](https://arxiv.org/abs/2609.33439)
 - Reference implementation: [EverMind-AI/Raven](https://github.com/EverMind-AI/Raven)
 - Published: 2026-09-27
-- Repository status at review time: pre-alpha
+- Repository status when reviewed on 2026-10-05: pre-alpha
 
 ## Source claims
 
@@ -120,16 +120,16 @@ Candidate Generator != Evaluator != Promotion Authority
 
 This extends DAT's existing `Builder != Judge` principle without requiring a new runtime abstraction.
 
-## What is adopted now
+## What is retained during the freeze
 
-Only the following research conclusions are retained for future evaluation:
+No Raven-derived design is normatively adopted while EXP-001 is frozen. The following are retained only as post-freeze hypotheses to evaluate:
 
 - agent capability is configuration-dependent, not model-only;
 - candidate improvements require independent evidence before promotion;
 - out-of-sample / regression evidence should be preferred for promotion decisions;
 - successful changes should remain ablatable and reversible.
 
-No current canonical topology, schema, metric, routing policy, or Runtime Adapter changes are adopted from Raven during EXP-001.
+Accordingly, `knowledge/sources.yaml` keeps Raven at `adopted: []`. No current canonical topology, schema, metric, routing policy, or Runtime Adapter changes are adopted from Raven during EXP-001.
 
 ## Deferred questions
 

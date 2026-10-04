@@ -24,7 +24,7 @@ Experiment固有の固定条件は、各`experiment.yaml`やPilot ArtifactをSou
 - **test** — 採用判断のため、調整から分離して評価するScenario
 - **regression** — 既存能力や安全性が悪化していないことを確認するScenario
 
-Split名だけで独立性が保証されるわけではありません。実際の運用でcross-run feedbackやcontaminationを防ぐ必要があります。
+Split名だけで独立性が保証されるわけではありません。実際の運用でcross-run feedbackやcontaminationを防ぐ必要があります。また、個別ExperimentがFeature Freezeやcross-run feedback禁止を定めている場合は、`train` splitであってもそのRun結果を途中改善へ使用しません。
 
 ## Run artifacts
 

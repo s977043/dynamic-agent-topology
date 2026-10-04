@@ -39,7 +39,7 @@ Do not advertise a version on current `main` merely because a historical content
 
 ## Publication gate
 
-After the release PR is merged:
+After the release PR is merged, treat the repository as **publication pending** until the tag and GitHub Release exist:
 
 1. verify the merged commit is the intended release commit;
 2. verify required CI/security workflows on that commit;
@@ -47,7 +47,7 @@ After the release PR is merged:
 4. publish the matching GitHub Release;
 5. verify README, changelog, citation metadata, tag, and GitHub Release agree.
 
-If publication cannot be completed, revert or correct release metadata rather than leaving `main` claiming a release that does not exist.
+Keep the publication-pending interval short. If publication cannot be completed, promptly revert or correct release metadata rather than leaving `main` claiming a release that does not exist.
 
 ## EXP-001 boundary
 

@@ -16,3 +16,7 @@ v0.2のHarnessは**Runtime実行器ではなく、Experiment Artifactの検証�
 - 統計的有意差検定
 
 これらはExperiment Artifactの契約を実Runで検証してから段階的に追加します。
+
+## 集計時のControl
+
+`summarize_experiment.py` は、同じExperimentに複数のRuntime / Model / Effortが混在する入力を拒否します。Execution Contextごとに分けて集計し、Runtime差とTopology差を混同しないことを優先します。

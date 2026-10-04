@@ -5,6 +5,7 @@ metadata:
   experiment: EXP-001-t0-vs-t1
   scenario: train-normalize-name
   condition: T1
+  blockId: sample-block-001
 topology: T1-worker-verifier
 runtime:
   name: claude-code

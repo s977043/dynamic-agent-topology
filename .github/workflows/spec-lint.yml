@@ -85,3 +85,6 @@ jobs:
 
       - name: Experiment summary smoke test
         run: python scripts/summarize_experiment.py examples/experiment-run/*-evaluation.yaml
+
+      - name: Validate failing experiment fixtures
+        run: python scripts/validate_fixtures.py

@@ -117,6 +117,8 @@ A2 / A3 / 固定T0・T1が最適なProjectも想定しています。
 
 まず試す場合は [Quick Start](docs/QUICKSTART.md)、設計詳細は [Brownfield Adoption Protocol](docs/ADOPTION.md) を参照してください。
 
+失敗の切り分けと複雑化判断には [Engineering Layer Diagnostics](docs/ENGINEERING_LAYERS.md) を使います。
+
 ## 対象Runtime
 
 DATはRuntime / Model / Roleを分離して扱います。

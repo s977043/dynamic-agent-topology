@@ -48,7 +48,7 @@ RoutingはTopologyを選択し、Escalationは許容する複雑度の上限を�
 
 ## Runtime Adapter
 
-AdapterはDATの抽象CapabilityとRoleをRuntime固有の設定へ写像します。v0.1ではClaude Code / Codex / Gemini CLI / AntigravityのCapability Manifestを持ち、未確認事項は`unknown`として明示します。
+AdapterはDATの抽象CapabilityとRoleをRuntime固有の設定へ写像します。現在のManual-adoption contractではClaude Code / Codex / Gemini CLI / AntigravityのCapability Manifestを持ち、未確認事項は`unknown`として明示します。
 
 ## Execution Trace
 
@@ -57,3 +57,9 @@ AdapterはDATの抽象CapabilityとRoleをRuntime固有の設定へ写像しま�
 ## Evaluation
 
 Task Outcomeだけでなく、Topology Adherence、Boundary Violation、Evidence Quality、Collaboration Costを合わせて評価します。
+
+## Engineering Layer Diagnostics
+
+上記のArchitecture Planeは責務分離のための構造です。障害解析では、これとは別軸の **Prompt / Context / Harness / Loop / Graph / Evaluation** を診断レンズとして使います。Planeを置き換えたり、新しいHarness Planeを追加したりはしません。
+
+診断契約とCrosswalkは [Engineering Layer Diagnostics](ENGINEERING_LAYERS.md) を参照してください。

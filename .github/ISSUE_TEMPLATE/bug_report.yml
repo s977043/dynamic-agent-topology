@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible defect in DAT specifications, tooling, examples, or documentation.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a defect. Keep the report reproducible and free of secrets or private data.
+  - type: input
+    id: version
+    attributes:
+      label: DAT version or commit
+      description: Tag, release, or commit SHA where you observed the issue.
+      placeholder: v0.2.1 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Schemas / contracts
+        - Validation / CI
+        - Experiment tooling
+        - Runtime adapters
+        - Adoption examples
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest commands, files, or steps needed to reproduce the problem.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Relevant validator output, logs, or deterministic evidence. Redact private paths and sensitive values.
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Safety and experiment boundaries
+      options:
+        - label: I removed credentials, private source code, hidden reasoning, and unrelated user data.
+          required: true
+        - label: I checked whether this touches an active experiment freeze and will not silently modify frozen artifacts.
+          required: true

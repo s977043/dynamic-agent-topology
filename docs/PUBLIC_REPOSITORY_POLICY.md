@@ -1,6 +1,13 @@
 # Public repository policy
 
-This document defines the intended GitHub repository settings for Dynamic Agent Topology (DAT). These settings live outside Git, so they must be audited separately from repository files.
+This document defines the **intended GitHub repository settings** for Dynamic Agent Topology (DAT). These settings live outside Git, so this file is a target-state policy, not proof that the settings are currently enforced.
+
+## Compliance semantics
+
+- A merged change to this file does **not** apply GitHub repository settings.
+- Current state must be audited against GitHub repository settings, rulesets, branch protection, Actions permissions, and security settings.
+- A difference between this policy and GitHub's current configuration is configuration drift and should be handled explicitly.
+- Do not claim repository compliance based only on the presence of this document.
 
 ## Metadata
 
@@ -56,11 +63,26 @@ Enable and periodically verify:
 - Dependabot alerts;
 - Dependabot security updates.
 
-Repository workflows use least-privilege permissions and immutable action SHAs. OpenSSF Scorecard is evidence for improving supply-chain posture, not a target score to maximize.
+Repository workflows should use least-privilege permissions and immutable action SHAs. OpenSSF Scorecard is evidence for improving supply-chain posture, not a target score to maximize.
 
 ## Release consistency
 
 A version advertised in README or `CITATION.cff` must map to an immutable Git tag and GitHub Release. Never move an existing release tag to include later fixes; publish a new version instead.
+
+Repository policy, release metadata, and the actual GitHub Release must describe the same boundary. If `main` has moved beyond the latest release, document that work as unreleased rather than rewriting the historical release point.
+
+## Audit checklist
+
+During an audit, verify at least:
+
+1. repository metadata and enabled collaboration surfaces;
+2. allowed merge methods and branch cleanup behavior;
+3. `main` ruleset / branch protection and required checks;
+4. Actions workflow permissions and immutable action references;
+5. security features and Dependabot configuration;
+6. release tag / GitHub Release / `CITATION.cff` consistency.
+
+Record configuration drift as an actionable issue or PR; do not silently update this document to match a weaker accidental state.
 
 ## Audit cadence
 

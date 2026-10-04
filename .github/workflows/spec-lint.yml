@@ -61,3 +61,27 @@ jobs:
 
       - name: Semantic validation
         run: python scripts/validate_semantics.py
+
+      - name: Validate experiments
+        run: |
+          for file in experiments/EXP-*/experiment.yaml; do
+            check-jsonschema --schemafile schemas/experiment.schema.json "$file"
+          done
+          for file in experiments/EXP-*/scenarios/*.yaml; do
+            check-jsonschema --schemafile schemas/scenario-set.schema.json "$file"
+          done
+
+      - name: Validate experiment run examples
+        run: |
+          for file in examples/experiment-run/*-trace.yaml; do
+            check-jsonschema --schemafile schemas/execution-trace.schema.json "$file"
+          done
+          for file in examples/experiment-run/*-evaluation.yaml; do
+            check-jsonschema --schemafile schemas/evaluation.schema.json "$file"
+          done
+
+      - name: Experiment semantic validation
+        run: python scripts/validate_experiments.py
+
+      - name: Experiment summary smoke test
+        run: python scripts/summarize_experiment.py examples/experiment-run/*-evaluation.yaml

@@ -6,7 +6,7 @@
 > **どのAgent Topologyが、どの条件で、どれだけのコストに対して有効なのか？**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: v0.1 Foundation](https://img.shields.io/badge/Status-v0.1%20Foundation-orange.svg)](docs/NORTH_STAR.md)
+[![Status: v0.2 Experiment-ready](https://img.shields.io/badge/Status-v0.2%20Experiment--ready-green.svg)](docs/NORTH_STAR.md)
 
 **Dynamic Agent Topology (DAT)** は、AI Agent Teamの構造を設計・選択・評価・改善するための、Provider非依存の仕様と実験基盤です。
 
@@ -84,7 +84,7 @@ Select
 → Evaluate
 ```
 
-v0.1では、まず **Topology SelectionとEscalation** を中心に扱います。  
+現在は、まず **Topology SelectionとEscalation** を中心に扱います。  
 将来的には、実行中のDe-escalationやRecompositionまで検証対象にします。
 
 ## 既存プロジェクトへの導入
@@ -138,10 +138,17 @@ baselines/    Agentを使わないExecution Baseline
 topologies/   Canonical Agent Topology
 policies/     Routing / Escalation Policy
 adapters/     Runtime Adapter
-experiments/  実験プロトコル
-harness/      将来のExecution / Evaluation Harness
+experiments/  実験定義・Scenario Set
+fixtures/     再現可能な小規模Scenario fixture
+harness/      Experiment Artifactの検証・集計Harness
 examples/     Brownfield導入例
 ```
+
+## 最初の実験
+
+[EXP-001: T0 vs T1](experiments/EXP-001-t0-vs-t1/README.md) では、Single Agentに独立Verifierを追加する価値を比較します。
+
+同一Task / Runtime / Model / EffortでT0とT1を繰り返し実行し、Task SuccessだけでなくRegression、Human Intervention、Token、Latency、Topology Adherence、Verifier False Acceptを合わせて評価します。
 
 ## Evidence Base
 
@@ -158,20 +165,23 @@ DATは既存研究・公式知見をそのまま流用せず、**Source Claimと
 
 ## 現在の状態
 
-**v0.1 Foundation**
+**v0.2 Experiment-ready**
 
 現在は、以下の土台を整備しています。
 
 - North Star / Architecture / Glossary
 - Role / Topology / Runtime / Evaluation Schema
-- Canonical Topology P0〜T3
+- P0 Execution Baseline / Canonical Topology T0〜T3
 - Routing / Escalation Policy
 - Brownfield Adoption Protocol
 - Runtime Adapter Contract
 - Knowledge Base
-- Schema Validation CI
+- Schema / Semantic Validation CI
+- EXP-001: T0 vs T1
+- ExecutionTrace / RunEvaluation Schema
+- Run Evaluationの条件別集計
 
-Runtime Adapter本体とExecution/Evaluation Harnessは、仕様と評価プロトコルが安定するまで段階的に実装します。
+Runtime Adapterの自動compile/applyとAgent実行オーケストレーションはまだ実装しません。まずEXP-001でArtifact契約と評価方法を検証します。
 
 ## Guiding Principle
 

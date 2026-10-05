@@ -46,7 +46,8 @@ Require prompt byte equality against the archived prompt. Parsed preparation
 metadata must match except `spec.workspaceId`. Require fresh workspace file set
 and bytes to match the frozen fixture, and Feature Freeze validation to pass.
 Independently review the archive and preparation diff before model invocation.
-On preparation failure, preserve partial outputs, restore original preparation,
+On preparation failure, preserve partial outputs, restore the original six-file
+canonical run directory (including attestation, trace, evidence and STOP-REPORT),
 and stop instead of automatically trying again.
 
 Verify sandbox operation without a model in a separate diagnostic workspace:
@@ -54,6 +55,8 @@ allowed writes must succeed and forbidden writes must be denied. Do not reuse
 the diagnostic wide-read profile as experimental permissions. Confirm the
 declared Python evidence command can start in a sandbox, then confirm expected
 initial Evidence FAIL on the new untouched experiment fixture.
+Disable Python bytecode writes during preflight and recheck the workspace file
+set and bytes immediately before model startup.
 
 ## Single permitted retry
 

@@ -53,11 +53,11 @@ Preflightが失敗した場合はRunを開始せず、Issue #15を停止して�
 
 実測Runとして認めるには、Pilotで固定されたRuntime / Model / Effortを満たす**実際のCodex session**が必要です。GitHub CIやArtifact生成だけではempirical runになりません。
 
-## Current handoff checkpoint
+## Handoff checkpoint after PR #54
 
-PR #54で最初のT0 `EXP-001-train-normalize-name-r01-T0` はsingle-run validationを通過し、complete empirical runsは **1 / 18** です。最初のinfrastructure failureはcanonical Runとは分離して保存され、retry accountingも記録済みです。
+PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r01-T0` はsingle-run validationを通過し、checkpoint時点のcomplete empirical runsは **1 / 18** です。最初のinfrastructure failureはcanonical Runとは分離して保存され、retry accountingも記録済みです。
 
-この文書はlive trackerではありません。**現在の次Run・停止条件・attempt countはIssue #15を正本**としてください。#54時点の次matrix itemは `EXP-001-train-normalize-name-r01-T1` です。
+このcheckpointはhistorical recordであり、この文書はlive trackerではありません。**現在の次Run・停止条件・attempt countはIssue #15を正本**としてください。#54時点の次matrix itemは `EXP-001-train-normalize-name-r01-T1` です。
 
 実workspaceを作っていない状態で `run-meta.yaml` や結果ArtifactだけをGitHub上に先行生成しません。prepareはOperator hostでfresh workspaceを実際に作る操作と一体です。
 

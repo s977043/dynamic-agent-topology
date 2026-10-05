@@ -247,6 +247,18 @@ def main() -> int:
                         errors.append(f"{trace_path}: model does not match execution attestation")
                     if trace.get("model", {}).get("effort") != attested.get("effort"):
                         errors.append(f"{trace_path}: effort does not match execution attestation")
+                    start_events = [
+                        event for event in trace.get("events", [])
+                        if event.get("type") == "start"
+                    ]
+                    for event in start_events:
+                        details = event.get("details", {})
+                        if "sessionId" in details and details.get("sessionId") != attested.get("sessionId"):
+                            errors.append(f"{trace_path}: start event sessionId does not match execution attestation")
+                        if "freshSession" in details and details.get("freshSession") != attested.get("freshSession"):
+                            errors.append(f"{trace_path}: start event freshSession does not match execution attestation")
+                        if "crossRunFeedbackUsed" in details and details.get("crossRunFeedbackUsed") != attested.get("crossRunFeedbackUsed"):
+                            errors.append(f"{trace_path}: start event crossRunFeedbackUsed does not match execution attestation")
             if eval_path.is_file():
                 evaluation = load(eval_path)
                 validate(evaluation, eval_schema, str(eval_path), errors)

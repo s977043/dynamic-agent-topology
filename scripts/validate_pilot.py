@@ -293,7 +293,7 @@ def main() -> int:
                 trace_summary = trace.get("summary", {})
                 efficiency = evaluation.get("efficiency", {})
                 collaboration = evaluation.get("collaboration", {})
-                for field in ("agentInvocations", "coordinationTransitions", "wallClockMs"):
+                for field in ("agentInvocations", "coordinationTransitions", "inputTokens", "outputTokens", "wallClockMs"):
                     if field in trace_summary and efficiency.get(field) != trace_summary[field]:
                         errors.append(f"{eval_path}: efficiency.{field} does not match trace summary")
                 if collaboration.get("humanInterventions") != trace_summary.get("humanInterventions"):

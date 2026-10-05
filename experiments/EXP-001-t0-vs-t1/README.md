@@ -15,7 +15,7 @@ Runtime / Model / Effort / Taskは条件間で揃え、Topologyだけを主変�
 
 ## データ分離
 
-- `train`: 実験手順やPrompt/Role Contractの改善に利用可能
+- `train`: splitの一般目的は実験手順やPrompt/Role Contractの調整。ただし現在のEXP-001 PilotはFeature Freeze中のため、18 Run完了までは途中のtrain結果を使ってPrompt / Role / Topology / Scenario / Evaluation semanticsを変更しない
 - `test`: Topology選択の最終比較に利用。調整の材料にはしない
 - `regression`: 採用後のTopology変更で既知品質を壊していないか確認
 
@@ -39,7 +39,7 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 
 ## Decision status
 
-現時点では実験は未実施です。結果が揃うまでT0/T1の優劣は主張しません。採否記録は [DECISION.md](DECISION.md) に残します。
+PR #54（merge commit `a718293`）時点ではPilot実行中で、最初のT0 Runがsingle-run validationを通り、complete empirical runsは **1 / 18** です。これはT0/T1比較の結論ではありません。18 / 18とcompleteness validationが揃うまで優劣は主張せず、採否記録は [DECISION.md](DECISION.md) を `NOT RUN` のまま維持します。Live progressと次RunはIssue #15を正本とします。
 
 
 ## Pilot
@@ -56,7 +56,7 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 - fresh session/context per run
 - counterbalanced paired order
 
-Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。
+Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。最初のcomplete Runだけを見てPrompt / Topology / Scenario / Evaluation semanticsを変更しません。
 
 
 ## Feature Freeze

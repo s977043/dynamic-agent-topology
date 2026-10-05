@@ -1,0 +1,40 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T0
+  blockId: EXP-001-train-normalize-name-r01
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  inputTokens: 86676
+  outputTokens: 385
+  wallClockMs: 75861
+verdict: pass
+notes: 'Empirical fresh T0 retry authorized by PR #53 / Issue #51. Original infrastructure-failed
+  session is preserved separately; total attempted sessions 2, complete matrix runs
+  1/18. Runtime command/file-change events show one Worker, no delegation or in-run
+  human intervention. Required unittest passed 2/2; unchanged tests and public API
+  preserved. Post-run Operator recheck is outside runtime wall-clock. Model/effort
+  verified from persisted turn_context. No T0/T1 comparison; no hidden reasoning copied.'

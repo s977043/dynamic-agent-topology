@@ -6,11 +6,11 @@ metadata:
   scenario: train-normalize-name
   condition: T0
 spec:
-  sessionId: 01a10975-1997-7e33-bcb3-3d6c855b6471
+  sessionId: 01a1095b-9caf-7691-a255-c0b434a5539a
   freshSession: true
   crossRunFeedbackUsed: false
   runtime: codex
   model: gpt-6.1-sol
   effort: high
-  startedAt: '2026-10-05T00:27:11.345383+00:00'
-  finishedAt: '2026-10-05T00:28:27.207199+00:00'
+  startedAt: '2026-10-04T23:59:20.867727+00:00'
+  finishedAt: '2026-10-05T00:00:51.197937+00:00'

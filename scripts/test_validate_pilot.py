@@ -120,6 +120,43 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     if "start event sessionId does not match execution attestation" not in mismatch.stdout:
         failures.append("sessionId mismatch must report provenance error")
 
+
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+    tmp_path = Path(tmp)
+    pilot_path = tmp_path / "pilot.yaml"
+    matrix_path = tmp_path / "matrix.yaml"
+    artifact_root = tmp_path / "artifacts"
+    pilot = yaml.safe_load(PILOT.read_text(encoding="utf-8"))
+    matrix = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
+    first_run = matrix["spec"]["runs"][0]["runId"]
+    source_run = ROOT / pilot["spec"]["artifactRoot"] / first_run
+    isolated_run = artifact_root / first_run
+    isolated_run.mkdir(parents=True)
+    for filename in (
+        "run-meta.yaml",
+        "prompt.md",
+        "execution-attestation.yaml",
+        "trace.yaml",
+        "evaluation.yaml",
+        "patch.diff",
+        "evidence.txt",
+    ):
+        shutil.copy2(source_run / filename, isolated_run / filename)
+    pilot["spec"]["matrixPath"] = str(matrix_path.relative_to(ROOT))
+    pilot["spec"]["artifactRoot"] = str(artifact_root.relative_to(ROOT))
+    pilot_path.write_text(yaml.safe_dump(pilot, sort_keys=False), encoding="utf-8")
+    matrix_path.write_text(yaml.safe_dump(matrix, sort_keys=False), encoding="utf-8")
+
+    evaluation_path = isolated_run / "evaluation.yaml"
+    evaluation = yaml.safe_load(evaluation_path.read_text(encoding="utf-8"))
+    evaluation["efficiency"]["inputTokens"] += 1
+    evaluation_path.write_text(yaml.safe_dump(evaluation, sort_keys=False), encoding="utf-8")
+    token_mismatch = run(pilot_path, matrix_path, "--run-id", first_run)
+    if token_mismatch.returncode == 0:
+        failures.append("trace/evaluation inputTokens mismatch must fail")
+    if "efficiency.inputTokens does not match trace summary" not in token_mismatch.stdout:
+        failures.append("inputTokens mismatch must report trace/evaluation consistency error")
+
 unknown_run = run(PILOT, MATRIX, "--run-id", "does-not-exist")
 if unknown_run.returncode == 0:
     failures.append("single-run artifact validation must reject unknown runId")

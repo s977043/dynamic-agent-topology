@@ -1,0 +1,23 @@
+Run: EXP-001-train-normalize-name-r01-T0
+Status: infrastructure failure; not a complete empirical run.
+Session: 01a1095b-9caf-7691-a255-c0b434a5539a
+Effective model/effort from persisted turn_context: gpt-6.1-sol / high.
+
+Operator preflight (before runtime): python -m unittest discover -s tests
+Exit: 1; 2 tests, 1 expected failure: ALICE != alice.
+This is the initial failing fixture condition, not the runtime result.
+
+Runtime command attempts: 3. Every command exited 8 before execution.
+Required deterministic command: python -m unittest discover -s tests
+Runtime deterministic test result: not_measured:sandbox-startup-failed
+Error: bundled bubblewrap digest mismatch
+Expected SHA-256: 01fb705f067bd5365b63d8ad2323a61c8d007733ca5e649437e086f3fb9935d8
+Observed SHA-256: 067a1289020a7398e71cf0cebbb057277b792831735da080f6cd88b8ec1237fa
+Operator independently reproduced the observed installed-helper SHA-256.
+
+Implementation file set/content after session: unchanged from frozen fixture.
+No patch or RunEvaluation was generated. CLI exit 0 means the session ended, not task success.
+Observed process wallClockMs: 90330
+Runtime-reported input_tokens: 137613
+Runtime-reported cached_input_tokens: 117248
+Runtime-reported output_tokens: 538

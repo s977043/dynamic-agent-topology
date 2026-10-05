@@ -370,6 +370,17 @@ RedactionによってPASS/FAILや再現に必要な情報まで消さないよ�
 
 Redactionした事実は `evaluation.yaml notes` など既存の自由記述欄で簡潔に明示できます。
 
+## Cross-artifact consistency review
+
+Feature Freeze revision 3では `scripts/validate_pilot.py` 自体が凍結されています。実Run開始後にvalidator semanticsを変更しないため、次のcross-artifact関係はEXP-001中は**レビュー項目として手動確認**します。自動化候補はIssue #57でpost-EXP-001へ延期しています。
+
+- Trace start eventに `sessionId` / `freshSession` / `crossRunFeedbackUsed` がある場合、`execution-attestation.yaml` と一致する
+- 単一のtimestamp付きstart / finish eventがある場合、attested `startedAt` / `finishedAt` と一致する
+- Trace summaryとRunEvaluation efficiencyの双方に `inputTokens` / `outputTokens` がある場合、一致する
+- 不一致を「意味は同じ」として丸めず、Runを受理する前に原因をレビューする
+
+これは新しい測定条件や評価意味論ではありません。既に記録した同一実行事実がArtifact間で矛盾していないことを確認するための整合レビューです。
+
 ## Reproducibility checklist
 
 single-run validation前に確認します。
@@ -381,6 +392,7 @@ single-run validation前に確認します。
 - patch.diffが実際のRun差分
 - optional metricsは実測できた値だけ
 - trace/evaluationの共通metricsが一致
+- 上記Cross-artifact consistency reviewを完了
 - secret / private data / hidden reasoningがない
 - 他Run結果を混入していない
 

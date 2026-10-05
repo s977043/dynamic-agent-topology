@@ -53,6 +53,14 @@ Preflightが失敗した場合はRunを開始せず、Issue #15を停止して�
 
 実測Runとして認めるには、Pilotで固定されたRuntime / Model / Effortを満たす**実際のCodex session**が必要です。GitHub CIやArtifact生成だけではempirical runになりません。
 
+## Current handoff checkpoint
+
+PR #54で最初のT0 `EXP-001-train-normalize-name-r01-T0` はsingle-run validationを通過し、complete empirical runsは **1 / 18** です。最初のinfrastructure failureはcanonical Runとは分離して保存され、retry accountingも記録済みです。
+
+この文書はlive trackerではありません。**現在の次Run・停止条件・attempt countはIssue #15を正本**としてください。#54時点の次matrix itemは `EXP-001-train-normalize-name-r01-T1` です。
+
+実workspaceを作っていない状態で `run-meta.yaml` や結果ArtifactだけをGitHub上に先行生成しません。prepareはOperator hostでfresh workspaceを実際に作る操作と一体です。
+
 ## First paired block
 
 最初に実行するblockは:
@@ -65,7 +73,9 @@ run-matrix上の順序は固定です。
 
 `EXP-001-train-normalize-name-r01-T0`
 
-準備:
+このRunはPR #54でcomplete済みです。以下のprepare例は手順参照用であり、同じrunIdを再prepare / 再実行する指示ではありません。
+
+準備例:
 
 ```bash
 python scripts/prepare_pilot_run.py \
@@ -103,7 +113,7 @@ Gitにprepare済みArtifactがあっても、Operator hostの実workspaceが利�
 
 `EXP-001-train-normalize-name-r01-T1`
 
-T0がsingle-run validationを通った後に同じ手順でprepareします。
+T0がsingle-run validationを通った後に同じ手順でprepareします。#54時点ではこのgateを満たしていますが、実行直前にはIssue #15と `pilot_status.py` を再確認してください。
 
 ```bash
 python scripts/prepare_pilot_run.py \

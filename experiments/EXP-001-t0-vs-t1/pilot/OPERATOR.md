@@ -66,6 +66,8 @@ runs/pilot-codex/<runId>/
 
 ### 通常の実行手順
 
+#51の最初のT0には、[限定再試行手順](../../../docs/EXP-001_RETRY_51.md)を適用できます。これは #48 の実測前復旧とは別の例外で、元の実セッションを保存し、手順の独立レビュー・merge後に一度だけ再試行します。他のRunやtask failureには適用しません。
+
 1. fresh workspaceでScenarioの初期deterministic Evidenceが失敗することを確認する。初期状態でPASSする場合はRunを開始せず、#15で停止理由を記録する。
 2. 新しいCodex session/contextを開始する。
 3. 対象Runの `prompt.md` だけを入力として使う。

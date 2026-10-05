@@ -15,7 +15,7 @@ Runtime / Model / Effort / Taskは条件間で揃え、Topologyだけを主変�
 
 ## データ分離
 
-- `train`: 実験手順やPrompt/Role Contractの改善に利用可能
+- `train`: splitの一般目的は実験手順やPrompt/Role Contractの調整。ただし現在のEXP-001 PilotはFeature Freeze中のため、18 Run完了までは途中のtrain結果を使ってPrompt / Role / Topology / Scenario / Evaluation semanticsを変更しない
 - `test`: Topology選択の最終比較に利用。調整の材料にはしない
 - `regression`: 採用後のTopology変更で既知品質を壊していないか確認
 

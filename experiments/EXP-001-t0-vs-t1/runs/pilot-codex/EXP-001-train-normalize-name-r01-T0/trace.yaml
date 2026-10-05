@@ -1,0 +1,71 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T0
+  blockId: EXP-001-train-normalize-name-r01
+executionSubject:
+  kind: AgentTopology
+  name: T0-single-agent
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-04T23:59:20.867727+00:00'
+  details:
+    sessionId: 01a1095b-9caf-7691-a255-c0b434a5539a
+    freshSession: true
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: workspace inspection
+  details:
+    exitCode: 8
+    status: sandbox-startup-failed
+    expectedBwrapSha256: 01fb705f067bd5365b63d8ad2323a61c8d007733ca5e649437e086f3fb9935d8
+    observedBwrapSha256: 067a1289020a7398e71cf0cebbb057277b792831735da080f6cd88b8ec1237fa
+    commandExecuted: false
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: workspace inspection
+  details:
+    exitCode: 8
+    status: sandbox-startup-failed
+    expectedBwrapSha256: 01fb705f067bd5365b63d8ad2323a61c8d007733ca5e649437e086f3fb9935d8
+    observedBwrapSha256: 067a1289020a7398e71cf0cebbb057277b792831735da080f6cd88b8ec1237fa
+    commandExecuted: false
+- sequence: 3
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 8
+    status: sandbox-startup-failed
+    expectedBwrapSha256: 01fb705f067bd5365b63d8ad2323a61c8d007733ca5e649437e086f3fb9935d8
+    observedBwrapSha256: 067a1289020a7398e71cf0cebbb057277b792831735da080f6cd88b8ec1237fa
+    commandExecuted: false
+- sequence: 4
+  type: finish
+  actor: worker
+  timestamp: '2026-10-05T00:00:51.197937+00:00'
+  details:
+    stopReason: infrastructure-failure
+    issue: 51
+    cliExitCode: 0
+    taskOutcome: not_measured
+summary:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  humanInterventions: 0
+  inputTokens: 137613
+  outputTokens: 538
+  wallClockMs: 90330

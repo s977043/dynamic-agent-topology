@@ -259,6 +259,28 @@ def main() -> int:
                             errors.append(f"{trace_path}: start event freshSession does not match execution attestation")
                         if "crossRunFeedbackUsed" in details and details.get("crossRunFeedbackUsed") != attested.get("crossRunFeedbackUsed"):
                             errors.append(f"{trace_path}: start event crossRunFeedbackUsed does not match execution attestation")
+
+                    if len(start_events) == 1 and start_events[0].get("timestamp"):
+                        try:
+                            trace_started = datetime.fromisoformat(start_events[0]["timestamp"].replace("Z", "+00:00"))
+                            attested_started = datetime.fromisoformat(attested.get("startedAt", "").replace("Z", "+00:00"))
+                            if trace_started != attested_started:
+                                errors.append(f"{trace_path}: start timestamp does not match execution attestation")
+                        except ValueError:
+                            pass
+
+                    finish_events = [
+                        event for event in trace.get("events", [])
+                        if event.get("type") == "finish"
+                    ]
+                    if len(finish_events) == 1 and finish_events[0].get("timestamp"):
+                        try:
+                            trace_finished = datetime.fromisoformat(finish_events[0]["timestamp"].replace("Z", "+00:00"))
+                            attested_finished = datetime.fromisoformat(attested.get("finishedAt", "").replace("Z", "+00:00"))
+                            if trace_finished != attested_finished:
+                                errors.append(f"{trace_path}: finish timestamp does not match execution attestation")
+                        except ValueError:
+                            pass
             if eval_path.is_file():
                 evaluation = load(eval_path)
                 validate(evaluation, eval_schema, str(eval_path), errors)

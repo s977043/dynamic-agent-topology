@@ -39,7 +39,7 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 
 ## Decision status
 
-現時点では実験は未実施です。結果が揃うまでT0/T1の優劣は主張しません。採否記録は [DECISION.md](DECISION.md) に残します。
+Pilotは実行中です。PR #54で最初のT0 Runがsingle-run validationを通り、complete empirical runsは **1 / 18** になりました。これはT0/T1比較の結論ではありません。18 / 18とcompleteness validationが揃うまで優劣は主張せず、採否記録は [DECISION.md](DECISION.md) を `NOT RUN` のまま維持します。Live progressと次RunはIssue #15を正本とします。
 
 
 ## Pilot
@@ -56,7 +56,7 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 - fresh session/context per run
 - counterbalanced paired order
 
-Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。
+Pilot Artifactが18 Run揃うまでは `DECISION.md` を `NOT RUN` のまま維持します。最初のcomplete Runだけを見てPrompt / Topology / Scenario / Evaluation semanticsを変更しません。
 
 
 ## Feature Freeze

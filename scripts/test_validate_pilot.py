@@ -78,6 +78,48 @@ with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
     if "missing execution-attestation.yaml" not in single_incomplete.stdout:
         failures.append("single-run validation must require post-run execution attestation")
 
+
+with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+    tmp_path = Path(tmp)
+    pilot_path = tmp_path / "pilot.yaml"
+    matrix_path = tmp_path / "matrix.yaml"
+    artifact_root = tmp_path / "artifacts"
+    pilot = yaml.safe_load(PILOT.read_text(encoding="utf-8"))
+    matrix = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
+    first_run = matrix["spec"]["runs"][0]["runId"]
+    source_run = ROOT / pilot["spec"]["artifactRoot"] / first_run
+    isolated_run = artifact_root / first_run
+    isolated_run.mkdir(parents=True)
+    for filename in (
+        "run-meta.yaml",
+        "prompt.md",
+        "execution-attestation.yaml",
+        "trace.yaml",
+        "evaluation.yaml",
+        "patch.diff",
+        "evidence.txt",
+    ):
+        shutil.copy2(source_run / filename, isolated_run / filename)
+    pilot["spec"]["matrixPath"] = str(matrix_path.relative_to(ROOT))
+    pilot["spec"]["artifactRoot"] = str(artifact_root.relative_to(ROOT))
+    pilot_path.write_text(yaml.safe_dump(pilot, sort_keys=False), encoding="utf-8")
+    matrix_path.write_text(yaml.safe_dump(matrix, sort_keys=False), encoding="utf-8")
+
+    complete = run(pilot_path, matrix_path, "--run-id", first_run)
+    if complete.returncode != 0:
+        failures.append("complete isolated run must pass before provenance mutation\n" + complete.stdout)
+
+    trace_path = isolated_run / "trace.yaml"
+    trace = yaml.safe_load(trace_path.read_text(encoding="utf-8"))
+    start_event = next(event for event in trace["events"] if event["type"] == "start")
+    start_event.setdefault("details", {})["sessionId"] = "mismatched-session"
+    trace_path.write_text(yaml.safe_dump(trace, sort_keys=False), encoding="utf-8")
+    mismatch = run(pilot_path, matrix_path, "--run-id", first_run)
+    if mismatch.returncode == 0:
+        failures.append("trace/attestation sessionId mismatch must fail")
+    if "start event sessionId does not match execution attestation" not in mismatch.stdout:
+        failures.append("sessionId mismatch must report provenance error")
+
 unknown_run = run(PILOT, MATRIX, "--run-id", "does-not-exist")
 if unknown_run.returncode == 0:
     failures.append("single-run artifact validation must reject unknown runId")

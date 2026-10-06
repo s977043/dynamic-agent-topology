@@ -226,7 +226,7 @@ python scripts/validate_pilot.py \
   --run-id <runId>
 ```
 
-PASSしたRunだけ、paired blockの次のRunへ進めます。
+single-run validationがPASSした後、PR本文のManual review Evidenceを完成させ、Reviewerがreview commentに `EXP-001 Run acceptance: ACCEPT` を記録したRunだけ次のmatrix itemへ進めます。validation PASSだけではRun acceptance完了とはみなしません。
 
 ## Missing measurements
 
@@ -321,7 +321,7 @@ T0/T1はpaired comparisonです。
 
 片方のRunがArtifact contractを満たさない場合、もう片方だけを使ってpaired deltaを解釈しません。
 
-- 先行Runがsingle-run validationを通らない → 次Runを開始しない
+- 先行Runがsingle-run validationを通らない、またはReviewer Judgmentが `BLOCK` → 次Runを開始しない
 - 後続Runがaborted → blockはpaired comparison未成立
 - 片側だけ成功 → 「T0/T1差」として一般化しない
 

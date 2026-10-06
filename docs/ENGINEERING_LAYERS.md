@@ -30,6 +30,12 @@ Runtime固有のevent interception / permission enforcement / audit機構は、D
 
 Claude Code Modsについては [research note](../knowledge/research/claude-code-mods-runtime-guardrails.md) と [Issue #59](https://github.com/s977043/dynamic-agent-topology/issues/59) で追跡しています。EXP-001 Feature Freeze中はResearch candidateのままとし、Runtime behaviorは変更しません。
 
+### Persistent knowledge integrity candidates
+
+永続化・コンパイルされたKnowledgeの障害は、**Context / Harness / Evaluation** を横断して現れます。Sourceや派生Contextが破損・孤立し、抽出Toolが意味的な欠損を含んだままsuccessを返し、完了条件が生成Artifactを過信する可能性があります。Knowledgeの接続性はcoverage / integrationのEvidenceにはなりますが、correctnessのEvidenceとして扱いません。
+
+これは新しいArchitecture Planeの提案ではありません。post-EXP-001の評価候補として [research note](../knowledge/research/evidence-backed-compiled-knowledge-integrity.md) と [Issue #63](https://github.com/s977043/dynamic-agent-topology/issues/63) で追跡します。EXP-001 Feature Freeze中はResearch candidateに留め、Schema、validator behavior、Runtime behavior、evaluation semanticsを変更しません。
+
 ## Crosswalk
 
 | Architecture Plane | Prompt | Context | Harness | Loop | Graph | Evaluation |

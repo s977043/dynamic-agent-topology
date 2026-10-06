@@ -56,10 +56,12 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | ----- | -------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---- | --------- | ---------------------------- |
 | L-001 | Agent guidanceの記述がRepositoryの実態とずれる（fixturesの説明、schema適用範囲、freeze範囲、permissionの効果） | PR #84 / #85 のレビューループ | 4    | promoted  | `validate_agent_guidance.py` |
 | L-002 | ask ruleがBash経由の書き込みを検出しない | PR #85 review | 1 | promoted | `.claude/hooks/guard_frozen_bash.py` |
-| L-003 | 複数Agentが同じbranchへ同時にpushする                                                                          | PR #85 commit `792102d`       | 1    | candidate | 本書の1 branch 1 Agent rule  |
+| L-003 | 複数Agentが同じbranch・worktreeを並行して変更する | PR #85 commit `792102d`、worktree内のhook編集、PR #86 の先行merge | 3 | promoted | 本書の1 branch 1 Agent rule、`AGENTS.md` のpush手順 |
 | L-004 | Frozen fixtureでtest実行時に `__pycache__` が生成される                                                        | PR #85 作業時のlocal観測      | 1    | promoted  | `PYTHONDONTWRITEBYTECODE=1`  |
+| L-005 | branch切替の失敗後も `;` で連結したcommit/pushが続き、別PRのbranchへpushされた | PR #85 / #87（commit `9ba8208`） | 1 | candidate | git書き込みは `&&` で連結し、push元branchを確認 |
+| L-006 | local（Python 3.14）でのみ検証し、CI（Python 3.12）で `validate` が失敗した | PR #85 CI run 37541615338 | 1 | promoted | `AGENTS.md` の Python 3.12 検証ルール |
 
-状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004）。昇格には原則2回以上の観測が必要で、この2件はその例外です。
+状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004、L-006。L-006 は検証結果の報告が実態とずれたEvidence完全性の問題）。昇格には原則2回以上の観測が必要で、これらはその例外です。
 
 ## Roadmap
 

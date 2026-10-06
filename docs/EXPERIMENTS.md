@@ -12,6 +12,7 @@ DATのExperimentは、TopologyやCapabilityを「良さそうだから採用す�
 - Effort
 - Fresh workspace policy
 - Evidence commands
+- Human supervision contract（誰が、どの条件で、どの判断を行うか）
 - Run count / repetition policy
 
 Experiment固有の固定条件は、各`experiment.yaml`やPilot ArtifactをSource of Truthとします。
@@ -48,6 +49,17 @@ paired comparison
 ```
 
 これにより、Topology差とRuntime / Model差を混同しにくくします。順序効果が問題になる場合はcounterbalancingも明示します。
+
+### Human-facing concurrency
+
+TopologyやCapabilityの変更が、Humanへ同時に提示されるAgent状態、承認要求、レビュー要求、例外処理の数を変える場合、その差を無視しません。
+
+- Humanが担当する判断の種類とEscalation条件は、比較可能な範囲で同じにします。
+- candidateの構造上、human-facing concurrency自体が変化する場合は、その差を「単なる実装詳細」ではなくcoordination / operational costとして記録します。
+- `human_interventions`の回数だけから認知負荷やcontext-switch costを推定しません。
+- 観測方法が未定義な負荷を0として扱わず、必要ならconfounder / limitationとして残します。
+
+EXP-001 Feature Freeze中は、この観点を理由に新しい必須MetricやRunEvaluation fieldを追加しません。正式な測定契約が必要なら、実測上の不足をEvidenceとしてpost-freezeで別途提案します。
 
 ## Execution subject
 

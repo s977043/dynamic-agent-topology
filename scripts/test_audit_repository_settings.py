@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,6 +106,25 @@ def assert_status(checks, name, status):
 
 def main() -> int:
     target = base_target()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        target_path = Path(temp_dir) / "target.yaml"
+        target_path.write_text(module.yaml.safe_dump(target), encoding="utf-8")
+        loaded = module.load_target(target_path)
+        if loaded != target:
+            raise AssertionError("valid target should round-trip through schema validation")
+
+        invalid_target = base_target()
+        invalid_target["spec"]["merge"]["unexpected"] = True
+        target_path.write_text(module.yaml.safe_dump(invalid_target), encoding="utf-8")
+        try:
+            module.load_target(target_path)
+        except ValueError as error:
+            if "unexpected" not in str(error):
+                raise AssertionError(f"invalid target error should identify unexpected property: {error}")
+        else:
+            raise AssertionError("unknown target keys must be rejected before API access")
+
     repo = compliant_repository()
     branch = {"protected": True}
 

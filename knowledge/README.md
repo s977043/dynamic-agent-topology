@@ -4,10 +4,10 @@
 
 外部SourceがRepositoryに存在することと、DATへ設計として採用されたことは同義ではありません。
 
-## Source of truth
+## Navigation and status
 
-- [`sources.yaml`](sources.yaml) — 参照Sourceと採用状態のledger
-- [`principles/`](principles/) — 現在のDAT設計へ取り込まれた原則
+- [`sources.yaml`](sources.yaml) — 参照Sourceと、そのSourceから明示的に採用した項目のledger
+- [`principles/`](principles/) — 主要な設計原則を説明する短いprinciple note。採用状態の完全なledgerではない
 - [`research/`](research/) — 調査・解釈・仮説・将来評価候補。存在するだけでは採用を意味しない
 
 `sources.yaml` の `adopted` が空の場合、そのSourceは**参照済みだが、現在のDAT契約へは未採用**です。

@@ -69,12 +69,20 @@ Use `N/A` only when the corresponding optional observation was not recorded. The
 - prompt / frozen-condition drift: NONE | BLOCKED
 - sensitive-data / hidden-reasoning scan: PASS | BLOCKED
 - single-run validation: PASS | FAIL
-- reviewer conclusion: <reviewer fills after review: ACCEPT | BLOCK>
+```
+
+### Reviewer judgment
+
+The reviewer records the final judgment in a review comment after checking the evidence above.
+
+```text
+EXP-001 Run acceptance: ACCEPT | BLOCK
+Reason: <concise evidence-based reason>
 ```
 
 ### Acceptance boundary
 
-- [ ] Reviewer confirmed `ACCEPT`; this means only that this Run can be accepted as a complete EXP-001 empirical Run.
+- [ ] A review comment records `ACCEPT`; this means only that this Run can be accepted as a complete EXP-001 empirical Run.
 - [ ] No T0/T1 superiority or topology-quality judgment is made from this individual Run.
 - [ ] The next matrix item will not start until this Run is accepted.
 

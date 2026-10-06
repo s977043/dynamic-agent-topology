@@ -119,7 +119,9 @@ python scripts/validate_pilot.py \
   --run-id <runId>
 ```
 
-このsingle-run validationがPASSするまで、paired blockの次Runへ進みません。
+このsingle-run validationがPASSすることは必要条件ですが、それだけでRun acceptanceは完了しません。
+
+結果PR本文のObservable Evidenceと差分をReviewerが確認し、review commentに `EXP-001 Run acceptance: ACCEPT` が記録されるまで次のmatrix itemへ進みません。validation PASSはArtifact contract整合、`ACCEPT` はそのRunをcomplete empirical Runとして受理できるというReviewer Judgmentです。Condition / Topologyの優劣判断ではありません。
 
 18 Runすべての最終completionは:
 

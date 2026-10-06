@@ -24,6 +24,12 @@ Engineering Layerは成熟度順でも依存順でもありません。複数Lay
 
 また、この診断ラベルの `Harness` とRepository内の `harness/` ディレクトリは同義ではありません。現在の `harness/` はExperiment Artifactの検証・集計を行うtoolingであり、Agent Runtimeの実行Harnessを実装しているわけではありません。
 
+### Runtime-specific guardrail candidates
+
+Runtime固有のevent interception / permission enforcement / audit機構は、DATの新しいArchitecture Planeではなく、**Runtime MappingとHarness診断の実装候補**として扱います。Provider固有の機構が存在すること自体は採用根拠にせず、既存のnative controlやより小さい介入で不足することをEvidenceで確認してから評価します。
+
+Claude Code Modsについては [research note](../knowledge/research/claude-code-mods-runtime-guardrails.md) と [Issue #59](https://github.com/s977043/dynamic-agent-topology/issues/59) で追跡しています。EXP-001 Feature Freeze中はResearch candidateのままとし、Runtime behaviorは変更しません。
+
 ## Crosswalk
 
 | Architecture Plane | Prompt | Context | Harness | Loop | Graph | Evaluation |

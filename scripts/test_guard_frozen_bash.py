@@ -28,6 +28,8 @@ CASES = {
     "sed -i '' s/a/b/ roles/worker.yaml": "ask",
     "echo x > experiments/EXP-001-t0-vs-t1/pilot/prompts/T0.md": "ask",
     "echo x >> ./roles/verifier.yaml": "ask",
+    'echo x > "roles/worker.yaml"': "ask",
+    "echo x > 'roles/verifier.yaml'": "ask",
     "git checkout main -- experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml": "ask",
     "cat roles/worker.yaml": None,
     "python scripts/validate_pilot.py --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml 2>&1 | tail -3": None,

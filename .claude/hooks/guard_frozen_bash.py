@@ -34,7 +34,7 @@ def main():
     if not (root / MANIFEST).exists():
         return 0
     guarded = guarded_paths(root)
-    targets = REDIRECT_TARGET.findall(command)
+    targets = [target.strip("\"'") for target in REDIRECT_TARGET.findall(command)]
     hits = [p for p in guarded if any(t.endswith(p) for t in targets)]
     if WRITE_PATTERN.search(command):
         hits += [p for p in guarded if p in command and p not in hits]

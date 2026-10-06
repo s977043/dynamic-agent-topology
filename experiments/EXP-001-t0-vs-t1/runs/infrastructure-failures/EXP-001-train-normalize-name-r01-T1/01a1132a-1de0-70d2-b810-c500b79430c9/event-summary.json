@@ -1,0 +1,55 @@
+{
+  "sourceEventLogSha256": "e01fec247302e701f9e2a40946207568466c0e3c0ec56e2e4d6ed335fe4f6d1f",
+  "sourceSequenceIsOneBasedLineNumber": true,
+  "events": [
+    { "sequence": 1, "type": "thread.started" },
+    { "sequence": 6, "type": "turn.started" },
+    {
+      "sequence": 10,
+      "type": "command_execution.completed",
+      "status": "failed",
+      "exitCode": 128,
+      "category": "repository metadata inspection from a non-Git workspace"
+    },
+    {
+      "sequence": 12,
+      "type": "command_execution.completed",
+      "status": "completed",
+      "exitCode": 0,
+      "command": "cat app.py tests/test_app.py"
+    },
+    {
+      "sequence": 14,
+      "type": "command_execution.completed",
+      "status": "failed",
+      "exitCode": 127,
+      "command": "python -m unittest discover -s tests"
+    },
+    {
+      "sequence": 16,
+      "type": "file_change.completed",
+      "status": "completed",
+      "kind": "update",
+      "path": "app.py"
+    },
+    {
+      "sequence": 18,
+      "type": "command_execution.completed",
+      "status": "failed",
+      "exitCode": 127,
+      "command": "python -m unittest discover -s tests"
+    },
+    {
+      "sequence": 20,
+      "type": "collab_tool_call.started",
+      "status": "in_progress"
+    }
+  ],
+  "redactedEventContent": [
+    "agent messages",
+    "tool prompts",
+    "raw command output",
+    "unrelated runtime and authentication errors"
+  ],
+  "limitation": "This sanitized summary and source digest do not let a reviewer independently recompute the event facts without access to the Operator-retained raw source log."
+}

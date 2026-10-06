@@ -1,0 +1,12 @@
+Attempt status: incomplete / not accepted. This is not a successful deterministic Evidence result.
+
+Observed command: python -m unittest discover -s tests
+Observed exit status: 127 (twice)
+Observed stderr: zsh: command not found: python
+
+Observed task change: app.py changed from value.strip().upper() to value.strip().lower(). See patch.diff.
+Verifier: no completed independent Verifier handoff is evidenced by the retained event stream.
+Runtime/model/effort/timing: not verified; no attestation or measurements are claimed.
+
+Source event stream SHA-256: e01fec247302e701f9e2a40946207568466c0e3c0ec56e2e4d6ed335fe4f6d1f
+Sanitized event sequence: event-summary.json. Raw event stream intentionally omitted because it includes agent messages and tool prompts; reviewers cannot recompute the event facts from this archive alone.

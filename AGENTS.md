@@ -4,7 +4,7 @@ This file provides guidance to coding agents (Claude Code, Codex, Gemini CLI, et
 
 ## What this repo is
 
-Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures. It is not an agent runtime. Most content is YAML specs validated against JSON Schemas, plus Python validator scripts. Docs are primarily Japanese (`README.md`), with `README_en.md` as the English counterpart; keep both in sync when changing user-facing content. `CLAUDE.md` contains deeper architecture and workflow details; keep shared freeze rules consistent across both guides.
+Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures. It is not an agent runtime. Most content is YAML specs validated against JSON Schemas, plus Python validator scripts. Docs are primarily Japanese (`README.md`), with `README_en.md` as the English counterpart; keep both in sync when changing user-facing content.
 
 Core principle: use the simplest topology that reliably solves the task (P0 Deterministic Pipeline, T0 Single Agent are first-class baselines; T1 Worker→Verifier, T2 +Reviewer, T3 Specialized Team).
 
@@ -40,9 +40,7 @@ Five planes kept strictly separate (see `docs/ARCHITECTURE.md`):
 
 Separation rules: Topology ≠ Routing Policy, Role ≠ Permission, Role ≠ Model, Runtime ≠ Model Provider, Reviewer ≠ Verifier. Dynamic routing is a policy, never a topology.
 
-Schema validity alone is insufficient; run semantic validators for affected artifacts. Check the freeze before work and do not alter frozen prompts, roles, topologies, scenarios, fixtures, schemas, validators, or evaluation semantics without the documented blocking-defect process. EXP-001 runs require an Operator-created fresh external workspace and a fresh Codex session; never re-prepare an existing `runId`, substitute a regular Codex task, or fabricate run artifacts.
-
-Keep runtime-specific details in `adapters/`. Every YAML kind has a schema in `schemas/`; schema validity is necessary but `scripts/validate_*.py` add cross-file semantic checks. When adding a new YAML kind or directory, wire it into `spec-lint.yml`.
+Keep runtime-specific details in `adapters/`. Spec artifacts (topologies, roles, policies, baselines, adapters, experiments, pilots) are validated against `schemas/` in `spec-lint.yml`; `knowledge/sources.yaml` is not. Schema validity alone is insufficient: run the `scripts/validate_*.py` semantic validators for affected artifacts. When adding a new artifact kind, add its schema and wire it into `spec-lint.yml`.
 
 `fixtures/exp-001/` holds the frozen scenario codebases that EXP-001 runs start from (their tests fail until the task is solved); `scripts/validate_fixtures.py` checks scenario ↔ fixture wiring. `examples/brownfield/.dat/` demonstrates external-project adoption (A0–A5 stages, `docs/ADOPTION.md`).
 

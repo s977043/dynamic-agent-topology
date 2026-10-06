@@ -40,3 +40,10 @@ sources:
     url: "https://arxiv.org/abs/2607.13683"
     published_at: "2026-07-15"
     adopted: []
+
+  - id: claude-code-mods-2026
+    type: engineering-report
+    title: "Customize Claude Code with mods"
+    url: "https://claude.com/blog/claude-code-mods"
+    published_at: "2026-10-01"
+    adopted: []

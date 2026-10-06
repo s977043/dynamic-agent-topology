@@ -407,7 +407,7 @@ Cross-artifact consistency review
 
 ## Reproducibility checklist
 
-single-run validation前に確認します。
+結果Artifactを作成した後、まずsingle-run validation前に次を確認します。validation結果そのものを含むManual review recordは、single-run validation後に完成させます。
 
 - runId / blockId / scenario / conditionがmatrixと一致
 - Runtime / Model / EffortがPilot固定値
@@ -416,8 +416,10 @@ single-run validation前に確認します。
 - patch.diffが実際のRun差分
 - optional metricsは実測できた値だけ
 - trace/evaluationの共通metricsが一致
-- 上記Cross-artifact consistency reviewを完了
+- Cross-artifact consistency reviewのうち、validation結果を必要としないArtifact間整合を確認
 - secret / private data / hidden reasoningがない
 - 他Run結果を混入していない
+
+single-run validationがPASSした後、Manual review recordへvalidation結果を記入し、残りのcross-artifact reviewを完了して `reviewer conclusion: ACCEPT` を確認します。`BLOCK` の場合は次のmatrix itemへ進みません。
 
 Schema validationが通っても、このチェックを省略しません。

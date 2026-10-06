@@ -65,9 +65,11 @@ DAT has not yet observed repository-backed evidence that requires a distinct Adv
 
 The first post-freeze task is diagnosis, not role creation: identify a concrete failure or decision boundary, test whether existing Reviewer / Verifier contracts and smaller Prompt / Context / Harness interventions are sufficient, and only then evaluate a new role or trigger.
 
-Affected Engineering Layers: **Evaluation / Routing / Escalation**.
+Affected Engineering Layers: **Evaluation / Loop**.
 
-Affected Work Unit: **Unknown pending empirical diagnosis after EXP-001**.
+Routing / Escalation are DAT concepts used when diagnosing the Loop layer; they are not separate Engineering Layers.
+
+Candidate Work Units: **adversarial review objective / escalation trigger**, pending empirical diagnosis after EXP-001.
 
 ## DAT interpretation
 

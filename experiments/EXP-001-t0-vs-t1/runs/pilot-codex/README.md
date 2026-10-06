@@ -21,7 +21,7 @@ EXP-001 Codex Pilotの実Run Artifactを保存する場所です。
 
 ## Checkpoint after PR #54
 
-PR #54（merge commit `a718293`）で `EXP-001-train-normalize-name-r01-T0` がsingle-run validationを通り、checkpoint時点のcomplete empirical runsは **1 / 18** です。次のmatrix itemは `EXP-001-train-normalize-name-r01-T1` ですが、実workspaceの作成とfresh Codex session実行はOperator hostで行います。GitHub上のArtifactだけを先に捏造しません。
+PR #54（merge commit `a718293`）で `EXP-001-train-normalize-name-r01-T0` がsingle-run validationを通り、独立レビューで受理され、checkpoint時点のcomplete empirical runsは **1 / 18** です。次のmatrix itemは `EXP-001-train-normalize-name-r01-T1` ですが、実workspaceの作成とfresh Codex session実行はOperator hostで行います。GitHub上のArtifactだけを先に捏造しません。
 
 最初のT0には、canonical complete Runとは別にinfrastructure failureが1 attemptあります。原本は隣接する `../infrastructure-failures/` に保存し、[attempt accounting](../../../../docs/EXP-001_RETRY_51_ATTEMPTS.md) に両sessionを記録しています。
 

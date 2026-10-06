@@ -53,3 +53,27 @@ sources:
     title: "LLM Wiki: Building a Personal Knowledge Base for Academic Papers with AI Agents"
     url: "https://gist.github.com/joonan30/cbce305684d079dbe9a3fbaefe4e3959"
     adopted: []
+
+  - id: thedelost-adversarial-codex-team-2026
+    type: social-post
+    title: "Codex team pattern: sparse Astra adversary with Sol lead and Luna workers"
+    url: "https://x.com/thedelost/status/2107210980392640878"
+    adopted: []
+
+  - id: openai-codex-subagents-2026
+    type: product-documentation
+    title: "Codex subagents"
+    url: "https://developers.openai.com/codex/subagents"
+    adopted: []
+
+  - id: openai-codex-config-reference-2026
+    type: product-documentation
+    title: "Codex configuration reference"
+    url: "https://developers.openai.com/ja-JP/docs/config-file/config-reference"
+    adopted: []
+
+  - id: openai-agents-multi-agent-2026
+    type: product-documentation
+    title: "Agents API multi-agent guidance"
+    url: "https://developers.openai.com/api/docs/guides/agents-api/multi-agent"
+    adopted: []

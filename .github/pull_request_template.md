@@ -59,7 +59,7 @@ Run ID: `<runId>`
 
 ### Cross-artifact consistency review
 
-Use `N/A` only when the corresponding optional observation was not recorded.
+Use `N/A` only when the corresponding optional observation was not recorded. The PR author records observable consistency results; the final reviewer conclusion is added only after review.
 
 ```text
 - runId: <runId>
@@ -69,12 +69,12 @@ Use `N/A` only when the corresponding optional observation was not recorded.
 - prompt / frozen-condition drift: NONE | BLOCKED
 - sensitive-data / hidden-reasoning scan: PASS | BLOCKED
 - single-run validation: PASS | FAIL
-- reviewer conclusion: ACCEPT | BLOCK
+- reviewer conclusion: <reviewer fills after review: ACCEPT | BLOCK>
 ```
 
 ### Acceptance boundary
 
-- [ ] `reviewer conclusion: ACCEPT` means only that this Run can be accepted as a complete EXP-001 empirical Run.
+- [ ] Reviewer confirmed `ACCEPT`; this means only that this Run can be accepted as a complete EXP-001 empirical Run.
 - [ ] No T0/T1 superiority or topology-quality judgment is made from this individual Run.
 - [ ] The next matrix item will not start until this Run is accepted.
 

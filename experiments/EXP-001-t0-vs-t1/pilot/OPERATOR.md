@@ -119,7 +119,9 @@ python scripts/validate_pilot.py \
   --run-id <runId>
 ```
 
-このsingle-run validationがPASSするまで、paired blockの次Runへ進みません。
+このsingle-run validationがPASSすることは必要条件ですが、それだけでRun acceptanceは完了しません。
+
+結果PRで [Artifact Capture Guide](../../../docs/EXP-001_ARTIFACT_CAPTURE.md) のManual review recordを確認し、reviewer judgmentが `ACCEPT` になるまで次のmatrix itemへ進みません。validation PASSはArtifact contract整合、`ACCEPT` はそのRunをcomplete empirical Runとして受理できるというreview judgmentです。Condition / Topologyの優劣判断ではありません。
 
 18 Runすべての最終completionは:
 

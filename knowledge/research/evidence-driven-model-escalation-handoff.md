@@ -229,9 +229,9 @@ Select reproducible tasks where the baseline model reaches an observable failure
 | A | continue baseline model in the current session within a bounded attempt budget | control |
 | B | same baseline model in a fresh session from compact evidence handoff | A vs B isolates fresh-session / handoff effect |
 | C | stronger runtime-local model/capability in a fresh session from the **same compact handoff** | B vs C isolates model/capability escalation effect |
-| D | stronger runtime-local model/capability with the fullest transferable prior context the runtime can reproduce | C vs D estimates compact-vs-full context effect |
+| D | stronger runtime-local model/capability in a fresh session with the fullest transferable prior context the runtime can reproduce | C vs D estimates compact-vs-full context payload effect |
 
-If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
+For Arms B/C/D, use equivalent fresh-session conditions where the runtime permits. If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
 
 Where practical, hold constant:
 

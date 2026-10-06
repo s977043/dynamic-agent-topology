@@ -10,7 +10,7 @@ Metricは単一Runの観測値と、複数Runから導出する集計値を区�
 |---|---|---|
 | `task_success_rate` | Acceptance Criteriaと必須Evidenceを満たしたRunの割合 | 現行summarizerでは入力された`RunEvaluation`の`taskSuccess`を平均する |
 | `regression_rate` | 既存動作を壊したRunの割合 | 現行summarizerでは入力された`RunEvaluation`の`regressionDetected`を平均する |
-| `human_interventions` | Run完了までに必要だった人間介入回数 | 単一Runではcount。現行summarizerはconditionごとの平均を出す |
+| `human_interventions` | Run完了までに必要だった人間介入回数 | 単一Runではcount。現行summarizerはconditionごとの平均を出す。認知負荷・介入時間・同時監督数そのものは表さない |
 
 aborted / infrastructure failureなど、completeな`RunEvaluation`を持たないRunをどう扱うかはExperiment固有のRunbookに従います。集計対象から外れたRunの存在を解釈上隠してはいけません。
 
@@ -42,6 +42,17 @@ aborted / infrastructure failureなど、completeな`RunEvaluation`を持たな�
 - `verifierFalseAcceptRate`: `verifierFalseAccept`が`null`でないRunだけのboolean平均
 
 この集計処理は欠測値を0に置換しません。一方、**入力されなかったRunの存在までは自動的に説明しない**ため、Pilot completeness validationやRunbook上の進捗確認と合わせて解釈します。
+
+## Human attention interpretation
+
+DATはHuman supervisionを重要なcoordination costとして扱いますが、現行Metricから「人間の認知負荷」を直接算出しません。
+
+- `human_interventions` は介入**回数**であり、1回あたりの時間、難易度、割り込みコスト、context switch、同時監督数を表しません。
+- `coordination_transitions` はAgent間の構造的な遷移数であり、そのすべてがHuman attentionを消費するとは限りません。
+- `wall_clock_ms` もHuman待ち時間とAgent実行時間を分離していないため、単独ではHuman loadの代理Metricにしません。
+- Topology間でhuman-facing concurrencyやEscalation surfaceがmaterialに異なる場合、既存Metricだけで差を説明できない可能性を明示し、0や「差なし」とみなしません。
+
+正式なHuman Attention metricを追加する場合は、測定対象（例: active supervision time、interruptions、concurrent decisions）と取得方法を事前定義し、既存の`human_interventions`と重複しないことをEvidenceで確認します。EXP-001 Feature Freeze中はMetric / Schema / summarizerの意味論を変更しません。
 
 ## Evaluation principles
 

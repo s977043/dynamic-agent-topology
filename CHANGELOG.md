@@ -25,6 +25,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - GitHub Actions use least-privilege permissions and immutable action SHAs.
 - Current README/CITATION metadata no longer advertises an unpublished version; version metadata is added only with an immutable tag and GitHub Release.
 - Brownfield adoption now documents an evidence-based complexity-promotion rule instead of treating additional agents, loops, or graph structure as default progress.
+- Human-facing supervision is clarified as a coordination cost: experiments should control or disclose materially different human-facing concurrency, while `human_interventions` remains a count rather than a cognitive-load metric.
 - Documentation terminology, source-of-truth boundaries, evidence claims, experiment semantics, and release-boundary wording were reviewed and hardened.
 
 ### Security

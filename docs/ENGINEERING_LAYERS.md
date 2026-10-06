@@ -36,6 +36,19 @@ Claude Code Modsについては [research note](../knowledge/research/claude-cod
 
 これは新しいArchitecture Planeの提案ではありません。post-EXP-001の評価候補として [research note](../knowledge/research/evidence-backed-compiled-knowledge-integrity.md) と [Issue #63](https://github.com/s977043/dynamic-agent-topology/issues/63) で追跡します。EXP-001 Feature Freeze中はResearch candidateに留め、Schema、validator behavior、Runtime behavior、evaluation semanticsを変更しません。
 
+### Adversarial judgment candidates
+
+反証に特化したReview objectiveや、特定の判断点だけで追加Reviewを起動する仕組みは、新しいEngineering Layerではありません。
+
+主な診断位置は次です。
+
+- **Evaluation** — ReviewerのJudgment、VerifierのVerification、外部化されたEvidenceが分離されているか。Adversarial reviewの意見自体をGround Truthとして扱っていないか。
+- **Loop** — repeated failureやcompletion前などのtrigger / escalation条件が観測可能で、無制限な追加ReviewやPermission escalationへ変質していないか。
+
+contract lockのような個別Gateで実際に壊れているWork UnitがPrompt / Context / Graphなど別Layerにある場合は、その最小Layerを優先して診断します。Adversaryを追加すること自体を既定の修正にしません。
+
+この候補は [research note](../knowledge/research/adversarial-judgment-gates.md) と [Issue #82](https://github.com/s977043/dynamic-agent-topology/issues/82) で追跡します。EXP-001 Feature Freeze中はResearch candidateに留め、Role、Topology、Routing / Escalation Policy、Runtime behavior、evaluation semanticsを変更しません。
+
 ## Crosswalk
 
 | Architecture Plane | Prompt | Context | Harness | Loop | Graph | Evaluation |

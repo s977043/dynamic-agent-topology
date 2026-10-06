@@ -78,7 +78,6 @@ sources:
     url: "https://developers.openai.com/api/docs/guides/agents-api/multi-agent"
     adopted: []
 
-
   - id: fleyta-evidence-driven-model-escalation-2026
     type: social-post
     title: "Sonnet 5.5 to Opus 5.5 routing with early verification and compact handoff"

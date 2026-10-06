@@ -383,6 +383,8 @@ Feature Freeze revision 3では `scripts/validate_pilot.py` 自体が凍結さ�
 
 ## Manual review record
 
+> Review contractの意味論はこの節で説明し、実際のRun PR入力Surfaceは [`.github/pull_request_template.md`](../.github/pull_request_template.md) の `EXP-001 empirical Run PR` セクションを使います。両者が矛盾する場合は、Feature Freeze / Artifact Schema / validatorを優先し、文書差分を修正してからRunを受理します。
+
 Feature Freeze revision 3の間は、上記cross-artifact consistency reviewの自動validator追加を行いません。そのため、各complete RunをRepositoryへ取り込むPRでは、**PR本文にauthor側のObservable Evidenceを残し、final ACCEPT / BLOCKはreview commentにReviewer Judgmentとして残します**。
 
 新しいRun ArtifactやSchema fieldは追加しません。PR本文には次の最小Evidence記録で十分です。

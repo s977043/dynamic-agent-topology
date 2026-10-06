@@ -11,9 +11,11 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import yaml
+from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET = ROOT / ".github" / "repository-settings-target.yaml"
+DEFAULT_TARGET_SCHEMA = ROOT / "schemas" / "repository-settings-target.schema.json"
 API_VERSION = "2022-11-28"
 
 
@@ -34,10 +36,17 @@ def fetch_json(url: str, token: str | None) -> tuple[Any | None, str | None]:
         return None, str(error)
 
 
-def load_target(path: Path) -> dict[str, Any]:
+def load_target(path: Path, schema_path: Path = DEFAULT_TARGET_SCHEMA) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if data.get("kind") != "RepositorySettingsTarget":
-        raise ValueError("target kind must be RepositorySettingsTarget")
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(data),
+        key=lambda error: list(error.absolute_path),
+    )
+    if errors:
+        error = errors[0]
+        location = ".".join(str(part) for part in error.absolute_path) or "<root>"
+        raise ValueError(f"{location}: {error.message}")
     return data
 
 
@@ -388,7 +397,12 @@ def main() -> int:
     parser.add_argument("--strict", action="store_true", help="Return non-zero on DRIFT or UNKNOWN.")
     args = parser.parse_args()
 
-    target = load_target(Path(args.target))
+    try:
+        target = load_target(Path(args.target))
+    except (OSError, json.JSONDecodeError, yaml.YAMLError, ValueError) as error:
+        print(f"Repository settings audit failed: invalid target ({error})")
+        return 2
+
     repository_name = args.repository or target["metadata"]["repository"]
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository_name):
         raise SystemExit("--repository must use a valid owner/name form")

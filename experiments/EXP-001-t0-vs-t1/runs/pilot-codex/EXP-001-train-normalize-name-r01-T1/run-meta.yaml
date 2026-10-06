@@ -1,0 +1,13 @@
+apiVersion: dat/v1alpha1
+kind: PilotRunMetadata
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T1
+  blockId: EXP-001-train-normalize-name-r01
+  scenario: train-normalize-name
+  condition: T1
+spec:
+  repetition: 1
+  executionOrder: 2
+  workspaceId: exp001-train-normalize-name-r01-t1-workspace
+  freshWorkspace: true
+  promptSha256: d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86

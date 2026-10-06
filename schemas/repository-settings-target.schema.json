@@ -130,7 +130,6 @@
               "required": [
                 "required",
                 "requirePullRequest",
-                "requiredApprovingReviewCountExact",
                 "requireConversationResolution",
                 "blockForcePushes",
                 "blockDeletion",
@@ -147,6 +146,11 @@
                 "requiredApprovingReviewCountExact": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "requiredApprovingReviewCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Legacy alias for requiredApprovingReviewCountExact."
                 },
                 "requireConversationResolution": {
                   "type": "boolean"
@@ -170,6 +174,16 @@
                   "type": "boolean"
                 }
               },
+              "oneOf": [
+                {
+                  "required": ["requiredApprovingReviewCountExact"],
+                  "not": {"required": ["requiredApprovingReviewCount"]}
+                },
+                {
+                  "required": ["requiredApprovingReviewCount"],
+                  "not": {"required": ["requiredApprovingReviewCountExact"]}
+                }
+              ],
               "additionalProperties": false
             }
           },

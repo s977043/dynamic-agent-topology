@@ -176,8 +176,24 @@ def main() -> int:
     legacy_target = base_target()
     legacy_ruleset = legacy_target["spec"]["defaultBranch"]["ruleset"]
     legacy_ruleset["requiredApprovingReviewCount"] = legacy_ruleset.pop("requiredApprovingReviewCountExact")
-    legacy = module.audit(legacy_target, repo, branch, [compliant_ruleset()])
+    with tempfile.TemporaryDirectory() as temp_dir:
+        legacy_path = Path(temp_dir) / "legacy-target.yaml"
+        legacy_path.write_text(module.yaml.safe_dump(legacy_target), encoding="utf-8")
+        legacy_loaded = module.load_target(legacy_path)
+    legacy = module.audit(legacy_loaded, repo, branch, [compliant_ruleset()])
     assert_status(legacy, "defaultBranch.ruleset.requiredApprovingReviewCountExact", "PASS")
+
+    duplicate_target = base_target()
+    duplicate_target["spec"]["defaultBranch"]["ruleset"]["requiredApprovingReviewCount"] = 0
+    with tempfile.TemporaryDirectory() as temp_dir:
+        duplicate_path = Path(temp_dir) / "duplicate-target.yaml"
+        duplicate_path.write_text(module.yaml.safe_dump(duplicate_target), encoding="utf-8")
+        try:
+            module.load_target(duplicate_path)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("approval-count exact key and legacy alias must not coexist")
 
     higher_target = base_target()
     higher_target["spec"]["defaultBranch"]["ruleset"]["requiredApprovingReviewCountExact"] = 1

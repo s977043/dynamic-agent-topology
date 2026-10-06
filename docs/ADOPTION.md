@@ -85,6 +85,10 @@ DATは既存の`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`等を自動上書きしま�
 
 Manual AdapterでDATが確認できるのは、宣言されたRuntime / Capability / Artifact参照の整合までです。Runtimeが実際にRole / Permission / Topologyを守って動いたかは、実行時Evidenceで別途確認します。
 
+Runtime固有のpermission enforcement、event interception、audit、UI guardrailなどは、必要に応じてManual Adapterと併用する**runtime-native implementation detail**として扱います。DATはそれらを自動適用・保証しません。DAT coreへ取り込む前に、観測されたRuntime gapとExpected Invariantを明示し、native controlやより小さい介入で不足することを確認します。Provider固有機構の存在だけを理由に採用せず、実行時Evidenceで効果と副作用を評価します。
+
+この種の候補は [Engineering Layer Diagnostics](ENGINEERING_LAYERS.md#runtime-specific-guardrail-candidates) から追跡します。Claude Code Modsは現在Research candidateであり、EXP-001 Feature Freeze中のRuntime behaviorには使用しません。
+
 ## Validation
 
 外部Repositoryは次のCLIで検証できます。

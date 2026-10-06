@@ -55,7 +55,7 @@ Preflightが失敗した場合はRunを開始せず、Issue #15を停止して�
 
 ## Handoff checkpoint after PR #54
 
-PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r01-T0` はsingle-run validationを通過し、checkpoint時点のcomplete empirical runsは **1 / 18** です。最初のinfrastructure failureはcanonical Runとは分離して保存され、retry accountingも記録済みです。
+PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r01-T0` はsingle-run validationを通過し、独立レビューで受理されています。checkpoint時点のcomplete empirical runsは **1 / 18** です。最初のinfrastructure failureはcanonical Runとは分離して保存され、retry accountingも記録済みです。
 
 このcheckpointはhistorical recordであり、この文書はlive trackerではありません。**現在の次Run・停止条件・attempt countはIssue #15を正本**としてください。#54時点の次matrix itemは `EXP-001-train-normalize-name-r01-T1` です。
 
@@ -113,7 +113,7 @@ Gitにprepare済みArtifactがあっても、Operator hostの実workspaceが利�
 
 `EXP-001-train-normalize-name-r01-T1`
 
-T0がsingle-run validationを通った後に同じ手順でprepareします。#54時点ではこのgateを満たしていますが、実行直前にはIssue #15と `pilot_status.py` を再確認してください。
+T0がsingle-run validationを通り、独立レビューで受理された後に同じ手順でprepareします。最初のT0は#54でこのgateを満たしていますが、実行直前にはIssue #15と `pilot_status.py` を再確認してください。
 
 ```bash
 python scripts/prepare_pilot_run.py \

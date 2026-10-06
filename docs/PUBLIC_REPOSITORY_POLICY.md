@@ -103,10 +103,24 @@ During an audit, also verify manually or with an appropriately privileged GitHub
 
 Record configuration drift as an actionable issue or PR; do not silently update this document to match a weaker accidental state.
 
+## Automated audit evidence
+
+The [`Repository settings audit`](../.github/workflows/repository-settings-audit.yml) workflow runs the same read-only audit on a weekly schedule and through manual dispatch.
+
+The scheduled workflow intentionally runs in non-strict mode:
+
+- `DRIFT` remains visible evidence without making the workflow red simply because known configuration work is still open;
+- `UNKNOWN` remains visible when the workflow token cannot prove a setting;
+- repository metadata/API retrieval or audit execution failure still fails the workflow;
+- the text report is written to the GitHub Actions job summary and retained as an artifact for 14 days.
+
+The workflow does **not** mutate repository settings and does not close Issue #31 by itself. Before a stable release or when repository compliance is a release gate, run the audit with `--strict` using credentials that can observe the required settings, and review the manual security controls listed above.
+
 ## Audit cadence
 
 Re-audit these settings:
 
+- weekly through the read-only workflow;
 - after initial public-repository setup;
 - after changing maintainership or merge policy;
 - after a material security finding;

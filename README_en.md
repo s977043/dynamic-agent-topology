@@ -123,7 +123,7 @@ Runtime-specific differences belong in `adapters/`, while canonical topology def
 
 ```text
 docs/         North Star, architecture, glossary, metrics, adoption
-knowledge/    Research, official guidance, adopted principles
+knowledge/    Source ledger, research notes, adopted principles
 schemas/      Machine-readable DAT contracts
 roles/        Canonical role contracts
 baselines/    Non-agent execution baselines
@@ -166,14 +166,7 @@ DAT is currently in an **evidence-acquisition phase**, not a specification-expan
 
 DAT separates source claims from DAT interpretations and implementation decisions.
 
-The initial knowledge base includes:
-
-- OpenCollab
-- TeamBench
-- AsynCodeBench
-- Anthropic multi-agent research
-
-See [knowledge/sources.yaml](knowledge/sources.yaml).
+The source ledger is [knowledge/sources.yaml](knowledge/sources.yaml). A source with an empty `adopted` list may be reviewed and tracked without being adopted into current DAT contracts. See [Knowledge Base](knowledge/README.md) for the boundary between research candidates and adopted principles, plus the rules for adding and re-evaluating evidence.
 
 ## Status
 

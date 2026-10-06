@@ -1,0 +1,6 @@
+# Match the repository's Claude Code safety defaults for Codex sessions.
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+
+[shell_environment_policy]
+set = { PYTHONDONTWRITEBYTECODE = "1" }

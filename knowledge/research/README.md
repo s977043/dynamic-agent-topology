@@ -14,6 +14,7 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 | [Claude Code Mods runtime guardrails](claude-code-mods-runtime-guardrails.md) | Anthropic Claude Code Mods | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) |
 | [Evidence-backed compiled knowledge integrity](evidence-backed-compiled-knowledge-integrity.md) | Joon An LLM Wiki operating report | [#63](https://github.com/s977043/dynamic-agent-topology/issues/63) |
 | [Adversarial judgment role and sparse decision gates](adversarial-judgment-gates.md) | @thedelost Codex pattern + OpenAI Codex docs | [#82](https://github.com/s977043/dynamic-agent-topology/issues/82) |
+| [Evidence-driven model escalation and compact handoff](evidence-driven-model-escalation-handoff.md) | @fleyta88 routing pattern + Anthropic Claude 5.5 sources | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) |
 
 Tracking Issues are the live status source of truth; this index intentionally does not duplicate blocked/open/progress state. The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).
 

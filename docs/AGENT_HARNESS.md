@@ -7,7 +7,7 @@
 ## 原則
 
 - **人間がmergeを持つ。** Agentは記録と提案までを自律的に行い、mergeは人間が判断します。
-- **ハーネス自身の変更は人間レビュー必須。** `AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書、`scripts/validate_agent_guidance.py` をAgentが自分の判断だけで緩めません。
+- **ハーネスの規則変更は人間レビュー必須。** `AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則・Guard、`scripts/validate_agent_guidance.py` をAgentが自分の判断だけで緩めません。Learning ledgerへの事実に基づく追記は例外として許可します。
 - **Evidenceのない学びは昇格しない。** PR / commit / CI run / Issueへのリンクがない記録は候補のままです。
 - **Proseより機械的なGuardを優先する。** 昇格先は CI・validator → hook → permission設定 → `AGENTS.md` の文章 → skill の順に検討します。
 
@@ -38,15 +38,15 @@
 | ------------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/validate_agent_guidance.py`（CI） | 有効       | `AGENTS.md` / `CLAUDE.md` が参照する存在しないpath、`freeze.yaml` と `.claude/settings.json` のask ruleのずれ（漏れ・過剰） |
 | `.claude/settings.json` ask rule           | 有効       | Claude CodeのEdit/WriteによるFrozen fileの変更                                                                              |
-| `PYTHONDONTWRITEBYTECODE=1`                | 有効       | Frozen fixture内への `__pycache__` 生成                                                                                     |
-| PreToolUse hook                            | 予定（P2） | Bash経由のFrozen fileへの書き込み                                                                                           |
+| `.claude/settings.json` の `PYTHONDONTWRITEBYTECODE=1` | 有効（Claude Codeのみ） | Claude Code実行時の `__pycache__` 生成。Codex / Gemini CLIなどでは別途設定が必要 |
+| `.claude/hooks/guard_frozen_bash.py`（PreToolUse） | 有効 | Bash経由のFrozen fileへの書き込み（redirect先、`sed -i`・`cp`・`git checkout` などの書き込みcommand）。heuristicのため検出漏れはありうる |
 
 ## Learning ledger
 
 | ID    | 観測                                                                                                           | Evidence                      | 回数 | 状態      | 対策                         |
 | ----- | -------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---- | --------- | ---------------------------- |
 | L-001 | Agent guidanceの記述がRepositoryの実態とずれる（fixturesの説明、schema適用範囲、freeze範囲、permissionの効果） | PR #84 / #85 のレビューループ | 4    | promoted  | `validate_agent_guidance.py` |
-| L-002 | ask ruleがBash経由の書き込みを検出しない                                                                       | PR #85 review                 | 1    | candidate | P2 hook                      |
+| L-002 | ask ruleがBash経由の書き込みを検出しない | PR #85 review | 1 | promoted | `.claude/hooks/guard_frozen_bash.py` |
 | L-003 | 複数Agentが同じbranchへ同時にpushする                                                                          | PR #85 commit `792102d`       | 1    | candidate | 本書の1 branch 1 Agent rule  |
 | L-004 | Frozen fixtureでtest実行時に `__pycache__` が生成される                                                        | PR #85 作業時のlocal観測      | 1    | promoted  | `PYTHONDONTWRITEBYTECODE=1`  |
 
@@ -55,6 +55,6 @@
 ## Roadmap
 
 1. **P1** — guidance drift validator、本書、Learning ledger（本PR）
-2. **P2** — PreToolUse hookでBash経由のFrozen file書き込みを検出
+2. **P2** — PreToolUse hookでBash経由のFrozen file書き込みを検出（実装済み）
 3. **P3** — 指標の定期集計と週次棚卸し
 4. **P4（post-EXP-001）** — このハーネス自体をDATの実験として評価する（#21、#59 と関連）

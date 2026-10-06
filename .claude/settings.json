@@ -63,5 +63,18 @@
       "Edit(/topologies/canonical/T1_worker_verifier.yaml)",
       "Write(/topologies/canonical/T1_worker_verifier.yaml)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard_frozen_bash.py\""
+          }
+        ]
+      }
+    ]
   }
 }

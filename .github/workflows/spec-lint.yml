@@ -166,3 +166,6 @@ jobs:
 
       - name: Test agent guidance validator
         run: python scripts/test_validate_agent_guidance.py
+
+      - name: Test frozen Bash guard hook
+        run: python scripts/test_guard_frozen_bash.py

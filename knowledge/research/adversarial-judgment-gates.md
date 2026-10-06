@@ -265,6 +265,17 @@ Potential costs:
 
 Treat file ownership as a separate Graph / coordination candidate, not as part of the Adversary role hypothesis.
 
+## Relationship to Loop / Graph evolution
+
+Issue [#42](https://github.com/s977043/dynamic-agent-topology/issues/42) separately evaluates whether DAT needs new machine-readable Loop / Graph execution contracts.
+
+The boundary is:
+
+- **#82** — evaluate the value of an adversarial Judgment objective and sparse invocation at selected gates;
+- **#42** — evaluate whether observed runtime friction requires new generic retry / termination / trigger / state / graph semantics.
+
+A repeated-failure gate in #82 should first be tested with existing Routing / Escalation mechanisms. It does not justify a new Loop contract by itself. If the experiment shows that existing contracts cannot represent an evidenced trigger or stop condition without ad-hoc runtime logic, that contract gap belongs in #42.
+
 ## Rejection / deferral evidence
 
 Reject or defer a distinct Adversary role when:

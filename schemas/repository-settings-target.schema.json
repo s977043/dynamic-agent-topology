@@ -150,7 +150,8 @@
                 "requiredApprovingReviewCount": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Legacy alias for requiredApprovingReviewCountExact."
+                  "deprecated": true,
+                  "description": "Deprecated compatibility alias for requiredApprovingReviewCountExact. New targets should use requiredApprovingReviewCountExact."
                 },
                 "requireConversationResolution": {
                   "type": "boolean"

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAT Repository Settings Target",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "dat/v1alpha1"
+    },
+    "kind": {
+      "const": "RepositorySettingsTarget"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "repository"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "description",
+        "homepage",
+        "topics",
+        "features",
+        "merge",
+        "defaultBranch"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "homepage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "topics": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "features": {
+          "type": "object",
+          "required": [
+            "wiki",
+            "discussions"
+          ],
+          "properties": {
+            "wiki": {
+              "type": "boolean"
+            },
+            "discussions": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "merge": {
+          "type": "object",
+          "required": [
+            "squash",
+            "mergeCommit",
+            "rebase",
+            "autoMerge",
+            "deleteBranchOnMerge",
+            "updateBranch",
+            "squashPrTitleDefault"
+          ],
+          "properties": {
+            "squash": {
+              "type": "boolean"
+            },
+            "mergeCommit": {
+              "type": "boolean"
+            },
+            "rebase": {
+              "type": "boolean"
+            },
+            "autoMerge": {
+              "type": "boolean"
+            },
+            "deleteBranchOnMerge": {
+              "type": "boolean"
+            },
+            "updateBranch": {
+              "type": "boolean"
+            },
+            "squashPrTitleDefault": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "defaultBranch": {
+          "type": "object",
+          "required": [
+            "name",
+            "protected",
+            "ruleset"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "protected": {
+              "type": "boolean"
+            },
+            "ruleset": {
+              "type": "object",
+              "required": [
+                "required",
+                "requirePullRequest",
+                "requireConversationResolution",
+                "blockForcePushes",
+                "blockDeletion",
+                "requiredStatusChecks",
+                "requireUpToDate"
+              ],
+              "properties": {
+                "required": {
+                  "type": "boolean"
+                },
+                "requirePullRequest": {
+                  "type": "boolean"
+                },
+                "requiredApprovingReviewCountExact": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "requiredApprovingReviewCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Legacy alias for requiredApprovingReviewCountExact."
+                },
+                "requireConversationResolution": {
+                  "type": "boolean"
+                },
+                "blockForcePushes": {
+                  "type": "boolean"
+                },
+                "blockDeletion": {
+                  "type": "boolean"
+                },
+                "requiredStatusChecks": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "requireUpToDate": {
+                  "type": "boolean"
+                }
+              },
+              "oneOf": [
+                {
+                  "required": ["requiredApprovingReviewCountExact"],
+                  "not": {"required": ["requiredApprovingReviewCount"]}
+                },
+                {
+                  "required": ["requiredApprovingReviewCount"],
+                  "not": {"required": ["requiredApprovingReviewCountExact"]}
+                }
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

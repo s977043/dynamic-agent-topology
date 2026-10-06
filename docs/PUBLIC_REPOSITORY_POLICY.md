@@ -112,7 +112,7 @@ See [Release readiness](RELEASE_READINESS.md) for the candidate-to-publication g
 
 ## Audit checklist
 
-The machine-readable target for settings that can be compared through the GitHub repository API is [`.github/repository-settings-target.yaml`](../.github/repository-settings-target.yaml).
+The machine-readable target for settings that can be compared through the GitHub repository API is [`.github/repository-settings-target.yaml`](../.github/repository-settings-target.yaml). It is validated against [`schemas/repository-settings-target.schema.json`](../schemas/repository-settings-target.schema.json) in `spec-lint` and again when the audit command loads the target.
 
 Run the read-only audit with:
 

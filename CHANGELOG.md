@@ -16,6 +16,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Public contribution, support, research-proposal, and security-reporting paths.
 - CodeQL, Dependabot, and OpenSSF Scorecard supply-chain checks.
 - Scheduled read-only repository-settings drift audit with GitHub Actions summary/artifact evidence.
+- Schema-validated repository-settings target contract for earlier configuration-error detection.
 - Git-tracked public repository policy and release discipline.
 - Engineering Layer Diagnostics for Prompt / Context / Harness / Loop / Graph / Evaluation failure localization.
 - Documentation navigation and document-role guidance under `docs/README.md`.

@@ -1,7 +1,6 @@
-# Conservative Codex defaults: read-only sandbox, escalate writes on request.
-# Claude Code instead asks only before editing EXP-001 frozen files (.claude/settings.json).
+# Codex may write inside the workspace; EXP-001 frozen files are protected by CI freeze validation.
 approval_policy = "on-request"
-sandbox_mode = "read-only"
+sandbox_mode = "workspace-write"
 
 [shell_environment_policy]
 set = { PYTHONDONTWRITEBYTECODE = "1" }

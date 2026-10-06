@@ -160,3 +160,9 @@ jobs:
 
       - name: Test EXP-001 feature freeze validator
         run: python scripts/test_validate_experiment_freeze.py
+
+      - name: Validate agent guidance
+        run: python scripts/validate_agent_guidance.py
+
+      - name: Test agent guidance validator
+        run: python scripts/test_validate_agent_guidance.py

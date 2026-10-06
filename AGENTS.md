@@ -45,6 +45,7 @@ EXP-001 is under Feature Freeze; `pilot/freeze.yaml` lists the frozen files (exp
 
 ## Changes and PRs
 
+- Record recurring failures and review findings in the Learning ledger of `docs/AGENT_HARNESS.md`; it also defines what agents may do without human approval.
 - Commit/PR titles are English with prefixes such as `docs:`, `schema:`, `audit:`, `ci:`, `fix:`, `chore:`.
 - Fill `.github/pull_request_template.md`, including the freeze check. Topology/routing/role/verifier/experiment-method changes need a falsifiable hypothesis.
 - Releases follow `docs/RELEASE_READINESS.md`: never move a published tag.

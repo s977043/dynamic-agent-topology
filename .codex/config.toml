@@ -1,4 +1,5 @@
-# Match the repository's Claude Code safety defaults for Codex sessions.
+# Conservative Codex defaults: read-only sandbox, escalate writes on request.
+# Claude Code instead asks only before editing EXP-001 frozen files (.claude/settings.json).
 approval_policy = "on-request"
 sandbox_mode = "read-only"
 

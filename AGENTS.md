@@ -46,7 +46,7 @@ Keep runtime-specific details in `adapters/`. Every YAML kind has a schema in `s
 
 ## Experiment freeze (important)
 
-`experiments/EXP-001-t0-vs-t1/` is under **Feature Freeze**, enforced by `scripts/validate_experiment_freeze.py` against blob SHAs in `pilot/freeze.yaml`. Do not change experiment inputs, evaluation semantics, prompts, roles, scenarios, fixtures, or frozen validators without checking the freeze; propose post-freeze changes separately. `pilot/run-matrix.yaml` must match `generate_pilot_matrix.py` output deterministically.
+`experiments/EXP-001-t0-vs-t1/` is under **Feature Freeze**, enforced by `scripts/validate_experiment_freeze.py` against blob SHAs in `pilot/freeze.yaml`. Do not change experiment inputs, evaluation semantics, prompts, roles, scenarios, fixtures, or frozen validators without checking the freeze. A blocking defect stops execution and follows the Feature Freeze exception procedure (`experiments/EXP-001-t0-vs-t1/README.md`); everything else is proposed post-freeze. `pilot/run-matrix.yaml` must match `generate_pilot_matrix.py` output deterministically.
 
 The EXP-001 pilot is executed by an Operator in a fresh external workspace and a fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents working on this repository must not start that Codex session in the Operator's place, re-prepare an existing runId, or generate result artifacts without a real run.
 
@@ -54,6 +54,7 @@ The EXP-001 pilot is executed by an Operator in a fresh external workspace and a
 
 - Python: four-space indentation, `snake_case` names. Preserve existing YAML/JSON formatting.
 - Commits: conventional prefixes such as `docs:`, `schema:`, `fix:`, `chore:`.
+- Codex: `.codex/config.toml` defaults to a read-only sandbox with on-request approval.
 
 ## Contribution rules (from CONTRIBUTING.md)
 

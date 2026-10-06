@@ -41,3 +41,43 @@
 - [ ] I updated documentation when behavior or contracts changed.
 - [ ] I added or updated deterministic validation where appropriate.
 - [ ] I separated observed evidence from interpretation and judgment.
+
+
+<details>
+<summary>EXP-001 empirical Run PR — fill only when this PR adds or updates a canonical Run result</summary>
+
+## EXP-001 Run acceptance review
+
+Run ID: `<runId>`
+
+### Run integrity
+
+- [ ] This PR preserves the active Feature Freeze and does not change Prompt / Scenario / Fixture / Topology / Role / Model / Effort / evaluation semantics.
+- [ ] The Run used a fresh workspace and fresh session, and cross-run feedback was not used.
+- [ ] Preparation provenance is preserved; this PR does not silently replace a previous attempt.
+- [ ] Failed / aborted / infrastructure attempts, if any, remain separately preserved and are not counted as complete Runs.
+
+### Cross-artifact consistency review
+
+Use `N/A` only when the corresponding optional observation was not recorded.
+
+```text
+- runId: <runId>
+- execution-attestation ↔ trace session/freshness/cross-run fields: PASS | N/A | BLOCKED
+- attested timestamps ↔ trace start/finish: PASS | N/A | BLOCKED
+- trace token summary ↔ evaluation efficiency: PASS | N/A | BLOCKED
+- prompt / frozen-condition drift: NONE | BLOCKED
+- sensitive-data / hidden-reasoning scan: PASS | BLOCKED
+- single-run validation: PASS | FAIL
+- reviewer conclusion: ACCEPT | BLOCK
+```
+
+### Acceptance boundary
+
+- [ ] `reviewer conclusion: ACCEPT` means only that this Run can be accepted as a complete EXP-001 empirical Run.
+- [ ] No T0/T1 superiority or topology-quality judgment is made from this individual Run.
+- [ ] The next matrix item will not start until this Run is accepted.
+
+Reference: `docs/EXP-001_ARTIFACT_CAPTURE.md#manual-review-record`
+
+</details>

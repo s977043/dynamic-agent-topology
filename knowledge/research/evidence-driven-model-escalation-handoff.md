@@ -2,7 +2,7 @@
 
 ## Status
 
-**Research note / deferred Routing, Context, and Evaluation candidate.**
+**Research note / deferred Context, Harness, Loop, and Evaluation candidate.**
 
 This note does not change EXP-001, its frozen artifacts, DAT schemas, canonical topologies, routing policies, Runtime Adapter behavior, or evaluation semantics.
 

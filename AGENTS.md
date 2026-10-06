@@ -32,9 +32,9 @@ When adding a new artifact kind, add its schema in `schemas/`, a semantic check 
 
 `experiments/EXP-001-t0-vs-t1/` is frozen; `pilot/freeze.yaml` lists every frozen file (experiment, prompts, scenarios, `fixtures/exp-001/`, T0/T1 topologies, worker/verifier roles, schemas, pilot scripts) and `validate_experiment_freeze.py` enforces blob SHAs.
 
-- Do not edit frozen files. A blocking defect stops execution and follows the freeze exception procedure (`experiments/EXP-001-t0-vs-t1/README.md`); everything else is a post-EXP-001 proposal tracked in an issue.
+- Do not edit frozen files. A blocking defect stops execution and follows the freeze exception procedure in `pilot/FREEZE.md`; everything else is a post-EXP-001 proposal tracked in an issue.
 - Pilot runs are executed by an Operator in a fresh external workspace and fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents must not start that session in the Operator's place, re-prepare an existing `runId`, or create result artifacts without a real run.
-- Live run status is tracked in issue #15, not in docs.
+- Issue #15 is the live run status; docs only record checkpoints and may lag behind it.
 
 ## Evidence discipline
 

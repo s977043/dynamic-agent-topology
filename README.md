@@ -138,7 +138,7 @@ Runtime固有の差分は `adapters/` に閉じ込め、Canonical Topologyを特
 
 ```text
 docs/         North Star / Architecture / Glossary / Metrics / Adoption
-knowledge/    研究・公式知見と採用した設計原則
+knowledge/    Source ledger / Research Note / 採用済み設計原則
 schemas/      DATのMachine-readableな仕様
 roles/        Canonical Role Contract
 baselines/    Agentを使わないExecution Baseline
@@ -187,14 +187,7 @@ DATはいま仕様追加フェーズではなく、**Evidence acquisitionフェ�
 
 DATは既存研究・公式知見をそのまま流用せず、**Source ClaimとDAT側の採用判断を分離**して管理します。
 
-初期Knowledge Baseには、以下を含めています。
-
-- OpenCollab
-- TeamBench
-- AsynCodeBench
-- Anthropic Multi-Agent Research
-
-詳細は [knowledge/sources.yaml](knowledge/sources.yaml) を参照してください。
+Sourceの参照・採用状態は [knowledge/sources.yaml](knowledge/sources.yaml) に記録します。`adopted` が空のSourceは参照・調査済みでも、現在のDAT契約へ採用されたことを意味しません。Research candidateと採用済み原則の境界、追加・再評価ルールは [Knowledge Base](knowledge/README.md) を参照してください。
 
 ## 現在の状態
 

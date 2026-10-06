@@ -291,6 +291,22 @@ human interventions / successful task
 
 Per-turn cost remains diagnostic data, not the primary adoption criterion.
 
+## Cache portability boundary
+
+Do not assume that prompt-cache state is portable across models, runtimes, sessions, providers, regions, or pricing modes.
+
+A DAT evaluation should treat cache reuse as **observed runtime/billing evidence**, not as a core semantic guarantee. A model switch may require rebuilding some or all reusable context; the exact behavior must be measured for the runtime under test.
+
+This also means "keep the cache warm" is an optimization hypothesis, not an escalation invariant.
+
+## Security and privacy boundary
+
+A compact handoff is still an execution artifact. It should carry only the evidence necessary to reproduce and continue the task.
+
+Do not place secrets, credentials, private source code, confidential prompts, or unsanitized execution traces into a handoff intended for persistence or publication. When raw failure output contains sensitive material, retain a sanitized summary plus the minimum provenance needed for auditability.
+
+Compactness is not a substitute for data minimization.
+
 ## Relationship to Issue #82
 
 [Issue #82](https://github.com/s977043/dynamic-agent-topology/issues/82) evaluates a sparse **Adversarial Judgment role** and decision gates.
@@ -327,7 +343,9 @@ During EXP-001, retain only these research hypotheses:
 - compact evidence handoff may be preferable to full transcript transfer;
 - cost per verified task is more meaningful than list price alone;
 - fixed turn counts and token budgets are hypotheses, not invariants;
-- model identity remains separate from Role and Topology.
+- model identity remains separate from Role and Topology;
+- cache reuse across a model/runtime boundary must be observed, not assumed;
+- handoff artifacts must preserve repository security/privacy boundaries.
 
 No canonical Topology, Routing rule, Runtime Adapter, handoff schema, or EXP-001 artifact changes during the active freeze.
 

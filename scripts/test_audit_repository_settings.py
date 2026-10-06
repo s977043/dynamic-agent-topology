@@ -16,6 +16,7 @@ spec.loader.exec_module(module)
 
 def base_target():
     return {
+        "apiVersion": "dat/v1alpha1",
         "kind": "RepositorySettingsTarget",
         "metadata": {"repository": "example/repo"},
         "spec": {

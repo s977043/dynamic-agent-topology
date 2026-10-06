@@ -31,8 +31,11 @@ References:
 
 - OpenAI: [Codex subagents](https://developers.openai.com/codex/subagents)
 - OpenAI: [Codex configuration reference](https://developers.openai.com/ja-JP/docs/config-file/config-reference)
+- OpenAI: [Agents API multi-agent guidance](https://developers.openai.com/api/docs/guides/agents-api/multi-agent)
 
-These are product capabilities. They are **not** evidence that a Sol / Luna / Astra mapping, an Adversary role, or the three proposed gates improve DAT outcomes.
+OpenAI's multi-agent guidance recommends clear independent tasks and coordination when agents edit the same files. It does not establish a universal "never edit the same file" rule.
+
+These are product capabilities and coordination guidance. They are **not** evidence that a Sol / Luna / Astra mapping, an Adversary role, the three proposed gates, or strict file partitioning improve DAT outcomes.
 
 ## Source pattern
 
@@ -234,7 +237,7 @@ The mechanisms may coexist, but they solve different problems.
 
 The source recommends that two implementation agents should not edit the same file.
 
-DAT should not promote that recommendation to a core invariant without evidence.
+OpenAI's current multi-agent guidance is weaker: agents that edit the same files must coordinate their changes. DAT should therefore not present strict disjoint file ownership as an OpenAI requirement and should not promote the source's stronger recommendation to a core invariant without evidence.
 
 Potential benefits:
 

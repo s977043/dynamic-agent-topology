@@ -56,6 +56,12 @@ For research-derived changes, explicitly separate:
 
 A source citation is not evidence that a DAT design is effective.
 
+## Agent tool configuration
+
+The committed `.claude/settings.json` (ask rules for frozen files and a PreToolUse hook that runs `python3 .claude/hooks/guard_frozen_bash.py`) and `.codex/config.toml` apply to every contributor who uses Claude Code or Codex in this repository. Review changes to these files and to `.claude/hooks/` like executable code.
+
+A freeze revision that changes `experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml` must update the `.claude/settings.json` ask rules in the same pull request; `scripts/validate_agent_guidance.py` enforces this in CI.
+
 ## Generated and empirical artifacts
 
 Do not fabricate missing evidence or fill unknown values with guesses. Failed, aborted, and inconclusive runs must remain distinguishable from successful runs.

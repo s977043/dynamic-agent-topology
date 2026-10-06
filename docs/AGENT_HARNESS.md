@@ -38,8 +38,17 @@
 | ------------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/validate_agent_guidance.py`（CI） | 有効       | `AGENTS.md` / `CLAUDE.md` が参照する存在しないpath、`freeze.yaml` と `.claude/settings.json` のask ruleのずれ（漏れ・過剰） |
 | `.claude/settings.json` ask rule           | 有効       | Claude CodeのEdit/WriteによるFrozen fileの変更                                                                              |
-| `.claude/settings.json` の `PYTHONDONTWRITEBYTECODE=1` | 有効（Claude Codeのみ） | Claude Code実行時の `__pycache__` 生成。Codex / Gemini CLIなどでは別途設定が必要 |
-| `.claude/hooks/guard_frozen_bash.py`（PreToolUse） | 有効 | Bash経由のFrozen fileへの書き込み（redirect先、`sed -i`・`cp`・`git checkout` などの書き込みcommand）。heuristicのため検出漏れはありうる |
+| `.claude/settings.json` / `.codex/config.toml`（`shell_environment_policy`）の `PYTHONDONTWRITEBYTECODE=1` | 有効（Claude Code / Codex） | Agent実行時の `__pycache__` 生成。Gemini CLIなどでは別途設定が必要 |
+| `.claude/hooks/guard_frozen_bash.py`（PreToolUse） | 有効 | Bash経由のFrozen fileへの書き込み（redirect先、`sed -i`・`cp`・`git checkout` などの書き込みcommand）。heuristicのため検出漏れはありうる（下記Known gaps） |
+
+Codexにはローカルの Frozen file guardがありません（`workspace-write` sandboxのため、Frozen fileへの書き込みも止まりません）。Codexでの変更は CI の `scripts/validate_experiment_freeze.py` だけが検出します。
+
+`guard_frozen_bash.py` のKnown gaps:
+
+- `cd dir && ...` のように作業directoryを変えた後の相対pathは解決しない
+- 変数展開、`$(...)`、script fileやinterpreter経由の間接的な書き込みは検出しない
+- 書き込みcommandの判定は正規表現のheuristicで、未知のcommandは見逃す
+- 内部エラー時はfail open（promptを出さずに通す）
 
 ## Learning ledger
 
@@ -50,7 +59,7 @@
 | L-003 | 複数Agentが同じbranchへ同時にpushする                                                                          | PR #85 commit `792102d`       | 1    | candidate | 本書の1 branch 1 Agent rule  |
 | L-004 | Frozen fixtureでtest実行時に `__pycache__` が生成される                                                        | PR #85 作業時のlocal観測      | 1    | promoted  | `PYTHONDONTWRITEBYTECODE=1`  |
 
-状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-004）。
+状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004）。昇格には原則2回以上の観測が必要で、この2件はその例外です。
 
 ## Roadmap
 

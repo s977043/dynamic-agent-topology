@@ -31,11 +31,21 @@ CASES = {
     'echo x > "roles/worker.yaml"': "ask",
     "echo x > 'roles/verifier.yaml'": "ask",
     "git checkout main -- experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml": "ask",
+    "echo x 1>roles/worker.yaml": "ask",
+    "git checkout -- .": "ask",
+    "git restore .": "ask",
+    "rm -rf fixtures": "ask",
     "cat roles/worker.yaml": None,
     "python scripts/validate_pilot.py --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml 2>&1 | tail -3": None,
     "python scripts/validate_semantics.py > /tmp/out.txt": None,
     "sed -i '' s/a/b/ docs/README.md": None,
 }
+
+for raw in ("not json", json.dumps({"tool_name": "Bash", "tool_input": None})):
+    result = subprocess.run([sys.executable, str(HOOK)], input=raw, text=True, capture_output=True)
+    if result.returncode != 0 or result.stderr:
+        print(f"FAIL: hook must fail open on {raw!r}: {result.stderr}")
+        sys.exit(1)
 
 failures = [f"{command!r}: expected {want}, got {decision(command)}" for command, want in CASES.items() if decision(command) != want]
 if failures:

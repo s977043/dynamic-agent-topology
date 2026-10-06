@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Detect drift between agent guidance files and the repository."""
 import argparse
-import fnmatch
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -16,6 +16,7 @@ EXPERIMENT_DIR = "experiments/EXP-001-t0-vs-t1"
 CLAUDE_SETTINGS = ".claude/settings.json"
 PATH_TOKEN = re.compile(r"`([A-Za-z0-9_.\-/]+)`")
 GUARDED_TOOLS = ("Edit", "Write")
+SKIPPED_DIRS = {".git", ".venv", "__pycache__"}
 
 
 def referenced_paths(text):
@@ -35,6 +36,36 @@ def guarded_paths(root):
     manifest = yaml.safe_load((root / FREEZE_MANIFEST).read_text(encoding="utf-8"))
     files = manifest["spec"]["files"] if "spec" in manifest else manifest["files"]
     return sorted({FREEZE_MANIFEST, *(f["path"] if isinstance(f, dict) else f for f in files)})
+
+
+def pattern_regex(pattern):
+    """Gitignore-style match: `*` and `?` stay within one segment, `**` crosses directories."""
+    out = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("".join(out) + r"\Z")
+
+
+def repo_files(root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIPPED_DIRS]
+        for name in filenames:
+            yield (Path(dirpath) / name).relative_to(root).as_posix()
 
 
 def ask_patterns(root, tool):
@@ -58,21 +89,19 @@ def validate(root):
                 errors.append(f"{name}: referenced path does not exist: {token}")
 
     frozen = guarded_paths(root)
+    files = sorted(repo_files(root))
     for tool in GUARDED_TOOLS:
         patterns = ask_patterns(root, tool)
+        regexes = {p: pattern_regex(p) for p in patterns}
         for frozen_path in frozen:
-            if not any(fnmatch.fnmatch(frozen_path, p) for p in patterns):
+            if not any(r.match(frozen_path) for r in regexes.values()):
                 errors.append(f"{CLAUDE_SETTINGS}: frozen file has no {tool} ask rule: {frozen_path}")
-        for pattern in patterns:
-            matched = [p for p in frozen if fnmatch.fnmatch(p, pattern)]
+        for pattern, regex in regexes.items():
+            matched = [p for p in frozen if regex.match(p)]
             if not matched:
                 errors.append(f"{CLAUDE_SETTINGS}: {tool} ask rule matches no frozen file: {pattern}")
-            unfrozen = [
-                str(p.relative_to(root))
-                for p in root.glob(pattern)
-                if p.is_file() and "__pycache__" not in p.parts and str(p.relative_to(root)) not in frozen
-            ]
-            for extra in sorted(unfrozen):
+            unfrozen = [f for f in files if regex.match(f) and f not in frozen]
+            for extra in unfrozen:
                 errors.append(f"{CLAUDE_SETTINGS}: {tool} ask rule {pattern} also covers non-frozen file: {extra}")
     return errors
 

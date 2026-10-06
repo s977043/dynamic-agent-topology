@@ -62,6 +62,18 @@ with tempfile.TemporaryDirectory() as tmp:
     if result.returncode == 0 or "non-frozen file" not in result.stdout:
         failures.append("ask rule covering non-frozen files must fail")
 
+with tempfile.TemporaryDirectory() as tmp:
+    repo = copy_repo(tmp)
+
+    def shallow_fixture_rule(ask):
+        ask.remove("Edit(/fixtures/exp-001/**)")
+        ask.append("Edit(/fixtures/exp-001/*)")
+
+    edit_settings(repo, shallow_fixture_rule)
+    result = run(repo)
+    if result.returncode == 0 or "frozen file has no Edit ask rule: fixtures/exp-001/" not in result.stdout:
+        failures.append("single-star ask rule must not cover nested frozen fixture files")
+
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")

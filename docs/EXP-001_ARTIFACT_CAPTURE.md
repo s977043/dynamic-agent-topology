@@ -226,7 +226,7 @@ python scripts/validate_pilot.py \
   --run-id <runId>
 ```
 
-PASSしたRunだけ、paired blockの次のRunへ進めます。
+single-run validationがPASSした後、Manual review recordを完成させ、reviewer judgmentが `ACCEPT` になったRunだけ次のmatrix itemへ進めます。validation PASSだけではRun acceptance完了とはみなしません。
 
 ## Missing measurements
 

@@ -321,7 +321,7 @@ T0/T1はpaired comparisonです。
 
 片方のRunがArtifact contractを満たさない場合、もう片方だけを使ってpaired deltaを解釈しません。
 
-- 先行Runがsingle-run validationを通らない → 次Runを開始しない
+- 先行Runがsingle-run validationを通らない、またはManual reviewが `BLOCK` → 次Runを開始しない
 - 後続Runがaborted → blockはpaired comparison未成立
 - 片側だけ成功 → 「T0/T1差」として一般化しない
 

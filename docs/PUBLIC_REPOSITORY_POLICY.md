@@ -74,12 +74,13 @@ Repository settings are applied outside Git, so apply them in stages rather than
    - require pull requests, conversation resolution, `validate`, and `Analyze Python`;
    - block force pushes and branch deletion;
    - keep the exact required approving-review count at `0` while there is only one active maintainer;
+   - if a maintainer bypass is configured, keep it narrow and recovery-only; do not use it to make the normal merge path appear healthy;
    - require the branch to be up to date only after confirming the normal PR path still completes successfully.
 5. **Verify with a disposable documentation PR**
    - confirm the PR can run both required checks;
    - confirm unresolved review conversations block merge when applicable;
    - confirm a current branch can be merged through the intended squash path;
-   - confirm ordinary work does not require a maintainer bypass.
+   - confirm ordinary work completes without a maintainer bypass; if the test needs bypass to merge, treat the ruleset as misconfigured and stop.
 6. **Security settings**
    - enable and verify the controls listed below with appropriately privileged account access.
 7. **Strict re-audit**

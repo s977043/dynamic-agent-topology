@@ -381,9 +381,33 @@ Feature Freeze revision 3では `scripts/validate_pilot.py` 自体が凍結さ�
 
 これは新しい測定条件や評価意味論ではありません。既に記録した同一実行事実がArtifact間で矛盾していないことを確認するための整合レビューです。
 
+## Manual review record
+
+Feature Freeze revision 3の間は、上記cross-artifact consistency reviewの自動validator追加を行いません。そのため、各complete RunをRepositoryへ取り込むPRでは、**手動レビューを実施したEvidenceをPR本文またはreview commentへ残します**。
+
+新しいRun ArtifactやSchema fieldは追加しません。次の最小記録で十分です。
+
+```text
+Cross-artifact consistency review
+- runId: <runId>
+- execution-attestation ↔ trace session/freshness/cross-run fields: PASS | N/A | BLOCKED
+- attested timestamps ↔ trace start/finish: PASS | N/A | BLOCKED
+- trace token summary ↔ evaluation efficiency: PASS | N/A | BLOCKED
+- prompt / frozen-condition drift: NONE | BLOCKED
+- sensitive-data / hidden-reasoning scan: PASS | BLOCKED
+- single-run validation: PASS | FAIL
+- reviewer conclusion: ACCEPT | BLOCK
+```
+
+`N/A` は該当するoptional observationが存在しない場合だけ使用します。値があるのに一致確認できない場合は `BLOCKED` とし、次のmatrix itemへ進みません。
+
+`ACCEPT` はTopologyやConditionの優劣判断ではありません。**そのRunをEXP-001のcomplete empirical Runとして受理できるか**だけを意味します。
+
+この記録はIssue #57でpost-EXP-001 automationを検討するまでの暫定的なreview Evidenceです。
+
 ## Reproducibility checklist
 
-single-run validation前に確認します。
+結果Artifactを作成した後、まずsingle-run validation前に次を確認します。validation結果そのものを含むManual review recordは、single-run validation後に完成させます。
 
 - runId / blockId / scenario / conditionがmatrixと一致
 - Runtime / Model / EffortがPilot固定値
@@ -392,8 +416,10 @@ single-run validation前に確認します。
 - patch.diffが実際のRun差分
 - optional metricsは実測できた値だけ
 - trace/evaluationの共通metricsが一致
-- 上記Cross-artifact consistency reviewを完了
+- Cross-artifact consistency reviewのうち、validation結果を必要としないArtifact間整合を確認
 - secret / private data / hidden reasoningがない
 - 他Run結果を混入していない
+
+single-run validationがPASSした後、Manual review recordへvalidation結果を記入し、残りのcross-artifact reviewを完了して `reviewer conclusion: ACCEPT` を確認します。`BLOCK` の場合は次のmatrix itemへ進みません。
 
 Schema validationが通っても、このチェックを省略しません。

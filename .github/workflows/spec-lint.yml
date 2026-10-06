@@ -88,6 +88,9 @@ jobs:
           python scripts/validate_project.py --project examples/brownfield --dat-root .
           python scripts/test_validate_project.py
 
+      - name: Validate repository settings target
+        run: check-jsonschema --schemafile schemas/repository-settings-target.schema.json .github/repository-settings-target.yaml
+
       - name: Test repository settings audit
         run: python scripts/test_audit_repository_settings.py
 

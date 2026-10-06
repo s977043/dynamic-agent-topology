@@ -58,7 +58,9 @@ TopologyやCapabilityの変更が、Humanへ同時に提示されるAgent状態�
 - `human_interventions`の回数だけから認知負荷やcontext-switch costを推定しません。
 - 観測方法が未定義な負荷を0として扱わず、必要ならconfounder / limitationとして残します。
 
-EXP-001 Feature Freeze中は、この観点を理由に新しい必須MetricやRunEvaluation fieldを追加しません。正式な測定契約が必要なら、実測上の不足をEvidenceとしてpost-freezeで別途提案します。
+この原則は、新規Experiment設計またはFreeze前のcontrol定義で使います。現行Experiment Schemaへ新しいfieldを追加することを意味せず、既にFeature Freeze中のExperimentへ新しい必須controlを遡及適用しません。
+
+EXP-001 Feature Freeze中は、この観点を理由に既存Control、必須Metric、RunEvaluation field、受理条件を変更しません。human-facing concurrencyの差が観測された場合は、既存contract違反でない限りRunを後付けでinvalid化せず、confounder / limitation / operational costとして記録します。正式な測定契約が必要なら、実測上の不足をEvidenceとしてpost-freezeで別途提案します。
 
 ## Execution subject
 

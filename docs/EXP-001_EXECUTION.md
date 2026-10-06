@@ -126,7 +126,7 @@ python scripts/prepare_pilot_run.py \
 
 T1もfresh Codex sessionで実行し、execution attestationを含む結果Artifactを保存してsingle-run validationを行います。
 
-結果Artifactをcaptureした後にsingle-run validationを実行し、その結果を含めて [Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) のCross-artifact consistency reviewを行います。結果PRまたはreview commentにManual review recordを残し、`ACCEPT` になるまで次のmatrix itemへ進みません。
+結果Artifactをcaptureした後にsingle-run validationを実行し、その結果を含めて [Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) のCross-artifact consistency reviewを行います。結果PR本文にはauthor側のManual review Evidenceを残し、ReviewerはそのEvidenceと差分を確認したうえでreview commentに `EXP-001 Run acceptance: ACCEPT | BLOCK` を記録します。`ACCEPT` が記録されるまで次のmatrix itemへ進みません。
 
 ## After the first pair
 

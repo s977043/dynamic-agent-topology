@@ -383,9 +383,11 @@ Feature Freeze revision 3では `scripts/validate_pilot.py` 自体が凍結さ�
 
 ## Manual review record
 
-Feature Freeze revision 3の間は、上記cross-artifact consistency reviewの自動validator追加を行いません。そのため、各complete RunをRepositoryへ取り込むPRでは、**手動レビューを実施したEvidenceをPR本文またはreview commentへ残します**。
+> Review contractの意味論はこの節で説明し、実際のRun PR入力Surfaceは [`.github/pull_request_template.md`](../.github/pull_request_template.md) の `EXP-001 empirical Run PR` セクションを使います。両者が矛盾する場合は、Feature Freeze / Artifact Schema / validatorを優先し、文書差分を修正してからRunを受理します。
 
-新しいRun ArtifactやSchema fieldは追加しません。次の最小記録で十分です。
+Feature Freeze revision 3の間は、上記cross-artifact consistency reviewの自動validator追加を行いません。そのため、各complete RunをRepositoryへ取り込むPRでは、**PR本文にauthor側のObservable Evidenceを残し、final ACCEPT / BLOCKはreview commentにReviewer Judgmentとして残します**。
+
+新しいRun ArtifactやSchema fieldは追加しません。PR本文には次の最小Evidence記録で十分です。
 
 ```text
 Cross-artifact consistency review
@@ -396,14 +398,20 @@ Cross-artifact consistency review
 - prompt / frozen-condition drift: NONE | BLOCKED
 - sensitive-data / hidden-reasoning scan: PASS | BLOCKED
 - single-run validation: PASS | FAIL
-- reviewer conclusion: ACCEPT | BLOCK
 ```
 
 `N/A` は該当するoptional observationが存在しない場合だけ使用します。値があるのに一致確認できない場合は `BLOCKED` とし、次のmatrix itemへ進みません。
 
-`ACCEPT` はTopologyやConditionの優劣判断ではありません。**そのRunをEXP-001のcomplete empirical Runとして受理できるか**だけを意味します。
+ReviewerはPR本文のEvidenceと実差分を確認した後、review commentへ次を記録します。
 
-この記録はIssue #57でpost-EXP-001 automationを検討するまでの暫定的なreview Evidenceです。
+```text
+EXP-001 Run acceptance: ACCEPT | BLOCK
+Reason: <concise evidence-based reason>
+```
+
+`ACCEPT` はTopologyやConditionの優劣判断ではありません。**そのRunをEXP-001のcomplete empirical Runとして受理できるか**だけを意味します。PR authorが本文へ `ACCEPT` を自己記録しただけではReviewer Judgmentの代替になりません。
+
+このEvidence / Judgment分離はIssue #57でpost-EXP-001 automationを検討するまでの暫定的なreview contractです。
 
 ## Reproducibility checklist
 
@@ -420,6 +428,6 @@ Cross-artifact consistency review
 - secret / private data / hidden reasoningがない
 - 他Run結果を混入していない
 
-single-run validationがPASSした後、Manual review recordへvalidation結果を記入し、残りのcross-artifact reviewを完了して `reviewer conclusion: ACCEPT` を確認します。`BLOCK` の場合は次のmatrix itemへ進みません。
+single-run validationがPASSした後、PR本文のManual review recordへvalidation結果を記入し、残りのcross-artifact reviewを完了します。そのEvidenceをReviewerが確認し、review commentで `EXP-001 Run acceptance: ACCEPT` を記録した場合だけ次のmatrix itemへ進みます。`BLOCK` の場合は進みません。
 
 Schema validationが通っても、このチェックを省略しません。

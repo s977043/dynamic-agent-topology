@@ -5,11 +5,11 @@
   },
   "permissions": {
     "allow": [
-      "Bash(check-jsonschema:*)",
-      "Bash(python scripts/validate_*.py:*)",
-      "Bash(python scripts/test_*.py:*)",
-      "Bash(python scripts/pilot_status.py:*)",
-      "Bash(python scripts/summarize_experiment.py:*)"
+      "Bash(check-jsonschema *)",
+      "Bash(python scripts/validate_*.py*)",
+      "Bash(python scripts/test_*.py*)",
+      "Bash(python scripts/pilot_status.py *)",
+      "Bash(python scripts/summarize_experiment.py *)"
     ],
     "ask": [
       "Edit(/experiments/EXP-001-t0-vs-t1/experiment.yaml)",

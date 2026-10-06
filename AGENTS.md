@@ -1,34 +1,65 @@
-# Repository Guidelines
+# AGENTS.md
 
-## Project Structure & Module Organization
+This file provides guidance to coding agents (Claude Code, Codex, Gemini CLI, etc.) when working in this repository.
 
-DAT is a provider-agnostic specification and experiment repository, not an agent runtime. `schemas/` defines artifact contracts; `roles/`, `topologies/`, `policies/`, and `baselines/` hold machine-readable designs. `adapters/` describes runtime capabilities. `scripts/` contains Python validators and pilot utilities; `experiments/`, `fixtures/`, and `examples/` contain experiment plans, test inputs, and sample projects. Architecture and contributor decisions live in `docs/`, `knowledge/`, and `CONTRIBUTING.md`.
+## What this repo is
 
-## Build, Test, and Development Commands
+Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures. It is not an agent runtime. Most content is YAML specs validated against JSON Schemas, plus Python validator scripts. Docs are primarily Japanese (`README.md`), with `README_en.md` as the English counterpart — keep both in sync when changing user-facing content.
 
-CI uses Python 3.12. Install validation tools with `python -m pip install -r requirements-ci.txt`. Run relevant checks from `.github/workflows/spec-lint.yml`; common checks are:
+Core principle: use the simplest topology that reliably solves the task (P0 Deterministic Pipeline, T0 Single Agent are first-class baselines; T1 Worker→Verifier, T2 +Reviewer, T3 Specialized Team).
+
+## Commands
+
+Python 3.12. Setup: `python -m pip install -r requirements-ci.txt` (check-jsonschema, jsonschema, PyYAML).
+
+The full validation suite is the step list in `.github/workflows/spec-lint.yml`; run the relevant steps locally. Common ones:
 
 ```bash
+check-jsonschema --check-metaschema schemas/*.json
+check-jsonschema --schemafile schemas/topology.schema.json topologies/canonical/*.yaml
 python scripts/validate_semantics.py
 python scripts/validate_experiments.py
+python scripts/validate_fixtures.py
+python scripts/validate_project.py --project examples/brownfield --dat-root .
 python scripts/validate_experiment_freeze.py
-python scripts/test_validate_pilot.py
 ```
 
-Run standalone tests as `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` when running Python against frozen fixtures.
+Tests are plain executable scripts (no pytest); run a single one directly, e.g. `python scripts/test_validate_pilot.py`. Test files: `scripts/test_*.py`. Set `PYTHONDONTWRITEBYTECODE=1` when running Python against frozen fixtures.
 
-## Coding & Artifact Conventions
+## Architecture
 
-Use four spaces in Python and descriptive `snake_case` names. Preserve existing YAML/JSON formatting and schema-first artifact conventions. Keep runtime-specific details in `adapters/`; do not mix topology, routing policy, role, permission, model, execution evidence, or evaluation responsibilities. Add deterministic validation when introducing a new artifact contract.
+Five planes kept strictly separate (see `docs/ARCHITECTURE.md`):
 
-## Testing and Experiment Safety
+| Plane                | Directory                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Desired Organization | `topologies/`, `roles/`, `baselines/`                                                |
+| Control Plane        | `policies/routing/`, `policies/escalation/`                                          |
+| Runtime Mapping      | `adapters/<runtime>/capabilities.yaml` (claude-code, codex, gemini-cli, antigravity) |
+| Observed Execution   | execution traces (`schemas/execution-trace.schema.json`)                             |
+| Evaluation           | `schemas/evaluation.schema.json`, `experiments/`                                     |
 
-Schema validity alone is insufficient; run semantic validators for affected artifacts. `experiments/EXP-001-t0-vs-t1/` is under Feature Freeze. Check the freeze before work and do not alter frozen prompts, roles, topologies, scenarios, fixtures, schemas, validators, or evaluation semantics without the documented blocking-defect process. EXP-001 runs require an Operator-created fresh external workspace and a fresh Codex session; do not substitute a regular Codex task or fabricate run artifacts.
+Separation rules: Topology ≠ Routing Policy, Role ≠ Permission, Role ≠ Model, Runtime ≠ Model Provider, Reviewer ≠ Verifier. Dynamic routing is a policy, never a topology.
 
-## Commits and Pull Requests
+Keep runtime-specific details in `adapters/`. Every YAML kind has a schema in `schemas/`; schema validity is necessary but `scripts/validate_*.py` add cross-file semantic checks. When adding a new YAML kind or directory, wire it into `spec-lint.yml`.
 
-Use concise conventional prefixes such as `docs:`, `schema:`, `fix:`, or `chore:`. Keep PRs focused and describe the problem, scope boundaries, exact validation results, compatibility or experiment impact, and supporting evidence. For design changes, state a falsifiable hypothesis. Follow `.github/pull_request_template.md` and `CONTRIBUTING.md`.
+`fixtures/exp-001/` holds the frozen scenario codebases that EXP-001 runs start from (their tests fail until the task is solved); `scripts/validate_fixtures.py` checks scenario ↔ fixture wiring. `examples/brownfield/.dat/` demonstrates external-project adoption (A0–A5 stages, `docs/ADOPTION.md`).
 
-## Evidence and Security
+## Experiment freeze (important)
 
-Separate source claims, observed evidence, interpretation, and decisions. Preserve failed, aborted, and inconclusive runs as distinct outcomes. Never commit secrets, confidential prompts, private source code, or unsanitized traces; report security findings using `SECURITY.md`.
+`experiments/EXP-001-t0-vs-t1/` is under **Feature Freeze**, enforced by `scripts/validate_experiment_freeze.py` against blob SHAs in `pilot/freeze.yaml`. Do not change experiment inputs, evaluation semantics, prompts, roles, scenarios, fixtures, or frozen validators without checking the freeze; propose post-freeze changes separately. `pilot/run-matrix.yaml` must match `generate_pilot_matrix.py` output deterministically.
+
+The EXP-001 pilot is executed by an Operator in a fresh external workspace and a fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents working on this repository must not start that Codex session in the Operator's place, re-prepare an existing runId, or generate result artifacts without a real run.
+
+## Conventions
+
+- Python: four-space indentation, `snake_case` names. Preserve existing YAML/JSON formatting.
+- Commits: conventional prefixes such as `docs:`, `schema:`, `fix:`, `chore:`.
+
+## Contribution rules (from CONTRIBUTING.md)
+
+- Separate external source claims, observed evidence, DAT interpretation, and decisions. A citation is not evidence a design works.
+- Never fabricate evidence or fill unknown values with guesses; failed/aborted/inconclusive runs must stay distinguishable from successes.
+- Topology/routing/role/verifier/experiment-method changes need a falsifiable hypothesis.
+- Releases follow `docs/RELEASE_READINESS.md`: never move a published tag; keep README / `CHANGELOG.md` / `CITATION.cff` / tag / GitHub Release on the same boundary.
+- Use `.github/pull_request_template.md` for PRs.
+- Never commit secrets, confidential prompts, private source code, or unsanitized traces; report security findings via `SECURITY.md`.

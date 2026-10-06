@@ -10,7 +10,8 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 - EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
 - Pilot preparation and execution-attestation schemas and tooling.
-- Raven / evidence-gated executable-configuration research notes.
+- Deferred research notes for Raven / evidence-gated executable-configuration evolution, Claude Code Mods runtime guardrails, and evidence-backed compiled-knowledge integrity.
+- Knowledge Base navigation that separates source claims, deferred research candidates, and adopted design principles.
 - Dogfooding and EXP-001 execution/measurement guidance.
 - Public contribution, support, research-proposal, and security-reporting paths.
 - CodeQL, Dependabot, and OpenSSF Scorecard supply-chain checks.

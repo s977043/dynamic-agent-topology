@@ -41,11 +41,11 @@ These are operator-reported practices and observations from one knowledge-base i
 
 The useful lesson is broader than a particular wiki layout:
 
-~~~text
+```text
 processed != correct
 linked != verified
 summary != source evidence
-~~~
+```
 
 DAT should not infer semantic correctness from a successful extractor exit, generated summary, successful ingest pipeline, backlink, or internally consistent derived page.
 
@@ -62,7 +62,7 @@ This is not evidence for a new Knowledge Architecture Plane. A future solution s
 
 A future persistent-knowledge workflow may need an explicit admission invariant:
 
-~~~text
+```text
 Source
   -> Extraction
   -> Derived claim
@@ -71,11 +71,11 @@ Source
   -> Contradiction / supersede check
   -> Independent verification
   -> Admitted knowledge
-~~~
+```
 
 Possible checks include:
 
-~~~yaml
+```yaml
 knowledge_admission:
   raw_source_preserved: true
   extraction_provenance_known: true
@@ -83,7 +83,7 @@ knowledge_admission:
   synthesis_connected: true
   contradiction_check_completed: true
   independent_verification_passed: true
-~~~
+```
 
 This is a **candidate evaluation shape**, not a current DAT schema.
 
@@ -134,12 +134,12 @@ Do not build a generic knowledge platform first.
 
 For persistent knowledge, review and verification should remain separate:
 
-~~~text
+```text
 Extractor / Compiler
         -> Reviewer: structure, clarity, synthesis quality
         -> Verifier: source-grounded claim checks
         -> Admission decision
-~~~
+```
 
 This preserves Reviewer != Verifier, Verifier != Evidence, and Attestation != Verification. An LLM-generated summary or wiki page cannot verify itself merely by being internally coherent.
 
@@ -167,7 +167,7 @@ During EXP-001, retain only these hypotheses:
 
 No new schema, knowledge graph, validator behavior, topology, runtime behavior, or EXP-001 evaluation semantics are adopted during the active freeze.
 
-Accordingly, knowledge/sources.yaml records the operating report with adopted: [].
+Accordingly, `knowledge/sources.yaml` records the operating report with `adopted: []`.
 
 ## Adoption gate
 

@@ -8,13 +8,13 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 
 ## Current notes
 
-| Note | Primary source(s) | Tracking issue | Current status |
-|---|---|---|---|
-| [Raven executable-configuration evolution](raven-executable-configuration-evolution.md) | Raven / HarnessBank | [#21](https://github.com/s977043/dynamic-agent-topology/issues/21) | Deferred / blocked by EXP-001 |
-| [Claude Code Mods runtime guardrails](claude-code-mods-runtime-guardrails.md) | Anthropic Claude Code Mods | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) | Deferred / blocked by EXP-001 |
-| [Evidence-backed compiled knowledge integrity](evidence-backed-compiled-knowledge-integrity.md) | Joon An LLM Wiki operating report | [#63](https://github.com/s977043/dynamic-agent-topology/issues/63) | Deferred / blocked by EXP-001 |
+| Note | Primary source(s) | Tracking issue |
+|---|---|---|
+| [Raven executable-configuration evolution](raven-executable-configuration-evolution.md) | Raven / HarnessBank | [#21](https://github.com/s977043/dynamic-agent-topology/issues/21) |
+| [Claude Code Mods runtime guardrails](claude-code-mods-runtime-guardrails.md) | Anthropic Claude Code Mods | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) |
+| [Evidence-backed compiled knowledge integrity](evidence-backed-compiled-knowledge-integrity.md) | Joon An LLM Wiki operating report | [#63](https://github.com/s977043/dynamic-agent-topology/issues/63) |
 
-The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).
+Tracking Issues are the live status source of truth; this index intentionally does not duplicate blocked/open/progress state. The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).
 
 ## Expected structure
 
@@ -58,6 +58,6 @@ Observed success != semantic correctness
 Candidate implementation != evidence of improvement
 ```
 
-When a candidate is later adopted, update the relevant canonical artifact(s), documentation, validation, and `../sources.yaml` together so the adoption state remains auditable.
+When a candidate is later adopted, update the relevant canonical artifact(s), documentation, applicable validation, and `../sources.yaml` together so the adoption state remains auditable.
 
 During the active EXP-001 Feature Freeze, research notes may preserve hypotheses and post-freeze evaluation candidates, but they must not silently change frozen experiment semantics or runtime behavior.

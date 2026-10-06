@@ -69,19 +69,19 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 - T1のpreparationはPR #81、不完全attemptの保存は [PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) にあります。
 - 2026-10-07の [Issue #15本文](https://github.com/s977043/dynamic-agent-topology/issues/15) はT1 r01を **ABORTED / not accepted / no retry** と記録し、次の固定slot r02-T1への進行を示しています。これはcomplete Run受理やT1再試行の許可ではありません。
 
-実行直前にIssue #15の最新disposition、停止条件、固定matrixを照合します。本文とreview recordに不明点・矛盾がある場合は、Operatorが進行判断を確認してから操作します。過去のprepare例や古いcheckpointを現在の実行指示として使いません。
+実行直前にIssue #15の最新disposition、独立review record、固定matrix、Operator procedureの進行gateを照合します。Issue本文の進行記載だけで、前RunのReviewer `ACCEPT` を必要とする通常gateを置き換えません。archive保存のレビューと次slotへの進行判断も別です。通常gateを満たさない場合や、review recordと契約に不明点・矛盾がある場合は、Issue #15に停止理由を残し、整合が確認されるまでprepare / 実行を開始しません。過去のprepare例や古いcheckpointを現在の実行指示として使いません。
 
 `pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attemptとno-retry判断を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行しません。
 
-## 許可された次slotの操作
+## 次slotの操作前に確認するgate
 
 1. Freeze preflightとstatus表示を確認する。
-2. Issue #15で進行可能と確認されたrunIdを固定matrixから選ぶ。
+2. 前RunのReviewer `ACCEPT` と固定matrix順の整合を確認する。ABORTEDなどで通常gateを満たさない場合は停止し、Issue #15のdispositionと契約の整合を独立レビューで確認する。本文の「進行可能」だけでprepareしない。
 3. [Operator procedure](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md) に従い、未使用のfresh external workspaceとunique workspaceIdでprepareする。既存runIdのpreparationを置き換えない。
 4. 初期fixtureとexpected initial Evidence FAILを確認する。
 5. Operatorが固定Runtime / Model / Effort、fresh session、当該promptだけで実行する。
 6. [Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) に従い観測Artifactを保存し、single-run validationとmanual cross-artifact reviewを行う。
-7. 結果PRのreview commentに `EXP-001 Run acceptance: ACCEPT | BLOCK` を記録する。complete Runの通常進行はACCEPT後。不完全attemptはIssue #15で別途dispositionをレビューする。
+7. 結果PRのreview commentに `EXP-001 Run acceptance: ACCEPT | BLOCK` を記録する。次のmatrix itemはACCEPT後に進める。不完全attemptのdispositionを記録しても、ACCEPTや契約に整合した進行判断の代わりにはならない。
 
 Blocking defectが見つかった場合は、次Runへ進まずIssue #15を停止し、Feature Freezeの例外手続きに従います。
 

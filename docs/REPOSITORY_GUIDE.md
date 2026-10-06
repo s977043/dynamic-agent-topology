@@ -57,6 +57,8 @@ EXP-001は独立Verifier追加の限界効用を比較するPilotです。Experi
 
 Issue #15本文はT1 r01をABORTED / not accepted / no retryと記録しています。[PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) は不完全attemptの保存であり、complete Runや成功Evidenceを追加するものではありません。canonical Artifactだけを読むstatus表示には、この外部保存attemptのdispositionが反映されません。
 
+Issue本文の進行記載と、独立review record / Operator procedureのgateが整合するかを確認します。archive保存の承認だけでは次slotへ進めず、通常の前Run ACCEPT gateを満たさない場合はIssue #15で停止・整合確認します。
+
 次slotへの進行許可とFreeze解除は別判断です。再試行しないslotがある場合、残りslotの終了だけで18/18 completeや最終validation PASSを主張できません。この到達可能性はIssue #15で明示的にレビューする必要があります。本ガイドは凍結契約の例外、Run数変更、validatorの迂回を認めるものではありません。
 
 ## 更新時の確認順

@@ -18,6 +18,8 @@ DAT starts from one rule:
 > **Use the simplest topology that reliably solves the task.**  
 > **Add coordination only when evidence justifies its cost.**
 
+Coordination cost includes not only tokens and latency, but also increased human supervision, interruptions, and concurrent decisions.
+
 ## What DAT is trying to do
 
 DAT is not only about arranging multiple agents.

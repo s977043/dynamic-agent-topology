@@ -48,17 +48,7 @@ Evidenceが追加コストを正当化しなくなった場合、既存の採用
 
 ## Research notes
 
-現在のResearch Noteは [`research/`](research/) を参照してください。
-
-各Noteは可能な範囲で次を分離します。
-
-1. Primary source / provenance
-2. Source claims
-3. DAT interpretation
-4. Hypotheses
-5. Cheapest useful verification
-6. Rejection / deferral evidence
-7. Adoption gate
+現在のResearch Note一覧、追跡Issue、想定構造、Research Proposalの入口は [Research Notes](research/README.md) を参照してください。
 
 ### EXP-001 Feature Freeze中の扱い
 

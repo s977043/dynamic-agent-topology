@@ -42,13 +42,13 @@ Separation rules: Topology ≠ Routing Policy, Role ≠ Permission, Role ≠ Mod
 
 Every YAML kind has a schema in `schemas/`; schema validity is necessary but `scripts/validate_*.py` add cross-file semantic checks. When adding a new YAML kind or directory, wire it into `spec-lint.yml`.
 
-`fixtures/` holds intentionally-failing inputs that validators must reject. `examples/brownfield/.dat/` demonstrates external-project adoption (A0–A5 stages, `docs/ADOPTION.md`).
+`fixtures/exp-001/` holds the frozen scenario codebases that EXP-001 runs start from (their tests fail until the task is solved); `scripts/validate_fixtures.py` checks scenario ↔ fixture wiring. `examples/brownfield/.dat/` demonstrates external-project adoption (A0–A5 stages, `docs/ADOPTION.md`).
 
 ## Experiment freeze (important)
 
 `experiments/EXP-001-t0-vs-t1/` is under **Feature Freeze**, enforced by `scripts/validate_experiment_freeze.py` against blob SHAs in `pilot/freeze.yaml`. Do not change experiment inputs, evaluation semantics, prompts, roles, scenarios, fixtures, or frozen validators without checking the freeze; propose post-freeze changes separately. `pilot/run-matrix.yaml` must match `generate_pilot_matrix.py` output deterministically.
 
-The EXP-001 pilot is executed by an Operator in a fresh external workspace and a fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Do not launch Codex yourself as a substitute, re-prepare an existing runId, or generate result artifacts without a real run.
+The EXP-001 pilot is executed by an Operator in a fresh external workspace and a fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents working on this repository must not start that Codex session in the Operator's place, re-prepare an existing runId, or generate result artifacts without a real run.
 
 ## Contribution rules (from CONTRIBUTING.md)
 

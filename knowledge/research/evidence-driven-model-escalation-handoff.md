@@ -41,8 +41,8 @@ Anthropic's [Claude Sonnet 5.5 launch page](https://www.anthropic.com/claude-son
 
 - Sonnet 5.5 as a faster, lower-cost complement to Opus 5.5 for well-scoped everyday work;
 - Opus 5.5 as intended for more complex work requiring careful judgment;
-- Sonnet 5.5 pricing of $2/M input, $10/M output, $2.50/M cache write, and $0.20/M cache read;
-- Opus 5.5 pricing of $4/M input, $20/M output, $5/M cache write, and $0.20/M cache read.
+- the launch page's displayed Sonnet 5.5 pricing rows: $2/M input, $10/M output, $2.50/M cache write, and $0.20/M cache read;
+- the launch page's displayed Opus 5.5 pricing rows: $4/M input, $20/M output, $5/M cache write, and $0.20/M cache read.
 
 Anthropic's [Claude 5.5 family webinar](https://www.anthropic.com/webinars/building-with-the-claude-5-5-family-choosing-the-right-model-and-getting-more-from-every-token) explicitly frames model choice around task evals, cost per task, effort levels, prompt caching, and orchestration.
 
@@ -58,7 +58,7 @@ These official sources support evaluating cache-aware model selection and task-l
 
 DAT already separates Routing / Escalation from Topology and treats Model as independent from Role. What remains unknown is how a runtime should decide that continuing with the current model is no longer the smallest effective intervention.
 
-Affected Engineering Layers: **Context / Loop / Evaluation**.
+Affected Engineering Layers: **Context / Harness / Loop / Evaluation**.
 
 Candidate Work Units:
 

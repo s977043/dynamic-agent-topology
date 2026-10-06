@@ -53,7 +53,7 @@ Run ID: `<runId>`
 ### Run integrity
 
 - [ ] This PR preserves the active Feature Freeze and does not change Prompt / Scenario / Fixture / Topology / Role / Model / Effort / evaluation semantics.
-- [ ] The Run used a fresh workspace and fresh session, and cross-run feedback was not used.
+- [ ] The execution attestation records a fresh workspace/session boundary and no cross-run feedback, and the observable artifacts do not contradict it. This is attestation evidence, not independent proof.
 - [ ] Preparation provenance is preserved; this PR does not silently replace a previous attempt.
 - [ ] Failed / aborted / infrastructure attempts, if any, remain separately preserved and are not counted as complete Runs.
 

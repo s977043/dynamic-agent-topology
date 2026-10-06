@@ -49,6 +49,8 @@ contract lockのような個別Gateで実際に壊れているWork UnitがPrompt
 
 この候補は [research note](../knowledge/research/adversarial-judgment-gates.md) と [Issue #82](https://github.com/s977043/dynamic-agent-topology/issues/82) で追跡します。EXP-001 Feature Freeze中はResearch candidateに留め、Role、Topology、Routing / Escalation Policy、Runtime behavior、evaluation semanticsを変更しません。
 
+#82はAdversarial Judgmentの価値と起動条件を評価します。新しい汎用Loop / Graph contractが必要かは [Issue #42](https://github.com/s977043/dynamic-agent-topology/issues/42) の責務であり、repeated-failure gateの存在だけを理由に新contractを追加しません。
+
 ## Crosswalk
 
 | Architecture Plane | Prompt | Context | Harness | Loop | Graph | Evaluation |

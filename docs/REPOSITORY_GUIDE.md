@@ -14,7 +14,7 @@ DATの問いは「どのAgent Topologyが、どの条件で、どれだけのコ
 |---|---|---|
 | 構造・責務 | [topologies](../topologies/canonical/)、[roles](../roles/)、[baselines](../baselines/) | Node / Edge / RoleとP0の区別 |
 | 選択・上限 | [policies](../policies/) | RoutingとEscalation。Topologyとは別契約 |
-| Runtime対応 | [adapters](../adapters/) | Capabilityのnative / emulated / unknown。宣言と権限強制の区別 |
+| Runtime対応 | [adapters](../adapters/) | [Capability status](../schemas/runtime-capability.schema.json) のnative / experimental / emulated / degraded / unsupported / unknown。宣言と権限強制の区別 |
 | 契約の形・整合 | [schemas](../schemas/)、[scripts](../scripts/) | Schema検証とcross-file semantic validation |
 | 外部導入 | [Quick Start](QUICKSTART.md)、[brownfield example](../examples/brownfield/) | Project / Evidence / Policy / Runtime Bindingとrevision pin |
 | 観測・評価 | [experiments](../experiments/)、[Metrics](METRICS.md) | Trace、Attestation、Evaluation、比較判断 |

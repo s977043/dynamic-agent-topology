@@ -129,6 +129,17 @@ Potential signals to evaluate after EXP-001:
 - an explicit high-risk judgment boundary requires stronger reasoning under a runtime-local policy;
 - the current context has become expensive to carry while the task state can be externalized safely.
 
+Candidate triage before escalation:
+
+| Observed state | Smallest default action |
+|---|---|
+| Verification passes | continue / complete |
+| reproducible implementation failure after a correctly scoped repair | model/capability escalation candidate |
+| missing executable, service, permission, or environment dependency | repair Harness / infrastructure or stop |
+| required context/artifact is missing or stale | repair / rebind Context before escalating model |
+| failure class remains UNKNOWN | gather discriminating Evidence; do not auto-escalate |
+| high-risk Judgment boundary | evaluate Reviewer / stronger reasoning under an explicit policy |
+
 Signals that should **not** be sufficient by themselves:
 
 - "the model seems confused";
@@ -213,11 +224,14 @@ Do not implement an automatic Sonnet → Opus router first.
 
 Select reproducible tasks where the baseline model reaches an observable failure and compare:
 
-| Arm | Behavior |
-|---|---|
-| A | continue baseline model within a bounded attempt budget |
-| B | stronger model with the prior/full available context |
-| C | stronger model from a compact evidence handoff |
+| Arm | Behavior | Primary contrast |
+|---|---|---|
+| A | continue baseline model in the current session within a bounded attempt budget | control |
+| B | same baseline model in a fresh session from compact evidence handoff | A vs B isolates fresh-session / handoff effect |
+| C | stronger runtime-local model/capability in a fresh session from the **same compact handoff** | B vs C isolates model/capability escalation effect |
+| D | stronger runtime-local model/capability with the fullest transferable prior context the runtime can reproduce | C vs D estimates compact-vs-full context effect |
+
+If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
 
 Where practical, hold constant:
 
@@ -226,7 +240,10 @@ Where practical, hold constant:
 - verification command;
 - runtime tooling and permission boundary;
 - effort setting;
-- overall task budget.
+- overall task budget;
+- compact handoff artifact for Arms B/C.
+
+A/B, B/C, and C/D answer different questions. Do not collapse them into one "routing improved" result.
 
 Capture:
 

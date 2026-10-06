@@ -30,7 +30,7 @@
 
 1. [Knowledge Base](../knowledge/README.md) — Source Claim / Research candidate / adopted principleの境界
 2. [Source ledger](../knowledge/sources.yaml) — 参照Sourceと`adopted`状態
-3. [Research notes](../knowledge/research/) — 調査・仮説・post-freeze評価候補
+3. [Research notes](../knowledge/research/README.md) — 調査・仮説・追跡Issue・post-freeze評価候補
 
 ### 公開リポジトリ運用を確認する
 

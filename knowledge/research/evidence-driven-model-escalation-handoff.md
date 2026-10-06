@@ -119,9 +119,11 @@ This preserves DAT's existing diagnosis rule: do not interpret every failure as 
 
 ## Candidate escalation evidence
 
+Before evaluating model escalation, classify the observed failure. A failed command caused by missing executables, unavailable services, permissions, corrupted fixtures, or other infrastructure / environment faults is not evidence that the current model lacks capability. Fix or stop on the smallest broken Work Unit first.
+
 Potential signals to evaluate after EXP-001:
 
-- a deterministic test / lint / build / typecheck failure persists after one correctly scoped repair;
+- a deterministic test / lint / build / typecheck failure persists after one correctly scoped repair **and the failure is classified as task/implementation-related rather than infrastructure-related**;
 - the same failure class repeats after the relevant work unit was changed;
 - required acceptance evidence remains UNKNOWN after the current model has exhausted the bounded attempt budget;
 - an explicit high-risk judgment boundary requires stronger reasoning under a runtime-local policy;
@@ -145,11 +147,22 @@ Candidate fields to evaluate:
 
 ```yaml
 goal: ...
+repository_state:
+  revision: ...
+  dirty_state: ...
 acceptance_criteria:
   - ...
+failure:
+  class: implementation | context | harness | infrastructure | unknown
+  evidence: ...
 failing_verification:
   command: ...
   observed_output: ...
+execution_environment:
+  runtime: ...
+  model: ...
+  effort: ...
+  relevant_tool_versions: ...
 relevant_artifacts:
   - path: ...
     range_or_identifier: ...
@@ -158,6 +171,9 @@ attempts:
     observed_result: ...
 unknowns:
   - ...
+evidence_provenance:
+  - artifact: ...
+    source: ...
 constraints:
   - ...
 budget:
@@ -224,8 +240,10 @@ Capture:
 - latency;
 - total cost;
 - human intervention;
+- failure classification and misclassification;
 - handoff reconstruction work;
-- failures caused by missing handoff context.
+- failures caused by missing handoff context;
+- provider billing / usage evidence sufficient to recompute the observed cost.
 
 Repeat enough paired runs to separate routing effect from task variance.
 
@@ -238,6 +256,8 @@ The source gives example ratios such as Opus becoming relatively less expensive 
 DAT should preserve only the testable implication:
 
 > **Cache state and handoff size can materially affect task-level routing economics.**
+
+Do not infer actual cache-hit/write behavior from model identity or prompt shape alone. When possible, retain provider usage/billing evidence for the run and recompute cost from observed token categories.
 
 Do not preserve the specific ratios as general expectations. They depend on fresh input, output, cache-hit rate, cache-write behavior, effort, turn count, and actual task success.
 
@@ -275,6 +295,7 @@ Reject or defer this candidate when:
 - compact handoff causes material correctness loss;
 - full-context transfer is cheaper or more reliable for the tested workload;
 - stronger-model escalation does not improve cost per verified success;
+- infrastructure / environment failures are frequently misclassified as model-capability failures;
 - the proposed trigger produces too many unnecessary escalations;
 - trigger quality depends on subjective model self-assessment;
 - the useful behavior is provider/model-specific and has no stable provider-independent contract;

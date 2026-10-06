@@ -47,3 +47,9 @@ sources:
     url: "https://claude.com/blog/claude-code-mods"
     published_at: "2026-10-01"
     adopted: []
+
+  - id: joonan-llm-wiki-2026
+    type: engineering-report
+    title: "LLM Wiki: Building a Personal Knowledge Base for Academic Papers with AI Agents"
+    url: "https://gist.github.com/joonan30/cbce305684d079dbe9a3fbaefe4e3959"
+    adopted: []

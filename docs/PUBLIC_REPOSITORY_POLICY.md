@@ -52,6 +52,43 @@ While DAT has only one active maintainer, do not require one approving review: a
 
 Any maintainer bypass should be narrow and reserved for recovery or urgent security remediation. Normal changes still use pull requests and CI.
 
+## Safe application order
+
+Repository settings are applied outside Git, so apply them in stages rather than changing every control at once.
+
+1. **Metadata and collaboration surfaces**
+   - set the repository description and topics;
+   - keep the homepage unset;
+   - disable Wiki;
+   - keep Discussions disabled.
+2. **Merge behavior**
+   - keep squash merge enabled;
+   - disable merge commits and rebase merge;
+   - enable automatic branch deletion, auto-merge, update-branch, and PR-title-based squash titles.
+3. **Re-audit before protection**
+   - run the read-only settings audit again;
+   - confirm the intended CI check names still resolve to `validate` and `Analyze Python`;
+   - do not create a ruleset while the expected required-check identities are ambiguous.
+4. **Default-branch ruleset**
+   - target `main`;
+   - require pull requests, conversation resolution, `validate`, and `Analyze Python`;
+   - block force pushes and branch deletion;
+   - keep the exact required approving-review count at `0` while there is only one active maintainer;
+   - if a maintainer bypass is configured, keep it narrow and recovery-only; do not use it to make the normal merge path appear healthy;
+   - require the branch to be up to date only after confirming the normal PR path still completes successfully.
+5. **Verify with a disposable documentation PR**
+   - confirm the PR can run both required checks;
+   - confirm unresolved review conversations block merge when applicable;
+   - confirm a current branch can be merged through the intended squash path;
+   - confirm ordinary work completes without a maintainer bypass; if the test needs bypass to merge, treat the ruleset as misconfigured and stop.
+6. **Security settings**
+   - enable and verify the controls listed below with appropriately privileged account access.
+7. **Strict re-audit**
+   - after the staged changes, run the settings audit with `--strict`;
+   - resolve `DRIFT` and investigate `UNKNOWN` rather than changing the target to match an accidental weaker state.
+
+This sequence is an operational safety procedure, not a weaker target state. If a stage would lock out the normal PR + CI path, stop there, preserve the observed evidence, and correct that stage before applying later controls.
+
 ## Security settings
 
 Enable and periodically verify:

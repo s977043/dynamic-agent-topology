@@ -42,7 +42,6 @@
 - [ ] I added or updated deterministic validation where appropriate.
 - [ ] I separated observed evidence from interpretation and judgment.
 
-
 <details>
 <summary>EXP-001 empirical Run PR — fill only when this PR adds or updates a canonical Run result</summary>
 
@@ -53,7 +52,7 @@ Run ID: `<runId>`
 ### Run integrity
 
 - [ ] This PR preserves the active Feature Freeze and does not change Prompt / Scenario / Fixture / Topology / Role / Model / Effort / evaluation semantics.
-- [ ] The execution attestation records a fresh workspace/session boundary and no cross-run feedback, and the observable artifacts do not contradict it. This is attestation evidence, not independent proof.
+- [ ] Preparation evidence shows a fresh workspace; the execution attestation records `freshSession: true` and `crossRunFeedbackUsed: false`; observable artifacts do not contradict those records. Attestation is not independent proof.
 - [ ] Preparation provenance is preserved; this PR does not silently replace a previous attempt.
 - [ ] Failed / aborted / infrastructure attempts, if any, remain separately preserved and are not counted as complete Runs.
 

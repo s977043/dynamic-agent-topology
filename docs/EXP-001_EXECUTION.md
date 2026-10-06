@@ -105,7 +105,7 @@ python scripts/validate_pilot.py \
   --run-id EXP-001-train-normalize-name-r01-T0
 ```
 
-この検証がPASSするまでT1をprepareしません。
+この検証がPASSした後も、T0のRun acceptance reviewで `ACCEPT` が記録されるまでT1をprepareしません。最初のT0は#54で受理済みです。
 
 Gitにprepare済みArtifactがあっても、Operator hostの実workspaceが利用可能かは別途確認します。最初のT0で一時runnerのworkspaceが失われている場合は、[Operator Kitの #48 復旧例外](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md)に従います。例外の独立レビュー・merge前に同じrunIdを再prepareしません。
 

@@ -39,7 +39,7 @@ Repository内のfixtureは、修正前に最低1つの必須Evidenceが失敗す
 
 ## Decision status
 
-PR #54（merge commit `a718293`）時点ではPilot実行中で、最初のT0 Runがsingle-run validationを通り、complete empirical runsは **1 / 18** です。これはT0/T1比較の結論ではありません。18 / 18とcompleteness validationが揃うまで優劣は主張せず、採否記録は [DECISION.md](DECISION.md) を `NOT RUN` のまま維持します。Live progressと次RunはIssue #15を正本とします。
+PR #54（merge commit `a718293`）時点ではPilot実行中で、最初のT0 Runがsingle-run validationを通り、独立レビューで受理され、complete empirical runsは **1 / 18** です。これはT0/T1比較の結論ではありません。18 / 18とcompleteness validationが揃うまで優劣は主張せず、採否記録は [DECISION.md](DECISION.md) を `NOT RUN` のまま維持します。Live progressと次RunはIssue #15を正本とします。
 
 
 ## Pilot

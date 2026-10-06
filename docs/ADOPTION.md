@@ -75,7 +75,7 @@ DATでは、Agent数、Topology edge、Routing rule、Loop、state、retry、bra
 
 Promotion後も、Evidenceが追加コストを正当化しない場合はde-escalate / simplifyします。A5やMulti-Agent化は成熟度のゴールではありません。
 
-人間の負荷を評価するとき、`human_interventions`の回数だけで低コストとは判断しません。同じ介入回数でも、複数Agentへの同時監督、頻繁なcontext switch、判断待ちのfan-outが増える可能性があります。比較可能な範囲ではHuman supervision contractを固定し、固定できない差分はExperiment上のconfounder / operational costとして明示します。
+人間の負荷を評価するとき、`human_interventions`の回数だけで低コストとは判断しません。同じ介入回数でも、複数Agentへの同時監督、頻繁なcontext switch、判断待ちのfan-outが増える可能性があります。比較可能な範囲ではHumanが担当する判断とEscalation条件を揃え、揃えられない差分はExperiment上のconfounder / operational costとして明示します。
 
 ## Runtime Adapter rules
 

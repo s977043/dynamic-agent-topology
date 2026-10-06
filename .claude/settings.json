@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(check-jsonschema:*)",
+      "Bash(python scripts/validate_*.py:*)",
+      "Bash(python scripts/test_*.py:*)",
+      "Bash(python scripts/pilot_status.py:*)",
+      "Bash(python scripts/summarize_experiment.py:*)"
+    ],
+    "ask": [
+      "Edit(/experiments/EXP-001-t0-vs-t1/experiment.yaml)",
+      "Write(/experiments/EXP-001-t0-vs-t1/experiment.yaml)",
+      "Edit(/experiments/EXP-001-t0-vs-t1/pilot/**)",
+      "Write(/experiments/EXP-001-t0-vs-t1/pilot/**)",
+      "Edit(/experiments/EXP-001-t0-vs-t1/scenarios/**)",
+      "Write(/experiments/EXP-001-t0-vs-t1/scenarios/**)",
+      "Edit(/fixtures/exp-001/**)",
+      "Write(/fixtures/exp-001/**)",
+      "Edit(/roles/verifier.yaml)",
+      "Write(/roles/verifier.yaml)",
+      "Edit(/roles/worker.yaml)",
+      "Write(/roles/worker.yaml)",
+      "Edit(/schemas/evaluation.schema.json)",
+      "Write(/schemas/evaluation.schema.json)",
+      "Edit(/schemas/execution-trace.schema.json)",
+      "Write(/schemas/execution-trace.schema.json)",
+      "Edit(/schemas/experiment.schema.json)",
+      "Write(/schemas/experiment.schema.json)",
+      "Edit(/schemas/pilot-execution-attestation.schema.json)",
+      "Write(/schemas/pilot-execution-attestation.schema.json)",
+      "Edit(/schemas/pilot-run-meta.schema.json)",
+      "Write(/schemas/pilot-run-meta.schema.json)",
+      "Edit(/schemas/pilot.schema.json)",
+      "Write(/schemas/pilot.schema.json)",
+      "Edit(/schemas/scenario-set.schema.json)",
+      "Write(/schemas/scenario-set.schema.json)",
+      "Edit(/scripts/attest_pilot_run.py)",
+      "Write(/scripts/attest_pilot_run.py)",
+      "Edit(/scripts/generate_pilot_matrix.py)",
+      "Write(/scripts/generate_pilot_matrix.py)",
+      "Edit(/scripts/pilot_status.py)",
+      "Write(/scripts/pilot_status.py)",
+      "Edit(/scripts/prepare_pilot_run.py)",
+      "Write(/scripts/prepare_pilot_run.py)",
+      "Edit(/scripts/summarize_experiment.py)",
+      "Write(/scripts/summarize_experiment.py)",
+      "Edit(/scripts/validate_experiment_freeze.py)",
+      "Write(/scripts/validate_experiment_freeze.py)",
+      "Edit(/scripts/validate_pilot.py)",
+      "Write(/scripts/validate_pilot.py)",
+      "Edit(/topologies/canonical/T0_single_agent.yaml)",
+      "Write(/topologies/canonical/T0_single_agent.yaml)",
+      "Edit(/topologies/canonical/T1_worker_verifier.yaml)",
+      "Write(/topologies/canonical/T1_worker_verifier.yaml)"
+    ]
+  }
+}

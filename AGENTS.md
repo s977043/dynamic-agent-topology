@@ -1,66 +1,51 @@
 # AGENTS.md
 
-This file provides guidance to coding agents (Claude Code, Codex, Gemini CLI, etc.) when working in this repository.
+Guidance for coding agents working in this repository. Tool-specific additions live in `CLAUDE.md`, `.claude/`, and `.codex/`.
 
 ## What this repo is
 
-Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures. It is not an agent runtime. Most content is YAML specs validated against JSON Schemas, plus Python validator scripts. Docs are primarily Japanese (`README.md`), with `README_en.md` as the English counterpart; keep both in sync when changing user-facing content.
+Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures. It is not an agent runtime and does not auto-apply runtime configuration (adapters are manual). Content is YAML specs validated against JSON Schemas, Python validators in `scripts/`, and Japanese-first docs (`README.md` ↔ `README_en.md` must stay in sync).
 
-Core principle: use the simplest topology that reliably solves the task (P0 Deterministic Pipeline, T0 Single Agent are first-class baselines; T1 Worker→Verifier, T2 +Reviewer, T3 Specialized Team).
+Core principle: use the simplest topology that reliably solves the task. P0 Deterministic Pipeline and T0 Single Agent are first-class baselines; T1 Worker→Verifier, T2 +Reviewer, T3 Specialized Team are hypotheses to test, not best practices.
 
-## Commands
+## Validation
 
-Python 3.12. Setup: `python -m pip install -r requirements-ci.txt` (check-jsonschema, jsonschema, PyYAML).
-
-The full validation suite is the step list in `.github/workflows/spec-lint.yml`; run the relevant steps locally. Common ones:
+Python 3.12; `python -m pip install -r requirements-ci.txt`. `.github/workflows/spec-lint.yml` is the source of truth for the validation suite — run the steps relevant to what you touched. Frequently needed:
 
 ```bash
-check-jsonschema --check-metaschema schemas/*.json
-check-jsonschema --schemafile schemas/topology.schema.json topologies/canonical/*.yaml
 python scripts/validate_semantics.py
 python scripts/validate_experiments.py
 python scripts/validate_fixtures.py
-python scripts/validate_project.py --project examples/brownfield --dat-root .
 python scripts/validate_experiment_freeze.py
+python scripts/validate_project.py --project examples/brownfield --dat-root .
 ```
 
-Tests are plain executable scripts (no pytest); run a single one directly, e.g. `python scripts/test_validate_pilot.py`. Test files: `scripts/test_*.py`. Set `PYTHONDONTWRITEBYTECODE=1` when running Python against frozen fixtures.
+Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` so runs do not leave `__pycache__` inside frozen fixtures.
 
-## Architecture
+When adding a new artifact kind, add its schema in `schemas/`, a semantic check if it has cross-file references, and wire both into `spec-lint.yml`. Schema validity alone is not sufficient.
 
-Five planes kept strictly separate (see `docs/ARCHITECTURE.md`):
+## Architecture boundaries
 
-| Plane                | Directory                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Desired Organization | `topologies/`, `roles/`, `baselines/`                                                |
-| Control Plane        | `policies/routing/`, `policies/escalation/`                                          |
-| Runtime Mapping      | `adapters/<runtime>/capabilities.yaml` (claude-code, codex, gemini-cli, antigravity) |
-| Observed Execution   | execution traces (`schemas/execution-trace.schema.json`)                             |
-| Evaluation           | `schemas/evaluation.schema.json`, `experiments/`                                     |
+`docs/ARCHITECTURE.md` separates five planes: Desired Organization (`topologies/`, `roles/`, `baselines/`) → Control Plane (`policies/`) → Runtime Mapping (`adapters/<runtime>/`) → Observed Execution (traces) → Evaluation (`experiments/`). Do not merge concerns across them: Topology ≠ Routing Policy, Role ≠ Permission, Role ≠ Model, Runtime ≠ Model Provider, Reviewer ≠ Verifier. Runtime-specific details belong only in `adapters/`.
 
-Separation rules: Topology ≠ Routing Policy, Role ≠ Permission, Role ≠ Model, Runtime ≠ Model Provider, Reviewer ≠ Verifier. Dynamic routing is a policy, never a topology.
+## EXP-001 Feature Freeze
 
-Keep runtime-specific details in `adapters/`. Spec artifacts (topologies, roles, policies, baselines, adapters, experiments, pilots) are validated against `schemas/` in `spec-lint.yml`; `knowledge/sources.yaml` is not. Schema validity alone is insufficient: run the `scripts/validate_*.py` semantic validators for affected artifacts. When adding a new artifact kind, add its schema and wire it into `spec-lint.yml`.
+`experiments/EXP-001-t0-vs-t1/` is frozen; `pilot/freeze.yaml` lists every frozen file (experiment, prompts, scenarios, `fixtures/exp-001/`, T0/T1 topologies, worker/verifier roles, schemas, pilot scripts) and `validate_experiment_freeze.py` enforces blob SHAs.
 
-`fixtures/exp-001/` holds the frozen scenario codebases that EXP-001 runs start from (their tests fail until the task is solved); `scripts/validate_fixtures.py` checks scenario ↔ fixture wiring. `examples/brownfield/.dat/` demonstrates external-project adoption (A0–A5 stages, `docs/ADOPTION.md`).
+- Do not edit frozen files. A blocking defect stops execution and follows the freeze exception procedure (`experiments/EXP-001-t0-vs-t1/README.md`); everything else is a post-EXP-001 proposal tracked in an issue.
+- Pilot runs are executed by an Operator in a fresh external workspace and fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents must not start that session in the Operator's place, re-prepare an existing `runId`, or create result artifacts without a real run.
+- Live run status is tracked in issue #15, not in docs.
 
-## Experiment freeze (important)
+## Evidence discipline
 
-`experiments/EXP-001-t0-vs-t1/` is under **Feature Freeze**, enforced by `scripts/validate_experiment_freeze.py` against blob SHAs in `pilot/freeze.yaml`. Do not change experiment inputs, evaluation semantics, prompts, roles, scenarios, fixtures, or frozen validators without checking the freeze. A blocking defect stops execution and follows the Feature Freeze exception procedure (`experiments/EXP-001-t0-vs-t1/README.md`); everything else is proposed post-freeze. `pilot/run-matrix.yaml` must match `generate_pilot_matrix.py` output deterministically.
+- Keep source claims, observed evidence, DAT interpretation, and decisions separate. A citation is not evidence that a design works.
+- Never fabricate evidence or fill unknowns with guesses; failed, aborted, and inconclusive runs stay distinguishable from successes.
+- `knowledge/research/` notes are candidates, not adopted contracts. Adopting a source requires DAT-side evidence and updating `knowledge/sources.yaml` plus the affected artifacts in the same change.
+- `docs/PUBLIC_REPOSITORY_POLICY.md` describes target GitHub settings; it does not apply them. Compliance is checked by `scripts/audit_repository_settings.py`.
 
-The EXP-001 pilot is executed by an Operator in a fresh external workspace and a fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents working on this repository must not start that Codex session in the Operator's place, re-prepare an existing runId, or generate result artifacts without a real run.
+## Changes and PRs
 
-## Conventions
-
-- Python: four-space indentation, `snake_case` names. Preserve existing YAML/JSON formatting.
-- Commits: conventional prefixes such as `docs:`, `schema:`, `fix:`, `chore:`.
-- Codex: `.codex/config.toml` defaults to a read-only sandbox with on-request approval.
-
-## Contribution rules (from CONTRIBUTING.md)
-
-- Separate external source claims, observed evidence, DAT interpretation, and decisions. A citation is not evidence a design works.
-- Never fabricate evidence or fill unknown values with guesses; failed/aborted/inconclusive runs must stay distinguishable from successes.
-- Topology/routing/role/verifier/experiment-method changes need a falsifiable hypothesis.
-- Releases follow `docs/RELEASE_READINESS.md`: never move a published tag; keep README / `CHANGELOG.md` / `CITATION.cff` / tag / GitHub Release on the same boundary.
-- Use `.github/pull_request_template.md` for PRs.
-- Never commit secrets, confidential prompts, private source code, or unsanitized traces; report security findings via `SECURITY.md`.
+- Commit/PR titles are English with prefixes such as `docs:`, `schema:`, `audit:`, `ci:`, `fix:`, `chore:`.
+- Fill `.github/pull_request_template.md`, including the freeze check. Topology/routing/role/verifier/experiment-method changes need a falsifiable hypothesis.
+- Releases follow `docs/RELEASE_READINESS.md`: never move a published tag.
+- Never commit secrets, private source code, confidential prompts, or unsanitized traces; report vulnerabilities via `SECURITY.md`.

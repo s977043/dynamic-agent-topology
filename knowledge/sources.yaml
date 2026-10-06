@@ -77,3 +77,24 @@ sources:
     title: "Agents API multi-agent guidance"
     url: "https://developers.openai.com/api/docs/guides/agents-api/multi-agent"
     adopted: []
+
+
+  - id: fleyta-evidence-driven-model-escalation-2026
+    type: social-post
+    title: "Sonnet 5.5 to Opus 5.5 routing with early verification and compact handoff"
+    url: "https://x.com/fleyta88/status/2107518541054230717"
+    adopted: []
+
+  - id: anthropic-sonnet-5-5-2026
+    type: product-announcement
+    title: "Introducing Claude Sonnet 5.5"
+    url: "https://www.anthropic.com/claude-sonnet-5-5"
+    published_at: "2026-09-28"
+    adopted: []
+
+  - id: anthropic-claude-5-5-family-webinar-2026
+    type: engineering-report
+    title: "Building with the Claude 5.5 Family: Choosing the Right Model and Getting More from Every Token"
+    url: "https://www.anthropic.com/webinars/building-with-the-claude-5-5-family-choosing-the-right-model-and-getting-more-from-every-token"
+    published_at: "2026-10-01"
+    adopted: []

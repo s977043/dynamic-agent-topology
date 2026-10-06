@@ -1,0 +1,6 @@
+# Codex may write inside the workspace; EXP-001 frozen files are protected by CI freeze validation.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[shell_environment_policy]
+set = { PYTHONDONTWRITEBYTECODE = "1" }

@@ -77,7 +77,7 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 
 T1 r01のarchive保存（PR #86）だけではRun acceptanceやretry許可になりません。
 
-Issue #97でレビュー・mergeされる [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) は、`python -m unittest ...` がRuntime内で起動できず、T1 Verifier phaseも未完了だった不完全attemptに対する**Run固有の一度限り例外**です。
+Issue #97で検討した [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) は、このprocedureを含むPRがレビュー・mergeされた後に限り、`python -m unittest ...` がRuntime内で起動できず、T1 Verifier phaseも未完了だった不完全attemptに対する**Run固有の一度限り例外**です。
 
 この例外を適用する場合も:
 

@@ -194,27 +194,42 @@ If so, model-specific routing should remain Runtime Mapping rather than a DAT co
 
 Do not add a canonical `Adversary` role or a three-gate topology first.
 
-Use this sequence:
+Start from one observed DAT failure mode or high-cost decision boundary and choose exactly one candidate gate. Then decompose the candidate so objective, role separation, and model assignment are not changed at the same time.
 
-1. identify one observed DAT failure mode or high-cost decision boundary;
-2. confirm that the existing Reviewer / Verifier contract does not already address it sufficiently;
-3. choose exactly one candidate gate;
-4. keep the baseline topology unchanged;
-5. add one read-only adversarial challenge at that gate;
-6. keep task, context, model, and effort controlled where practical;
-7. measure:
-   - additional defects found;
-   - false positives / rejected-good work;
+Candidate staged comparison:
+
+```text
+A: existing Reviewer behavior
+B: same Reviewer + adversarial objective at the selected gate
+C: separate read-only Adversary + same adversarial objective
+D: C + stronger runtime-local model/capability binding
+```
+
+Control intent:
+
+- **A → B** estimates the effect of the adversarial objective without adding a new Role.
+- **B → C** estimates the added value and coordination cost of independent Role/context separation. Keep model, effort, input Evidence package, and practical budget matched where the runtime permits.
+- **C → D** estimates the incremental effect of stronger model/capability routing after the Role/objective treatment already exists.
+
+If B performs as well as C, a distinct canonical Adversary Role is not justified by that evidence. If C adds value but D does not, the useful abstraction is more likely Role/context separation than a stronger model binding.
+
+For each stage:
+
+1. keep the baseline topology unchanged except for the tested treatment;
+2. keep Scenario, repository state, Verification commands, practical budget, and human decision boundary controlled where practical;
+3. verify that the candidate treatment actually activated before interpreting outcome differences;
+4. measure:
+   - independently corroborated defects or decision risks found;
+   - false-positive challenges;
    - rework avoided or added;
-   - human interventions;
+   - human interventions and human-facing fan-out;
    - latency;
    - token / runtime cost;
-   - completion quality;
-8. repeat across enough paired cases to separate signal from task variance;
-9. classify missing or ambiguous evidence as `UNKNOWN` / `INCONCLUSIVE`;
-10. only then evaluate whether a second or third gate is justified.
+   - verified completion quality;
+5. repeat across enough paired cases to separate task variance from treatment effect;
+6. classify missing, non-activated, or ambiguous evidence as `UNKNOWN` / `INCONCLUSIVE`.
 
-The three gates should be evaluated independently before testing them as one bundled policy.
+The three candidate gates should be evaluated independently before testing them as one bundled policy.
 
 ## Permission boundary
 

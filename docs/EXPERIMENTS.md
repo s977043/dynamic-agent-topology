@@ -117,6 +117,17 @@ D: C + より強いmodel / capability binding
 
 これは新規またはpost-freeze Experiment向けの設計原則です。active Feature Freeze、既存Experiment control、RunEvaluation field、acceptance criterionを遡及的に変更しません。
 
+### Cross-arm contamination
+
+Paired / staged ablationで同じTaskを比較する場合、前Conditionの学習結果を後Conditionへ持ち越さないことを基本とします。
+
+- 各Conditionは、Runtimeが許す範囲で同じRepository revision・同じ初期入力・fresh workspace / sessionから開始する。
+- 前Conditionで得たpatch、診断、Review結果、内部メモを後Conditionへ流用しない。流用そのものがTreatmentの場合は例外として明示する。
+- 実行順序がOutcomeへ影響し得る場合、block間でorderをcounterbalance / randomizeし、実行順序を記録する。
+- fresh-stateを再現できないRuntimeでは、その差をconfoundとして残し、cleanなpaired effectとして断定しない。
+
+同一Taskを使うことと、同一Sessionを継続することは別です。比較可能性のためには、各Conditionの開始状態を揃える必要があります。
+
 ### Activation before effectiveness
 
 Capabilityが宣言・登録されているだけでは評価しません。candidate側で対象Capabilityが実際に選択・実行されたことをTraceで確認してから、Outcome差を解釈します。

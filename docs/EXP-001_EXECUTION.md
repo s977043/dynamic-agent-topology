@@ -61,89 +61,37 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 
 実workspaceを作っていない状態で `run-meta.yaml` や結果ArtifactだけをGitHub上に先行生成しません。prepareはOperator hostでfresh workspaceを実際に作る操作と一体です。
 
-## First paired block
+## First blockのdispositionと進行判断
 
-最初に実行するblockは:
+最初のblock `EXP-001-train-normalize-name-r01` は履歴として参照します。
 
-`EXP-001-train-normalize-name-r01`
+- T0はPR #54でvalidation PASS・独立レビューACCEPTとなりました。同じrunIdを再prepare / 再実行しません。
+- T1のpreparationはPR #81、不完全attemptの保存は [PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) にあります。
+- 2026-10-07の [Issue #15本文](https://github.com/s977043/dynamic-agent-topology/issues/15) はT1 r01を **ABORTED / not accepted / no retry** と記録し、次の固定slot r02-T1への進行を示しています。これはcomplete Run受理やT1再試行の許可ではありません。
 
-run-matrix上の順序は固定です。
+実行直前にIssue #15の最新disposition、独立review record、固定matrix、Operator procedureの進行gateを照合します。Issue本文の進行記載だけで、前RunのReviewer `ACCEPT` を必要とする通常gateを置き換えません。archive保存のレビューと次slotへの進行判断も別です。通常gateを満たさない場合や、review recordと契約に不明点・矛盾がある場合は、Issue #15に停止理由を残し、整合が確認されるまでprepare / 実行を開始しません。過去のprepare例や古いcheckpointを現在の実行指示として使いません。
 
-### 1. T0 — executionOrder 1
+`pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attemptとno-retry判断を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行しません。
 
-`EXP-001-train-normalize-name-r01-T0`
+## 次slotの操作前に確認するgate
 
-このRunはPR #54でcomplete済みです。以下のprepare例は手順参照用であり、同じrunIdを再prepare / 再実行する指示ではありません。
-
-準備例:
-
-```bash
-python scripts/prepare_pilot_run.py \
-  --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
-  --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
-  --run-id EXP-001-train-normalize-name-r01-T0 \
-  --workspace /tmp/dat-exp001-train-normalize-name-r01-t0 \
-  --workspace-id exp001-train-normalize-name-r01-t0-workspace
-```
-
-次に、生成された `prompt.md` をfresh Codex sessionへ渡します。
-
-Run終了後、まず実行事実を `scripts/attest_pilot_run.py` で `execution-attestation.yaml` に記録します。その後、次を保存します。
-
-- `execution-attestation.yaml`
-- `trace.yaml`
-- `evaluation.yaml`
-- `patch.diff`
-- `evidence.txt`
-
-T0 Runだけを検証:
-
-```bash
-python scripts/validate_pilot.py \
-  --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
-  --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
-  --run-id EXP-001-train-normalize-name-r01-T0
-```
-
-この検証がPASSした後も、T0のRun acceptance reviewで `ACCEPT` が記録されるまでT1をprepareしません。最初のT0は#54で受理済みです。
-
-Gitにprepare済みArtifactがあっても、Operator hostの実workspaceが利用可能かは別途確認します。最初のT0で一時runnerのworkspaceが失われている場合は、[Operator Kitの #48 復旧例外](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md)に従います。例外の独立レビュー・merge前に同じrunIdを再prepareしません。
-
-### 2. T1 — executionOrder 2
-
-`EXP-001-train-normalize-name-r01-T1`
-
-T0がsingle-run validationを通り、独立レビューで受理された後に同じ手順でprepareします。最初のT0は#54でこのgateを満たしていますが、実行直前にはIssue #15と `pilot_status.py` を再確認してください。
-
-```bash
-python scripts/prepare_pilot_run.py \
-  --pilot experiments/EXP-001-t0-vs-t1/pilot/pilot.yaml \
-  --matrix experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml \
-  --run-id EXP-001-train-normalize-name-r01-T1 \
-  --workspace /tmp/dat-exp001-train-normalize-name-r01-t1 \
-  --workspace-id exp001-train-normalize-name-r01-t1-workspace
-```
-
-T1もfresh Codex sessionで実行し、execution attestationを含む結果Artifactを保存してsingle-run validationを行います。
-
-結果Artifactをcaptureした後にsingle-run validationを実行し、その結果を含めて [Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) のCross-artifact consistency reviewを行います。結果PR本文にはauthor側のManual review Evidenceを残し、ReviewerはそのEvidenceと差分を確認したうえでreview commentに `EXP-001 Run acceptance: ACCEPT | BLOCK` を記録します。`ACCEPT` が記録されるまで次のmatrix itemへ進みません。
-
-## After the first pair
-
-最初の2 Runが完了しても、結果を見て次を変更しません。
-
-- Prompt
-- Role Contract
-- Topology
-- Scenario / Fixture
-- Model / Effort
-- Evaluation semantics
-
-確認してよいのは、**実行パイプラインが成立したか**だけです。
+1. Freeze preflightとstatus表示を確認する。
+2. 前RunのReviewer `ACCEPT` と固定matrix順の整合を確認する。ABORTEDなどで通常gateを満たさない場合は停止し、Issue #15のdispositionと契約の整合を独立レビューで確認する。本文の「進行可能」だけでprepareしない。
+3. [Operator procedure](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md) に従い、未使用のfresh external workspaceとunique workspaceIdでprepareする。既存runIdのpreparationを置き換えない。
+4. 初期fixtureとexpected initial Evidence FAILを確認する。ここでのFAILは、指定Evidence commandが実行され、fixtureの不具合による想定されたテスト失敗を観測した状態。`python`不在のexit 127やsandbox起動失敗は、テスト未実行の環境障害として区別し、停止理由を記録する。
+5. Operatorが固定Runtime / Model / Effort、fresh session、当該promptだけで実行する。
+6. [Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) に従い観測Artifactを保存し、single-run validationとmanual cross-artifact reviewを行う。
+7. 結果PRのreview commentに `EXP-001 Run acceptance: ACCEPT | BLOCK` を記録する。次のmatrix itemはACCEPT後に進める。不完全attemptのdispositionを記録しても、ACCEPTや契約に整合した進行判断の代わりにはならない。
 
 Blocking defectが見つかった場合は、次Runへ進まずIssue #15を停止し、Feature Freezeの例外手続きに従います。
 
-問題がなければrun-matrix順に残り16 Runを継続します。
+指定Evidence commandはScenarioの正本を使います。Repositoryの静的validatorを`python3`で実行できても、凍結されたRun commandの置換やRuntime内での実行成功を意味しません。
+
+## 最終完了との区別
+
+残りslotへの進行は、Freeze解除やT0/T1の比較判断を意味しません。Run途中のPrompt / Role / Topology / Scenario / Fixture / Model / Effort / Evaluation semantics改善は禁止されたままです。
+
+T1 r01を再試行しない判断と、Freezeの18/18 complete・最終completeness PASSという条件の整合は、Issue #15で解決すべき完了ゲートです。残りslotを終えてもaborted slotをcompleteとして数えず、欠けたpaired blockを比較結果へ含めません。凍結契約を変更する必要があるかも含めてレビューし、文書だけで解除条件を緩めません。
 
 ## Status check
 

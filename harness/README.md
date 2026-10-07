@@ -34,3 +34,5 @@ EXP-001 Pilotは `scripts/validate_pilot.py` でplan/matrixをCI検証します�
 `scripts/prepare_pilot_run.py` は単一Pilot Runのfresh workspaceとpre-run Artifactだけを生成します。`scripts/pilot_status.py` は進捗を表示しますが、`artifacts-present` をsemantic completionとは扱いません。
 
 最終完了判定のSSoTは引き続き `validate_pilot.py --require-complete` です。
+
+status表示はcanonical Artifactの有無だけを読みます。外部保存されたincomplete / aborted attemptのdispositionや再試行可否は [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15) を確認してください。`prepared` は実行許可ではありません。進行判断と最終completenessの区別は [Execution Handoff](../docs/EXP-001_EXECUTION.md) にあります。

@@ -165,6 +165,8 @@ v0.2.1 Manual adoption kitは、外部Repository `s977043/notionnext-blog` にA2
 
 Topology全体だけでなく、Role / Skill / Verifierなど**内部Capabilityの限界寄与**もpaired ablationで評価します。「呼ばれた」は効果の証拠ではありません。詳細は [Experiment Protocol — Capability-level ablation](docs/EXPERIMENTS.md#capability-level-ablation) と [Metrics — Capability contribution](docs/METRICS.md#capability-contributionderived-comparison) を参照してください。
 
+全体の構成・Evidenceの到達点・Issueの関係は [Repository Guide](docs/REPOSITORY_GUIDE.md) を参照してください。
+
 ## Current Focus
 
 現在の最優先は **EXP-001の一次データ取得**です。

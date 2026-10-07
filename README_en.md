@@ -144,6 +144,8 @@ The evaluation considers not only task success, but regression, human interventi
 
 DAT also evaluates the **marginal contribution of internal capabilities** such as roles, skills, and verifiers through paired ablation. Being invoked is activation evidence, not effectiveness evidence. See [Experiment Protocol](docs/EXPERIMENTS.md#capability-level-ablation) and [Metrics](docs/METRICS.md#capability-contributionderived-comparison).
 
+See the [Repository Guide (Japanese)](docs/REPOSITORY_GUIDE.md) for repository structure, evidence boundaries, and issue dependencies.
+
 ## Current focus
 
 The highest priority is now **collecting empirical evidence for EXP-001**.

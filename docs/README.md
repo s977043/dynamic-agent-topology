@@ -8,6 +8,8 @@
 
 ### まず全体像を理解する
 
+[Repository Guide](REPOSITORY_GUIDE.md) で構成・Evidenceの到達点・Issue間の依存関係を確認してから、以下を読みます。
+
 1. [NORTH_STAR.md](NORTH_STAR.md) — 何を解きたいか、何を最適化しないか
 2. [ARCHITECTURE.md](ARCHITECTURE.md) — Topology / Policy / Runtime / Trace / Evaluation の責務分離
 3. [GLOSSARY.md](GLOSSARY.md) — DATで使う主要用語
@@ -42,6 +44,7 @@
 
 | Document | 主な責務 | 規範性 |
 |---|---|---|
+| `REPOSITORY_GUIDE.md` | 構成・Evidence・Issueの責務と更新順 | ナビゲーション |
 | `NORTH_STAR.md` | 目的・原則・非目標 | 設計原則 |
 | `ARCHITECTURE.md` | 責務境界・Plane分離 | 設計原則 |
 | `GLOSSARY.md` | 用語定義 | 用語上の基準 |

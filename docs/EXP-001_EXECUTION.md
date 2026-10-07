@@ -113,7 +113,7 @@ Issue #97で検討した [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1
 
 1. Freeze preflightとstatus表示を確認する。
 2. 前RunのReviewer `ACCEPT` と固定matrix順の整合を確認する。ABORTEDなどで通常gateを満たさない場合は停止し、Issue #15のdispositionと契約の整合を独立レビューで確認する。本文の「進行可能」だけでprepareしない。
-3. [Operator procedure](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md) に従い、未使用のfresh external workspaceとunique workspaceIdでprepareする。既存runIdのpreparationを置き換えない。
+3. [Operator procedure](../experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md) に従い、未使用のfresh external workspaceとunique workspaceIdでprepareする。**通常の新規slot**は既存runIdのpreparationを置き換えない。承認済みの **T1 r01 same-slot retryだけ**は [専用手順](EXP-001_RETRY_T1_R01.md) の旧preparation退避、archive SHA-256照合、fresh reprepare、事前Evidence FAIL確認を完了してから進める。既存T1 workspaceや元attemptを再利用しない。
 4. 初期fixtureとexpected initial Evidence FAILを確認する。ここでのFAILは、指定Evidence commandが実行され、fixtureの不具合による想定されたテスト失敗を観測した状態。`python`不在のexit 127やsandbox起動失敗は、テスト未実行の環境障害として区別し、停止理由を記録する。
 5. Operatorが固定Runtime / Model / Effort、fresh session、当該promptだけで実行する。
 6. [Artifact Capture Guide](EXP-001_ARTIFACT_CAPTURE.md) に従い観測Artifactを保存し、single-run validationとmanual cross-artifact reviewを行う。

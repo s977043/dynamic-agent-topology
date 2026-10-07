@@ -92,30 +92,30 @@ paired delta
 - Routing Policyを差し替える
 - Verifierの旧版と新版を比較する
 
-### Decompose coupled capability changes
+### 複数の変更要因を分解する
 
-When a candidate appears to require a new Role, Agent, model, permission boundary, or routing rule at the same time, do not treat that bundle as one indivisible intervention when smaller ablations are practical.
+新しいRole / Agent / Model / Permission Boundary / Routing ruleを同時に必要とするように見えるCandidateでも、より小さいablationが可能なら、それらを1つの不可分な介入として扱いません。
 
-Prefer staged comparisons that separate the proposed causes. For example:
+可能な場合は、原因候補を段階的に分けて比較します。例:
 
 ```text
-A: existing capability
-B: existing capability + new objective/instruction
-C: B packaged as an independent Role/Agent with matched model/effort/input evidence
-D: C + stronger model/capability binding
+A: 既存Capability
+B: 既存Capability + 新しいobjective / instruction
+C: Bを独立Role / Agent化し、model / effort / input Evidenceを可能な限り一致
+D: C + より強いmodel / capability binding
 ```
 
-This helps distinguish:
+この分解により、次を区別しやすくします。
 
-- objective / Prompt effect;
-- independent Role / Context Boundary effect and coordination cost;
-- model / Runtime Mapping effect.
+- objective / Promptの効果
+- 独立Role / Context Boundaryの効果とcoordination cost
+- model / Runtime Mappingの効果
 
-If a smaller arm explains the improvement, prefer the smaller intervention unless another invariant requires the more complex structure.
+より小さいArmで改善を説明できるなら、別のInvariantが複雑な構造を要求しない限り、小さい介入を優先します。
 
-The exact arms depend on the candidate. Do not force this template when a treatment cannot be separated cleanly; record the confound instead.
+実際のArmはCandidateに依存します。処置をきれいに分離できない場合、このTemplateへ無理に合わせず、confoundとして明示します。
 
-This is a design principle for new or post-freeze experiments. It does not retroactively change any active Feature Freeze, existing Experiment control, RunEvaluation field, or acceptance criterion.
+これは新規またはpost-freeze Experiment向けの設計原則です。active Feature Freeze、既存Experiment control、RunEvaluation field、acceptance criterionを遡及的に変更しません。
 
 ### Activation before effectiveness
 

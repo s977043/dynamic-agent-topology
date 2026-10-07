@@ -92,6 +92,31 @@ paired delta
 - Routing Policyを差し替える
 - Verifierの旧版と新版を比較する
 
+### Decompose coupled capability changes
+
+When a candidate appears to require a new Role, Agent, model, permission boundary, or routing rule at the same time, do not treat that bundle as one indivisible intervention when smaller ablations are practical.
+
+Prefer staged comparisons that separate the proposed causes. For example:
+
+```text
+A: existing capability
+B: existing capability + new objective/instruction
+C: B packaged as an independent Role/Agent with matched model/effort/input evidence
+D: C + stronger model/capability binding
+```
+
+This helps distinguish:
+
+- objective / Prompt effect;
+- independent Role / Context Boundary effect and coordination cost;
+- model / Runtime Mapping effect.
+
+If a smaller arm explains the improvement, prefer the smaller intervention unless another invariant requires the more complex structure.
+
+The exact arms depend on the candidate. Do not force this template when a treatment cannot be separated cleanly; record the confound instead.
+
+This is a design principle for new or post-freeze experiments. It does not retroactively change any active Feature Freeze, existing Experiment control, RunEvaluation field, or acceptance criterion.
+
 ### Activation before effectiveness
 
 Capabilityが宣言・登録されているだけでは評価しません。candidate側で対象Capabilityが実際に選択・実行されたことをTraceで確認してから、Outcome差を解釈します。

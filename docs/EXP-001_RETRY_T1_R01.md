@@ -49,6 +49,29 @@ Before any retry, verify the archived files remain byte-identical to the reviewe
 
 Do not edit these archived files to reflect the retry.
 
+## Read-only static preflight support
+
+The reviewed archive bytes, the committed SHA256SUMS ledger, canonical T1 preparation,
+active Freeze revision 3, and accepted T0 single-run artifact can be checked without
+starting a model:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_t1_retry.py
+```
+
+After the approved reset/reprepare, require a workspace ID that is distinct from
+the archived attempt:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_t1_retry.py --require-new-workspace-id
+```
+
+**This is a static audit, not an execution attestation or permission to consume
+the retry allowance.** It does not establish a fresh external workspace, fixture
+byte integrity immediately before startup, native `python` availability in the
+normal experimental sandbox, write allow/deny controls, or fresh Codex/Verifier
+behavior. The Operator must still perform all gates below on the actual host.
+
 ## Retry entry gate
 
 The retry is allowed only after this procedure is reviewed and merged.

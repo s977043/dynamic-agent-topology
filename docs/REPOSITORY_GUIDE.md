@@ -39,7 +39,7 @@ EXP-001は独立Verifier追加の限界効用を比較するPilotです。Experi
 
 | Issue | 所有する問い・仕事 | 着手条件・最小の次アクション |
 |---|---|---|
-| [#15](https://github.com/s977043/dynamic-agent-topology/issues/15) | EXP-001実測・attempt disposition・Run acceptance | [Execution Handoff](EXP-001_EXECUTION.md) からFreeze、matrix、最新判断を照合 |
+| [#15](https://github.com/s977043/dynamic-agent-topology/issues/15) | EXP-001実測・attempt disposition・Run acceptance | T1 r01は[#97 / PR #100のone-time retry procedure](EXP-001_RETRY_T1_R01.md)をentry gateから実施。retry受理前に次slotへ進まない |
 | [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | Git外の公開設定・ruleset・Release整合 | 既存auditで現在値を確認し、段階適用後に再監査。Releaseを実験成功と扱わない |
 | [#21](https://github.com/s977043/dynamic-agent-topology/issues/21) | Executable Configurationの改善・評価・昇格 | EXP-001解除後、既存ablationで不足する観測済みfrictionを列挙 |
 | [#42](https://github.com/s977043/dynamic-agent-topology/issues/42) | retry / stop / state / branch / recovery契約 | EXP-001解除後、既存Policyと小さい介入で解けないLoop / Graphの問題を特定 |
@@ -56,11 +56,11 @@ EXP-001は独立Verifier追加の限界効用を比較するPilotです。Experi
 
 [Issue #16](https://github.com/s977043/dynamic-agent-topology/issues/16) のcloseはFreeze導入作業の完了です。解除状態は [freeze.yaml](../experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml) と [Freeze policy](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) で確認します。
 
-Issue #15本文はT1 r01をABORTED / not accepted / no retryと記録しています。[PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) は不完全attemptの保存であり、complete Runや成功Evidenceを追加するものではありません。canonical Artifactだけを読むstatus表示には、この外部保存attemptのdispositionが反映されません。
+Issue #15のT1 r01 original attemptは **ABORTED / not accepted** のまま永久保存されています。[PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) はarchive retentionのみです。その後、[#97](https://github.com/s977043/dynamic-agent-topology/issues/97) / [PR #100](https://github.com/s977043/dynamic-agent-topology/pull/100) で、同じmatrix slotに対する**一度限りfresh retry**がレビュー・mergeされました。canonical Artifactだけを読むstatus表示では、外部archiveやretry allowanceの状態を完全には表せないため、live trackerはIssue #15です。
 
-Issue本文の進行記載と、独立review record / Operator procedureのgateが整合するかを確認します。archive保存の承認だけでは次slotへ進めず、通常の前Run ACCEPT gateを満たさない場合はIssue #15で停止・整合確認します。
+Retryは通常gateの代替ではありません。entry gateを満たしたうえでfresh sessionを一度だけ開始し、結果Artifact、single-run validation、manual consistency review、Reviewer `EXP-001 Run acceptance: ACCEPT` まで完了して初めて次slotへ進めます。original attemptは上書きせず、retry結果がcomplete fail / inconclusiveでも再々試行しません。infrastructure abort再発時はSTOPして新しいreviewed dispositionが必要です。
 
-次slotへの進行許可とFreeze解除は別判断です。再試行しないslotがある場合、残りslotの終了だけで18/18 completeや最終validation PASSを主張できません。この到達可能性はIssue #15で明示的にレビューする必要があります。本ガイドは凍結契約の例外、Run数変更、validatorの迂回を認めるものではありません。
+次slotへの進行許可とFreeze解除は別判断です。PR #100は18/18 complete、paired comparison、Feature Freeze revision 3、最終validation PASSという条件を変更していません。本ガイドはRun数変更、validator迂回、または一般的なretry権限を認めるものではありません。
 
 ## 更新時の確認順
 

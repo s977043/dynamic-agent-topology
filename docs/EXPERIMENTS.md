@@ -136,6 +136,20 @@ Capabilityが宣言・登録されているだけでは評価しません。cand
 
 「呼ばれた」「Agent数が増えた」「Reviewが1段増えた」はactivation evidenceであり、改善Evidenceではありません。
 
+### Predeclare practical significance
+
+Capability-level ablationでは、Run後に「この差なら十分」と閾値を動かしません。比較前に、採用判断へ使う実務上の境界を定義します。
+
+最低限、次を明示します。
+
+- 採用を正当化できるOutcome
+- 許容できるRegression / false positive / coordination cost
+- より複雑なConditionへ進むためのminimum practical improvement
+- `INCONCLUSIVE`とする不足条件
+- costより優先されるSecurity / correctness invariant
+
+普遍的な統計閾値を要求するものではありません。少数sampleではfeasibilityや方向性までしか判断できない場合があります。その場合も、Outcomeを見た後にacceptanceを作り替えず、Evidence不足として扱います。
+
 ### Decision semantics
 
 paired comparisonの結果は次の3値で扱います。

@@ -31,7 +31,7 @@ python scripts/prepare_pilot_run.py \
 - `--workspace` はDAT repositoryの外側に置きます。これによりCodex sessionから他Run Artifactへ親ディレクトリ経由で到達しにくくします。
 - workspace IDはPilot内で一意な**非秘密のopaque ID**にします。
 - providerのtoken、API key、private path等をIDへ入れません。
-- **通常Run**では同じrunIdを再prepareしません。中断・失敗attemptは消さず、個別のreviewed dispositionなしに同じslotを再実行しません。`EXP-001-train-normalize-name-r01-T1` に限り、[#97で承認されたone-time retry](../../../docs/EXP-001_RETRY_T1_R01.md) のpreflight・original archive保存・fresh workspace / session・allowance消費条件を満たす場合だけ、**frozen planを変更せず**同じslotをfresh reprepareできます。それ以外のRunにこの例外を流用しません。
+- **通常Run**では同じrunIdを再prepareしません。中断・失敗attemptは消さず、個別のreviewed dispositionなしに同じslotを再実行しません。`EXP-001-train-normalize-name-r01-T1` に限り、[#97で承認されたone-time retry](../../../docs/EXP-001_RETRY_T1_R01.md) に従ってoriginal archiveを保全・照合し、normal sandboxで凍結Evidence commandのnative起動と初期Evidence FAILを確認した場合だけ、**frozen planを変更せず**同じslotをfresh workspace / session向けにreprepareできます。retry allowanceはpreflight・reprepareでは消費せず、fresh Codex **model invocation開始時**に消費します。それ以外のRunにこの例外を流用しません。
 - `prompt.md` のSHA-256を `run-meta.yaml` に保存し、完了検証時にPrompt改変を検出します。
 
 生成物:

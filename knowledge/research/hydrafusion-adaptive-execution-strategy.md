@@ -292,6 +292,15 @@ Choose a small, reproducible task class where an extra critique or escalation le
 
 A/B, B/C, and C/D answer different questions. Do not collapse them into one "Critique worked" result.
 
+Apply the common Capability-ablation validity controls in [Experiment Protocol](../../docs/EXPERIMENTS.md#capability-level-ablation):
+
+- start comparison arms from equivalent fresh state where practical and prevent cross-arm feedback contamination;
+- predeclare practical adoption / regression / `INCONCLUSIVE` boundaries before observing outcomes;
+- keep treatment activation separate from effectiveness;
+- use an independent evaluation path for corroboration where practical.
+
+These controls are experiment-design guidance for post-freeze work and do not modify EXP-001.
+
 ### Cascade study
 
 | Arm | Behavior | Primary contrast |

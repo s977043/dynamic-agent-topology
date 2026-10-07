@@ -231,6 +231,51 @@ For each stage:
 
 The three candidate gates should be evaluated independently before testing them as one bundled policy.
 
+### Predeclared decision rule
+
+Do not decide after the runs that a difference was "large enough" to justify a new Role or stronger model.
+
+Before collecting the comparison outcomes, define a practical decision rule for the tested gate. It should state:
+
+- which outcome dimensions can justify adoption, such as independently corroborated defect/risk discovery or verified completion quality;
+- the maximum acceptable regression / false-positive / coordination-cost impact;
+- the minimum practical improvement needed to justify moving from the smaller arm to the more complex arm;
+- what evidence counts as insufficient and therefore `INCONCLUSIVE`;
+- any safety/correctness invariant that can override an otherwise favorable cost trade-off.
+
+The rule does not need a universal statistical threshold. Small samples may only support directional or feasibility conclusions. But the acceptance boundary must be declared before seeing the treatment outcome.
+
+Example interpretation:
+
+```text
+B acceptable and C adds no predeclared practical benefit
+    -> prefer B; do not promote a distinct Role
+
+C exceeds the predeclared benefit threshold without unacceptable regressions
+    -> distinct Role remains a candidate
+
+D adds no practical benefit over C
+    -> keep stronger-model binding out of the core abstraction
+
+evidence too sparse / noisy / confounded
+    -> INCONCLUSIVE
+```
+
+### Cross-arm contamination and order effects
+
+A/B/C/D must not be executed as one learning chain where later arms inherit fixes, diagnoses, or reviewer findings from earlier arms.
+
+Default comparison rule:
+
+- use fresh workspace / session state for each arm where the runtime permits;
+- initialize each arm from the same repository revision and declared input Evidence package;
+- do not copy prior-arm reasoning, patches, challenge lists, or hidden evaluator notes into later arms unless that transfer itself is the treatment being tested;
+- preserve the same predeclared gate eligibility rule and trigger timing across arms;
+- when execution order can affect the result, counterbalance or randomize arm order across paired blocks and record the order;
+- if a runtime cannot provide equivalent fresh-state conditions, record the carryover as a confound and avoid interpreting the paired delta as a clean treatment effect.
+
+A task may be reused across arms only when the experimental setup restores the declared starting state. "Same task" does not mean "continue the same evolving session."
+
 ### Gate eligibility and selection bias
 
 Do not choose a gate or task because an adversarial pass already appears likely to find something.
@@ -306,6 +351,22 @@ The boundary is:
 - **#42** — evaluate whether observed runtime friction requires new generic retry / termination / trigger / state / graph semantics.
 
 A repeated-failure gate in #82 should first be tested with existing Routing / Escalation mechanisms. It does not justify a new Loop contract by itself. If the experiment shows that existing contracts cannot represent an evidenced trigger or stop condition without ad-hoc runtime logic, that contract gap belongs in #42.
+
+### Evaluation independence
+
+Independent corroboration should not merely repeat the Adversary's argument.
+
+Where practical:
+
+- the Verifier / evaluator should receive the claim to check, relevant artifact state, and required Evidence contract, not the full hidden reasoning or persuasive narrative that produced the challenge;
+- hide the treatment arm identity (A/B/C/D) from the evaluator when that information is not required to verify the claim;
+- use the same Verification command / acceptance contract across arms;
+- separate the agent that generated the challenge from the agent that decides whether the challenge is corroborated;
+- if the evaluator must see treatment-specific context, record that as a potential bias / limitation.
+
+For non-deterministic claims where blind verification is impossible, require at least an independent review path and retain disagreement rather than collapsing it into a single "accepted" label.
+
+This is an evaluation-quality control, not a requirement to add another canonical Role.
 
 ## Challenge evidence semantics
 

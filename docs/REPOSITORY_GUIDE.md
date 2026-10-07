@@ -48,8 +48,9 @@ EXP-001は独立Verifier追加の限界効用を比較するPilotです。Experi
 | [#63](https://github.com/s977043/dynamic-agent-topology/issues/63) | 永続・compiled Knowledgeのintegrity | EXP-001解除後、process successとsemantic correctnessのずれを検証 |
 | [#82](https://github.com/s977043/dynamic-agent-topology/issues/82) | adversarial Judgmentと疎なchallenge gate | EXP-001解除後、既存Reviewer / Verifierで十分かを先に確認 |
 | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) | model escalationとcompact handoff | EXP-001解除後、session / context / model効果を分けて比較 |
+| [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) | compound execution strategyと選択的multi-model orchestration | EXP-001解除後、CritiqueとCascadeを分け、既存Topology / Routingで不足するかを比較 |
 
-#21はconfiguration promotion、#42はexecution control、#82はJudgment objective、#88はmodel / context handoffを扱います。実測した最小Work Unitごとに採用・棄却・延期を判断します。研究候補の文書化は、契約の採用や実装の許可を意味しません。
+#21はconfiguration promotion、#42はexecution control、#82はJudgment objective、#88はmodel / context handoff、#93はcompound execution strategyの独立性を扱います。実測した最小Work Unitごとに採用・棄却・延期を判断します。研究候補の文書化は、契約の採用や実装の許可を意味しません。
 
 ## EXP-001の状態を読む際の注意
 

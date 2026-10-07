@@ -331,7 +331,9 @@ Report unknown reference labels separately; missing counterfactual evidence is *
 
 If shadow decisions, matched outcomes, independent adjudication, or both selection classes cannot be observed, label the policy conclusion `INCONCLUSIVE` and retain any valid treatment-only findings as conditional-on-eligibility.
 
-Where practical, hold constant:
+### Shared controls and evidence for post-freeze studies
+
+For Critique, Cascade, and the separate strategy-selection study, where practical, hold constant:
 
 - task and immutable repository state;
 - acceptance criteria;

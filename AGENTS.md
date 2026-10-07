@@ -20,7 +20,7 @@ python scripts/validate_experiment_freeze.py
 python scripts/validate_project.py --project examples/brownfield --dat-root .
 ```
 
-Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` so runs do not leave `__pycache__` inside frozen fixtures.
+Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` so runs do not leave `__pycache__` inside frozen fixtures. Verify new or changed scripts with Python 3.12 (CI's version) before reporting them as passing; for example, `Path.glob` with a trailing `**` returns only directories on 3.12, and 3.13+ APIs such as `PurePath.full_match` are unavailable.
 
 When adding a new artifact kind, add its schema in `schemas/`, a semantic check if it has cross-file references, and wire both into `spec-lint.yml`. Schema validity alone is not sufficient.
 
@@ -46,7 +46,8 @@ EXP-001 is under Feature Freeze; `pilot/freeze.yaml` lists the frozen files (exp
 ## Changes and PRs
 
 - Record recurring failures and review findings in the Learning ledger of `docs/AGENT_HARNESS.md`; it also defines what agents may do without human approval.
-- Commit/PR titles are English with prefixes such as `docs:`, `schema:`, `audit:`, `ci:`, `fix:`, `chore:`.
+- Commit messages and PR titles start with a conventional prefix such as `docs:`, `schema:`, `audit:`, `ci:`, `fix:`, `chore:`. Write PR titles, PR bodies, issues, and review comments in Japanese; keep the prefix and code identifiers as-is.
+- Other agents may work on the same branches concurrently: fetch right before pushing, push with `--force-with-lease=<branch>:<known sha>`, and stop instead of committing if the worktree has changes you did not make.
 - Fill `.github/pull_request_template.md`, including the freeze check. Topology/routing/role/verifier/experiment-method changes need a falsifiable hypothesis.
 - Releases follow `docs/RELEASE_READINESS.md`: never move a published tag.
 - Never commit secrets, private source code, confidential prompts, or unsanitized traces; report vulnerabilities via `SECURITY.md`.

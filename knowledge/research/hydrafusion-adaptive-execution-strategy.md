@@ -257,11 +257,11 @@ Routing should fail before execution when required workflow definitions, model/c
 
 ### H1 — execution strategy is a distinct Work Unit
 
-For at least one observed task class, changing the compound execution strategy while holding Role / Topology constant produces a measurable outcome difference that cannot be explained by model binding alone.
+For at least one observed task class, changing the compound execution strategy while holding Role / Topology and model/capability binding constant produces a measurable outcome difference that cannot be explained by prompt or context differences alone. If a distinct critic necessarily changes Role / Topology, record that dependency as a confound instead of claiming the strategy was isolated.
 
 ### H2 — selective compound execution
 
-A task-conditioned strategy selector can improve verified outcome per cost / latency compared with both always-single and always-review policies.
+A task-conditioned strategy selector can improve verified outcome per cost / latency compared with both always-single and always-review policies **over a mixed target workload**. The per-arm effects on critique-eligible or escalation-eligible tasks alone cannot establish this claim.
 
 ### H3 — isolated critique effect
 
@@ -290,7 +290,7 @@ Choose a small, reproducible task class where an extra critique or escalation le
 | C | solver + isolated read-only critic + revision, same model/capability where possible | isolation / independent-role effect |
 | D | C + different model family or stronger capability | model-family/capability effect |
 
-A/B, B/C, and C/D answer different questions. Do not collapse them into one "Critique worked" result.
+A/B, B/C, and C/D answer different questions. In particular, B/C changes **both** context isolation and the independent critic Role/agent boundary; it is not an isolation-only estimate unless an additional matched control separates these changes. Similarly, C/D estimates the deployed model/capability package, not model family and capability strength as two separately identified effects. Match the review objective, evidence input, and revision opportunity where possible; disclose deviations as confounders. Do not collapse the arms into one "Critique worked" result.
 
 Apply the common Capability-ablation validity controls in [Experiment Protocol](../../docs/EXPERIMENTS.md#capability-level-ablation):
 
@@ -308,6 +308,28 @@ These controls are experiment-design guidance for post-freeze work and do not mo
 | E | baseline model/capability only, bounded attempts | control |
 | F | stronger capability from the start | always-strong baseline |
 | G | baseline capability -> objective quality gate -> optional stronger capability | routing / selective escalation effect |
+
+E/F/G compares **execution treatments** on eligible tasks. G also exercises a within-cascade quality gate, but an outcome advantage for G is not by itself evidence that a workload-wide strategy selector knows when to choose Single, Critique, or Cascade. Keep its gate decisions, false escalations, missed escalations, and counterfactual evidence separate from the global selector study.
+
+### Strategy-selection study (separate from per-arm efficacy)
+
+The Critique and Cascade studies above establish whether their **treatments** are promising, not whether a task-conditioned **strategy selector** selects them appropriately. To test H2 after EXP-001, use a separate staged policy evaluation aligned with [Experiment Protocol — Selector quality vs downstream treatment effect](../../docs/EXPERIMENTS.md#selector-quality-vs-downstream-treatment-effect) and [Eligibility-conditioned conclusions](../../docs/EXPERIMENTS.md#eligibility-conditioned-conclusions).
+
+1. **Define the target population in advance.** Include tasks plausibly needing a compound treatment **and** tasks for which Single should suffice. Record inclusion, exclusion, task class, and baseline failure/risk conditions before seeing treatment outcomes. A treatment-only set cannot support an all-workload policy claim.
+2. **Predeclare the policy and reference.** Fix candidate selector inputs, strategy choices, abstain/fallback behavior, practical improvement/regression thresholds, and security/cost constraints before evaluation. Base the reference for a beneficial strategy choice on matched, independently verified outcomes and the predeclared decision rule, **not** the selector's own judgment.
+3. **Shadow-evaluate selection before activation.** On each eligible task, record the selector's choice and evidence before revealing treatment outcomes. Where feasible, collect matched Single/compound arm outcomes using fresh-state/counterbalanced controls, including tasks the selector would *not* escalate. Do not use earlier arm outcomes to tune the selector on the held-out evaluation cases.
+4. **Then evaluate end-to-end policy economics.** Compare predeclared always-Single, always-compound (where supported), and selector-conditioned policies over the same target population. Include selector calls, rejected/discarded legs, retries, routing overhead, fallback, independent Verification, and Human Intervention in task-level cost/latency. Do not report cost per verified success as finite when the successful-task denominator is zero.
+
+Keep a case-level confusion record for the selector:
+
+| Reference from matched verified outcomes | Selector chooses compound | Selector chooses Single |
+|---|---|---|
+| Compound has predeclared net benefit | correctly selected | missed beneficial selection |
+| Compound lacks predeclared net benefit | unnecessary selection | correctly avoided |
+
+Report unknown reference labels separately; missing counterfactual evidence is **not** a correctly avoided selection. With sparse data, report case counts and limitations rather than unstable precision/recall estimates. Treatment activation, selector correctness, downstream task quality, and task-level economics remain four different observations.
+
+If shadow decisions, matched outcomes, independent adjudication, or both selection classes cannot be observed, label the policy conclusion `INCONCLUSIVE` and retain any valid treatment-only findings as conditional-on-eligibility.
 
 Where practical, hold constant:
 
@@ -332,7 +354,9 @@ Capture:
 - timeout / cancellation / stop reason;
 - patch application / non-application outcome;
 - human intervention;
-- treatment activation and isolation evidence.
+- treatment activation and isolation evidence;
+- selector choice, decision time, abstention/fallback, and whether selection was correct against matched outcome evidence;
+- target-population coverage and policy overhead, including zero-success denominators.
 
 Classify unsupported arms and missing evidence as `UNKNOWN` / `INCONCLUSIVE`.
 
@@ -376,7 +400,8 @@ Reject or defer a new Execution Strategy abstraction when:
 - runtime-specific orchestration details dominate and no stable provider-independent contract remains;
 - strategy labels do not generalize across task classes;
 - per-leg accounting or treatment activation cannot be observed;
-- evidence is too sparse to separate effect from task variance.
+- evidence is too sparse to separate effect from task variance;
+- treatment improvement is observed only on a preselected eligible subset while the strategy selector has not been validated on the broader target workload.
 
 A valid outcome is to keep these concepts as Runtime Adapter behavior rather than DAT core.
 
@@ -404,7 +429,7 @@ Revisit only after EXP-001 unfreeze conditions are satisfied.
 Adopt a core Execution Strategy contract only if DAT-side paired evidence shows:
 
 1. a recurring problem that existing Topology + Routing Policy does not represent clearly;
-2. treatment activation and per-leg evidence are observable;
+2. treatment activation and per-leg evidence are observable, and selector claims (if made) have separate mixed-population shadow/matched evidence;
 3. the abstraction improves verified outcomes, reproducibility, safety, or task-level economics;
 4. the contract remains provider-independent;
 5. simpler alternatives have been tested and rejected with Evidence.

@@ -73,6 +73,24 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 
 `pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attemptとno-retry判断を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行しません。
 
+## T1 r01 reviewed retry exception
+
+T1 r01のarchive保存（PR #86）だけではRun acceptanceやretry許可になりません。
+
+Issue #97でレビュー・mergeされる [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) は、`python -m unittest ...` がRuntime内で起動できず、T1 Verifier phaseも未完了だった不完全attemptに対する**Run固有の一度限り例外**です。
+
+この例外を適用する場合も:
+
+- 元attemptを削除・上書きしない
+- retry前にnormal experimental sandboxで凍結Evidence commandの起動性を非model確認する
+- Prompt / Fixture / Runtime / Model / Effort / T1 Role Contractを変更しない
+- fresh workspace / fresh sessionを使う
+- retry allowanceはmodel invocation開始時に消費する
+- complete fail / inconclusiveも結果として保持し再retryしない
+- retry後もsingle-run validation + manual consistency review + Reviewer `ACCEPT` まで次slotへ進まない
+
+というgateを維持します。
+
 ## 次slotの操作前に確認するgate
 
 1. Freeze preflightとstatus表示を確認する。

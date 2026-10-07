@@ -51,6 +51,28 @@ contract lockのような個別Gateで実際に壊れているWork UnitがPrompt
 
 #82はAdversarial Judgmentの価値と起動条件を評価します。新しい汎用Loop / Graph contractが必要かは [Issue #42](https://github.com/s977043/dynamic-agent-topology/issues/42) の責務であり、repeated-failure gateの存在だけを理由に新contractを追加しません。
 
+### Adaptive execution strategy candidates
+
+1つのTask内で `single / cascade / critique` のようなcompound workflowを選ぶ仕組みも、新しいEngineering LayerやArchitecture Planeとして先に固定しません。
+
+主な診断位置は次です。
+
+- **Loop** — quality gate、escalation、retry / fallback、timeout / cancellation、停止条件がboundedか。
+- **Evaluation** — CritiqueやCascadeの追加legが実際に品質へ寄与したかを、activationとeffectivenessを分けて評価できるか。
+- **Harness / Context** — isolated criticのtool / write boundaryや入力Contextが、意図したTreatmentとして再現されているか。
+- **Runtime Mapping** — concreteなModel / capability / tool bindingをprovider-independentなDAT coreと混同していないか。
+
+この候補は [HydraFusion research note](../knowledge/research/hydrafusion-adaptive-execution-strategy.md) と [Issue #93](https://github.com/s977043/dynamic-agent-topology/issues/93) で追跡します。EXP-001 Feature Freeze中はResearch candidateに留め、Schema、Canonical Topology、Routing Policy、Runtime behavior、evaluation semanticsを変更しません。
+
+責務境界は次のように分けます。
+
+- genericなretry / stop / state / branch / recovery contractの必要性は [#42](https://github.com/s977043/dynamic-agent-topology/issues/42)
+- adversarial falsificationというJudgment objectiveは [#82](https://github.com/s977043/dynamic-agent-topology/issues/82)
+- model / capability escalationとcompact handoffは [#88](https://github.com/s977043/dynamic-agent-topology/issues/88)
+- compound execution strategy自体を独立contractとして表現する価値は [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)
+
+HydraFusionという外部実装が存在すること自体は、DAT coreへExecution Strategy contractを追加するEvidenceではありません。既存のTopology + Routing Policy + Runtime Mappingで十分に表現できるなら、新しい抽象は追加しません。
+
 ## Crosswalk
 
 | Architecture Plane | Prompt | Context | Harness | Loop | Graph | Evaluation |

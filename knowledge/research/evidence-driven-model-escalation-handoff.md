@@ -150,6 +150,38 @@ Signals that should **not** be sufficient by themselves:
 
 A fixed "turn 6" check is therefore a source hypothesis, not a DAT invariant.
 
+## Escalation gate quality vs recovery efficacy
+
+Keep two questions separate:
+
+```text
+recovery efficacy:
+  given an escalation-eligible failure, does the stronger capability / handoff treatment improve the verified outcome?
+
+gate quality:
+  across the workload, does the escalation gate trigger on cases where escalation has practical value and avoid cases where it does not?
+```
+
+A successful D or E recovery does not prove the gate is accurate.
+
+For a later routing-policy study, prefer a **shadow-gate** evaluation where practical:
+
+1. run the predeclared gate and record its escalate / do-not-escalate decision without letting that decision determine which comparison evidence is collected;
+2. collect matched baseline-vs-escalated outcome evidence for the evaluation sample where budget permits;
+3. define "beneficial escalation" from the predeclared verified-outcome / regression / cost decision rule, not from the gate's own explanation;
+4. compare the shadow decision with the observed treatment value.
+
+Candidate diagnostics:
+
+- unnecessary escalation — gate escalates but the stronger treatment adds no predeclared practical benefit;
+- missed beneficial escalation — gate does not escalate but matched evidence shows escalation would have crossed the benefit threshold;
+- correctly avoided escalation — smaller intervention / baseline meets the target;
+- correctly selected escalation — stronger treatment adds the predeclared practical benefit without unacceptable regression.
+
+Do not call these precision / recall unless the sample and reference labeling are adequate for those statistics. With small samples, retain counts and case-level Evidence.
+
+Gate execution cost, handoff construction cost, and any extra Verification needed to make the decision belong in policy-level economics.
+
 ## Candidate handoff
 
 The source's important idea is not the exact 20K number. It is that escalation should transfer **task state and evidence**, not blindly inherit all conversational history.
@@ -218,20 +250,57 @@ The stable DAT contract, if any, should define escalation evidence and handoff r
 
 A material share of apparent "model failures" may actually be Prompt, Context, Harness, Loop, or Evaluation defects. Diagnosis-first routing should outperform unconditional stronger-model escalation.
 
+## Evaluation population and claim scope
+
+The initial recovery study may intentionally select tasks where the baseline reaches a reproducible, task-related Verification failure. That answers a **conditional recovery question**:
+
+> given that the baseline has already reached the declared escalation-eligible failure state, which continuation / handoff / capability treatment performs best?
+
+It does **not** by itself answer:
+
+> should the routing policy escalate more tasks in the overall workload?
+
+Keep these populations separate:
+
+```text
+all eligible workload
+    ↓
+escalation gate classification
+    ├─ no escalation
+    └─ escalation-eligible failure
+             ↓
+       recovery treatment study
+```
+
+When sampling only from the lower branch, report conclusions as conditional-on-eligibility. Do not extrapolate recovery success rates, cost savings, or model preference to tasks that never reached the gate.
+
+To evaluate the routing policy itself, a later study must include both escalation-needed and escalation-not-needed cases so unnecessary escalation and missed escalation are observable.
+
 ## Cheapest useful verification after EXP-001
 
 Do not implement an automatic Sonnet → Opus router first.
+
+Apply the common [Capability-level ablation controls](../../docs/EXPERIMENTS.md#capability-level-ablation): eligibility-scoped conclusions, cross-arm contamination control, predeclared practical significance, activation-before-effectiveness, and independent evaluation where practical.
 
 Select reproducible tasks where the baseline model reaches an observable failure and compare:
 
 | Arm | Behavior | Primary contrast |
 |---|---|---|
-| A | continue baseline model in the current session within a bounded attempt budget | control |
-| B | same baseline model in a fresh session from compact evidence handoff | A vs B isolates fresh-session / handoff effect |
-| C | stronger runtime-local model/capability in a fresh session from the **same compact handoff** | B vs C isolates model/capability escalation effect |
-| D | stronger runtime-local model/capability in a fresh session with the fullest transferable prior context the runtime can reproduce | C vs D estimates compact-vs-full context payload effect |
+| A | continue baseline model in the current session within a bounded attempt budget | current-session control |
+| B | same baseline model in a fresh session with the fullest transferable prior context the runtime can reproduce | practical reset + full-transfer comparison against A |
+| C | same baseline model in a fresh session from compact evidence handoff | B vs C estimates compact-vs-full payload effect under the baseline model |
+| D | stronger runtime-local model/capability in a fresh session from the **same compact handoff as C** | C vs D isolates model/capability effect under compact handoff |
+| E | stronger runtime-local model/capability in a fresh session with the **same full-transfer condition as B** | B vs E isolates model/capability effect under full transfer; D vs E estimates compact-vs-full payload effect under the stronger model |
 
-For Arms B/C/D, use equivalent fresh-session conditions where the runtime permits. If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
+For Arms B/C/D/E, use equivalent fresh-session conditions where the runtime permits. If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
+
+Interpretation boundaries:
+
+- **A vs B** is a practical current-session vs fresh/full-transfer comparison. It is **not** a pure session-reset effect because a transferred context cannot be assumed equivalent to hidden in-session state.
+- **B vs C** estimates compact-vs-full payload effect with the baseline model held fixed.
+- **C vs D** estimates model/capability escalation effect with compact handoff held fixed.
+- **B vs E** estimates model/capability escalation effect with full-transfer context held fixed.
+- **D vs E** estimates compact-vs-full payload effect under the stronger model.
 
 Where practical, hold constant:
 
@@ -241,9 +310,10 @@ Where practical, hold constant:
 - runtime tooling and permission boundary;
 - effort setting;
 - overall task budget;
-- compact handoff artifact for Arms B/C.
+- compact handoff artifact for Arms C/D;
+- full-transfer construction for Arms B/E.
 
-A/B, B/C, and C/D answer different questions. Do not collapse them into one "routing improved" result.
+Do not collapse the contrasts into one "routing improved" result. A model-escalation claim should be supported by a model contrast under matched payload conditions, not by A vs C/D alone.
 
 Capture:
 

@@ -117,6 +117,43 @@ D: C + より強いmodel / capability binding
 
 これは新規またはpost-freeze Experiment向けの設計原則です。active Feature Freeze、既存Experiment control、RunEvaluation field、acceptance criterionを遡及的に変更しません。
 
+### Selector quality vs downstream treatment effect
+
+Routing / escalation / gate / selectorを含むExperimentでは、**選択ロジックの質**と**選択されたTreatmentの効き目**を分離します。
+
+```text
+selector quality
+  = 適切なcaseでTreatmentを選べるか
+
+treatment effect
+  = Treatmentが適用されたときOutcomeを改善するか
+```
+
+Treatmentが有効だったcaseだけを見てもSelectorの精度は分かりません。可能な場合、Policy評価ではSelectorをshadow modeで記録し、選択結果とは独立にmatched outcome evidenceを集めます。
+
+「Treatmentが必要だったか」のReferenceは、Selector自身の説明ではなく、事前定義したverified Outcome / Regression / CostのDecision Ruleから判定します。
+
+小sampleではprecision / recallのような集約指標を無理に使わず、unnecessary selection / missed beneficial selection / correctly avoided / correctly selectedのcase数とEvidenceを保持します。
+
+Selector自身の実行Cost、handoff / routing準備Cost、追加Verification CostもPolicy全体の経済性へ含めます。
+
+### Eligibility-conditioned conclusions
+
+特定のFailure、Gate発火、Risk条件を満たしたTaskだけを抽出して比較する場合、その結果の射程を明示します。
+
+たとえば「baselineが失敗したTaskだけ」でCandidate recoveryを比較した結果は、**そのFailure条件に到達したTaskでの回復効果**を示します。全Taskに対するRouting Policyの優劣や、Gate自体の精度を直接示すものではありません。
+
+```text
+all workload
+  ├─ gate not triggered
+  └─ gate triggered
+       └─ conditional treatment comparison
+```
+
+Gate / Selectorそのものを評価する場合は、triggerすべきcaseとtriggerすべきでないcaseの両方を含め、unnecessary trigger / missed triggerを観測できる設計にします。
+
+対象母集団を後から拡張解釈せず、sample eligibilityと結論の適用範囲をExperiment開始前に記録します。
+
 ### Cross-arm contamination
 
 Paired / staged ablationで同じTaskを比較する場合、前Conditionの学習結果を後Conditionへ持ち越さないことを基本とします。

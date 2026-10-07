@@ -27,6 +27,7 @@ The retained attempt shows:
 - The retained event stream ends while collaboration was in progress.
 - A completed independent Verifier handoff is not evidenced.
 - No execution attestation or RunEvaluation was fabricated.
+- Runtime model / effort / timing are not independently verified by the retained archive and must not be inferred from the incomplete attempt.
 - The canonical T1 Run therefore remains incomplete and not accepted.
 
 This is not accepted as a task fail because the required deterministic Evidence could not start and the T1 topology did not complete. It is also not discarded: the attempt remains part of attempt accounting and infrastructure-failure reporting.
@@ -61,11 +62,12 @@ Before model invocation:
 5. Preserve the currently prepared canonical T1 `run-meta.yaml` / `prompt.md` before reset.
 6. Reprepare the same matrix slot with the unchanged frozen `prepare_pilot_run.py`, a new unique workspaceId, and a fresh fixture.
 7. The new prompt must be byte-identical to both the canonical prepared prompt and archived failed-attempt prompt. Expected SHA-256: `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86`.
-8. Parsed preparation metadata may differ only where required for the new workspace provenance.
+8. Parsed preparation metadata must be identical to the archived preparation except for `spec.workspaceId`; the new workspaceId must be unique.
 9. The fresh workspace file set and bytes must match the frozen fixture.
 10. In the normal experimental sandbox, without invoking the model, prove that the frozen command `python -m unittest discover -s tests` can start.
 11. On the untouched fixture, the same command must produce the expected initial Evidence FAIL.
-12. No prior T1 messages, patch, archive, failure explanation, or outcome may be exposed to the retry session.
+12. Prevent incidental Python bytecode writes during preflight, then recheck the fresh workspace file set and bytes against the frozen fixture immediately before model startup.
+13. No prior T1 messages, patch, archive, failure explanation, or outcome may be exposed to the retry session.
 
 If any gate fails, stop. Do not consume the retry allowance.
 

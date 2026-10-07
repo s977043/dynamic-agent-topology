@@ -231,6 +231,36 @@ For each stage:
 
 The three candidate gates should be evaluated independently before testing them as one bundled policy.
 
+### Predeclared decision rule
+
+Do not decide after the runs that a difference was "large enough" to justify a new Role or stronger model.
+
+Before collecting the comparison outcomes, define a practical decision rule for the tested gate. It should state:
+
+- which outcome dimensions can justify adoption, such as independently corroborated defect/risk discovery or verified completion quality;
+- the maximum acceptable regression / false-positive / coordination-cost impact;
+- the minimum practical improvement needed to justify moving from the smaller arm to the more complex arm;
+- what evidence counts as insufficient and therefore `INCONCLUSIVE`;
+- any safety/correctness invariant that can override an otherwise favorable cost trade-off.
+
+The rule does not need a universal statistical threshold. Small samples may only support directional or feasibility conclusions. But the acceptance boundary must be declared before seeing the treatment outcome.
+
+Example interpretation:
+
+```text
+B acceptable and C adds no predeclared practical benefit
+    -> prefer B; do not promote a distinct Role
+
+C exceeds the predeclared benefit threshold without unacceptable regressions
+    -> distinct Role remains a candidate
+
+D adds no practical benefit over C
+    -> keep stronger-model binding out of the core abstraction
+
+evidence too sparse / noisy / confounded
+    -> INCONCLUSIVE
+```
+
 ### Cross-arm contamination and order effects
 
 A/B/C/D must not be executed as one learning chain where later arms inherit fixes, diagnoses, or reviewer findings from earlier arms.

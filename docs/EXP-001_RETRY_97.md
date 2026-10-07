@@ -148,6 +148,10 @@ Continue reporting separately:
 - infrastructure-aborted attempts;
 - complete empirical Runs.
 
+The final experiment summary / DECISION must disclose infrastructure-aborted
+attempt counts by condition so operational instability is not hidden by
+excluding incomplete attempts from task pass/fail comparisons.
+
 A completed retry can increase complete empirical Runs from 1 / 18 to 2 / 18,
 but cannot erase the original aborted attempt.
 

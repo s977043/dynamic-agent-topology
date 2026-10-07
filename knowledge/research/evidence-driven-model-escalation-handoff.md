@@ -280,6 +280,8 @@ To evaluate the routing policy itself, a later study must include both escalatio
 
 Do not implement an automatic Sonnet → Opus router first.
 
+Apply the common [Capability-level ablation controls](../../docs/EXPERIMENTS.md#capability-level-ablation): eligibility-scoped conclusions, cross-arm contamination control, predeclared practical significance, activation-before-effectiveness, and independent evaluation where practical.
+
 Select reproducible tasks where the baseline model reaches an observable failure and compare:
 
 | Arm | Behavior | Primary contrast |

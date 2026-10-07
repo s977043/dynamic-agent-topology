@@ -38,6 +38,7 @@
 
 1. [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) — Git外にあるGitHub設定の意図と監査方針
 2. [RELEASE_READINESS.md](RELEASE_READINESS.md) — release candidateの選定からtag / GitHub Release公開までのゲート
+3. [AGENT_HARNESS.md](AGENT_HARNESS.md) — このRepositoryを開発するAgentの学習ループ、自律境界、Guard
 
 ## Document roles
 

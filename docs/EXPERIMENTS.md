@@ -92,6 +92,31 @@ paired delta
 - Routing Policyを差し替える
 - Verifierの旧版と新版を比較する
 
+### 複数の変更要因を分解する
+
+新しいRole / Agent / Model / Permission Boundary / Routing ruleを同時に必要とするように見えるCandidateでも、より小さいablationが可能なら、それらを1つの不可分な介入として扱いません。
+
+可能な場合は、原因候補を段階的に分けて比較します。例:
+
+```text
+A: 既存Capability
+B: 既存Capability + 新しいobjective / instruction
+C: Bを独立Role / Agent化し、model / effort / input Evidenceを可能な限り一致
+D: C + より強いmodel / capability binding
+```
+
+この分解により、次を区別しやすくします。
+
+- objective / Promptの効果
+- 独立Role / Context Boundaryの効果とcoordination cost
+- model / Runtime Mappingの効果
+
+より小さいArmで改善を説明できるなら、別のInvariantが複雑な構造を要求しない限り、小さい介入を優先します。
+
+実際のArmはCandidateに依存します。処置をきれいに分離できない場合、このTemplateへ無理に合わせず、confoundとして明示します。
+
+これは新規またはpost-freeze Experiment向けの設計原則です。active Feature Freeze、既存Experiment control、RunEvaluation field、acceptance criterionを遡及的に変更しません。
+
 ### Activation before effectiveness
 
 Capabilityが宣言・登録されているだけでは評価しません。candidate側で対象Capabilityが実際に選択・実行されたことをTraceで確認してから、Outcome差を解釈します。

@@ -194,27 +194,58 @@ If so, model-specific routing should remain Runtime Mapping rather than a DAT co
 
 Do not add a canonical `Adversary` role or a three-gate topology first.
 
-Use this sequence:
+Start from one observed DAT failure mode or high-cost decision boundary and choose exactly one candidate gate. Then decompose the candidate so objective, role separation, and model assignment are not changed at the same time.
 
-1. identify one observed DAT failure mode or high-cost decision boundary;
-2. confirm that the existing Reviewer / Verifier contract does not already address it sufficiently;
-3. choose exactly one candidate gate;
-4. keep the baseline topology unchanged;
-5. add one read-only adversarial challenge at that gate;
-6. keep task, context, model, and effort controlled where practical;
-7. measure:
-   - additional defects found;
-   - false positives / rejected-good work;
+Candidate staged comparison:
+
+```text
+A: existing Reviewer behavior
+B: same Reviewer + adversarial objective at the selected gate
+C: separate read-only Adversary + same adversarial objective
+D: C + stronger runtime-local model/capability binding
+```
+
+Control intent:
+
+- **A → B** estimates the effect of the adversarial objective without adding a new Role.
+- **B → C** estimates the added value and coordination cost of independent Role/context separation. Keep model, effort, input Evidence package, and practical budget matched where the runtime permits.
+- **C → D** estimates the incremental effect of stronger model/capability routing after the Role/objective treatment already exists.
+
+If B performs as well as C, a distinct canonical Adversary Role is not justified by that evidence. If C adds value but D does not, the useful abstraction is more likely Role/context separation than a stronger model binding.
+
+For each stage:
+
+1. keep the baseline topology unchanged except for the tested treatment;
+2. keep Scenario, repository state, Verification commands, practical budget, and human decision boundary controlled where practical;
+3. verify that the candidate treatment actually activated before interpreting outcome differences;
+4. measure:
+   - independently corroborated defects or decision risks found;
+   - false-positive challenges;
    - rework avoided or added;
-   - human interventions;
+   - human interventions and human-facing fan-out;
    - latency;
    - token / runtime cost;
-   - completion quality;
-8. repeat across enough paired cases to separate signal from task variance;
-9. classify missing or ambiguous evidence as `UNKNOWN` / `INCONCLUSIVE`;
-10. only then evaluate whether a second or third gate is justified.
+   - verified completion quality;
+5. repeat across enough paired cases to separate task variance from treatment effect;
+6. classify missing, non-activated, or ambiguous evidence as `UNKNOWN` / `INCONCLUSIVE`.
 
-The three gates should be evaluated independently before testing them as one bundled policy.
+The three candidate gates should be evaluated independently before testing them as one bundled policy.
+
+### Gate eligibility and selection bias
+
+Do not choose a gate or task because an adversarial pass already appears likely to find something.
+
+For each evaluation slice, define the gate eligibility rule **before** seeing the candidate outcome and apply the same rule to baseline and candidate conditions.
+
+Examples of candidate eligibility rules:
+
+- **contract gate** — a predeclared class of change crosses a public interface, schema, permission, or ownership boundary that is expensive to reverse;
+- **repeated-failure gate** — the same predeclared failure class is observed for the configured count; similarity must be based on observable failure identity, not a subjective "still seems broken" judgment;
+- **completion gate** — every selected task reaching the ordinary completion criterion receives the same gate treatment.
+
+Record non-triggered cases rather than silently dropping them. A gate that rarely activates, activates only after subjective judgment, or cannot be applied consistently may be operationally unsuitable even if individual challenges are useful.
+
+Within a paired block, gate eligibility and trigger timing must not depend on whether the treatment is A, B, C, or D.
 
 ## Permission boundary
 
@@ -275,6 +306,26 @@ The boundary is:
 - **#42** — evaluate whether observed runtime friction requires new generic retry / termination / trigger / state / graph semantics.
 
 A repeated-failure gate in #82 should first be tested with existing Routing / Escalation mechanisms. It does not justify a new Loop contract by itself. If the experiment shows that existing contracts cannot represent an evidenced trigger or stop condition without ad-hoc runtime logic, that contract gap belongs in #42.
+
+## Challenge evidence semantics
+
+Keep activation, Judgment, and verified effect separate:
+
+```text
+challenge emitted
+    != challenge accepted
+    != defect/risk independently corroborated
+    != verified outcome improvement
+```
+
+- **challenge emitted** is activation evidence;
+- **challenge accepted** is Reviewer / Human Judgment;
+- **corroborated defect or risk** requires deterministic/observable Evidence or independent Verification appropriate to the claim;
+- **outcome improvement** requires the corrected result to satisfy the relevant Verification / regression checks.
+
+Do not count a persuasive adversarial argument as a discovered defect solely because the Builder or Reviewer agreed with it. Also record false-positive challenges and accepted-but-unverified challenges so an agent cannot appear effective merely by generating more objections.
+
+These distinctions are evaluation guidance for the post-freeze experiment. They do not add a required field to the current EXP-001 schema or evaluation contract.
 
 ## Rejection / deferral evidence
 

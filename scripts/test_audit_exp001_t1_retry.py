@@ -69,6 +69,29 @@ with tempfile.TemporaryDirectory() as td:
     ledger.write_text(original_ledger)
     verify_archive(archive, expected)
 
+    missing = archive / "STOP-REPORT.md"
+    preserved = missing.read_bytes()
+    missing.unlink()
+    try:
+        verify_archive(archive, expected)
+        raise AssertionError("missing archive artifact must fail")
+    except ValueError as exc:
+        check("missing" in str(exc), "missing-file check must fail closed")
+    missing.write_bytes(preserved)
+
+    symlink_file = archive / "evidence.txt"
+    symlink_contents = symlink_file.read_bytes()
+    symlink_file.unlink()
+    symlink_file.symlink_to(archive / "STOP-REPORT.md")
+    try:
+        verify_archive(archive, expected)
+        raise AssertionError("symlinked archive artifact must fail")
+    except ValueError as exc:
+        check("symlink" in str(exc), "symlink artifact must fail closed")
+    symlink_file.unlink()
+    symlink_file.write_bytes(symlink_contents)
+    verify_archive(archive, expected)
+
     archived = {
         "apiVersion": "dat/v1alpha1",
         "kind": "PilotRunMetadata",
@@ -108,6 +131,23 @@ with tempfile.TemporaryDirectory() as td:
     except ValueError as exc:
         check("beyond workspaceId" in str(exc), "metadata drift must be identified")
     fresh["spec"]["freshWorkspace"] = True
+
+    fresh["spec"]["promptSha256"] = "0" * 64
+    (canonical / "run-meta.yaml").write_text(yaml.safe_dump(fresh))
+    try:
+        verify_preparation(root, archived, expected["prompt.md"], require_new_workspace_id=True)
+        raise AssertionError("changed prepared prompt digest must fail")
+    except ValueError as exc:
+        check("beyond workspaceId" in str(exc), "prepared prompt hash drift must fail")
+    fresh["spec"]["promptSha256"] = expected["prompt.md"]
+
+    (canonical / "prompt.md").write_bytes(b"modified prompt")
+    try:
+        verify_preparation(root, archived, expected["prompt.md"], require_new_workspace_id=True)
+        raise AssertionError("changed prompt bytes must fail")
+    except ValueError as exc:
+        check("prompt digest" in str(exc), "prompt bytes drift must fail")
+    (canonical / "prompt.md").write_bytes((archive / "prompt.md").read_bytes())
 
     fresh["spec"]["workspaceId"] = "t0-id"
     (canonical / "run-meta.yaml").write_text(yaml.safe_dump(fresh))

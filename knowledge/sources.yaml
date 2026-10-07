@@ -97,3 +97,24 @@ sources:
     url: "https://www.anthropic.com/webinars/building-with-the-claude-5-5-family-choosing-the-right-model-and-getting-more-from-every-token"
     published_at: "2026-10-01"
     adopted: []
+
+  - id: github-hydrafusion-2026
+    type: engineering-report
+    title: "Project HydraFusion: Frontier quality via multi-model orchestration"
+    url: "https://github.blog/ai-and-ml/github-copilot/project-hydrafusion-frontier-quality-via-multi-model-orchestration/"
+    published_at: "2026-09-04"
+    adopted: []
+
+  - id: github-hydrafusion-vscode-2026
+    type: product-documentation
+    title: "HydraFusion in VS Code and the GitHub Copilot app"
+    url: "https://github.blog/changelog/2026-09-30-hydrafusion-in-vs-code-and-the-github-copilot-app/"
+    published_at: "2026-09-30"
+    adopted: []
+
+  - id: publickey-hydrafusion-vscode-2026
+    type: media-article
+    title: "マイクロソフト、VS CodeにAIモデルのオーケストレーションで高品質低コストなAIを実現する「HydraFusion」をプレビュー実装"
+    url: "https://www.publickey1.jp/blog/26/vs_codeaiaihydrafusion.html"
+    published_at: "2026-10-07"
+    adopted: []

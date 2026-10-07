@@ -64,6 +64,12 @@ runs/pilot-codex/<runId>/
 
 失敗時は部分生成物を隔離して保存し、退避した元のrun directoryを復元します。自動で復旧を再試行しません。この例外は実測済み / aborted / infrastructure-failed sessionの再実行、結果Artifactの置換、他Runの再prepareには使いません。復旧だけでexecution attestationや実測値を生成しません。
 
+### T1 r01 infrastructure retry — #97
+
+`EXP-001-train-normalize-name-r01-T1` のexit 127による不完全attemptには、[#97でレビューされたT1 r01 one-time retry procedure](../../../docs/EXP-001_RETRY_T1_R01.md) を、**その手順のPRがmergeされた後に限り**適用できます。
+
+これは通常の `ACCEPT` gateを緩めるものではありません。元attemptは永久保存し、normal experimental sandboxで凍結Evidence commandが起動可能であることを非model preflightで確認した後、一度だけfresh retryします。retry allowanceはmodel invocation開始時に消費され、結果に関係なく再々試行は許可しません。
+
 ### 通常の実行手順
 
 #51の最初のT0には、[限定再試行手順](../../../docs/EXP-001_RETRY_51.md)を適用できます。これは #48 の実測前復旧とは別の例外で、元の実セッションを保存し、手順の独立レビュー・merge後に一度だけ再試行します。他のRunやtask failureには適用しません。

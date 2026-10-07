@@ -352,6 +352,22 @@ The boundary is:
 
 A repeated-failure gate in #82 should first be tested with existing Routing / Escalation mechanisms. It does not justify a new Loop contract by itself. If the experiment shows that existing contracts cannot represent an evidenced trigger or stop condition without ad-hoc runtime logic, that contract gap belongs in #42.
 
+### Evaluation independence
+
+Independent corroboration should not merely repeat the Adversary's argument.
+
+Where practical:
+
+- the Verifier / evaluator should receive the claim to check, relevant artifact state, and required Evidence contract, not the full hidden reasoning or persuasive narrative that produced the challenge;
+- hide the treatment arm identity (A/B/C/D) from the evaluator when that information is not required to verify the claim;
+- use the same Verification command / acceptance contract across arms;
+- separate the agent that generated the challenge from the agent that decides whether the challenge is corroborated;
+- if the evaluator must see treatment-specific context, record that as a potential bias / limitation.
+
+For non-deterministic claims where blind verification is impossible, require at least an independent review path and retain disagreement rather than collapsing it into a single "accepted" label.
+
+This is an evaluation-quality control, not a requirement to add another canonical Role.
+
 ## Challenge evidence semantics
 
 Keep activation, Judgment, and verified effect separate:

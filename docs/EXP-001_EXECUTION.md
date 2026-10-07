@@ -75,6 +75,22 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 
 ## T1 r01 reviewed retry exception
 
+### Governance closure — Issue #102
+
+Issue #102は、T1 r01のincomplete attemptを永久欠測として扱うと、frozen 18 / 18 completion gateとpaired comparisonを満たせないという進行・完了governanceのBlocking defectを記録しました。
+
+このconflictは、Issue #97 / PR #100で**同じfrozen matrix slotへの一度限りfresh retry**を独立レビュー・mergeしたことでOption 1として解消しています。
+
+- original aborted attemptは永久保存し、complete Runへ数えない
+- retryは同じrunId / matrix slotの観測をfresh workspace / fresh sessionで取り直すためのRun固有例外
+- retry結果を見る前にeligibilityと1回限りの条件を固定
+- Prompt / Fixture / Matrix / Topology / Role / Runtime / Model / Effort / deterministic Evidence / evaluation semanticsは変更しない
+- complete fail / inconclusiveもslot結果として保持し、結果理由で再retryしない
+- infrastructure abort再発時はSTOPして新しいreviewed dispositionを要求する
+- 18 / 18 completion requirementとpaired comparison requirementは維持する
+
+PR #103はさらに、literal `python` commandのnative availabilityをpreflightで要求し、alias / shim / PATH mutation / `python3` substitutionによる環境加工を禁止しました。したがってIssue #102を解決するためにFeature Freeze revisionを更新したり、既存T0を無効化したりする必要はありません。
+
 T1 r01のarchive保存（PR #86）だけではRun acceptanceやretry許可になりません。
 
 Issue #97で検討した [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) は、このprocedureを含むPRがレビュー・mergeされた後に限り、`python -m unittest ...` がRuntime内で起動できず、T1 Verifier phaseも未完了だった不完全attemptに対する**Run固有の一度限り例外**です。

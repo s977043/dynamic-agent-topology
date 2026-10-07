@@ -231,6 +231,22 @@ For each stage:
 
 The three candidate gates should be evaluated independently before testing them as one bundled policy.
 
+### Gate eligibility and selection bias
+
+Do not choose a gate or task because an adversarial pass already appears likely to find something.
+
+For each evaluation slice, define the gate eligibility rule **before** seeing the candidate outcome and apply the same rule to baseline and candidate conditions.
+
+Examples of candidate eligibility rules:
+
+- **contract gate** — a predeclared class of change crosses a public interface, schema, permission, or ownership boundary that is expensive to reverse;
+- **repeated-failure gate** — the same predeclared failure class is observed for the configured count; similarity must be based on observable failure identity, not a subjective "still seems broken" judgment;
+- **completion gate** — every selected task reaching the ordinary completion criterion receives the same gate treatment.
+
+Record non-triggered cases rather than silently dropping them. A gate that rarely activates, activates only after subjective judgment, or cannot be applied consistently may be operationally unsuitable even if individual challenges are useful.
+
+Within a paired block, gate eligibility and trigger timing must not depend on whether the treatment is A, B, C, or D.
+
 ## Permission boundary
 
 The candidate Adversary should default to read-only capability for an initial evaluation.

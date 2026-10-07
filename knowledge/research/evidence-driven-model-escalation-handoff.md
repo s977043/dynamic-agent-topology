@@ -218,6 +218,32 @@ The stable DAT contract, if any, should define escalation evidence and handoff r
 
 A material share of apparent "model failures" may actually be Prompt, Context, Harness, Loop, or Evaluation defects. Diagnosis-first routing should outperform unconditional stronger-model escalation.
 
+## Evaluation population and claim scope
+
+The initial recovery study may intentionally select tasks where the baseline reaches a reproducible, task-related Verification failure. That answers a **conditional recovery question**:
+
+> given that the baseline has already reached the declared escalation-eligible failure state, which continuation / handoff / capability treatment performs best?
+
+It does **not** by itself answer:
+
+> should the routing policy escalate more tasks in the overall workload?
+
+Keep these populations separate:
+
+```text
+all eligible workload
+    ↓
+escalation gate classification
+    ├─ no escalation
+    └─ escalation-eligible failure
+             ↓
+       recovery treatment study
+```
+
+When sampling only from the lower branch, report conclusions as conditional-on-eligibility. Do not extrapolate recovery success rates, cost savings, or model preference to tasks that never reached the gate.
+
+To evaluate the routing policy itself, a later study must include both escalation-needed and escalation-not-needed cases so unnecessary escalation and missed escalation are observable.
+
 ## Cheapest useful verification after EXP-001
 
 Do not implement an automatic Sonnet → Opus router first.

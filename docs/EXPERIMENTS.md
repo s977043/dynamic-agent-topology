@@ -117,6 +117,23 @@ D: C + より強いmodel / capability binding
 
 これは新規またはpost-freeze Experiment向けの設計原則です。active Feature Freeze、既存Experiment control、RunEvaluation field、acceptance criterionを遡及的に変更しません。
 
+### Eligibility-conditioned conclusions
+
+特定のFailure、Gate発火、Risk条件を満たしたTaskだけを抽出して比較する場合、その結果の射程を明示します。
+
+たとえば「baselineが失敗したTaskだけ」でCandidate recoveryを比較した結果は、**そのFailure条件に到達したTaskでの回復効果**を示します。全Taskに対するRouting Policyの優劣や、Gate自体の精度を直接示すものではありません。
+
+```text
+all workload
+  ├─ gate not triggered
+  └─ gate triggered
+       └─ conditional treatment comparison
+```
+
+Gate / Selectorそのものを評価する場合は、triggerすべきcaseとtriggerすべきでないcaseの両方を含め、unnecessary trigger / missed triggerを観測できる設計にします。
+
+対象母集団を後から拡張解釈せず、sample eligibilityと結論の適用範囲をExperiment開始前に記録します。
+
 ### Cross-arm contamination
 
 Paired / staged ablationで同じTaskを比較する場合、前Conditionの学習結果を後Conditionへ持ち越さないことを基本とします。

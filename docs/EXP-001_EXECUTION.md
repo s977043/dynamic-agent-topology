@@ -67,11 +67,11 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 
 - T0はPR #54でvalidation PASS・独立レビューACCEPTとなりました。同じrunIdを再prepare / 再実行しません。
 - T1のpreparationはPR #81、不完全attemptの保存は [PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) にあります。
-- 2026-10-07の [Issue #15本文](https://github.com/s977043/dynamic-agent-topology/issues/15) はT1 r01を **ABORTED / not accepted / no retry** と記録し、次の固定slot r02-T1への進行を示しています。これはcomplete Run受理やT1再試行の許可ではありません。
+- T1 r01の元attemptは **ABORTED / not accepted** としてarchive保存されています。PR #86のarchive retentionだけではretryを許可しませんでしたが、その後Issue #97 / PR #100で同じmatrix slotへの一度限りfresh retryが独立レビュー・mergeされています。元attemptはcomplete Runとして数えず、永久保存します。
 
 実行直前にIssue #15の最新disposition、独立review record、固定matrix、Operator procedureの進行gateを照合します。Issue本文の進行記載だけで、前RunのReviewer `ACCEPT` を必要とする通常gateを置き換えません。archive保存のレビューと次slotへの進行判断も別です。通常gateを満たさない場合や、review recordと契約に不明点・矛盾がある場合は、Issue #15に停止理由を残し、整合が確認されるまでprepare / 実行を開始しません。過去のprepare例や古いcheckpointを現在の実行指示として使いません。
 
-`pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attemptとno-retry判断を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行しません。
+`pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attempt、retry allowanceの未使用/消費、retry結果の受理状態を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行しません。T1 r01の例外は [one-time retry procedure](EXP-001_RETRY_T1_R01.md) の全entry gateを満たす場合だけ適用します。
 
 ## T1 r01 reviewed retry exception
 
@@ -109,7 +109,9 @@ Blocking defectが見つかった場合は、次Runへ進まずIssue #15を停�
 
 残りslotへの進行は、Freeze解除やT0/T1の比較判断を意味しません。Run途中のPrompt / Role / Topology / Scenario / Fixture / Model / Effort / Evaluation semantics改善は禁止されたままです。
 
-T1 r01を再試行しない判断と、Freezeの18/18 complete・最終completeness PASSという条件の整合は、Issue #15で解決すべき完了ゲートです。残りslotを終えてもaborted slotをcompleteとして数えず、欠けたpaired blockを比較結果へ含めません。凍結契約を変更する必要があるかも含めてレビューし、文書だけで解除条件を緩めません。
+T1 r01の元attemptはabortedのままcompleteとして数えません。Issue #97 / PR #100で承認された一度限りfresh retryがcomplete Runとして受理された場合のみ、その同じmatrix slotを満たせます。retryがcomplete fail / inconclusiveでも通常のslot結果として保持し、再々試行しません。retryが再度infrastructure abortした場合はSTOPし、新しいreviewed dispositionが必要です。
+
+この例外は18/18 complete・paired comparison・最終completeness PASSという条件を緩和しません。retry後もReviewer `EXP-001 Run acceptance: ACCEPT` が記録されるまで次slotへ進みません。
 
 ## Status check
 

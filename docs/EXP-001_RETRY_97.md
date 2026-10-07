@@ -82,11 +82,14 @@ Before the retry invocation:
    the Run, confirm the literal command name `python` is natively resolvable.
    Do **not** add an alias, shim, symlink, PATH mutation, wrapper, or substitute
    `python3`.
-6. On the untouched fresh fixture, execute the frozen deterministic Evidence
-   command and require it to **start successfully and fail for the expected
-   fixture behavior**. Exit 127, sandbox startup failure, or another
-   environment-level failure is not the expected initial FAIL.
-7. Reconfirm the fresh fixture file set / bytes immediately before model start.
+6. Disable Python bytecode writes for the preflight, then on the untouched
+   fresh fixture execute the frozen deterministic Evidence command and require
+   it to **start successfully and fail for the expected fixture behavior**.
+   Exit 127, sandbox startup failure, or another environment-level failure is
+   not the expected initial FAIL.
+7. Reconfirm the fresh fixture file set / bytes immediately after the preflight
+   and again immediately before model start. No preflight-created file may be
+   carried into the model invocation.
 
 If any pre-invocation gate fails, do not start Codex and do not consume the
 single retry allowance. Record the stop in Issue #97.

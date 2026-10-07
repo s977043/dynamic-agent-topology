@@ -307,6 +307,26 @@ The boundary is:
 
 A repeated-failure gate in #82 should first be tested with existing Routing / Escalation mechanisms. It does not justify a new Loop contract by itself. If the experiment shows that existing contracts cannot represent an evidenced trigger or stop condition without ad-hoc runtime logic, that contract gap belongs in #42.
 
+## Challenge evidence semantics
+
+Keep activation, Judgment, and verified effect separate:
+
+```text
+challenge emitted
+    != challenge accepted
+    != defect/risk independently corroborated
+    != verified outcome improvement
+```
+
+- **challenge emitted** is activation evidence;
+- **challenge accepted** is Reviewer / Human Judgment;
+- **corroborated defect or risk** requires deterministic/observable Evidence or independent Verification appropriate to the claim;
+- **outcome improvement** requires the corrected result to satisfy the relevant Verification / regression checks.
+
+Do not count a persuasive adversarial argument as a discovered defect solely because the Builder or Reviewer agreed with it. Also record false-positive challenges and accepted-but-unverified challenges so an agent cannot appear effective merely by generating more objections.
+
+These distinctions are evaluation guidance for the post-freeze experiment. They do not add a required field to the current EXP-001 schema or evaluation contract.
+
 ## Rejection / deferral evidence
 
 Reject or defer a distinct Adversary role when:

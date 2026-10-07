@@ -231,6 +231,21 @@ For each stage:
 
 The three candidate gates should be evaluated independently before testing them as one bundled policy.
 
+### Cross-arm contamination and order effects
+
+A/B/C/D must not be executed as one learning chain where later arms inherit fixes, diagnoses, or reviewer findings from earlier arms.
+
+Default comparison rule:
+
+- use fresh workspace / session state for each arm where the runtime permits;
+- initialize each arm from the same repository revision and declared input Evidence package;
+- do not copy prior-arm reasoning, patches, challenge lists, or hidden evaluator notes into later arms unless that transfer itself is the treatment being tested;
+- preserve the same predeclared gate eligibility rule and trigger timing across arms;
+- when execution order can affect the result, counterbalance or randomize arm order across paired blocks and record the order;
+- if a runtime cannot provide equivalent fresh-state conditions, record the carryover as a confound and avoid interpreting the paired delta as a clean treatment effect.
+
+A task may be reused across arms only when the experimental setup restores the declared starting state. "Same task" does not mean "continue the same evolving session."
+
 ### Gate eligibility and selection bias
 
 Do not choose a gate or task because an adversarial pass already appears likely to find something.

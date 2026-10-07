@@ -64,7 +64,7 @@ Before model invocation:
 7. The new prompt must be byte-identical to both the canonical prepared prompt and archived failed-attempt prompt. Expected SHA-256: `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86`.
 8. Parsed preparation metadata must be identical to the archived preparation except for `spec.workspaceId`; the new workspaceId must be unique.
 9. The fresh workspace file set and bytes must match the frozen fixture.
-10. In the normal experimental sandbox, without invoking the model, prove that the frozen command `python -m unittest discover -s tests` can start.
+10. In the normal experimental sandbox, without invoking the model, prove that the frozen command `python -m unittest discover -s tests` can start. Do not make it pass by adding an alias, shim, symlink, wrapper, PATH mutation, or by substituting `python3`; the literal frozen command must be natively resolvable in the Run environment.
 11. On the untouched fixture, the same command must produce the expected initial Evidence FAIL.
 12. Prevent incidental Python bytecode writes during preflight, then recheck the fresh workspace file set and bytes against the frozen fixture immediately before model startup.
 13. No prior T1 messages, patch, archive, failure explanation, or outcome may be exposed to the retry session.
@@ -124,7 +124,7 @@ This exception is intentionally narrower than a general retry policy.
 - The retry cannot be repeated until success.
 - A complete fail or inconclusive result is retained as the slot result.
 - A second infrastructure abort causes STOP and a new reviewed disposition; it does not automatically grant another retry.
-- The eventual EXP-001 summary must disclose attempted-session counts and infrastructure/incomplete attempts separately from the 18 complete matrix Runs.
+- The eventual EXP-001 summary must disclose attempted-session counts and infrastructure/incomplete attempts separately from the 18 complete matrix Runs, including counts by condition so one condition's operational instability is not hidden by pass/fail-only reporting.
 
 ## Counting
 

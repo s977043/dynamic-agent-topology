@@ -117,6 +117,17 @@ D: C + より強いmodel / capability binding
 
 これは新規またはpost-freeze Experiment向けの設計原則です。active Feature Freeze、既存Experiment control、RunEvaluation field、acceptance criterionを遡及的に変更しません。
 
+### Cross-arm contamination
+
+Paired / staged ablationで同じTaskを比較する場合、前Conditionの学習結果を後Conditionへ持ち越さないことを基本とします。
+
+- 各Conditionは、Runtimeが許す範囲で同じRepository revision・同じ初期入力・fresh workspace / sessionから開始する。
+- 前Conditionで得たpatch、診断、Review結果、内部メモを後Conditionへ流用しない。流用そのものがTreatmentの場合は例外として明示する。
+- 実行順序がOutcomeへ影響し得る場合、block間でorderをcounterbalance / randomizeし、実行順序を記録する。
+- fresh-stateを再現できないRuntimeでは、その差をconfoundとして残し、cleanなpaired effectとして断定しない。
+
+同一Taskを使うことと、同一Sessionを継続することは別です。比較可能性のためには、各Conditionの開始状態を揃える必要があります。
+
 ### Activation before effectiveness
 
 Capabilityが宣言・登録されているだけでは評価しません。candidate側で対象Capabilityが実際に選択・実行されたことをTraceで確認してから、Outcome差を解釈します。
@@ -124,6 +135,34 @@ Capabilityが宣言・登録されているだけでは評価しません。cand
 > **Usage != Effectiveness.**
 
 「呼ばれた」「Agent数が増えた」「Reviewが1段増えた」はactivation evidenceであり、改善Evidenceではありません。
+
+### Predeclare practical significance
+
+Capability-level ablationでは、Run後に「この差なら十分」と閾値を動かしません。比較前に、採用判断へ使う実務上の境界を定義します。
+
+最低限、次を明示します。
+
+- 採用を正当化できるOutcome
+- 許容できるRegression / false positive / coordination cost
+- より複雑なConditionへ進むためのminimum practical improvement
+- `INCONCLUSIVE`とする不足条件
+- costより優先されるSecurity / correctness invariant
+
+普遍的な統計閾値を要求するものではありません。少数sampleではfeasibilityや方向性までしか判断できない場合があります。その場合も、Outcomeを見た後にacceptanceを作り替えず、Evidence不足として扱います。
+
+### Evaluation independence
+
+Capabilityの効果判定を、そのCapability自身の自己評価だけに依存しません。
+
+可能な範囲で:
+
+- Treatment arm名や生成過程の説得的な内部推論を、Outcome判定に不要ならEvaluatorへ渡さない。
+- 同じVerification command / acceptance contractを比較Condition間で使う。
+- Candidateを生成したAgentと、そのclaimをcorroborateするEvaluator / Verifierを分離する。
+- Blind evaluationができない場合、そのTreatment-specific contextをbias / limitationとして記録する。
+- 非決定的なclaimでは、独立Reviewの不一致を保持し、単一の「accepted」へ潰さない。
+
+これは新しい必須Roleを要求するものではなく、Evaluationの独立性を高めるための設計原則です。
 
 ### Decision semantics
 

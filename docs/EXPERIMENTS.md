@@ -150,6 +150,20 @@ Capability-level ablationでは、Run後に「この差なら十分」と閾値�
 
 普遍的な統計閾値を要求するものではありません。少数sampleではfeasibilityや方向性までしか判断できない場合があります。その場合も、Outcomeを見た後にacceptanceを作り替えず、Evidence不足として扱います。
 
+### Evaluation independence
+
+Capabilityの効果判定を、そのCapability自身の自己評価だけに依存しません。
+
+可能な範囲で:
+
+- Treatment arm名や生成過程の説得的な内部推論を、Outcome判定に不要ならEvaluatorへ渡さない。
+- 同じVerification command / acceptance contractを比較Condition間で使う。
+- Candidateを生成したAgentと、そのclaimをcorroborateするEvaluator / Verifierを分離する。
+- Blind evaluationができない場合、そのTreatment-specific contextをbias / limitationとして記録する。
+- 非決定的なclaimでは、独立Reviewの不一致を保持し、単一の「accepted」へ潰さない。
+
+これは新しい必須Roleを要求するものではなく、Evaluationの独立性を高めるための設計原則です。
+
 ### Decision semantics
 
 paired comparisonの結果は次の3値で扱います。

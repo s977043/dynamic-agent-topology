@@ -150,6 +150,38 @@ Signals that should **not** be sufficient by themselves:
 
 A fixed "turn 6" check is therefore a source hypothesis, not a DAT invariant.
 
+## Escalation gate quality vs recovery efficacy
+
+Keep two questions separate:
+
+```text
+recovery efficacy:
+  given an escalation-eligible failure, does the stronger capability / handoff treatment improve the verified outcome?
+
+gate quality:
+  across the workload, does the escalation gate trigger on cases where escalation has practical value and avoid cases where it does not?
+```
+
+A successful D or E recovery does not prove the gate is accurate.
+
+For a later routing-policy study, prefer a **shadow-gate** evaluation where practical:
+
+1. run the predeclared gate and record its escalate / do-not-escalate decision without letting that decision determine which comparison evidence is collected;
+2. collect matched baseline-vs-escalated outcome evidence for the evaluation sample where budget permits;
+3. define "beneficial escalation" from the predeclared verified-outcome / regression / cost decision rule, not from the gate's own explanation;
+4. compare the shadow decision with the observed treatment value.
+
+Candidate diagnostics:
+
+- unnecessary escalation — gate escalates but the stronger treatment adds no predeclared practical benefit;
+- missed beneficial escalation — gate does not escalate but matched evidence shows escalation would have crossed the benefit threshold;
+- correctly avoided escalation — smaller intervention / baseline meets the target;
+- correctly selected escalation — stronger treatment adds the predeclared practical benefit without unacceptable regression.
+
+Do not call these precision / recall unless the sample and reference labeling are adequate for those statistics. With small samples, retain counts and case-level Evidence.
+
+Gate execution cost, handoff construction cost, and any extra Verification needed to make the decision belong in policy-level economics.
+
 ## Candidate handoff
 
 The source's important idea is not the exact 20K number. It is that escalation should transfer **task state and evidence**, not blindly inherit all conversational history.

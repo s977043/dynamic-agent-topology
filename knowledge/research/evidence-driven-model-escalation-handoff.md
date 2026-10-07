@@ -252,12 +252,21 @@ Select reproducible tasks where the baseline model reaches an observable failure
 
 | Arm | Behavior | Primary contrast |
 |---|---|---|
-| A | continue baseline model in the current session within a bounded attempt budget | control |
-| B | same baseline model in a fresh session from compact evidence handoff | A vs B isolates fresh-session / handoff effect |
-| C | stronger runtime-local model/capability in a fresh session from the **same compact handoff** | B vs C isolates model/capability escalation effect |
-| D | stronger runtime-local model/capability in a fresh session with the fullest transferable prior context the runtime can reproduce | C vs D estimates compact-vs-full context payload effect |
+| A | continue baseline model in the current session within a bounded attempt budget | current-session control |
+| B | same baseline model in a fresh session with the fullest transferable prior context the runtime can reproduce | practical reset + full-transfer comparison against A |
+| C | same baseline model in a fresh session from compact evidence handoff | B vs C estimates compact-vs-full payload effect under the baseline model |
+| D | stronger runtime-local model/capability in a fresh session from the **same compact handoff as C** | C vs D isolates model/capability effect under compact handoff |
+| E | stronger runtime-local model/capability in a fresh session with the **same full-transfer condition as B** | B vs E isolates model/capability effect under full transfer; D vs E estimates compact-vs-full payload effect under the stronger model |
 
-For Arms B/C/D, use equivalent fresh-session conditions where the runtime permits. If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
+For Arms B/C/D/E, use equivalent fresh-session conditions where the runtime permits. If a runtime cannot reproduce one arm faithfully, record the arm as unavailable rather than silently substituting another condition.
+
+Interpretation boundaries:
+
+- **A vs B** is a practical current-session vs fresh/full-transfer comparison. It is **not** a pure session-reset effect because a transferred context cannot be assumed equivalent to hidden in-session state.
+- **B vs C** estimates compact-vs-full payload effect with the baseline model held fixed.
+- **C vs D** estimates model/capability escalation effect with compact handoff held fixed.
+- **B vs E** estimates model/capability escalation effect with full-transfer context held fixed.
+- **D vs E** estimates compact-vs-full payload effect under the stronger model.
 
 Where practical, hold constant:
 
@@ -267,9 +276,10 @@ Where practical, hold constant:
 - runtime tooling and permission boundary;
 - effort setting;
 - overall task budget;
-- compact handoff artifact for Arms B/C.
+- compact handoff artifact for Arms C/D;
+- full-transfer construction for Arms B/E.
 
-A/B, B/C, and C/D answer different questions. Do not collapse them into one "routing improved" result.
+Do not collapse the contrasts into one "routing improved" result. A model-escalation claim should be supported by a model contrast under matched payload conditions, not by A vs C/D alone.
 
 Capture:
 

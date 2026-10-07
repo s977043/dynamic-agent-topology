@@ -67,11 +67,11 @@ PR #54（merge commit `a718293`）で最初のT0 `EXP-001-train-normalize-name-r
 
 - T0はPR #54でvalidation PASS・独立レビューACCEPTとなりました。同じrunIdを再prepare / 再実行しません。
 - T1のpreparationはPR #81、不完全attemptの保存は [PR #86](https://github.com/s977043/dynamic-agent-topology/pull/86) にあります。
-- 2026-10-07の [Issue #15本文](https://github.com/s977043/dynamic-agent-topology/issues/15) はT1 r01を **ABORTED / not accepted / no retry** と記録し、次の固定slot r02-T1への進行を示しています。これはcomplete Run受理やT1再試行の許可ではありません。
+- PR #100より前の2026-10-07時点では、[Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15) にT1 r01を **ABORTED / not accepted / no retry** とする暫定dispositionが記録されていました。その暫定判断は、#97のレビューを経てPR #100でmergeされたRun固有のone-time retry exceptionに限って更新されています。archive保存の受理とretry authorizationは引き続き別です。
 
 実行直前にIssue #15の最新disposition、独立review record、固定matrix、Operator procedureの進行gateを照合します。Issue本文の進行記載だけで、前RunのReviewer `ACCEPT` を必要とする通常gateを置き換えません。archive保存のレビューと次slotへの進行判断も別です。通常gateを満たさない場合や、review recordと契約に不明点・矛盾がある場合は、Issue #15に停止理由を残し、整合が確認されるまでprepare / 実行を開始しません。過去のprepare例や古いcheckpointを現在の実行指示として使いません。
 
-`pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attemptとno-retry判断を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行しません。
+`pilot_status.py` はcanonical directoryのArtifact有無を表示します。外部保存の不完全attempt、retry allowanceの未消費/消費、現在の進行状態を扱うlive trackerはIssue #15です。`prepared` 表示だけを根拠に同じrunIdを再実行せず、T1 r01のretryはPR #100でmergeされた例外手順に従います。
 
 ## T1 r01 reviewed retry exception
 
@@ -109,7 +109,7 @@ Blocking defectが見つかった場合は、次Runへ進まずIssue #15を停�
 
 残りslotへの進行は、Freeze解除やT0/T1の比較判断を意味しません。Run途中のPrompt / Role / Topology / Scenario / Fixture / Model / Effort / Evaluation semantics改善は禁止されたままです。
 
-T1 r01を再試行しない判断と、Freezeの18/18 complete・最終completeness PASSという条件の整合は、Issue #15で解決すべき完了ゲートです。残りslotを終えてもaborted slotをcompleteとして数えず、欠けたpaired blockを比較結果へ含めません。凍結契約を変更する必要があるかも含めてレビューし、文書だけで解除条件を緩めません。
+PR #100のone-time retryは、T1 r01の欠測slotを現行Freezeの18/18 completion条件のまま再観測するための限定例外です。retryがcomplete Runとして受理されなければ18/18は満たされず、次のdispositionを改めてレビューします。aborted attemptをcompleteとして数えたり、欠けたpaired blockを比較結果へ含めたり、文書だけで解除条件を緩めたりしません。
 
 ## Status check
 

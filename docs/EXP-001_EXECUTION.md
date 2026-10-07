@@ -91,6 +91,8 @@ Issue #102は、T1 r01のincomplete attemptを永久欠測として扱うと、f
 
 PR #103はさらに、literal `python` commandのnative availabilityをpreflightで要求し、alias / shim / PATH mutation / `python3` substitutionによる環境加工を禁止しました。したがってIssue #102を解決するためにFeature Freeze revisionを更新したり、既存T0を無効化したりする必要はありません。
 
+Issue #102のcloseはgovernance conflictの解消だけを意味します。T1 r01 retry allowanceは実Codex invocation開始まで未消費であり、retry自体の完了・Run acceptance・次slot進行を意味しません。retry後もsingle-run validation、manual consistency review、Reviewer `EXP-001 Run acceptance: ACCEPT` が必要です。
+
 T1 r01のarchive保存（PR #86）だけではRun acceptanceやretry許可になりません。
 
 Issue #97で検討した [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) は、このprocedureを含むPRがレビュー・mergeされた後に限り、`python -m unittest ...` がRuntime内で起動できず、T1 Verifier phaseも未完了だった不完全attemptに対する**Run固有の一度限り例外**です。

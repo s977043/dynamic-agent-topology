@@ -20,7 +20,7 @@ python scripts/validate_experiment_freeze.py
 python scripts/validate_project.py --project examples/brownfield --dat-root .
 ```
 
-Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` so runs do not leave `__pycache__` inside frozen fixtures. Verify new or changed scripts with Python 3.12 (CI's version) before reporting them as passing; `Path.glob` and 3.13+ APIs behave differently.
+Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` so runs do not leave `__pycache__` inside frozen fixtures. Verify new or changed scripts with Python 3.12 (CI's version) before reporting them as passing; for example, `Path.glob` with a trailing `**` returns only directories on 3.12, and 3.13+ APIs such as `PurePath.full_match` are unavailable.
 
 When adding a new artifact kind, add its schema in `schemas/`, a semantic check if it has cross-file references, and wire both into `spec-lint.yml`. Schema validity alone is not sufficient.
 

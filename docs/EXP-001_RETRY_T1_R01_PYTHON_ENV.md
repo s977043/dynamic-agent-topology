@@ -29,7 +29,24 @@ Operator host の測定（2026-10-08 09:30、macOS + Homebrew）:
 
 これは元attemptの exit 127（`zsh: command not found: python`、[STOP-REPORT](../experiments/EXP-001-t0-vs-t1/runs/infrastructure-failures/EXP-001-train-normalize-name-r01-T1/01a1132a-1de0-70d2-b810-c500b79430c9/STOP-REPORT.md)）と同じ原因です。この状態のままではGate 10でSTOPになります。
 
-参考: accepted T0 r01 の `trace.yaml` は Evidence command を `/usr/bin/zsh -lc 'python -m unittest discover -s tests'` として記録しています。`/usr/bin/zsh` は macOS 標準（`/bin/zsh`）と異なるため、T0 は現在の Operator host とは別の環境で実行された可能性があります。これは trace からの推測であり、確定事実ではありません（「未解決の論点」参照）。
+## T0 r01 実行環境の特定調査（結果: 特定不能）
+
+T1 retry を「T0 と同一環境」で実行できるかを確認するため、accepted T0 r01 の実行環境を調べました（2026-10-08、オーガナイザー測定）。
+
+| 確認項目                                                                         | 結果                                                                                             | 確認元                |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------- |
+| T0 `execution-attestation.yaml` / `trace.yaml` の sessionId                      | `01a10975-1997-7e33-bcb3-3d6c855b6471`                                                           | repo（`origin/main`） |
+| T0 `trace.yaml` の command 表記                                                  | `/usr/bin/zsh -lc ...`。Evidence command `python -m unittest discover -s tests` は起動できている | repo（`origin/main`） |
+| Operator macOS host の `~/.codex/sessions/` に上記 sessionId の rollout ファイル | **存在しない**（後日の別セッションがこの ID に言及しているのみ）                                 | オーガナイザー測定    |
+| 同日の Codex 記録の shell 表記                                                   | `zsh` のみ（`/usr/bin/zsh` の記録なし）                                                          | オーガナイザー測定    |
+| 失敗した T1 original attempt の stderr                                           | `zsh: command not found: python`（現 Operator macOS host の測定と整合）                          | repo（`origin/main`） |
+
+解釈（**推測**）: macOS の zsh は通常 `/bin/zsh` であり、`/usr/bin/zsh` と `python` 解決可能という記録は現 Operator macOS host と整合しません。T0 r01 は Operator の macOS host 以外（Linux 系の可能性）で実行されたと推測されます。ただし host・コンテナイメージ・OS・Python 版はいずれも記録が無く、**T0 r01 の実行環境は特定できません**。
+
+帰結:
+
+- 「T0 と同一環境で T1 retry を実行する」という選択肢は**採れません**。T1 retry の Run 環境は、下記の推奨に従い**新しく定めます**。
+- T0/T1 間で実行環境が一致していることは保証できません。これは比較妥当性の limitation として扱います（「比較妥当性の limitation」参照）。
 
 ## 「native」の解釈（Reviewer判断事項）
 
@@ -60,13 +77,13 @@ N1 を採らず文字どおりの解釈を採る場合、下表の多くは「�
 
 ## 推奨（Reviewer判断を要する）
 
-**推奨: 解釈 N1 を採用し、候補 G（Linux コンテナで、イメージ既定状態として `python` が Python 3.12 系 CPython に解決する環境）を T1 r01 retry の Run 環境とする。**
+**推奨（確定案）: 解釈 N1 を採用し、候補 G — digest 固定の Linux コンテナで、イメージ既定の `python` が CPython 3.12 系に解決するもの — を T1 r01 retry の Run 環境として新しく定める。** T0 r01 の実行環境は特定不能なため、「T0 と同一環境」は選択肢に含めません。
 
 理由:
 
 1. **要件適合性**: macOS host 系の候補（A〜F）は、いずれも既定状態では `python` が解決せず、解決させるには PATH mutation・shim・Operator 作成の symlink のどれかが必要で、Gate 10 の禁止事項に直接該当します。G だけが「Operator の追加操作なしに、Run 環境の既定状態で literal command が解決する」を構成できます。
 2. **安全性 / 再現性**: イメージ digest を記録すれば、Reviewer が同じ解決経路を後から再確認できます。host の rc ファイルや Homebrew の状態に依存しません。
-3. **T0 との比較可能性**: accepted T0 の trace に `/usr/bin/zsh` が記録されており、T0 も macOS 標準以外の環境だった可能性があります。G はこれと整合しやすい一方、T0 と同一環境である確認は取れていません（論点 2）。
+3. **T0 との比較可能性**: T0 r01 は Linux 系環境で実行された可能性があり（推測）、G はこれと矛盾しにくい選択です。ただし T0 環境は特定不能であり、同一性は保証できません（「比較妥当性の limitation」参照）。
 4. **凍結物への非影響**: 凍結 command・prompt・fixture・scripts を一切変えずに済みます。
 
 結論は **Reviewer Judgment** で確定してください。推奨文言（例）:
@@ -147,9 +164,30 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 - 「normal experimental sandbox 内で実行した」ことは、sandbox mode 設定値（Codex の sandbox / approval 設定）と、確認を同じ sandbox・同じ workspace パスで行った旨を併記して示す。host shell で代替確認した結果は Gate 10 evidence として扱わない。
 - 1 項目でも条件を満たさなければ STOP。retry allowance は消費しない。
 
+## 比較妥当性の limitation
+
+- T0 r01 の実行環境（host、イメージ、OS、Python 版）は記録が無く特定不能です。T1 r01 retry の環境（G）と一致していることは保証できません。
+- OS・shell・Python 版の差は paired comparison（T0 vs T1）の交絡要因になり得ます。本 limitation は EXP-001 summary で**開示対象**とし、`normalize-name` r01 の T0/T1 比較を解釈する際に併記します。
+- この limitation は Evaluation semantics・Counting を変更しません。開示のみを求めます。
+
+## 今後の Run での実行環境記録
+
+同種の特定不能を繰り返さないため、本 disposition の適用対象である T1 r01 retry では、model 起動前（上記非model確認手順の 1〜4）と同じ sandbox・workspace で次を記録します。
+
+| 記録項目          | 取得方法（例）                                                        |
+| ----------------- | --------------------------------------------------------------------- |
+| OS                | `uname -a`、`cat /etc/os-release`                                     |
+| shell パス        | `echo "$SHELL"`、`command -v zsh`（trace の `-lc` 起動 shell と照合） |
+| `python` の解決先 | `command -v python`、`readlink -f "$(command -v python)"`             |
+| Python 版         | `python --version`                                                    |
+| コンテナ digest   | host 側で `docker image inspect --format '{{.RepoDigests}}' <image>`  |
+
+- 記録先は既存方針どおり **Issue #15 側の reviewed disposition への添付**とし、Frozen artifact・`runs/`・schema・scripts は変更しません。
+- 残り matrix slot（T0 側を含む）で同じ記録を採るかは、別途 reviewed disposition で決めます（論点 4）。
+
 ## 未解決の論点
 
 1. N1（配布物内 symlink の許容）を Gate 10 の正当な解釈として認めるか。
-2. T0 r01 の実行環境（`/usr/bin/zsh` の記録）と T1 retry 環境の同等性。T0/T1 間で OS・Python 版が異なると paired comparison の交絡要因になり得るため、T0 環境が特定できるなら同一環境を優先すべきか。
+2. T0 r01 環境が特定不能であることを前提に、「新しく定めた環境（G）での T1 retry + limitation 開示」で paired comparison を成立させてよいか（Reviewer 判断）。
 3. コンテナ内で Codex の normal experimental sandbox が host 実行時と同等の write allow/deny 制御を持つことの確認方法。
 4. 本 disposition を残り matrix slot（T0 側を含む）にも適用するか。本文書は T1 r01 retry のみを対象とし、他 Run には流用しない。

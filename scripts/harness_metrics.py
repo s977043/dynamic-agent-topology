@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import statistics
@@ -12,12 +13,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = "s977043/dynamic-agent-topology"
 DEFAULT_LEDGER = ROOT / "docs" / "AGENT_HARNESS.md"
 API_ROOT = "https://api.github.com"
+API_HOST = "api.github.com"
+REPO_PATTERN = re.compile(r"[\w.-]+/[\w.-]+", re.ASCII)
 API_VERSION = "2022-11-28"
 CHECK_NAME = "validate"
 # spec-lint uses cancel-in-progress, so a cancelled run says nothing about the commit.
@@ -40,6 +44,22 @@ def next_link(link_header: str | None) -> str | None:
     return None
 
 
+def require_api_url(url: str) -> str:
+    """Refuse any URL outside the GitHub API so the token is never sent elsewhere (e.g. via Link: next)."""
+    parts = urlsplit(url)
+    if parts.scheme != "https" or parts.netloc != API_HOST:
+        raise RuntimeError(f"refusing non-GitHub API URL: {url}")
+    return url
+
+
+class ApiOnlyRedirectHandler(HTTPRedirectHandler):
+    """urllib copies the Authorization header to redirect targets, so only allow the API host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        require_api_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def github_fetcher(token: str | None) -> Fetcher:
     headers = {
         "Accept": "application/vnd.github+json",
@@ -48,12 +68,14 @@ def github_fetcher(token: str | None) -> Fetcher:
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    opener = build_opener(ApiOnlyRedirectHandler)
 
     def fetch(url: str) -> tuple[Any, str | None]:
         if not url.startswith("http"):
             url = API_ROOT + url
+        require_api_url(url)
         try:
-            with urlopen(Request(url, headers=headers, method="GET"), timeout=20) as response:
+            with opener.open(Request(url, headers=headers, method="GET"), timeout=20) as response:
                 return json.load(response), next_link(response.headers.get("Link"))
         except HTTPError as error:
             raise RuntimeError(f"GET {url}: HTTP {error.code}") from error
@@ -127,7 +149,7 @@ def percentile(values: list[int], pct: float) -> float | None:
     if not values:
         return None
     ordered = sorted(values)
-    index = max(0, min(len(ordered) - 1, round(pct * len(ordered) + 0.5) - 1))
+    index = max(0, math.ceil(pct * len(ordered)) - 1)
     return float(ordered[index])
 
 
@@ -260,6 +282,8 @@ def main(argv: list[str] | None = None) -> int:
     window.add_argument("--since", help="ISO date/time (UTC if no offset)")
     parser.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
     args = parser.parse_args(argv)
+    if not REPO_PATTERN.fullmatch(args.repo):
+        parser.error("--repo must use the owner/name form")
 
     until = datetime.now(timezone.utc)
     if args.since:

@@ -3,3 +3,16 @@
 **/experiments/
 **/docs/EXP-001_*.md
 **/docs/AGENT_HARNESS.md
+# Feature Freeze files outside experiments/ (experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml) that prettier can format.
+# scripts/ and fixtures/exp-001/ hold only .py files, which prettier does not format.
+**/topologies/canonical/T0_single_agent.yaml
+**/topologies/canonical/T1_worker_verifier.yaml
+**/roles/worker.yaml
+**/roles/verifier.yaml
+**/schemas/experiment.schema.json
+**/schemas/scenario-set.schema.json
+**/schemas/pilot.schema.json
+**/schemas/pilot-run-meta.schema.json
+**/schemas/pilot-execution-attestation.schema.json
+**/schemas/execution-trace.schema.json
+**/schemas/evaluation.schema.json

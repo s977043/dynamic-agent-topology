@@ -193,6 +193,14 @@ approval の扱い（根拠と Reviewer 判断事項）:
   - `codex exec --help` → `Run Codex non-interactively`。オプションに `--ask-for-approval` は**無い**。approval に関係するのは `-c, --config <key=value>`、`--approve-for-me`（`Route approval requests through automatic review using the workspace-write sandbox`）、`--dangerously-bypass-approvals-and-sandbox` のみ。
   - `codex --help`（対話 CLI）→ `-a, --ask-for-approval <APPROVAL_POLICY>`、値は `on-request`（`The model decides when to ask the user for approval`）と `never`（`Never ask for user approval Execution failures are immediately returned to the model`）の 2 つ。
   - `codex exec --help` に `--strict-config`（`Error out when config.toml contains fields that are not recognized by this version of Codex`）がある。
+  - `codex exec --help` の `[PROMPT]` 引数の説明は ``Initial instructions for the agent. If not provided as an argument (or if `-` is used), instructions are read from stdin. If stdin is piped and a prompt is also provided, stdin is appended as a `<stdin>` block``。(g) の `codex exec -C /work - < /run-input/prompt.md` は、この `-` 指定で prompt を stdin から読む形である。
+- 0.160.0 musl バイナリでの config 読み込み確認（2026-10-08、推奨構成と同じ候補 G イメージ・5 syscall seccomp・非 root・`--cap-drop ALL`・`--read-only`・`--tmpfs /tmp`・`HOME=/tmp/home`・`CODEX_HOME=/tmp/codex-home` に `--rm --network none` を加えたコンテナ。auth なし、model 非起動。`codex exec` は実行していない）:
+  - `--strict-config` を受け付ける非 model サブコマンドの確認: `codex --strict-config features list` / `login status` / `mcp list` / `sandbox ...` はいずれも ``Error: `--strict-config` is not supported for `codex <sub>` ``（rc=1）で拒否された。受け付けたのは `codex --strict-config doctor` のみだった。
+  - 陽性コントロール（4 キー + 未知キー `zz_unknown_key = "x"`）: `codex --strict-config doctor --all` は**エラー終了せず**、Configuration 欄が `[!!] config  config loaded`、`startup warning  Codex is ignoring 1 unrecognized configuration setting.`、``user (/tmp/codex-home/config.toml): `zz_unknown_key` is ignored.`` となった。つまり doctor では `--strict-config` が厳格エラーにならず、未知キーは警告として検出される。
+  - 値の陰性コントロール（`model_reasoning_effort = "bogus"`、`sandbox_mode = "bogus"`）: `[XX] config  config could not be loaded`（`error  invalid data`）。
+  - (c) の 4 キー config: `[ok] config  loaded`、`config.toml parse  ok`、startup warning 行なし、`model  gpt-6.1-sol · openai`、`[ok] sandbox  restricted fs + restricted network · approval Never`。auth なしのため `[XX] auth` と、`--network none` のため websocket / reachability が DNS 解決失敗で `[XX]` / `[!!]` となり、doctor 全体の rc は 1。
+  - 確認できたこと: 4 キーがいずれも 0.160.0 で未知キー扱いされず、型として受理され（不正値は読み込み失敗になる）、`model` と `approval_policy = "never"` が反映されること。
+  - **未検証**: `codex exec --strict-config` で 4 キーの config がエラーにならないこと（exec は model 起動を伴うため実行していない）、`sandbox_mode = "workspace-write"` と `model_reasoning_effort = "high"` の値が実効設定に反映されること（doctor の出力に表示項目が無い）、auth マウント後の `login status`。これらは (d) の preflight 項目とし、exec 時の反映は Run の trace / session 記録で確認する。
 - 公式 config 仕様: [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference)（旧 URL `https://developers.openai.com/codex/config-reference` から 308 リダイレクト、2026-10-08 参照）は `approval_policy` を「Controls when Codex pauses for approval before executing commands」とし、値を `on-request | never | { granular = {...} }`、`untrusted` は非サポート、`on-failure` は deprecated とする。対話には `on-request`、非対話には `never` を推奨している。`codex exec` の approval 既定値の記載は無い。sandbox 既定は [Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode) が read-only と記載する（このため `sandbox_mode` を明示する）。
 - **推奨: `codex exec` で起動し、`approval_policy = "never"` を `config.toml` に明示する。** 理由: (1) `codex exec` は非対話で承認に答える人がおらず、0.160.0 の exec には approval を対話で求めるオプションが無い。(2) 公式仕様が非対話には `never` を推奨している。(3) exec の approval 既定値は公式に記載が無いため、既定任せにすると Run 記録から挙動を再構成できない。明示すれば sandbox 外の操作は承認待ちで止まらず失敗として model に返り、`workspace-write` の境界は sandbox 側で維持される。`--approve-for-me`・`--dangerously-bypass-approvals-and-sandbox` は使わない。
 - 最終決定は **Reviewer 判断事項**（「未解決の論点」5・6）:
@@ -331,7 +339,9 @@ mkdir -p "$HOME" "$CODEX_HOME"
 
 ### (c) `config.toml` 作成
 
-次の内容（全文）で作成する。`approval_policy` は Reviewer Judgment で決まった値にする（推奨 `never`。省略と判断された場合はその行を書かない）。
+Reviewer Judgment の `approval_policy` に応じて、次のどちらか**一方だけ**を実行する（各ブロックが config.toml の全文）。
+
+明示する場合（推奨 `never`。別の値と判断された場合は `never` をその値に置き換える）:
 
 ```bash
 cat > "$CODEX_HOME/config.toml" <<'EOF'
@@ -339,6 +349,16 @@ model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 approval_policy = "never"
+EOF
+```
+
+省略と判断された場合（`approval_policy` 行を含めない）:
+
+```bash
+cat > "$CODEX_HOME/config.toml" <<'EOF'
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
 EOF
 ```
 
@@ -350,11 +370,17 @@ EOF
 /cx/bin/codex --version
 /cx/bin/codex login status
 cat "$CODEX_HOME/config.toml"
+/cx/bin/codex --strict-config doctor --all --ascii --no-color
 sha256sum /run-input/prompt.md
 /cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'
+find /work -maxdepth 3
+ls -la /run-input
 ```
 
 - `--version` が `codex-cli 0.160.0`、`login status` がログイン済み（ChatGPT）、prompt の SHA-256 が Gate 7 の値、sandbox が `ok` であること。
+- `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）であること。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
+- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`sandbox_mode = "workspace-write"` と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
+- Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`ls -la /run-input` が `prompt.md` のみであることを確認する。あわせて host 側で、(a) の `docker run` の `-v` 一覧が auth.json・`CODEX_DIR`・`PROMPT`・`WS` の 4 つだけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを記録する。
 
 ### (e) STOP 判定
 

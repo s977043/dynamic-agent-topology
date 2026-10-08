@@ -102,7 +102,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 - Codex の normal experimental sandbox（同じ Runtime `codex`、同じ sandbox mode、write allow/deny 設定）を、そのコンテナ内で成立させる。sandbox mode を host 実行時から緩めない。
 - 新しい workspace は Gate 4 / 6 / 9 のとおり fresh に作る。
 
-## 候補 G の確定構成（Reviewer 判断材料）
+## 候補 G の提案構成（Reviewer 判断材料）
 
 Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記の検証はすべて **model 非起動**（`codex sandbox -P :workspace` による sandbox 単体の起動）で行い、retry allowance は消費していません。確認範囲は colima（docker v29.7.2）・arm64・kernel `7.0.12-linuxkit` に限られます。
 
@@ -120,7 +120,7 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記
 
 - Codex CLI **0.160.0**（T0 trace と同版）の linux-arm64 musl バイナリ（`aarch64-unknown-linux-musl`）を read-only でマウントして使う。イメージにレイヤは追加しない。
 - sandbox: Codex `workspace-write` 相当（Linux では bubblewrap）。
-- docker seccomp: moby 既定プロファイル（docker v29.7.2 同梱相当の moby/profiles seccomp v0.2.3、取得元 `https://raw.githubusercontent.com/moby/profiles/seccomp/v0.2.3/seccomp/default.json`、取得ファイル SHA-256 `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`）に、`clone` `unshare` `mount` `umount2` `pivot_root` の **5 syscall のみ** を `SCMP_ACT_ALLOW` で追加した最小プロファイル。
+- docker seccomp: moby 既定プロファイル（moby/profiles seccomp v0.2.3。docker `v29.7.2` タグの `vendor/modules.txt` で `github.com/moby/profiles/seccomp v0.2.3` を確認、取得元 `https://raw.githubusercontent.com/moby/profiles/seccomp/v0.2.3/seccomp/default.json`、取得ファイル SHA-256 `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`）に、`clone` `unshare` `mount` `umount2` `pivot_root` の **5 syscall のみ** を `SCMP_ACT_ALLOW` で追加した最小プロファイル。
   - 配置: [`experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json`](../experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json)
   - SHA-256: `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8`
   - 生成スクリプト: [`experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/build.py`](../experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/build.py)（`python3 build.py default.json codex-bwrap-seccomp.json clone mount umount2 pivot_root unshare` で上記 SHA-256 と一致するバイト列を再生成できることを確認済み。moby 既定ファイル自体は repo に含めない）
@@ -146,6 +146,8 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記
 
 ### 検証結果（model 非起動、`codex sandbox -P :workspace`）
 
+取得条件: 上記 5 syscall プロファイル + 非 root（host uid:gid）+ `--cap-drop ALL` + `--read-only` + `--tmpfs /tmp` + `--security-opt no-new-privileges` + `/work` への host bind で、`codex sandbox -P :workspace` を使って取得した。`CODEX_HOME`・auth マウント・`config.toml` を含む最終構成（下記「推奨 `docker run` 構成」）では**未検証**であり、認証を伴うため model 起動前の preflight（「認証」節）で確認する。
+
 | 確認                                                   | 結果                         |
 | ------------------------------------------------------ | ---------------------------- |
 | workspace 内への書き込み                               | 成功                         |
@@ -156,13 +158,17 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記
 ### 残るリスク
 
 - user namespace の作成と `mount` / `pivot_root` をコンテナ内で許可するため、moby 既定より攻撃面が広がる（kernel の userns / mount 系脆弱性の影響を受けうる）。cap は全て落とし、非 root・`no-new-privileges`・read-only rootfs で緩和する。
+- `clone` / `unshare` / `mount` は引数条件なしで許可するため、bwrap 自身だけでなく、Codex sandbox 内で model が実行するコマンドも入れ子の user / mount namespace を作れる。
+- AppArmor の `docker-default` プロファイルが有効な host（Ubuntu 等）では `mount` が AppArmor 側で拒否され、本構成が再現しない可能性がある（確認環境の colima では未検証の論点）。その場合も `apparmor=unconfined` は使わず STOP し、Reviewer 判断を求める。
 - 確認は colima・arm64・kernel `7.0.12-linuxkit` に限られる。別 host / 別 kernel / amd64 では再確認が必要。
 
 ### 認証
 
 - ホストの `~/.codex/auth.json` **のみ**を `:ro` でマウントし、`CODEX_HOME` はコンテナ内の fresh なディレクトリとする（ホストの config・sessions・履歴は持ち込まない）。
 - ログイン方式は ChatGPT（2026-10-08 にホストで `codex login status` を実測）。
-- model 起動前にコンテナ内で `codex login status` が成功することを確認する。失敗した場合は STOP（retry allowance 非消費）。
+- `auth.json` は `:ro` のため、model 起動後のトークン refresh は書き込めず失敗し得る。**refresh 不可を前提**とし、model 起動直前にコンテナ内で `/cx/bin/codex login status` を確認する。期限が近い・不明な場合は、host 側で通常どおり Codex を使ってトークンを更新してから開始する。失敗した場合は STOP（retry allowance 非消費）。
+- model 起動後に認証エラーで中断した場合は infrastructure abort として STOP する（再 retry なし。本体手順書どおり）。
+- `auth.json` を fresh `CODEX_HOME` へコピーして書き込み可能にする案は採らない（refresh 結果が host 側トークンと分岐し、host 側の認証状態に影響し得るため）。
 
 ### 最小 Codex config（fresh `CODEX_HOME/config.toml`）
 
@@ -170,12 +176,20 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記
 model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
-# approval は T0 の normal sandbox 条件に合わせる（T0 側の config 記録は無い。limitation 参照）
 ```
+
+approval の扱い（根拠と Reviewer 判断事項）:
+
+- `origin/main` の T0 r01 `trace.yaml` / `run-meta.yaml` / `execution-attestation.yaml`、`pilot/OPERATOR.md`、`docs/EXP-001_EXECUTION.md` を確認したが、approval / sandbox 設定値と、`codex exec` か対話かの実行方式の記録は**無い**。
+- T0 `trace.yaml` には `cliExitCode: 0` と `humanInterventions: 0` があり、非対話実行（`codex exec`）と整合するが、実行方式を断定する記録ではない（**推測**）。
+- Codex 0.160.0 の `codex exec` の approval 既定は、公式ドキュメント（[Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode)、2026-10-08 参照）に記載が無い。同ページは sandbox 既定を read-only と記載する（このため `sandbox_mode` を明示する）。`codex exec --help`（0.160.0、model 非起動で確認）には `--ask-for-approval` が無く、承認を対話で求めるオプションは提供されていない。
+- このため `config.toml` には `approval_policy` を書かない（実行方式の既定に従う）ことを提案する。次は **Reviewer 判断事項**:
+  1. T1 retry を `codex exec` で実行するか、対話で実行するか（T0 の実行方式は記録が無い）。
+  2. `approval_policy` を明示するか、明示するならどの値か。
 
 ### 推奨 `docker run` 構成
 
-repo ルートから実行する想定。`<codex-linux-arm64-musl-dir>`・`<fresh-workspace>`・`<fresh-codex-home>` は Operator が用意する（workspace は Gate 4 / 6 / 9 のとおり fresh）。
+repo ルートから実行する想定。`<codex-linux-arm64-musl-dir>`・`<fresh-workspace>` は Operator が用意する（workspace は Gate 4 / 6 / 9 のとおり fresh）。`HOME` と `CODEX_HOME` は tmpfs `/tmp` 上に置き、起動後に `mkdir -p "$HOME" "$CODEX_HOME"` で作成する（fresh `config.toml` もここに置く）。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
 
 ```bash
 docker run --rm -it \
@@ -185,14 +199,16 @@ docker run --rm -it \
   --cap-drop ALL \
   --user "$(id -u):$(id -g)" \
   --read-only --tmpfs /tmp \
-  -e CODEX_HOME=/codex-home \
-  -v <fresh-codex-home>:/codex-home \
-  -v "$HOME/.codex/auth.json":/codex-home/auth.json:ro \
+  -e HOME=/tmp/home \
+  -e CODEX_HOME=/tmp/codex-home \
+  -v "$HOME/.codex/auth.json":/tmp/codex-home/auth.json:ro \
   -v <codex-linux-arm64-musl-dir>:/cx:ro \
   -v <fresh-workspace>:/work -w /work \
   python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 \
   bash -l
 ```
+
+この `HOME=/tmp/home`・`CODEX_HOME=/tmp/codex-home` 設定（auth マウントなし、config.toml なし）で、`/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'` が model 非起動で `ok` / rc=0 となることを 2026-10-08 に docker（colima、arm64）で確認した。このとき `/cx/bin/codex --version` は `codex-cli 0.160.0`、Codex は `CODEX_HOME` が `/tmp` 配下のため PATH 用 helper を作らない旨の WARNING を出したが、sandbox 起動には影響しなかった。コンテナ内の `$SHELL` は `/bin/sh`、`getent passwd "$(id -u)"` は該当なし（host uid がイメージの passwd に無い）、`ps` はイメージに無く、`readlink /proc/$$/exe` は `/usr/bin/bash` だった。
 
 ## 非model確認手順（Gate 10 evidence）
 
@@ -206,11 +222,13 @@ docker run --rm -it \
    uname -a
    cat /etc/os-release
    echo "$SHELL"
+   getent passwd "$(id -u)" || true
+   ps -p $$ -o comm= 2>/dev/null || readlink /proc/$$/exe
    command -v bash
    command -v zsh
    ```
 
-   Run 環境の login shell を記録する（G では bash。zsh はイメージに存在しないため `command -v zsh` は不在を示す）。
+   Run 環境の login shell を記録する（G では bash。zsh はイメージに存在しないため `command -v zsh` は不在を示す）。`$SHELL` は非 root の host uid では未設定または `/bin/sh` になり得るため、`getent passwd` と実行中 shell（slim イメージには `ps` が無いので `readlink /proc/$$/exe`）を併記する。
 
    コンテナの場合はイメージ名と digest を host 側で記録する（例: `docker image inspect --format '{{.RepoDigests}}' <image>`）。
 
@@ -266,7 +284,7 @@ docker run --rm -it \
 
 ## Reviewer が ACCEPT した場合の後続手順
 
-1. Reviewer Judgment（例: `EXP-001 T1 r01 Gate 10 environment: ACCEPT N1 + G (python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258, arm64, Codex 0.160.0 workspace-write via bwrap, seccomp codex-bwrap-seccomp.json sha256:085e468f…, cap-drop ALL, non-root)`）を Issue #15 に記録する。構成は「候補 G の確定構成」節のとおりとし、変更する場合は再度 Reviewer 判断を求める。
+1. Reviewer Judgment（例: `EXP-001 T1 r01 Gate 10 environment: ACCEPT N1 + G (python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258, arm64, Codex 0.160.0 workspace-write via bwrap, seccomp codex-bwrap-seccomp.json sha256:085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8, cap-drop ALL, non-root)`）を Issue #15 に記録する。構成は「候補 G の提案構成（Reviewer 判断材料）」節のとおりとし、変更する場合は再度 Reviewer 判断を求める。
 2. 本体 [EXP-001_RETRY_T1_R01.md](EXP-001_RETRY_T1_R01.md) の Gate 10 直後にある本文書への参照行の「（Reviewer判断待ち）」を、承認済み表記（Issue #15 の Reviewer Judgment へのリンク付き）へ更新する PR を出す。本体の Gate 1〜13 の文言は変えない。
 
 ## 比較妥当性の limitation

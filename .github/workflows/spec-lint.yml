@@ -161,6 +161,9 @@ jobs:
       - name: Audit reviewed T1 r01 static retry evidence
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_t1_retry.py
 
+      - name: Test T1 r01 candidate G bind-source audit
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_exp001_g_bind_sources.py
+
       - name: Validate EXP-001 feature freeze
         run: python scripts/validate_experiment_freeze.py
 

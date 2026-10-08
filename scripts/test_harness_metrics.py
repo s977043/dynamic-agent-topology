@@ -8,8 +8,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+from urllib.request import Request  # noqa: E402
+
 from harness_metrics import (  # noqa: E402
-    collect_pr_metrics, fmt, next_link, parse_ledger, render_markdown, summarize_ledger,
+    ApiOnlyRedirectHandler, collect_pr_metrics, fmt, github_fetcher, main, next_link, parse_ledger, percentile,
+    render_markdown, summarize_ledger,
 )
 
 REPO = "o/r"
@@ -111,6 +114,29 @@ check([rows[n]["review_loops"] for n in (1, 2, 3)] == [1, 2, 0], "review -> comm
 check(metrics["review_loops"]["median"] == 1.0 and metrics["review_loops"]["p90"] == 2.0,
       "median and p90 of review loops")
 check("数えられない" in metrics["review_loops"]["note"], "untracked reviews must be noted")
+
+check([percentile(list(range(1, n + 1)), 0.9) for n in (10, 20, 30)] == [9.0, 18.0, 27.0],
+      "p90 is nearest-rank")
+
+
+def raises(action, message: str) -> bool:
+    try:
+        action()
+    except (RuntimeError, SystemExit) as exc:
+        return message in str(exc) or isinstance(exc, SystemExit)
+    return False
+
+
+for url in ("https://evil.example/repos/o/r/pulls?page=2", "http://api.github.com/x", "https://api.github.com.evil/x"):
+    check(raises(lambda: github_fetcher("t")(url), "refusing non-GitHub API URL"), f"token not sent to {url}")
+handler = ApiOnlyRedirectHandler()
+api_request = Request("https://api.github.com/x", headers={"Authorization": "Bearer t"})
+check(raises(lambda: handler.redirect_request(api_request, None, 302, "Found", {}, "https://evil.example/x"),
+             "refusing non-GitHub API URL"), "redirect to another host is refused")
+check(handler.redirect_request(api_request, None, 302, "Found", {}, "https://api.github.com/y") is not None,
+      "redirect within the API host is followed")
+for repo in ("o/r/x", "o", "o/../x/r", "o/r?x=1", "o/r#x"):
+    check(raises(lambda: main(["--repo", repo]), ""), f"--repo {repo!r} is rejected before any request")
 
 check(next_link('<https://x/?page=2>; rel="next", <https://x/?page=9>; rel="last"') == "https://x/?page=2",
       "Link header next")

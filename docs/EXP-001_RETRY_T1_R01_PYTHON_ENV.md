@@ -104,7 +104,9 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 
 ## 候補 G の提案構成（Reviewer 判断材料）
 
-Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記の検証はすべて **model 非起動**（`codex sandbox -P :workspace` による sandbox 単体の起動）で行い、retry allowance は消費していません。確認範囲は colima（docker v29.7.2）・arm64・kernel `7.0.12-linuxkit` に限られます。
+Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この節で「確認した」と書く検証はすべて **model 非起動**（`codex sandbox -P :workspace` による sandbox 単体の起動、および `--version` / `--help` の表示）で行い、retry allowance は消費していません。確認範囲は colima（docker v29.7.2）・arm64・kernel `7.0.12-linuxkit` に限られます。
+
+**確認済みの範囲**はイメージ・seccomp プロファイル・コンテナ制約・sandbox 単体の挙動までです。最終構成（auth マウント済みの `CODEX_HOME`、`config.toml` の読み込み、ログイン状態、モデルとの通信）は**未確認**であり、Run 当日に下記「preflight〜model 起動の順序付き手順」の (d)〜(e) で確認します（モデル通信そのものは (g) の model 起動まで確認できません）。
 
 ### イメージと Python
 
@@ -176,25 +178,51 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。下記
 model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
+approval_policy = "never"
 ```
+
+`approval_policy` の行は下記の推奨値です。Reviewer が別の値・省略を判断した場合はその判断に従って差し替え、記録します。
 
 approval の扱い（根拠と Reviewer 判断事項）:
 
-- `origin/main` の T0 r01 `trace.yaml` / `run-meta.yaml` / `execution-attestation.yaml`、`pilot/OPERATOR.md`、`docs/EXP-001_EXECUTION.md` を確認したが、approval / sandbox 設定値と、`codex exec` か対話かの実行方式の記録は**無い**。
+- `origin/main` の T0 r01 `trace.yaml` / `run-meta.yaml` / `execution-attestation.yaml`、`pilot/OPERATOR.md`、`docs/EXP-001_EXECUTION.md` を確認したが、approval / sandbox 設定値と、`codex exec` か対話かの実行方式の記録は**無い**。T0 の起動方式は記録上不明である。
 - T0 `trace.yaml` には `cliExitCode: 0` と `humanInterventions: 0` があり、非対話実行（`codex exec`）と整合するが、実行方式を断定する記録ではない（**推測**）。
-- Codex 0.160.0 の `codex exec` の approval 既定は、公式ドキュメント（[Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode)、2026-10-08 参照）に記載が無い。同ページは sandbox 既定を read-only と記載する（このため `sandbox_mode` を明示する）。`codex exec --help`（0.160.0、model 非起動で確認）には `--ask-for-approval` が無く、承認を対話で求めるオプションは提供されていない。
-- このため `config.toml` には `approval_policy` を書かない（実行方式の既定に従う）ことを提案する。次は **Reviewer 判断事項**:
-  1. T1 retry を `codex exec` で実行するか、対話で実行するか（T0 の実行方式は記録が無い）。
-  2. `approval_policy` を明示するか、明示するならどの値か。
+- 版の区別: Operator host にインストールされている Codex CLI は 0.160.1（`codex exec --help` に `--ask-for-approval` がある）。T1 retry で使うのは T0 trace と同版の **0.160.0**（linux-arm64 musl）であり、根拠は 0.160.0 側の help で取る。
+- 0.160.0 musl バイナリの help（2026-10-08、`--rm --network none` のコンテナで `--version` / `--help` / `exec --help` / `features list` / `login --help` を実行。model 非起動、`CODEX_HOME` は空の tmpfs）:
+  - `codex --version` → `codex-cli 0.160.0`
+  - `codex exec --help` → `Run Codex non-interactively`。オプションに `--ask-for-approval` は**無い**。approval に関係するのは `-c, --config <key=value>`、`--approve-for-me`（`Route approval requests through automatic review using the workspace-write sandbox`）、`--dangerously-bypass-approvals-and-sandbox` のみ。
+  - `codex --help`（対話 CLI）→ `-a, --ask-for-approval <APPROVAL_POLICY>`、値は `on-request`（`The model decides when to ask the user for approval`）と `never`（`Never ask for user approval Execution failures are immediately returned to the model`）の 2 つ。
+  - `codex exec --help` に `--strict-config`（`Error out when config.toml contains fields that are not recognized by this version of Codex`）がある。
+- 公式 config 仕様: [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference)（旧 URL `https://developers.openai.com/codex/config-reference` から 308 リダイレクト、2026-10-08 参照）は `approval_policy` を「Controls when Codex pauses for approval before executing commands」とし、値を `on-request | never | { granular = {...} }`、`untrusted` は非サポート、`on-failure` は deprecated とする。対話には `on-request`、非対話には `never` を推奨している。`codex exec` の approval 既定値の記載は無い。sandbox 既定は [Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode) が read-only と記載する（このため `sandbox_mode` を明示する）。
+- **推奨: `codex exec` で起動し、`approval_policy = "never"` を `config.toml` に明示する。** 理由: (1) `codex exec` は非対話で承認に答える人がおらず、0.160.0 の exec には approval を対話で求めるオプションが無い。(2) 公式仕様が非対話には `never` を推奨している。(3) exec の approval 既定値は公式に記載が無いため、既定任せにすると Run 記録から挙動を再構成できない。明示すれば sandbox 外の操作は承認待ちで止まらず失敗として model に返り、`workspace-write` の境界は sandbox 側で維持される。`--approve-for-me`・`--dangerously-bypass-approvals-and-sandbox` は使わない。
+- 最終決定は **Reviewer 判断事項**（「未解決の論点」5・6）:
+  1. T1 retry を `codex exec` で実行するか、対話で実行するか。
+  2. `approval_policy` を明示するか、明示するならどの値か（推奨: `never`）。
 
 ### 推奨 `docker run` 構成
 
-repo ルートから実行する想定。`<codex-linux-arm64-musl-dir>`・`<fresh-workspace>` は Operator が用意する（workspace は Gate 4 / 6 / 9 のとおり fresh）。`HOME` と `CODEX_HOME` は tmpfs `/tmp` 上に置き、起動後に `mkdir -p "$HOME" "$CODEX_HOME"` で作成する（fresh `config.toml` もここに置く）。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
+repo ルートから実行する想定。先に次の変数を host shell で設定する（`/abs/path/to/...` は例であり、実行時は下表の条件を満たす実在の絶対パスに置き換える。変数を設定せずに下の `docker run` を実行してはいけない）。
+
+```bash
+CODEX_DIR=/abs/path/to/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl
+WS=/abs/path/to/fresh-external-workspace
+PROMPT=/abs/path/to/T1-r01/prompt.md
+SECCOMP="$PWD/experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json"
+```
+
+| 変数        | 条件                                                                                                                                                                                                                                                     |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CODEX_DIR` | Codex CLI **0.160.0** の `@openai/codex-linux-arm64` パッケージ内 `vendor/aarch64-unknown-linux-musl`（`bin/codex` を含む）。取得は `npm i -g @openai/codex@0.160.0` 相当（例: `npm i -g --prefix <scratch> @openai/codex@0.160.0 --os=linux --cpu=arm64` で linux-arm64 の optional dependency を取得）。host にインストール済みの別版（0.160.1 等）を使わない。コンテナ内で `/cx/bin/codex --version` が `codex-cli 0.160.0` であることを (d) で確認する |
+| `WS`        | Gate 4 / 6 のとおり新しく作った fresh external workspace（Gate 6 で reprepare 済み、Gate 9 の条件を満たすもの）                                                                                                                                         |
+| `PROMPT`    | Gate 7 で SHA-256 `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86` を確認した T1 `prompt.md`                                                                                                                                           |
+| `SECCOMP`   | 本 repo の `codex-bwrap-seccomp.json`。SHA-256 `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8` を `shasum -a 256 "$SECCOMP"` で確認する                                                                                              |
+
+`HOME` と `CODEX_HOME` は tmpfs `/tmp` 上に置く。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
 
 ```bash
 docker run --rm -it \
   --platform linux/arm64 \
-  --security-opt seccomp=experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json \
+  --security-opt seccomp="$SECCOMP" \
   --security-opt no-new-privileges \
   --cap-drop ALL \
   --user "$(id -u):$(id -g)" \
@@ -202,11 +230,14 @@ docker run --rm -it \
   -e HOME=/tmp/home \
   -e CODEX_HOME=/tmp/codex-home \
   -v "$HOME/.codex/auth.json":/tmp/codex-home/auth.json:ro \
-  -v <codex-linux-arm64-musl-dir>:/cx:ro \
-  -v <fresh-workspace>:/work -w /work \
+  -v "$CODEX_DIR":/cx:ro \
+  -v "$PROMPT":/run-input/prompt.md:ro \
+  -v "$WS":/work -w /work \
   python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 \
   bash -l
 ```
+
+shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login shell（Operator が (b) 以降を入力する shell）であり、非model preflight の `bash -lc '<cmd>'` はその中から起動する子の login shell である。どちらも login shell として `/etc/profile` 等のイメージ既定の初期化を読み、Operator は rc ファイルを追加しない。Run 時に Codex が model 生成コマンドを実行する shell は Codex が決める（T0 trace では `/usr/bin/zsh -lc`。G では zsh が無いため bash の `bash -lc` 相当になる想定で、実際の表記は Run の trace に残るものを記録する）。
 
 この `HOME=/tmp/home`・`CODEX_HOME=/tmp/codex-home` 設定（auth マウントなし、config.toml なし）で、`/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'` が model 非起動で `ok` / rc=0 となることを 2026-10-08 に docker（colima、arm64）で確認した。このとき `/cx/bin/codex --version` は `codex-cli 0.160.0`、Codex は `CODEX_HOME` が `/tmp` 配下のため PATH 用 helper を作らない旨の WARNING を出したが、sandbox 起動には影響しなかった。コンテナ内の `$SHELL` は `/bin/sh`、`getent passwd "$(id -u)"` は該当なし（host uid がイメージの passwd に無い）、`ps` はイメージに無く、`readlink /proc/$$/exe` は `/usr/bin/bash` だった。
 
@@ -282,6 +313,68 @@ docker run --rm -it \
 - 「normal experimental sandbox 内で実行した」ことは、sandbox mode 設定値（Codex の sandbox / approval 設定）と、確認を同じ sandbox・同じ workspace パスで行った旨を併記して示す。host shell で代替確認した結果は Gate 10 evidence として扱わない。
 - 1 項目でも条件を満たさなければ STOP。retry allowance は消費しない。
 
+## preflight〜model 起動の順序付き手順
+
+次の (a)〜(g) を**この順で 1 回だけ**実行する。(a)〜(f) はすべて model 非起動で、どこで STOP しても retry allowance は消費しない。本体 [EXP-001_RETRY_T1_R01.md](EXP-001_RETRY_T1_R01.md) の「The retry allowance is consumed when the model invocation starts.」のとおり、**allowance は (g) の開始で消費される**。
+
+### (a) コンテナ起動
+
+「推奨 `docker run` 構成」の変数を設定し、その `docker run` を実行する。
+
+### (b) ディレクトリ作成
+
+コンテナ内で次を実行する。
+
+```bash
+mkdir -p "$HOME" "$CODEX_HOME"
+```
+
+### (c) `config.toml` 作成
+
+次の内容（全文）で作成する。`approval_policy` は Reviewer Judgment で決まった値にする（推奨 `never`。省略と判断された場合はその行を書かない）。
+
+```bash
+cat > "$CODEX_HOME/config.toml" <<'EOF'
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+approval_policy = "never"
+EOF
+```
+
+### (d) 非model preflight
+
+「非model確認手順」の手順 1〜6 を実行し、加えて次を実行して出力を記録する。
+
+```bash
+/cx/bin/codex --version
+/cx/bin/codex login status
+cat "$CODEX_HOME/config.toml"
+sha256sum /run-input/prompt.md
+/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'
+```
+
+- `--version` が `codex-cli 0.160.0`、`login status` がログイン済み（ChatGPT）、prompt の SHA-256 が Gate 7 の値、sandbox が `ok` であること。
+
+### (e) STOP 判定
+
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+
+### (f) Reviewer Judgment の確認
+
+Issue #15 に `ACCEPT N1 + G` と approval / 実行方式（「未解決の論点」5・6）の Reviewer Judgment が記録済みであることを確認する。未記録なら STOP。
+
+### (g) 唯一の model 起動操作
+
+直前に開始時刻を ISO 8601 + タイムゾーンで記録し、続けて model を起動する。この起動は 1 回だけで、失敗しても再実行しない（本体手順書の Result handling に従う）。
+
+```bash
+date '+%Y-%m-%dT%H:%M:%S%z'
+/cx/bin/codex exec -C /work - < /run-input/prompt.md
+```
+
+- `-m` / `-s` / `-c` は付けず、Model・Effort・sandbox・approval は (c) の `config.toml` だけから与える。Reviewer が対話実行を選んだ場合は、この行を Reviewer Judgment に記された対話起動コマンドに置き換える。
+
 ## Reviewer が ACCEPT した場合の後続手順
 
 1. Reviewer Judgment（例: `EXP-001 T1 r01 Gate 10 environment: ACCEPT N1 + G (python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258, arm64, Codex 0.160.0 workspace-write via bwrap, seccomp codex-bwrap-seccomp.json sha256:085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8, cap-drop ALL, non-root)`）を Issue #15 に記録する。構成は「候補 G の提案構成（Reviewer 判断材料）」節のとおりとし、変更する場合は再度 Reviewer 判断を求める。
@@ -292,7 +385,7 @@ docker run --rm -it \
 - T0 r01 の実行環境（host、イメージ、OS、Python 版）は記録が無く特定不能です。T1 r01 retry の環境（G）と一致していることは保証できません。
 - shell 起動方式が異なる（T0 r01: `/usr/bin/zsh -lc` / T1 r01 retry: `bash -lc`）。
 - CPU アーキテクチャ: T1 r01 retry は arm64 固定。T0 r01 のアーキテクチャは記録が無く不明。
-- Codex config: T0 r01 側の approval 等の config 記録が無いため、T1 r01 retry の approval 設定が T0 と同一であることは保証できない。
+- Codex config: T0 r01 側の approval 等の config 記録と起動方式（`codex exec` / 対話）の記録が無いため、T1 r01 retry の approval 設定・起動方式が T0 と同一であることは保証できない（「未解決の論点」5・6 の Reviewer 判断で T1 側の値を確定し、その値を開示する）。
 - OS・shell・Python 版の差は paired comparison（T0 vs T1）の交絡要因になり得ます。本 limitation は EXP-001 summary で**開示対象**とし、`normalize-name` r01 の T0/T1 比較を解釈する際に併記します。
 - この limitation は Evaluation semantics・Counting を変更しません。開示のみを求めます。
 
@@ -309,3 +402,5 @@ docker run --rm -it \
 2. T0 r01 環境が特定不能であることを前提に、「新しく定めた環境（G）での T1 retry + limitation 開示」で paired comparison を成立させてよいか（Reviewer 判断）。
 3. コンテナ内で Codex の normal experimental sandbox が host 実行時と同等の write allow/deny 制御を持つことの確認方法。
 4. 本 disposition を残り matrix slot（T0 側を含む）にも適用するか。本文書は T1 r01 retry のみを対象とし、他 Run には流用しない。
+5. T1 retry を `codex exec` で実行するか、対話で実行するか（T0 の起動方式は記録上不明。推奨: `codex exec`）。limitation「Codex config」に対応。
+6. `approval_policy` を明示するか、明示するならどの値か（推奨: `never`。根拠は「最小 Codex config」節）。limitation「Codex config」に対応。

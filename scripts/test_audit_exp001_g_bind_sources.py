@@ -46,6 +46,29 @@ def main() -> None:
         wrong_profile.write_text("{}")
         expect("reviewed repository profile", profile=wrong_profile)
         expect("bin/codex", codex_dir=base)
+        nested_work = binary_dir / "nested-work"
+        nested_work.mkdir()
+        expect("nested inside the mounted codex package", workspace=nested_work)
+        fake_repo = base / "isolated-repo"
+        fake_codex = fake_repo / "codex"
+        (fake_codex / "bin").mkdir(parents=True)
+        (fake_codex / "bin" / "codex").write_bytes(b"fixture")
+        assert any("outside the repository" in msg for msg in audit.audit_sources(
+            ws, canonical, fake_codex, seccomp, auth, repo_root=fake_repo
+        ))
+        binary_link = binary_dir / "bin" / "codex"
+        binary_link.unlink()
+        escaped_binary = base / "outside-package-codex"
+        escaped_binary.write_bytes(b"fixture")
+        binary_link.symlink_to(escaped_binary)
+        expect("must resolve within the mounted package", codex_dir=binary_dir)
+        binary_link.unlink()
+        binary_link.write_bytes(b"not executed; existence-only test")
+        internal_auth = binary_dir / "auth.json"
+        internal_auth.write_bytes(b"test-fixture-not-a-credential")
+        internal_auth.chmod(0o600)
+        expect("exposed through the mounted codex package", auth_file=internal_auth)
+        internal_auth.unlink()
         expect("outside repository and workspace", auth_file=ROOT / "README.md")
         (ws / "auth.json").write_text("test-only")
         expect("outside repository and workspace", auth_file=ws / "auth.json")

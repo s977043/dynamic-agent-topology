@@ -57,14 +57,25 @@ def audit_sources(
         problems.append("seccomp: must be an existing regular file")
     if resolved["seccomp"] != EXPECTED_SECCOMP_PATH.resolve():
         problems.append("seccomp: must be the reviewed repository profile")
-    if not codex_dir.is_dir() or not (codex_dir / "bin" / "codex").is_file():
+    binary = codex_dir / "bin" / "codex"
+    if not codex_dir.is_dir() or not binary.is_file():
         problems.append("codex-dir: must contain bin/codex")
+    else:
+        binary_target = binary.resolve(strict=True)
+        if not inside(binary_target, resolved["codex-dir"]):
+            problems.append("codex-dir: bin/codex must resolve within the mounted package directory")
+    if inside(resolved["codex-dir"], repo):
+        problems.append("codex-dir: must be outside the repository and archived attempts")
     if not auth_file.is_file() or auth_file.is_symlink():
         problems.append("auth-file: must be a non-symlink regular file")
     if inside(resolved["auth-file"], repo) or inside(resolved["auth-file"], ws):
         problems.append("auth-file: must be outside repository and workspace")
     if inside(resolved["prompt"], ws) or inside(resolved["codex-dir"], ws):
         problems.append("prompt / codex-dir: must be outside model workspace")
+    if inside(ws, resolved["codex-dir"]):
+        problems.append("workspace: must not be nested inside the mounted codex package")
+    if inside(resolved["auth-file"], resolved["codex-dir"]):
+        problems.append("auth-file: must not be exposed through the mounted codex package")
     if inside(resolved["prompt"], repo / "experiments" / "EXP-001-t0-vs-t1" / "runs" / "infrastructure-failures"):
         problems.append("prompt: must not come from the original failure archive")
 

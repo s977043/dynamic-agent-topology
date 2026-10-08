@@ -1,0 +1,5 @@
+# Learning ledger L-008: keep hash-verified artifacts and reviewed tables out of agent auto-formatting.
+# "**/" also matches .claude/worktrees/*/ paths when the formatter runs from the main checkout.
+**/experiments/
+**/docs/EXP-001_*.md
+**/docs/AGENT_HARNESS.md

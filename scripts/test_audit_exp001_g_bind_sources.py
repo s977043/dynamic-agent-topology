@@ -40,6 +40,8 @@ def main() -> None:
         wrong_prompt = base / "prompt.md"
         wrong_prompt.write_text("changed")
         expect("SHA-256 mismatch", prompt=wrong_prompt)
+        archived_prompt = ROOT / "experiments/EXP-001-t0-vs-t1/runs/infrastructure-failures/EXP-001-train-normalize-name-r01-T1/01a1132a-1de0-70d2-b810-c500b79430c9/prompt.md"
+        expect("original failure archive", prompt=archived_prompt)
         wrong_profile = base / "other.json"
         wrong_profile.write_text("{}")
         expect("reviewed repository profile", profile=wrong_profile)

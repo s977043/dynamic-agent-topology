@@ -7,9 +7,10 @@ import json
 import os
 import re
 import statistics
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -60,23 +61,21 @@ def github_fetcher(token: str | None) -> Fetcher:
     return fetch
 
 
-def fetch_all(fetch: Fetcher, url: str, item_key: str | None = None) -> list[Any]:
-    items: list[Any] = []
+def iter_pages(fetch: Fetcher, url: str) -> Iterator[Any]:
     next_url: str | None = url
     while next_url:
         data, next_url = fetch(next_url)
-        items.extend(data[item_key] if item_key else data)
-    return items
+        yield data
+
+
+def fetch_all(fetch: Fetcher, url: str, item_key: str | None = None) -> list[Any]:
+    return [item for data in iter_pages(fetch, url) for item in (data[item_key] if item_key else data)]
 
 
 def merged_pulls(fetch: Fetcher, repo: str, since: datetime) -> list[dict[str, Any]]:
     pulls: list[dict[str, Any]] = []
-    next_url: str | None = f"/repos/{repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100"
-    while next_url:
-        page, next_url = fetch(next_url)
-        for pr in page:
-            if pr.get("merged_at") and parse_time(pr["merged_at"]) >= since:
-                pulls.append(pr)
+    for page in iter_pages(fetch, f"/repos/{repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100"):
+        pulls += [pr for pr in page if pr.get("merged_at") and parse_time(pr["merged_at"]) >= since]
         if page and parse_time(page[-1]["updated_at"]) < since:
             break
     return sorted(pulls, key=lambda pr: pr["number"])
@@ -87,7 +86,10 @@ def commit_time(commit: dict[str, Any]) -> datetime:
 
 
 def first_head_sha(pr: dict[str, Any], commits: list[dict[str, Any]]) -> str | None:
-    """Head commit at PR creation: the last commit committed at or before created_at."""
+    """Head commit at PR creation: the last commit committed at or before created_at.
+
+    Estimated from committer dates, so rebases or force-pushes after opening can pick a different commit.
+    """
     if not commits:
         return None
     created = parse_time(pr["created_at"])
@@ -129,22 +131,24 @@ def percentile(values: list[int], pct: float) -> float | None:
     return float(ordered[index])
 
 
+def pr_row(fetch: Fetcher, repo: str, pr: dict[str, Any]) -> dict[str, Any]:
+    number = pr["number"]
+    commits = fetch_all(fetch, f"/repos/{repo}/pulls/{number}/commits?per_page=100")
+    reviews = fetch_all(fetch, f"/repos/{repo}/pulls/{number}/reviews?per_page=100")
+    comments = fetch_all(fetch, f"/repos/{repo}/pulls/{number}/comments?per_page=100")
+    sha = first_head_sha(pr, commits)
+    return {
+        "number": number,
+        "title": pr["title"],
+        "first_sha": sha,
+        "first_validate": first_validate_conclusion(fetch, repo, sha) if sha else None,
+        "review_loops": review_loops(reviews, comments, commits),
+    }
+
+
 def collect_pr_metrics(fetch: Fetcher, repo: str, since: datetime) -> dict[str, Any]:
-    rows = []
-    for pr in merged_pulls(fetch, repo, since):
-        number = pr["number"]
-        commits = fetch_all(fetch, f"/repos/{repo}/pulls/{number}/commits?per_page=100")
-        reviews = fetch_all(fetch, f"/repos/{repo}/pulls/{number}/reviews?per_page=100")
-        comments = fetch_all(fetch, f"/repos/{repo}/pulls/{number}/comments?per_page=100")
-        sha = first_head_sha(pr, commits)
-        conclusion = first_validate_conclusion(fetch, repo, sha) if sha else None
-        rows.append({
-            "number": number,
-            "title": pr["title"],
-            "first_sha": sha,
-            "first_validate": conclusion,
-            "review_loops": review_loops(reviews, comments, commits),
-        })
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        rows = list(pool.map(lambda pr: pr_row(fetch, repo, pr), merged_pulls(fetch, repo, since)))
     judged = [r for r in rows if r["first_validate"] is not None]
     passed = [r for r in judged if r["first_validate"] == "success"]
     loops = [r["review_loops"] for r in rows]
@@ -195,10 +199,8 @@ def summarize_ledger(entries: list[dict[str, str]]) -> dict[str, Any]:
     for entry in entries:
         state = entry.get("状態", "")
         by_state[state] = by_state.get(state, 0) + 1
-        try:
-            count = int(entry.get("回数", ""))
-        except ValueError:
-            count = 0
+        count_text = entry.get("回数", "")
+        count = int(count_text) if re.fullmatch(r"\s*[+-]?\d+\s*", count_text) else 0
         if state == "candidate" and count >= 2:
             repeated_candidates.append(entry.get("ID", ""))
         if not entry.get("Evidence", "").strip("-— "):
@@ -226,7 +228,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "## CI 初回 pass 率",
         "",
-        f"- `{CHECK_NAME}` 初回 success: {ci['passed']} / {ci['judged']}（{fmt(None if ci['rate'] is None else ci['rate'] * 100, '{:.0f}%')}）",
+        f"- `{CHECK_NAME}` 初回 success: {ci['passed']} / {ci['judged']}（{fmt(ci['rate'], '{:.0%}')}）",
         f"- 判定不能（最初の head commit の run なし、分母外）: {ci['undeterminable']} 件",
         "",
         "## レビューループ数",
@@ -271,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         "repo": args.repo,
         "since": since.isoformat(timespec="seconds"),
         "until": until.isoformat(timespec="seconds"),
-        **collect_pr_metrics(github_fetcher(os.environ.get("GH_TOKEN")), args.repo, since),
+        **collect_pr_metrics(github_fetcher(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")), args.repo, since),
         "ledger": summarize_ledger(parse_ledger(args.ledger.read_text(encoding="utf-8"))),
     }
     if args.json:

@@ -19,6 +19,8 @@ Gate 10 の要求:
 
 > In the normal experimental sandbox, without invoking the model, prove that the frozen command `python -m unittest discover -s tests` can start. Do not make it pass by adding an alias, shim, symlink, wrapper, PATH mutation, or by substituting `python3`; the literal frozen command must be natively resolvable in the Run environment.
 
+出典: [EXP-001_RETRY_T1_R01.md](EXP-001_RETRY_T1_R01.md) Gate 10。改訂時は原文が優先します。
+
 Operator host の測定（2026-10-08 09:30、macOS + Homebrew）:
 
 | 項目                        | 結果                  |
@@ -46,7 +48,7 @@ T1 retry を「T0 と同一環境」で実行できるかを確認するため�
 帰結:
 
 - 「T0 と同一環境で T1 retry を実行する」という選択肢は**採れません**。T1 retry の Run 環境は、下記の推奨に従い**新しく定めます**。
-- T0/T1 間で実行環境が一致していることは保証できません。これは比較妥当性の limitation として扱います（「比較妥当性の limitation」参照）。
+- T0/T1 間の実行環境の一致は保証できません（「比較妥当性の limitation」参照）。
 
 ## 「native」の解釈（Reviewer判断事項）
 
@@ -77,13 +79,13 @@ N1 を採らず文字どおりの解釈を採る場合、下表の多くは「�
 
 ## 推奨（Reviewer判断を要する）
 
-**推奨（確定案）: 解釈 N1 を採用し、候補 G — digest 固定の Linux コンテナで、イメージ既定の `python` が CPython 3.12 系に解決するもの — を T1 r01 retry の Run 環境として新しく定める。** T0 r01 の実行環境は特定不能なため、「T0 と同一環境」は選択肢に含めません。
+**推奨（確定案）: 解釈 N1 を採用し、候補 G — digest 固定の Linux コンテナで、イメージ既定の `python` が CPython 3.12 系に解決するもの — を T1 r01 retry の Run 環境として新しく定める。** 「T0 と同一環境」は選択肢に含めません（「比較妥当性の limitation」参照）。
 
 理由:
 
 1. **要件適合性**: macOS host 系の候補（A〜F）は、いずれも既定状態では `python` が解決せず、解決させるには PATH mutation・shim・Operator 作成の symlink のどれかが必要で、Gate 10 の禁止事項に直接該当します。G だけが「Operator の追加操作なしに、Run 環境の既定状態で literal command が解決する」を構成できます。
 2. **安全性 / 再現性**: イメージ digest を記録すれば、Reviewer が同じ解決経路を後から再確認できます。host の rc ファイルや Homebrew の状態に依存しません。
-3. **T0 との比較可能性**: T0 r01 は Linux 系環境で実行された可能性があり（推測）、G はこれと矛盾しにくい選択です。ただし T0 環境は特定不能であり、同一性は保証できません（「比較妥当性の limitation」参照）。
+3. **T0 との比較可能性**: T0 r01 は Linux 系環境で実行された可能性があり（推測）、G はこれと矛盾しにくい選択です（「比較妥当性の limitation」参照）。
 4. **凍結物への非影響**: 凍結 command・prompt・fixture・scripts を一切変えずに済みます。
 
 結論は **Reviewer Judgment** で確定してください。推奨文言（例）:
@@ -110,7 +112,10 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
    uname -a
    cat /etc/os-release
    echo "$SHELL"
+   command -v zsh
    ```
+
+   `command -v zsh` は trace の `-lc` 起動 shell と照合する。
 
    コンテナの場合はイメージ名と digest を host 側で記録する（例: `docker image inspect --format '{{.RepoDigests}}' <image>`）。
 
@@ -172,18 +177,10 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 
 ## 今後の Run での実行環境記録
 
-同種の特定不能を繰り返さないため、本 disposition の適用対象である T1 r01 retry では、model 起動前（上記非model確認手順の 1〜4）と同じ sandbox・workspace で次を記録します。
-
-| 記録項目          | 取得方法（例）                                                        |
-| ----------------- | --------------------------------------------------------------------- |
-| OS                | `uname -a`、`cat /etc/os-release`                                     |
-| shell パス        | `echo "$SHELL"`、`command -v zsh`（trace の `-lc` 起動 shell と照合） |
-| `python` の解決先 | `command -v python`、`readlink -f "$(command -v python)"`             |
-| Python 版         | `python --version`                                                    |
-| コンテナ digest   | host 側で `docker image inspect --format '{{.RepoDigests}}' <image>`  |
+同種の特定不能を繰り返さないため、本 disposition の適用対象である T1 r01 retry では、上記非model確認手順 1〜4 の出力をそのまま実行環境の記録項目とします（コンテナの場合は手順 1 の digest を含む）。
 
 - 記録先は既存方針どおり **Issue #15 側の reviewed disposition への添付**とし、Frozen artifact・`runs/`・schema・scripts は変更しません。
-- 残り matrix slot（T0 側を含む）で同じ記録を採るかは、別途 reviewed disposition で決めます（論点 4）。
+- 残り matrix slot への適用は未解決の論点 4 を参照。
 
 ## 未解決の論点
 

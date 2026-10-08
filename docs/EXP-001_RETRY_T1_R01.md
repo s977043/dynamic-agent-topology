@@ -94,6 +94,8 @@ Before model invocation:
 
 If any gate fails, stop. Do not consume the retry allowance.
 
+Gate 10 の実行環境判定基準と非model確認手順: [EXP-001_RETRY_T1_R01_PYTHON_ENV.md](EXP-001_RETRY_T1_R01_PYTHON_ENV.md)（Reviewer判断待ち）。
+
 ## Single permitted retry
 
 Start exactly one fresh Codex session with:

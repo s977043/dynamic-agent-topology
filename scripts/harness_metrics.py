@@ -19,6 +19,8 @@ DEFAULT_LEDGER = ROOT / "docs" / "AGENT_HARNESS.md"
 API_ROOT = "https://api.github.com"
 API_VERSION = "2022-11-28"
 CHECK_NAME = "validate"
+# spec-lint uses cancel-in-progress, so a cancelled run says nothing about the commit.
+NON_VERDICT = {"cancelled", "skipped", "neutral", "stale"}
 LEDGER_STATES = ("candidate", "promoted", "rejected")
 REVIEW_LOOP_NOTE = "GitHub に review / review comment として残っていないレビュー（口頭・チャット・ローカル指摘）は数えられない。"
 
@@ -95,7 +97,10 @@ def first_head_sha(pr: dict[str, Any], commits: list[dict[str, Any]]) -> str | N
 
 def first_validate_conclusion(fetch: Fetcher, repo: str, sha: str) -> str | None:
     runs = fetch_all(fetch, f"/repos/{repo}/commits/{sha}/check-runs?check_name={CHECK_NAME}&filter=all&per_page=100", "check_runs")
-    completed = [r for r in runs if r.get("status") == "completed" and r.get("started_at")]
+    completed = [
+        r for r in runs
+        if r.get("status") == "completed" and r.get("started_at") and r.get("conclusion") not in NON_VERDICT
+    ]
     if not completed:
         return None
     return min(completed, key=lambda r: r["started_at"])["conclusion"]

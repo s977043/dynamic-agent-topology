@@ -70,7 +70,8 @@ RESPONSES = {
          {"submitted_at": None}], None),
     f"/repos/{REPO}/pulls/2/comments?per_page=100": ([], None),
     f"/repos/{REPO}/commits/b2/check-runs?check_name=validate&filter=all&per_page=100": (
-        {"check_runs": [check_run("success", "2026-10-02T23:31:00Z")]}, None),
+        {"check_runs": [check_run("cancelled", "2026-10-02T23:29:00Z"),
+                        check_run("success", "2026-10-02T23:31:00Z")]}, None),
     # PR 3: no check run for the first head -> undeterminable; no review.
     f"/repos/{REPO}/pulls/3/commits?per_page=100": (
         [commit("c1", "2026-10-04T00:00:00Z")], None),
@@ -93,6 +94,7 @@ check(sorted(rows) == [1, 2, 3], "only PRs merged in window, unmerged excluded, 
 check(rows[1]["first_sha"] == "a1" and rows[1]["first_validate"] == "failure",
       "earliest validate run of the first head decides")
 check(rows[2]["first_sha"] == "b2", "head at PR creation is the last commit before created_at")
+check(rows[2]["first_validate"] == "success", "cancelled runs are not a verdict")
 check(rows[3]["first_validate"] is None, "missing completed run is undeterminable")
 check(metrics["ci_first_pass"] == {"passed": 1, "judged": 2, "undeterminable": 1, "rate": 0.5},
       "undeterminable PRs are excluded from the denominator")

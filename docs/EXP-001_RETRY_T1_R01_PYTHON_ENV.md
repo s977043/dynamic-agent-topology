@@ -106,7 +106,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 
 **Codex model を起動しない**状態で、retry に使う normal experimental sandbox 内の、fresh workspace（Gate 6 で reprepare 済み）をカレントディレクトリとして実行します。Gate 12 のため bytecode 書き込みを抑止します。
 
-手順 2〜5 は、実 Run と同じ起動方式（T0 `trace.yaml` の command 表記どおりの login shell 起動 `zsh -lc '<cmd>'`）で実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
+手順 2〜5 は、実 Run と同じ login shell 起動方式（候補 G ではイメージ既定の bash による `bash -lc '<cmd>'`。zsh は追加しない）で実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
 
 1. 環境識別を記録する。
 
@@ -114,19 +114,20 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
    uname -a
    cat /etc/os-release
    echo "$SHELL"
+   command -v bash
    command -v zsh
    ```
 
-   `command -v zsh` は trace の `-lc` 起動 shell と照合する。
+   Run 環境の login shell を記録する（G では bash。zsh はイメージに存在しないため `command -v zsh` は不在を示す）。
 
    コンテナの場合はイメージ名と digest を host 側で記録する（例: `docker image inspect --format '{{.RepoDigests}}' <image>`）。
 
 2. 解決先を記録する（Run と同じ起動方式で、Operator が追加した設定が無い状態で）。
 
    ```bash
-   zsh -lc 'command -v python'
-   zsh -lc 'type -a python'
-   zsh -lc 'python --version'
+   bash -lc 'command -v python'
+   bash -lc 'type -a python'
+   bash -lc 'python --version'
    ```
 
    - `command -v python` が exit 0 で絶対パスを返すこと。
@@ -135,10 +136,10 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 3. 解決先が shim / wrapper でないことを確認する。
 
    ```bash
-   zsh -lc 'ls -l "$(command -v python)"'
-   zsh -lc "python -c 'import sys; print(sys.executable); print(sys.version)'"
-   zsh -lc 'file -L "$(command -v python)"'
-   zsh -lc 'readlink -f "$(command -v python)"'
+   bash -lc 'ls -l "$(command -v python)"'
+   bash -lc "python -c 'import sys; print(sys.executable); print(sys.version)'"
+   bash -lc 'file -L "$(command -v python)"'
+   bash -lc 'readlink -f "$(command -v python)"'
    ```
 
    - `file -L` が ELF / Mach-O 実行ファイルを示すこと（`shell script` / `text` は不可）。
@@ -148,7 +149,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 4. PATH が既定状態であることを記録する。
 
    ```bash
-   zsh -lc 'printenv PATH'
+   bash -lc 'printenv PATH'
    ```
 
    retry 用に PATH を変更していないことを Operator が明記する。
@@ -156,7 +157,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 5. Gate 10 / 11 を確認する（model 起動なし）。
 
    ```bash
-   zsh -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
+   bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
    echo "exit=$?"
    ```
 
@@ -167,7 +168,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 
 ### 記録方法
 
-- 上記 1〜5 の command（手順 2〜5 は `zsh -lc` 表記のまま）と出力全文、実行日時（タイムゾーン付き）、Operator 名を、retry の preflight 記録として Issue #15 側の reviewed disposition に添付する（runs/ や archive には書き込まない）。
+- 上記 1〜5 の command（手順 2〜5 は Run と同じ login shell 起動の表記のまま。G では `bash -lc`）と出力全文、実行日時（タイムゾーン付き）、Operator 名を、retry の preflight 記録として Issue #15 側の reviewed disposition に添付する（runs/ や archive には書き込まない）。
 - 「normal experimental sandbox 内で実行した」ことは、sandbox mode 設定値（Codex の sandbox / approval 設定）と、確認を同じ sandbox・同じ workspace パスで行った旨を併記して示す。host shell で代替確認した結果は Gate 10 evidence として扱わない。
 - 1 項目でも条件を満たさなければ STOP。retry allowance は消費しない。
 
@@ -179,6 +180,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 ## 比較妥当性の limitation
 
 - T0 r01 の実行環境（host、イメージ、OS、Python 版）は記録が無く特定不能です。T1 r01 retry の環境（G）と一致していることは保証できません。
+- shell 起動方式が異なる（T0 r01: `/usr/bin/zsh -lc` / T1 r01 retry: `bash -lc`）。
 - OS・shell・Python 版の差は paired comparison（T0 vs T1）の交絡要因になり得ます。本 limitation は EXP-001 summary で**開示対象**とし、`normalize-name` r01 の T0/T1 比較を解釈する際に併記します。
 - この limitation は Evaluation semantics・Counting を変更しません。開示のみを求めます。
 

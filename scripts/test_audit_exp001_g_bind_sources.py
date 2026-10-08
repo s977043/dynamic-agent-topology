@@ -45,7 +45,12 @@ def main() -> None:
         expect("reviewed repository profile", profile=wrong_profile)
         expect("bin/codex", codex_dir=base)
         expect("outside repository and workspace", auth_file=ROOT / "README.md")
-        expect("outside repository and workspace", auth_file=ws / "auth.json") if False else None
+        (ws / "auth.json").write_text("test-only")
+        expect("outside repository and workspace", auth_file=ws / "auth.json")
+        (ws / "auth.json").unlink()
+        ws_link = base / "workspace-link"
+        ws_link.symlink_to(ws, target_is_directory=True)
+        expect("non-symlink directory", workspace=ws_link)
 
         auth.chmod(0o644)
         expect("group/other permission")

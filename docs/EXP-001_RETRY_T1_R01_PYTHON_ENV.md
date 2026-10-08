@@ -284,7 +284,7 @@ shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login s
 
 **Codex model を起動しない**状態で、retry に使う normal experimental sandbox 内の、fresh workspace（Gate 6 で reprepare 済み）をカレントディレクトリとして実行します。Gate 12 のため bytecode 書き込みを抑止します。
 
-手順 2〜5 は、実 Run と同じ login shell 起動方式（候補 G ではイメージ既定の bash による `bash -lc '<cmd>'`。zsh は追加しない）で実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
+手順 2〜4 は通常のコンテナshellで解決経路を診断します。手順 5 のEvidence commandは同じ `bash -lc` 起動方式を **Codex sandbox内で**実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
 
 1. 環境識別を記録する。
 
@@ -336,19 +336,23 @@ shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login s
 
 5. Gate 10 / 11 を確認する（model 起動なし）。
 
+   **コンテナ通常shellでの成功はGate 10の証明ではありません。** Codex が生成コマンドを実行する Bubblewrap sandboxを経由し、Runと同じ `bash -lc` で frozen Evidence command を起動します。bytecode抑止はpreflightのみで、Evidence command自体は変えません。
+
    ```bash
-   bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
-   echo "exit=$?"
+   /cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
+   echo "sandbox-test-exit=$?"
    ```
 
-   - command が起動すること（exit 127 でないこと）= Gate 10。
-   - 未変更 fixture で期待どおりの初期 Evidence FAIL になること = Gate 11。
+   - **Gate 10**: sandbox内で `python` が起動し、実際にunittestの収集・実行まで到達したことを出力で確認する。exit 127、sandbox起動失敗、予期せぬ環境エラーはSTOP。
+   - **Gate 11**: untouched fixtureで期待された具体的なテストfailureが確認できること。**exit 1だけではPASSにしない**（bwrap起動エラー等も同じexit codeになり得る）。
+   - 実際のmodel Runが別sandbox policyでcommandを実行するならpreflightの適合性は未証明としてSTOPし、Reviewer判断を求める。
+   - stdout/stderr、終了コード、sandbox起動コマンドを記録し、通常shellの解決経路診断と区別する。
 
 6. Gate 12 として fixture file set / bytes を再照合する（既存手順どおり）。
 
 ### 記録方法
 
-- 上記 1〜5 の command（手順 2〜5 は Run と同じ login shell 起動の表記のまま。G では `bash -lc`）と出力全文、実行日時（タイムゾーン付き）、Operator 名を、retry の preflight 記録として Issue #15 側の reviewed disposition に添付する（runs/ や archive には書き込まない）。
+- 上記 1〜5 の command（手順 2〜4 の通常shell診断と手順 5 のCodex sandbox内Evidenceを区別する）と出力全文、実行日時（タイムゾーン付き）、Operator 名を、retry の preflight 記録として Issue #15 側の reviewed disposition に添付する（runs/ や archive には書き込まない）。
 - 「normal experimental sandbox 内で実行した」ことは、sandbox mode 設定値（Codex の sandbox / approval 設定）と、確認を同じ sandbox・同じ workspace パスで行った旨を併記して示す。host shell で代替確認した結果は Gate 10 evidence として扱わない。
 - 1 項目でも条件を満たさなければ STOP。retry allowance は消費しない。
 
@@ -395,7 +399,7 @@ EOF
 
 ### (d) 非model preflight
 
-「非model確認手順」の手順 1〜6 を実行し、加えて次を実行して出力を記録する。
+「非model確認手順」の手順 1〜6 を実行し、特に手順 5 の**sandbox内**Evidence commandがunittest収集と期待する初期FAILへ到達したことを確認する。加えて次を実行して出力を記録する。
 
 ```bash
 /cx/bin/codex --version

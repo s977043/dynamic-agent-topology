@@ -9,7 +9,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from harness_metrics import (  # noqa: E402
-    collect_pr_metrics, next_link, parse_ledger, render_markdown, summarize_ledger,
+    collect_pr_metrics, fmt, next_link, parse_ledger, render_markdown, summarize_ledger,
 )
 
 REPO = "o/r"
@@ -34,6 +34,18 @@ def check_run(conclusion: str, started: str) -> dict:
     return {"status": "completed", "conclusion": conclusion, "started_at": started}
 
 
+CHECK_RUNS_QUERY = "check-runs?check_name=validate&filter=all&per_page=100"
+
+
+def pr_fixture(n: int, sha: str, commits: list, reviews: list, comments: list, runs: dict) -> dict:
+    return {
+        f"/repos/{REPO}/pulls/{n}/commits?per_page=100": (commits, None),
+        f"/repos/{REPO}/pulls/{n}/reviews?per_page=100": (reviews, None),
+        f"/repos/{REPO}/pulls/{n}/comments?per_page=100": (comments, None),
+        f"/repos/{REPO}/commits/{sha}/{CHECK_RUNS_QUERY}": (runs, None),
+    }
+
+
 PULLS_PAGE_2 = "https://api.github.com/repos/o/r/pulls?page=2"
 RESPONSES = {
     f"/repos/{REPO}/pulls?state=closed&sort=updated&direction=desc&per_page=100": (
@@ -52,33 +64,30 @@ RESPONSES = {
         "https://api.github.com/must-not-be-fetched",
     ),
     # PR 1: first head fails, fix pushed after review -> 1 loop.
-    f"/repos/{REPO}/pulls/1/commits?per_page=100": (
-        [commit("a1", "2026-10-01T11:00:00Z"), commit("a2", "2026-10-01T15:00:00Z")], None),
-    f"/repos/{REPO}/pulls/1/reviews?per_page=100": (
-        [{"submitted_at": "2026-10-01T13:00:00Z"}], None),
-    f"/repos/{REPO}/pulls/1/comments?per_page=100": (
-        [{"created_at": "2026-10-01T13:05:00Z"}], None),
-    f"/repos/{REPO}/commits/a1/check-runs?check_name=validate&filter=all&per_page=100": (
+    **pr_fixture(
+        1, "a1",
+        [commit("a1", "2026-10-01T11:00:00Z"), commit("a2", "2026-10-01T15:00:00Z")],
+        [{"submitted_at": "2026-10-01T13:00:00Z"}],
+        [{"created_at": "2026-10-01T13:05:00Z"}],
         {"check_runs": [check_run("success", "2026-10-01T16:00:00Z"),
-                        check_run("failure", "2026-10-01T11:01:00Z")]}, None),
+                        check_run("failure", "2026-10-01T11:01:00Z")]}),
     # PR 2: two commits at open, success on the last one; two review loops.
-    f"/repos/{REPO}/pulls/2/commits?per_page=100": (
+    **pr_fixture(
+        2, "b2",
         [commit("b1", "2026-10-02T23:00:00Z"), commit("b2", "2026-10-02T23:30:00Z"),
-         commit("b3", "2026-10-03T05:00:00Z"), commit("b4", "2026-10-03T09:00:00Z")], None),
-    f"/repos/{REPO}/pulls/2/reviews?per_page=100": (
+         commit("b3", "2026-10-03T05:00:00Z"), commit("b4", "2026-10-03T09:00:00Z")],
         [{"submitted_at": "2026-10-03T04:00:00Z"}, {"submitted_at": "2026-10-03T08:00:00Z"},
-         {"submitted_at": None}], None),
-    f"/repos/{REPO}/pulls/2/comments?per_page=100": ([], None),
-    f"/repos/{REPO}/commits/b2/check-runs?check_name=validate&filter=all&per_page=100": (
+         {"submitted_at": None}],
+        [],
         {"check_runs": [check_run("cancelled", "2026-10-02T23:29:00Z"),
-                        check_run("success", "2026-10-02T23:31:00Z")]}, None),
+                        check_run("success", "2026-10-02T23:31:00Z")]}),
     # PR 3: no check run for the first head -> undeterminable; no review.
-    f"/repos/{REPO}/pulls/3/commits?per_page=100": (
-        [commit("c1", "2026-10-04T00:00:00Z")], None),
-    f"/repos/{REPO}/pulls/3/reviews?per_page=100": ([], None),
-    f"/repos/{REPO}/pulls/3/comments?per_page=100": ([], None),
-    f"/repos/{REPO}/commits/c1/check-runs?check_name=validate&filter=all&per_page=100": (
-        {"check_runs": [{"status": "in_progress", "conclusion": None, "started_at": "2026-10-04T00:01:00Z"}]}, None),
+    **pr_fixture(
+        3, "c1",
+        [commit("c1", "2026-10-04T00:00:00Z")],
+        [],
+        [],
+        {"check_runs": [{"status": "in_progress", "conclusion": None, "started_at": "2026-10-04T00:01:00Z"}]}),
 }
 
 
@@ -145,5 +154,7 @@ markdown = render_markdown({"repo": REPO, "since": "s", "until": "u", **metrics,
 check("1 / 2（50%）" in markdown and "判定不能（最初の head commit の run なし、分母外）: 1 件" in markdown,
       "markdown shows rate and undeterminable count")
 check("| #3 | 判定不能 | 0 |" in markdown, "per-PR row")
+check(all(fmt(p / q, "{:.0%}") == "{:.0f}%".format(p / q * 100) for q in range(1, 201) for p in range(q + 1)),
+      "percent format matches the previous rate * 100 rendering")
 
 print("harness metrics tests OK")

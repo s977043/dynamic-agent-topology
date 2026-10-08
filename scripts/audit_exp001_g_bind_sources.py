@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import os
 from pathlib import Path
 import stat
 import sys
@@ -48,8 +47,8 @@ def audit_sources(
     resolved = {name: path.resolve(strict=True) for name, path in sources.items()}
     ws = resolved["workspace"]
 
-    if not workspace.is_dir():
-        problems.append("workspace: must be a directory")
+    if not workspace.is_dir() or workspace.is_symlink():
+        problems.append("workspace: must be a non-symlink directory")
     if inside(ws, repo):
         problems.append("workspace: must be outside the repository")
     if not prompt.is_file():

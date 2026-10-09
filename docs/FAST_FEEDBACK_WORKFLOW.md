@@ -75,6 +75,20 @@ Goal / 現在承認済みの次アクション:
 
 助言は`advice`として別々に記録する。採否は既存契約に従いImplementerが検討し、必要な承認は独立Reviewer/Humanが行う。両ロールの一致も実験効果のEvidence、独立Verification、マージ/Run起動許可にはならない。
 
+### 相談依頼の例（開発セッション内で使用）
+
+Claude Code / Codexの**通常の開発セッション**で、実行環境が対応するプロジェクトSubagentの名前を明示して依頼する。単なるRoleの読み込みと、実際に独立Agentを起動したことは区別して記録する。
+
+```text
+DATのIssue #15とdocs/FAST_FEEDBACK_WORKFLOW.md、現在の未達Gateを確認。
+agile-coachにread-onlyで相談し、実測へ進むための最小safe testを1つ提案して。
+続いてscrum-masterにread-onlyで相談し、現在のimpedimentと判断待ち、
+担当権限、次の1アクションをまとめて。余分な準備やGateを作らない。
+双方の出力はadviceとして区別して記録。実RunやGitHub書き込みはしない。
+```
+
+相談結果は開発Issue/PRへ集約してよいが、Frozen Run用のfresh sessionへ転記しない。Runtimeでsubagentが使えない場合はread-onlyロール視点の単独レビューへ降格し、実際の独立Agentレビューとしては報告しない。
+
 ## 開発プロセスの軽量計測
 
 Frozen `RunEvaluation`や実験Metricの意味論を変更せず、観測できた範囲でIssue/PRに記録する。

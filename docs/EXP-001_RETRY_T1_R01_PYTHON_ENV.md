@@ -185,7 +185,7 @@ independent review の指摘により、次の 2 経路をダミー auth・model
 | 確認 | 結果 |
 | --- | --- |
 | コンテナ・sandbox 内の環境変数キーに `OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むものが無い | 未実施 |
-| sandbox 内から外側の codex プロセスの `/proc/<pid>/environ`・`fd`・`mem`・`maps` が参照できない | 未実施 |
+| sandbox 内から外側の codex プロセスの `/proc/<pid>/environ`・`fd`（各エントリの `readlink`・open）・`mem`・`maps` が参照できない | ダミー auth で `fd` の判定基準を実測（(d) の「`fd` の判定基準」）。本物の auth での確認は (d) |
 
 (d) の同定関数（`stat_field` / `find_codex` / `identify_codex`）は、2026-10-09 に候補 G イメージ（`--rm --network none`、Codex 非起動）で、`/cx/bin/codex` の代わりに `/bin/sleep` のコピーをダミー exe として単体テストした。(a) 通常の子プロセス 1 つ: `PASS`、(b) comm が `a) b` のプロセスと同居・それ自体を対象: いずれも `PASS`（旧 `cut -d' ' -f4` は ppid に `S` を返し誤る、新方式は正しい ppid）、(c) 存在しない pid: `STOP`（rc=1）、(d) 候補 2 つ: `STOP`（rc=1）、候補 0 件: `STOP`（rc=1）。sandbox 内 probe の starttime 読み取りも同方式で一致を確認した。Codex 本体での同定・到達性の実機確認は本番 preflight の (d) で行う。
 
@@ -291,7 +291,8 @@ repo ルートから実行する想定。先に次の変数を host shell で設
 ```bash
 CODEX_DIR=/abs/path/to/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl
 WS=/abs/path/to/fresh-external-workspace
-PROMPT=/abs/path/to/T1-r01/prompt.md
+PROMPT_SRC=/abs/path/to/T1-r01/prompt.md
+RUN_INPUT=/abs/path/to/fresh-run-input-dir
 SECCOMP="$PWD/experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json"
 CNAME=exp001-t1-r01
 ```
@@ -300,9 +301,26 @@ CNAME=exp001-t1-r01
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CODEX_DIR` | Codex CLI **0.160.0** の `@openai/codex-linux-arm64` パッケージ内 `vendor/aarch64-unknown-linux-musl`（`bin/codex` を含む）。取得は `npm i -g @openai/codex@0.160.0` 相当（例: `npm i -g --prefix <scratch> @openai/codex@0.160.0 --os=linux --cpu=arm64` で linux-arm64 の optional dependency を取得）。host にインストール済みの別版（0.160.1 等）を使わない。コンテナ内で `/cx/bin/codex --version` が `codex-cli 0.160.0` であることを (d) で確認する |
 | `WS`        | Gate 4 / 6 のとおり新しく作った fresh external workspace（Gate 6 で reprepare 済み、Gate 9 の条件を満たすもの）                                                                                                                                         |
-| `PROMPT`    | Gate 7 で SHA-256 `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86` を確認した T1 `prompt.md`                                                                                                                                           |
+| `PROMPT_SRC` | Gate 7 で SHA-256 `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86` を確認した T1 `prompt.md`（repo の `runs/` 配下）。bind 元には使わない |
+| `RUN_INPUT` | prompt のコピー先として新しく作る専用ディレクトリ。repo・`WS`・`runs/` の外（例: Operator のスクラッチ領域）で、まだ存在しないパス |
+| `PROMPT`    | 下の手順で `$RUN_INPUT/prompt.md` に設定する。bind 元はこのコピーで、`runs/` 配下のファイルを直接 bind しない |
 | `SECCOMP`   | 本 repo の `codex-bwrap-seccomp.json`。SHA-256 `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8` を `shasum -a 256 "$SECCOMP"` で確認する                                                                                              |
 | `CNAME`     | コンテナ名。(d) の host 側 mount 確認と (g) 後の証跡回収で `docker inspect` / `docker exec` の対象に使う |
+
+Gate 7 の後、prompt を `runs/` 外の専用ディレクトリへコピーし、コピー後の SHA-256 が Gate 7 の値と一致することを確認してから `PROMPT` に設定する。Gate 13 の `host-mounts.sh` は bind 元が `runs/` 配下・`runs/` を含むパスなら STOP するため、`runs/` 配下の prompt を直接 bind すると必ず STOP する（2026-10-09 preflight 2）。コピー先は prompt 1 ファイルだけを置く新規ディレクトリで、bind は**ファイル単位**（`/run-input/prompt.md`）なので、過去 attempt の情報（`runs/` の他ファイル、archive、`infrastructure-failures/`）はコンテナに入らない。内容は凍結 prompt と同一（SHA-256 一致）なので Gate 7 の照合結果も変わらない。
+
+```bash
+set -euo pipefail
+mkdir -m 700 "$RUN_INPUT"
+cp "$PROMPT_SRC" "$RUN_INPUT/prompt.md"
+chmod 400 "$RUN_INPUT/prompt.md"
+ls -A "$RUN_INPUT"
+shasum -a 256 "$RUN_INPUT/prompt.md"
+[ "$(shasum -a 256 < "$RUN_INPUT/prompt.md" | cut -c1-64)" = d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86 ]
+PROMPT="$RUN_INPUT/prompt.md"
+```
+
+`mkdir` は `-p` を付けず、既存ディレクトリなら失敗させる（過去 attempt のコピーを再利用しない）。`ls -A` が `prompt.md` だけでない、SHA-256 が一致しない、いずれかのコマンドが失敗した場合は STOP。2026-10-09 にこの手順（スクラッチの新規ディレクトリ、ダミー auth、Codex・model 非起動）でコピーし、SHA-256 一致、`host-mounts.sh` の `PASS:`・rc=0、既存ディレクトリへの再 `mkdir` の失敗を確認した。
 
 コンテナ起動前にhost側でbind元ファイルの存在・canonical path・凍結PromptとseccompのSHA-256・外部workspace・認証ファイルの権限を**read-only**確認します（認証ファイルの内容は読みません）。
 
@@ -320,7 +338,7 @@ python scripts/audit_exp001_g_bind_sources.py \
 `HOME` は tmpfs `/tmp` 上に、`CODEX_HOME` は実行ユーザー所有・mode 700 の専用 tmpfs `/tmp/codex-home` に置く（auth.json はその中へ `:ro` bind）。host 側の mount 確認と Run 後の証跡回収のため、`docker run` に `--name "$CNAME"` を付ける（mount・権限は変えない）。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
 
 ```bash
-docker run --rm -it \
+docker run --rm -dit \
   --name "$CNAME" \
   --platform linux/arm64 \
   --security-opt seccomp="$SECCOMP" \
@@ -339,7 +357,13 @@ docker run --rm -it \
   bash -l
 ```
 
-shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login shell（Operator が (b) 以降を入力する shell）であり、非model preflight の `bash -lc '<cmd>'` はその中から起動する子の login shell である。どちらも login shell として `/etc/profile` 等のイメージ既定の初期化を読み、Operator は rc ファイルを追加しない。Run 時に Codex が model 生成コマンドを実行する shell は Codex が決める（T0 trace では `/usr/bin/zsh -lc`。G では zsh が無いため bash の `bash -lc` 相当になる想定で、実際の表記は Run の trace に残るものを記録する）。
+コンテナは `-dit` で detach 起動する（TTY の有無にかかわらず同一手順にするため。2026-10-09 preflight 2 で、TTY の無い Operator 環境では `-it` が使えなかった）。PID 1 の `bash -l` は TTY 付きで待機し続け、`--rm` によりコンテナは `docker stop "$CNAME"` で停止・削除される。(b) 以降のコンテナ側コマンドは次の形で実行する。
+
+- コマンド列: host 側でファイルに保存し、`docker exec -i "$CNAME" bash -l < <file>` で login shell の stdin に渡す（`-w /work` と `-e HOME`・`-e CODEX_HOME` は `docker exec` にも適用される）。
+- `/tmp/*.sh` のスクリプト: 本書の `cat > /tmp/<name>.sh <<'EOF'` ブロックの内容（`EOF` の間）を host 側のファイルに保存し、`docker exec -i "$CNAME" sh -c 'cat > /tmp/<name>.sh' < <file>` で配置し、host 側 `shasum -a 256` とコンテナ側 `sha256sum /tmp/<name>.sh` が一致することを記録してから実行する。heredoc をコンテナ内で実行するのと同じ内容になる。
+- 対話端末がある場合も同じ手順を使う（`docker exec -it` での手入力に切り替えない）。
+
+shell の関係: `docker exec -i "$CNAME" bash -l` はコンテナ内の login shell（Operator が (b) 以降を実行する shell）であり、非model preflight の `bash -lc '<cmd>'` はその中から起動する子の login shell である。どちらも login shell として `/etc/profile` 等のイメージ既定の初期化を読み、Operator は rc ファイルを追加しない。Run 時に Codex が model 生成コマンドを実行する shell は Codex が決める（T0 trace では `/usr/bin/zsh -lc`。G では zsh が無いため bash の `bash -lc` 相当になる想定で、実際の表記は Run の trace に残るものを記録する）。
 
 この `HOME=/tmp/home`・`CODEX_HOME=/tmp/codex-home` 設定（auth マウントなし、config.toml なし）で、`/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'` が model 非起動で `ok` / rc=0 となることを 2026-10-08 に Docker Desktop（docker context `desktop-linux`、docker v29.7.2）・arm64 で確認した。このとき `/cx/bin/codex --version` は `codex-cli 0.160.0`、Codex は `CODEX_HOME` が `/tmp` 配下のため PATH 用 helper を作らない旨の WARNING を出したが、sandbox 起動には影響しなかった。コンテナ内の `$SHELL` は `/bin/sh`、`getent passwd "$(id -u)"` は該当なし（host uid がイメージの passwd に無い）、`ps` はイメージに無く、`readlink /proc/$$/exe` は `/usr/bin/bash` だった。
 
@@ -624,6 +648,7 @@ EOF
 bash /tmp/preflight-d.sh
 ```
 
+- doctor の `[!!] disk  CODEX_HOME has insufficient disk space` は判定に使わない。`--tmpfs /tmp/codex-home` はサイズ未指定で Docker VM のメモリの半分（2026-10-09 の環境で 3.9GiB）となり、doctor の閾値 5GiB を下回るための警告である。`run doctor 1` は非 0 rc を許容し、判定は上記の `has` 行（config・parse・model・sandbox/approval・auth・startup warning）だけで行うため、disk 行は PASS/STOP に影響しない（preflight 2 でも `PASS: doctor lines`）。1 回の `codex exec` の session 記録はこの容量を大きく下回る想定で、tmpfs の size 指定（VM メモリを超える指定）は追加しない。
 - `EXPECT_APPROVAL` は (c) の判断に対応する doctor の approval 表記（明示 `never` なら `Never`）。Reviewer が別値・省略を判断した場合は、その doctor 表記に置き換えて記録する。
 - 環境変数は `compgen -e` でキー名だけを列挙する（`env | cut -d= -f1` は値に改行を含む変数で値の断片をキーとして出力し得るため使わない）。列挙結果に `PATH` が無い場合は列挙失敗として STOP。`GPG_KEY` はイメージ定義の公開鍵 fingerprint（`docker image inspect` の `Config.Env` で確認、秘密ではない）であり、コンテナ側の値がイメージ既定値と一致する場合に限り許容する。
 
@@ -671,8 +696,18 @@ for p in /proc/[0-9]*; do
   done
   if err=$( (exec 3<"$p/mem") 2>&1 ); then echo "  BLOCK: mem reachable"
   else case $err in *"Permission denied"*) echo "  mem denied" ;; *) echo "  mem unknown" ;; esac; fi
-  if err=$(ls "$p/fd" 2>&1 >/dev/null); then echo "  BLOCK: fd reachable"
-  else case $err in *"Permission denied"*) echo "  fd denied" ;; *) echo "  fd unknown" ;; esac; fi
+  # fd: 一覧は同一 uid なら取れる。判定は各エントリの readlink（参照先パス）と open（中身）がすべて Permission denied か（readlink は -v でないとエラー文を出さない）
+  if l=$(ls -A "$p/fd" 2>&1); then
+    fd=denied k=0
+    for f in $l; do k=$((k + 1))
+      if err=$(readlink -v "$p/fd/$f" 2>&1 >/dev/null); then fd=BLOCK; break; fi
+      case $err in *"Permission denied"*) ;; *) fd=unknown ;; esac
+      if err=$( (exec 3<"$p/fd/$f") 2>&1 ); then fd=BLOCK; break; fi
+      case $err in *"Permission denied"*) ;; *) fd=unknown ;; esac
+    done
+    [ "$k" -gt 0 ] || fd=unknown
+    case $fd in denied) echo "  fd denied" ;; BLOCK) echo "  BLOCK: fd reachable" ;; *) echo "  fd unknown" ;; esac
+  else case $l in *"Permission denied"*) echo "  fd denied" ;; *) echo "  fd unknown" ;; esac; fi
   n=$((n + 1))
 done
 echo "PROBE_END entries $n"
@@ -721,7 +756,7 @@ entry=$(awk -v key="$key" '$1 == "pid" { on = ($0 == key); next } $1 == "PROBE_E
 printf '%s\n%s\n' "$key" "$entry"
 [ "$(grep -c . <<<"$entry" || true)" = 4 ] || STOP "codex entry does not have exactly 4 result lines"
 [ "$(grep -cE '^  (environ|maps|mem|fd) denied$' <<<"$entry" || true)" = 4 ] || STOP "codex entry lacks 4 denied lines (unknown or BLOCK)"
-echo "PASS: codex pid $CODEX_PID environ/maps/mem/fd denied from sandbox"
+echo "PASS: codex pid $CODEX_PID environ/maps/mem denied and every fd entry readlink/open denied from sandbox"
 EOF
 bash /tmp/proc-check.sh
 ```
@@ -753,6 +788,8 @@ for e in "$AUTH_SRC|/tmp/codex-home/auth.json|false" "$CODEX_DIR|/cx|false" "$PR
   exp+="$r|${e#*|}"$'\n'
 done
 [ "$(sort <<<"$binds")" = "$(sort <<<"$exp")" ] || STOP "bind mounts differ from exactly auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw"
+psha=$(shasum -a 256 < "$PROMPT" | cut -c1-64) || STOP "cannot hash PROMPT"
+[ "$psha" = d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86 ] || STOP "PROMPT bind source SHA-256 differs from Gate 7"
 # tmpfs: allowlist /tmp and /tmp/codex-home only (in .Mounts if listed there, and in HostConfig.Tmpfs)
 allowed=$(printf '%s\n' /tmp /tmp/codex-home)
 td=$(awk -F'|' '$1 == "tmpfs" { print $3 }' <<<"$m" | sort)
@@ -774,7 +811,7 @@ echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw)
 
 実行例: `CNAME="$CNAME" WS="$WS" CODEX_DIR="$CODEX_DIR" PROMPT="$PROMPT" bash <作業ディレクトリ>/host-mounts.sh`（`AUTH_SRC` 省略時は `$HOME/.codex/auth.json`。最終行 `PASS:` かつ rc=0 のみ合格）。
 
-- bind は 4 件ちょうどで、各 Source（realpath）・Destination・RW が期待値（auth.json → `/tmp/codex-home/auth.json` ro、`CODEX_DIR` → `/cx` ro、`PROMPT` → `/run-input/prompt.md` ro、`WS` → `/work` rw）と一致すること。
+- bind は 4 件ちょうどで、各 Source（realpath）・Destination・RW が期待値（auth.json → `/tmp/codex-home/auth.json` ro、`CODEX_DIR` → `/cx` ro、`PROMPT`（`runs/` 外にコピーした `$RUN_INPUT/prompt.md`）→ `/run-input/prompt.md` ro、`WS` → `/work` rw）と一致し、`PROMPT` の SHA-256 が Gate 7 の値と一致すること。`runs/` 配下・`runs/` を含む bind 元の禁止は維持する（`PROMPT` に `PROMPT_SRC` を渡すと STOP する）。
 - tmpfs は許可リスト（`/tmp` と `/tmp/codex-home` のみ）として別に検査する。`--tmpfs` は Docker の版により `.Mounts` に `Type: tmpfs` で現れる場合と `HostConfig.Tmpfs` にだけ現れる場合があるため、`.Mounts` に現れた tmpfs の宛先と `HostConfig.Tmpfs` のキーの両方が許可リストと一致することを確認する。
 - bind・tmpfs 以外の型（volume 等）、許可外の宛先、件数の過不足はいずれも STOP。
 - 2026-10-09 に Docker Desktop（context `desktop-linux`）で、上記 `docker run` と同じフラグ構成（イメージ digest・seccomp・`--tmpfs` 2 つ・非 root・`--cap-drop ALL`・`--read-only`・`no-new-privileges`・`--name`）に `--rm -d --network none` を加え、auth はダミーファイル、`CODEX_DIR` はスクラッチの Codex 0.160.0 配布物（起動しない）、`PROMPT`・`WS` はスクラッチのダミーで起動し、本スクリプトが PASS することを確認した。このとき `--tmpfs` の 2 件は `.Mounts` に現れず `HostConfig.Tmpfs` にだけ現れた。tmpfs を 1 つ追加した場合・bind を 1 つ追加した場合はそれぞれ STOP した（Codex・model は起動していない）。
@@ -782,17 +819,20 @@ echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw)
 - `--version` が `codex-cli 0.160.0`、`login status` が `Logged in using ChatGPT`、prompt の SHA-256 が Gate 7 の値、sandbox が `SANDBOX_OK` を出すこと（それぞれ `/tmp/preflight-d.sh` の `PASS:` 行）。
 - `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）、`[ok] auth  auth is configured` であること。auth 読み取りテストが `PASS` であること（`BLOCK`・判定不能・sandbox 実行失敗は STOP）。以上は**本物の auth を mount した Run と同一構成**での再確認であり、ダミー auth での事前確認では代替しない。
 - 環境変数: コンテナ・sandbox の両方で認証関連キー（`OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むキー名。イメージ既定の `GPG_KEY` を除く）が無いこと。キー名のみを出力し、値は出力しない。キー一覧の取得失敗・`PATH` を含まない一覧・sandbox 内で `ENV_LIST_END` まで到達しない場合は STOP。
-- Codex 本体プロセス: PASS は、**実行例 `/tmp/proc-check.sh` が exit 0 で最終行に `PASS:` を出力し、対象の Codex 本体プロセスを確実に同定でき、その `environ` / `maps` / `mem` / `fd` のすべてへのアクセスが denied の場合に限る**。同定は cmdline の `codex` 文字列一致に頼らず、次の手順で行う。
+- Codex 本体プロセス: PASS は、**実行例 `/tmp/proc-check.sh` が exit 0 で最終行に `PASS:` を出力し、対象の Codex 本体プロセスを確実に同定でき、その `environ` / `maps` / `mem` へのアクセスと、`fd` の各エントリの `readlink`・`open` がすべて denied の場合に限る**（`fd` の判定基準は下記「`fd` の判定基準」）。同定は cmdline の `codex` 文字列一致に頼らず、次の手順で行う。
   1. コンテナ側シェル（sandbox の外）で `codex sandbox` をバックグラウンド起動し、`$!` を起点 PID とする。**同定の必須条件は `readlink /proc/<pid>/exe` が `/cx/bin/codex`（(a) の `docker run` で `CODEX_DIR` を `/cx` に mount した Codex 0.160.0 バイナリの絶対パス）と一致すること**であり、判定は exe だけで行う。`$!` はシェルの subshell・`timeout` 等のラッパーの pid になり得るため、`$!` 自身の exe が一致しなければ、`/proc/*/stat` の ppid（comm に空白や `)` を含み得るため、最後の `)` 以降を分割した第 2 フィールド）をたどって `$!` の子孫を探索し、exe が一致する最上位のプロセスを候補とする（一致したプロセスの子孫は探索しない。Codex が同一バイナリで起動する sandbox helper を本体と取り違えないため）。候補がちょうど 1 つの場合に限りそれを対象 PID とする。あわせて `/proc/<pid>/cmdline` の argv[0..1] が `codex sandbox`（argv[0] は `/cx/bin/codex`）であることを補助情報として記録する（cmdline は判定に使わない）。対象 PID について ppid と `/proc/<pid>/stat` の第 22 フィールド（最後の `)` 以降の第 20 フィールドとして読む。starttime。boot 起点の clock tick で pid namespace に依存しない）と comm を記録する（イメージに `ps` は無いため `/proc` から読む）。記録するのは pid・ppid・exe・comm・argv[0..1]・starttime のみで、`environ` 等の秘密値は出力しない。`timeout` 等のラッパーを挟むとラッパーと Codex の starttime が同じ clock tick になり対応付けが一意にならないため、Codex は直接バックグラウンド起動し、60 秒の時間制限は同定後に起動する watchdog で掛ける（打ち切りは STOP）。起動から同定・comm/cmdline 読み取りまでの初期区間にも 20 秒の上限を設け、Codex 起動前に開始した別の watchdog（bash。exe・comm が Codex と異なるため同定・対応付けに混ざらない）が超過時に `STOP` させる。区間終了時に経過秒数も再確認し、超過なら STOP。
-  2. sandbox 内の probe は cmdline で絞らず、見えるすべての pid（probe 自身は除外）について pid・starttime・comm・各ファイルの到達可否を出力する（内容は `/dev/null` に捨て、秘密値は出力しない。`mem` は offset 0 の読み取りが未マップで失敗し得るため open 可否で判定する）。`denied` はエラーが `Permission denied` の場合だけで、それ以外のエラーは `unknown`。probe は `PROBE_BEGIN` と `PROBE_END entries <n>` を出し、どちらかが無ければ STOP。
+  2. sandbox 内の probe は cmdline で絞らず、見えるすべての pid（probe 自身は除外）について pid・starttime・comm・各ファイルの到達可否を出力する（内容は `/dev/null` に捨て、秘密値は出力しない。`mem` は offset 0 の読み取りが未マップで失敗し得るため open 可否で判定する。`fd` は一覧を取り、各エントリについて `readlink` と open を試み、参照先パスも内容も出力しない。一覧自体が denied ならそれも `fd denied`）。`denied` はエラーが `Permission denied` の場合だけで、それ以外のエラー（一覧と読み取りの間にエントリが消えた場合の `No such file` を含む）や一覧が 0 件は `unknown`。probe は `PROBE_BEGIN` と `PROBE_END entries <n>` を出し、どちらかが無ければ STOP。
   3. 対応付け: probe 出力のうち starttime と comm が手順 1 の値と一致するエントリがちょうど 1 つあり、pid namespace が共有されている場合は pid も一致することを確認し、そのエントリを対象とする。判定は対象エントリの 4 行がすべて `denied` であることだけで行う（他プロセスの行は記録のみ。probe 自身の行は自分の `environ` を読めるため判定に含めない）。
+  - `fd` の判定基準: 判定対象は「`fd` を列挙できるか」ではなく「列挙した各エントリの参照先（`readlink`）と中身（open）に到達できるか」とする。根拠: proc(5) は `/proc/<pid>/fd/` の symlink の参照（dereference）と `readlink` を ptrace access mode `PTRACE_MODE_READ_FSCREDS` の検査で制御すると定めており（`environ`・`mem` と同じ検査系統）、一覧はディレクトリの通常の権限で決まる。sandbox は Codex と同じ uid で動くため一覧は取れるが、一覧から得られるのは fd 番号（件数）だけで、パス・中身・ソケットの相手は得られない。fail-closed は次で保つ: (1) 全エントリについて `readlink`・open の両方が `Permission denied` の場合だけ `fd denied`、(2) どれか 1 つでも成功すれば `BLOCK`、(3) `Permission denied` 以外のエラー・0 件は `unknown`（いずれも STOP）。Codex が auth.json を fd として保持していても、参照先・中身に届かないことをこの判定で直接示す（auth.json を開いたままにしないことには依存しない）。
+  - 2026-10-09 の実測（ダミー auth、`codex sandbox -P t1-workspace` のみ、model 非起動、`--network none`、本節の `docker run` と同じイメージ・seccomp・非 root・`--cap-drop ALL`・`--read-only`・tmpfs）: sandbox 内から Codex 本体（`exe=/cx/bin/codex`、fd 10 件）の `fd` 一覧は取れたが、`readlink` 0/10・open 0/10 で、auth.json への参照・ダミー秘密値の読み取りは 0 件。sandbox の外（コンテナ shell）から見た同プロセスの fd は `/dev/null`・出力ファイル・eventpoll・eventfd・socket・pidfd だけで auth.json は無かった。sandbox 内の Codex helper と probe 自身（sandbox 内のプロセス）は `readlink`・open が成功し、probe が到達可能を `BLOCK` として検出できることも確認した（陽性対照）。本書の `/tmp/proc-check.sh`（本 fd 判定版）は対象エントリ 4 行すべて `denied` で `PASS:`・rc=0、同じ実行で sandbox 内のプロセスの行は `BLOCK` となった。なお `readlink` は `-v` を付けないと失敗時にエラー文を出さず `unknown`（STOP）になる（同日実測）。sandbox の pid namespace はコンテナと別（`/proc/self/ns/pid` が異なる）だが、`/proc` はコンテナのものが見えている。
+  - 検討して採らなかった対策: (a) Codex 0.160.0 の `codex sandbox --help` と permissions profile に pid namespace や `/proc` の見え方を変える設定は無い。(b) profile の filesystem deny で `/proc/<pid>` を指定する案は、Codex の pid が起動ごとに変わり事前に書けず、`/proc` 全体の deny は sandbox 内の Python・shell の動作を変え Gate 10 の比較条件に影響し得る。(c) `/proc` の `hidepid` 再 mount は `CAP_SYS_ADMIN` を要し `--cap-drop ALL`・非 root では不可。加えて `hidepid` は**別 uid** のプロセスを隠す機能で、同一 uid の sandbox からは隠せない。
   - `/tmp/proc-check.sh` が `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、対象エントリに `BLOCK` または `unknown` がある、対象 PID の exe が `/cx/bin/codex` と一致しない・`readlink` で読めない・exe が一致する候補が 0 個または複数で一意に特定できない、対象を対応付けできない（starttime 一致なし・複数一致・`stat` を読めず `unknown`）、sandbox 内から対象プロセスが見えない（pid namespace 分離等。見えないことは到達拒否の証明にならない）、または sandbox 実行失敗なら **STOP（判定不能、model 起動前）**。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
 - 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用（`codex sandbox -P t1-workspace` での挙動は確認済みだが exec 時の適用は未確認）と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
 - Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`/run-input` が `prompt.md` のみであることは `/tmp/preflight-d.sh` が `ls -A` で確認する（`find` / `ls` の失敗・空出力は STOP）。fixture のファイル集合との照合は Operator が出力全文で行う。あわせて host 側の `host-mounts.sh` で、`docker inspect` の bind mount が 4 つ（auth.json・`CODEX_DIR`・`PROMPT`・`WS`。Source・Destination・RW が期待値と一致）だけで、tmpfs が `/tmp` と `/tmp/codex-home` だけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを確認し、出力を記録する（`docker inspect` 失敗・bind の不一致・許可外の tmpfs や型は STOP）。
 
 ### (e) STOP 判定
 
-(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、検査コマンド自体が失敗した（読み取り不能、コマンド不在、パイプ途中の失敗、空出力、タイムアウト、sandbox 起動失敗）、`/tmp/nonmodel-1-5.sh`・`/tmp/preflight-d.sh`・`/tmp/proc-check.sh`・`host-mounts.sh` のいずれかが `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `maps` / `mem` / `fd` のいずれかに到達できる、または対象プロセスの exe が `/cx/bin/codex` と一致しない・読めない・一意に特定できない、対象を対応付けできない・sandbox 内から見えないために到達可否を判定できない、(d) の実行例が `STOP:` を出力した・非 0 で終了した、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、検査コマンド自体が失敗した（読み取り不能、コマンド不在、パイプ途中の失敗、空出力、タイムアウト、sandbox 起動失敗）、`/tmp/nonmodel-1-5.sh`・`/tmp/preflight-d.sh`・`/tmp/proc-check.sh`・`host-mounts.sh` のいずれかが `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `maps` / `mem`、または `fd` のいずれかのエントリの参照先（`readlink`）・中身（open）に到達できる、または対象プロセスの exe が `/cx/bin/codex` と一致しない・読めない・一意に特定できない、対象を対応付けできない・sandbox 内から見えないために到達可否を判定できない、(d) の実行例が `STOP:` を出力した・非 0 で終了した、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
 
 ### (f) Reviewer Judgment の確認
 
@@ -812,7 +852,7 @@ printf '%s\n' "$rc" > /tmp/exit-code
 - `-m` / `-s` / `-c` は付けず、Model・Effort・sandbox・approval は (c) の `config.toml` だけから与える。Reviewer が対話実行を選んだ場合は、この行を Reviewer Judgment に記された対話起動コマンドに置き換える。
 - 終了コードは証跡回収のため `/tmp/exit-code` に書く（model 起動コマンド自体は変えない）。
 
-#### 証跡回収（model 終了後、コンテナ shell を閉じる前に host 側で実行）
+#### 証跡回収（model 終了後、`docker stop "$CNAME"` の前に host 側で実行）
 
 `SINK` は model workspace にマウントせず Git に入れない host 側の保存先ディレクトリ。スクリプトは repo 外・Git 管理外の作業ディレクトリに保存して実行する。
 

@@ -104,7 +104,7 @@ Reviewer が N1 を採らない、または G の sandbox 同等性を認めな�
 
 ## 候補 G の提案構成（Reviewer 判断材料）
 
-Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この節で「確認した」と書く検証はすべて **model 非起動**（`codex sandbox -P :workspace` による sandbox 単体の起動、および `--version` / `--help` の表示）で行い、retry allowance は消費していません。確認範囲は colima（docker v29.7.2）・arm64・kernel `7.0.12-linuxkit` に限られます。
+Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この節で「確認した」と書く検証はすべて **model 非起動**（`codex sandbox -P :workspace` による sandbox 単体の起動、および `--version` / `--help` の表示）で行い、retry allowance は消費していません。確認範囲は Docker Desktop（docker context `desktop-linux`、docker v29.7.2）・arm64・kernel `7.0.12-linuxkit` に限られます。
 
 **確認済みの範囲**はイメージ・seccomp プロファイル・コンテナ制約・sandbox 単体の挙動までです。最終構成（auth マウント済みの `CODEX_HOME`、`config.toml` の読み込み、ログイン状態、モデルとの通信）は**未確認**であり、Run 当日に下記「preflight〜model 起動の順序付き手順」の (d)〜(e) で確認します（モデル通信そのものは (g) の model 起動まで確認できません）。
 
@@ -121,7 +121,7 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 ### Codex CLI と sandbox
 
 - Codex CLI **0.160.0**（T0 trace と同版）の linux-arm64 musl バイナリ（`aarch64-unknown-linux-musl`）を read-only でマウントして使う。イメージにレイヤは追加しない。
-- sandbox: Codex `workspace-write` 相当（Linux では bubblewrap）。
+- sandbox: Linux では bubblewrap。`sandbox_mode` ではなく permissions profile `t1-workspace` で与える。`t1-workspace` は **built-in `:workspace` を継承し、認証領域 `CODEX_HOME`（`/tmp/codex-home`）を追加 deny した派生 profile** であり、`:workspace` と完全同一ではない。T0 の normal experimental sandbox（`workspace-write`）と同一とは認定しない（「比較妥当性の limitation」参照。「認証隔離・CODEX_HOME 所有権・証跡回収の検証」参照）。
 - docker seccomp: moby 既定プロファイル（moby/profiles seccomp v0.2.3。docker `v29.7.2` タグの `vendor/modules.txt` で `github.com/moby/profiles/seccomp v0.2.3` を確認、取得元 `https://raw.githubusercontent.com/moby/profiles/seccomp/v0.2.3/seccomp/default.json`、取得ファイル SHA-256 `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`）に、`clone` `unshare` `mount` `umount2` `pivot_root` の **5 syscall のみ** を `SCMP_ACT_ALLOW` で追加した最小プロファイル。
   - 配置: [`experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json`](../experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json)
   - SHA-256: `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8`
@@ -157,12 +157,62 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 | sandbox 内の network                                   | EPERM                        |
 | Evidence command `python -m unittest discover -s tests` | 起動し、初期 FAIL（rc=1）    |
 
+### 認証隔離・CODEX_HOME 所有権・証跡回収の検証（2026-10-09、ダミー auth、model 非起動）
+
+Issue #15 の preflight STOP（`CODEX_HOME` が root:root 755 で config.toml を書けない、sandbox から auth.json を読める）を受けて、下記「推奨 `docker run` 構成」と「最小 Codex config」の修正版で再測定した。auth は**本物ではないダミー**（JWT 形式の偽トークン）を `/tmp/codex-home/auth.json:ro` に bind し、本物の `~/.codex/auth.json` は読まず・mount していない。`codex exec`・`codex login`・model 起動は行っていない。環境は Docker Desktop（docker context `desktop-linux`、docker v29.7.2）・kernel `7.0.12-linuxkit`・arm64、Codex 0.160.0 musl、イメージ・seccomp は本節の digest / SHA-256 のとおり。
+
+| 確認 | 旧構成（auth を `/tmp/codex-home` 直下へ bind、`sandbox_mode = "workspace-write"`、`-P :workspace`） | 修正構成（`--tmpfs /tmp/codex-home:uid=<uid>,gid=<gid>,mode=700` + permissions profile `t1-workspace`） |
+| --- | --- | --- |
+| `ls -ld /tmp/codex-home` | `drwxr-xr-x root root`（Docker が作成） | `drwx------ 502 dialout`（tmpfs の mount option） |
+| `config.toml` 作成（非 root） | `Permission denied` | 成功 |
+| `codex login status`（ダミー auth） | — | `Logged in using ChatGPT` |
+| doctor `model` | `<default> · openai` | `gpt-6.1-sol · openai` |
+| doctor sandbox / approval | `approval OnRequest` | `[ok] sandbox  restricted fs + restricted network · approval Never` |
+| doctor config / auth | `[ok] config loaded` | `[ok] config loaded`・`config.toml parse ok`・startup warning なし・`[ok] auth  auth is configured`（`auth file /tmp/codex-home/auth.json`、`stored auth mode chatgpt`） |
+| sandbox 内 `cat /tmp/codex-home/auth.json` | **読める（BLOCK）** | 読めない。`ls /tmp/codex-home` も `Permission denied`（PASS） |
+| sandbox 内 `/proc/self/root/...`・`/proc/<pid>/root/...` 経由 | 読める（BLOCK） | すべて読めない（PASS） |
+| sandbox 内 `unshare -Ur cat ...` | — | 読めない（PASS） |
+| sandbox 内 `grep -r` によるダミートークン文字列の全 fs 走査（`/proc`・`/sys` 除く） | auth.json がヒット（BLOCK） | 検査スクリプト自身以外ヒットなし（PASS） |
+| sandbox 内 `/work` 書き込み・`/etc` 書き込み・`python` 起動 | 成功・拒否・成功 | 成功・拒否・成功（変化なし） |
+| sandbox 内 network（コンテナ自体は network あり） | — | `socket()` が `EPERM`。コンテナの通常 shell からは接続可 |
+| `CODEX_HOME/sessions/...` への書き込み（uid 502、ダミー rollout） | 不可（親が root 755） | 成功 |
+| `docker exec <name> tar -C /tmp -cf - codex-home/sessions exit-code > <host sink>/evidence.tar` | — | 成功。tar に `sessions/.../rollout-dummy.jsonl` とダミー終了コードを含み、auth.json は含まない（パスを列挙して除外） |
+
+#### 環境変数・Codex 本体プロセスへの到達性（未実施、model 起動前 STOP 条件）
+
+independent review の指摘により、次の 2 経路をダミー auth・model 非起動で確認する計画とした。2026-10-09 の作業では、ダミー auth を使うコンテナ起動が Operator 側ツールの実行許可で拒否され、**実施できていない**。結果は**未確認**であり、(d) の該当項目が PASS するまで model を起動しない。
+
+| 確認 | 結果 |
+| --- | --- |
+| コンテナ・sandbox 内の環境変数キーに `OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むものが無い | 未実施 |
+| sandbox 内から外側の codex プロセスの `/proc/<pid>/environ`・`fd`・`mem`・`maps` が参照できない | 未実施 |
+
+(d) の同定関数（`stat_field` / `find_codex` / `identify_codex`）は、2026-10-09 に候補 G イメージ（`--rm --network none`、Codex 非起動）で、`/cx/bin/codex` の代わりに `/bin/sleep` のコピーをダミー exe として単体テストした。(a) 通常の子プロセス 1 つ: `PASS`、(b) comm が `a) b` のプロセスと同居・それ自体を対象: いずれも `PASS`（旧 `cut -d' ' -f4` は ppid に `S` を返し誤る、新方式は正しい ppid）、(c) 存在しない pid: `STOP`（rc=1）、(d) 候補 2 つ: `STOP`（rc=1）、候補 0 件: `STOP`（rc=1）。sandbox 内 probe の starttime 読み取りも同方式で一致を確認した。Codex 本体での同定・到達性の実機確認は本番 preflight の (d) で行う。
+
+2026-10-09 の fail-closed 総点検後のスクリプト（(d) の `/tmp/preflight-d.sh`・`/tmp/proc-check.sh`、非model確認手順の `/tmp/nonmodel-1-5.sh`、host 側の `host-mounts.sh`・`collect-evidence.sh`）も、Codex・model を起動せず、本物の auth を使わずに単体テストした（候補 G イメージ、container 側は `--rm --network none`、docker context `desktop-linux`。`/cx/bin/codex` は試験用スタブ、auth はダミー、sandbox の代わりに `setpriv` で uid 65534 へ落として拒否を再現）。成功ケースはいずれも最終行 `PASS:`・rc=0。STOP ケース（版不一致、コマンド不在 rc=127、非 0 終了、空出力、タイムアウト、sandbox 起動失敗、auth 読み取り可能、認証関連の環境変数キー（コンテナ側・sandbox 側）、doctor の警告、Codex 候補 0 件、probe の BLOCK、watchdog 打ち切り、mount 過多・`runs/` を含む mount・コンテナ不在、証跡の欠落・既存 sink・コンテナ消失）はいずれも `STOP:` と rc=1 で止まり、ダミー auth の内容は出力に現れなかった。本物の bwrap sandbox・本物の auth・Codex 本体での挙動は**本番 preflight で確認**する。
+
+根拠（公式、2026-10-09 参照）:
+
+- [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference): `default_permissions`（built-in は `:read-only` / `:workspace` / `:danger-full-access`、「Don't combine with `sandbox_mode` or `[sandbox_workspace_write]`」）、`permissions.<name>.extends`、`permissions.<name>.filesystem.<path-or-glob>`（`"read" | "write" | "deny"`、「Use `"deny"` to deny reads for matching paths」）。
+- [Permissions](https://learn.chatgpt.com/docs/permissions)（**Beta**）: `deny` は「Denies both reads and writes under the path」、`:workspace` は「allows writes inside the active workspace roots and system temp directories」。`sandbox_mode` がどこかの config にあると「Codex uses those older sandbox settings instead of `default_permissions`」となるため、修正版 config からは `sandbox_mode` を**削除**する。
+- 0.160.0 の `codex sandbox --help`: `-P, --permission-profile <NAME>  Named permissions profile to apply from the active configuration stack`（`-P` 必須）。
+
+解釈と限界:
+
+- `CODEX_HOME` 全体を deny しても、Codex 本体（sandbox 外のプロセス）は auth を読め（`[ok] auth`）、sessions を書ける。sandbox 内コマンドだけが `CODEX_HOME` を参照できない。
+- **確認済み**: `codex sandbox -P t1-workspace`（profile を明示した sandbox 単体）の挙動と、doctor の sandbox 行（`restricted fs + restricted network · approval Never`）。**未確認**: `codex exec` 実行時に `default_permissions = "t1-workspace"` が実効適用されること。後者は model 非起動では**直接確認できない**。doctor の sandbox 行と、同じ profile を明示した `codex sandbox -P t1-workspace` の結果からの推定である。Run 後に trace / session 記録で profile と sandbox の実効値を確認し、異なれば limitation として記録する。ただし Run 後の確認は事後であり、**Run 前に確認できないことを Reviewer が承知のうえで受容するか**を判断事項とする（「未解決の論点」10）。
+- permissions profile は公式に Beta であり、版が変わると挙動が変わり得る（0.160.0 固定で確認）。
+- session 記録の回収はダミーファイルで実証した。Codex が `exec` 時に実際に書く rollout の形式・場所は model 非起動では未確認。Run では model 終了後・コンテナ停止前に `docker exec` で `codex-home/sessions` を回収し、回収できなければ limitation として記録する。
+- 単一のプローブ群はあらゆる exfiltration 経路を否定しない（既存の注記どおり）。
+- 残余リスク（非 model の確認では否定できない経路）: Codex 本体プロセスのメモリ上のトークン（`/proc/<pid>/mem` が拒否されても、kernel / bwrap の脆弱性経由の参照は否定できない）、Codex 本体が model 通信で送る認証ヘッダ自体、sandbox 外で Codex が実行するツール（MCP 等。本構成では設定しない）、Docker Desktop VM / host 側からの参照。
+- Gate 10 との関係: `--tmpfs /tmp/codex-home` の mount option（所有者・mode）と、`/tmp/codex-home` だけを deny する profile は、`python` の解決経路（PATH・`/usr/local/bin`・イメージ既定の login shell 初期化）に触れない。Operator が rc ファイル・PATH・alias・venv を追加する操作ではない。sandbox 内の `python` 起動は修正構成でも確認した。
+
 ### 残るリスク
 
 - user namespace の作成と `mount` / `pivot_root` をコンテナ内で許可するため、moby 既定より攻撃面が広がる（kernel の userns / mount 系脆弱性の影響を受けうる）。cap は全て落とし、非 root・`no-new-privileges`・read-only rootfs で緩和する。
 - `clone` / `unshare` / `mount` は引数条件なしで許可するため、bwrap 自身だけでなく、Codex sandbox 内で model が実行するコマンドも入れ子の user / mount namespace を作れる。
-- AppArmor の `docker-default` プロファイルが有効な host（Ubuntu 等）では `mount` が AppArmor 側で拒否され、本構成が再現しない可能性がある（確認環境の colima では未検証の論点）。その場合も `apparmor=unconfined` は使わず STOP し、Reviewer 判断を求める。
-- 確認は colima・arm64・kernel `7.0.12-linuxkit` に限られる。別 host / 別 kernel / amd64 では再確認が必要。
+- AppArmor の `docker-default` プロファイルが有効な host（Ubuntu 等）では `mount` が AppArmor 側で拒否され、本構成が再現しない可能性がある（確認環境の Docker Desktop では未検証の論点）。その場合も `apparmor=unconfined` は使わず STOP し、Reviewer 判断を求める。
+- 確認は Docker Desktop（docker context `desktop-linux`、docker v29.7.2）・arm64・kernel `7.0.12-linuxkit` に限られる。別 host / 別 kernel / amd64 では再確認が必要。
 
 ### 独立レビューで確認した停止条件（比較妥当性・認証・証跡）
 
@@ -172,11 +222,11 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 2. **認証情報の機密性**: `auth.json:ro` が保証するのは**書き込み不可**であって、modelが実行するコマンドからの**読み取り不可**ではありません。最終構成で `login status` が有効になった後、**model非起動**の `codex sandbox` から読み取れないことを値を表示せずに確認してください。読める、判定不能、sandbox実行失敗のいずれも**STOP**。代替認証・隔離方法を独立レビューするまでmodel起動禁止です。単一のnegative testはあらゆるexfiltration経路を否定するものではなく、最小確認にすぎません。
 3. **実行証跡の残存**: 推奨Docker起動は `--rm`、`CODEX_HOME` はtmpfs `/tmp`配下です。コンテナ終了時にセッション記録が失われます。また標準の `codex exec` 出力だけでWorker→Verifierの全eventやtoken計測を取得できるとは限りません。**model起動前**に、ホスト側の安全な保存先（model workspaceにマウントせず、Gitに入れない）へ必要な観測データ・終了コードを確実に取り出せる方式を非modelで試験し、その方式・権限・sanitize手順をIssue #15で独立レビューしてください。セッションがコンテナ内に残る方式なら、`--rm`で消える前に取り出す手順と異常終了時の制約を明示します。未実証ならSTOPです。生のsession log・認証情報・hidden reasoningを公開しないでください。
 
-安全なnegative testの例（**実際にauthをmountし、ログインが確認された同じ構成のsandbox**で実施。内容を出力しない）:
+安全なnegative test（**実際にauthをmountし、ログインが確認された同じ構成のsandbox**で実施。内容を出力しない）は、(d) の `/tmp/preflight-d.sh` の `AUTH_PROBE` として実行します。fail-closed の要点:
 
-```bash
-/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'if test -r /tmp/codex-home/auth.json; then echo "BLOCK: sandbox can read auth file"; exit 1; else echo "PASS: auth file not readable by sandbox process"; fi'
-```
+- sandbox の外（コンテナ側）で `/tmp/codex-home/auth.json` が存在し空でないことを先に確認する（mount されていなければ STOP。「見えない」を PASS にしない）。
+- sandbox 内では `SANDBOX_ALIVE` を出してから `cat` を試み、読めたら `BLOCK`（非 0）、エラーが `Permission denied` / `No such file or directory` のときだけ `AUTH_DENIED` を出す。それ以外のエラー（`cat` 不在等）は `UNKNOWN`（非 0）。
+- 外側は sandbox の rc=0 かつ `SANDBOX_ALIVE` と `AUTH_DENIED` の両方を確認した場合だけ `PASS:` を出す。sandbox 起動失敗・タイムアウト・空出力は STOP。
 
 `login status` / Docker mountの確認によってhost側のauthファイルが確実に配置されたことを確認したうえで、この結果を解釈します。検査時には認証ファイルの内容・環境変数に含む秘密情報をstdoutやIssueへ載せません。PASSでもmodelの秘密アクセスを完全に否定できるわけではありません。
 
@@ -185,6 +235,8 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 ### 認証
 
 - ホストの `~/.codex/auth.json` **のみ**を `:ro` でマウントし、`CODEX_HOME` はコンテナ内の fresh なディレクトリとする（ホストの config・sessions・履歴は持ち込まない）。
+- `CODEX_HOME` は `--tmpfs /tmp/codex-home:uid=<host uid>,gid=<host gid>,mode=700` で非 root の実行ユーザー所有にする。auth.json の bind 先だけを Docker に作らせると親ディレクトリが root:root 755 になり、`config.toml` と session 記録を書けない（2026-10-09 実測）。
+- sandbox 内コマンドからの auth 読み取りは、permissions profile `t1-workspace` の `"/tmp/codex-home" = "deny"` で遮断する（ダミー auth で実測、上記検証表）。
 - ログイン方式は ChatGPT（2026-10-08 にホストで `codex login status` を実測）。
 - `auth.json` は `:ro` のため、model 起動後のトークン refresh は書き込めず失敗し得る。**refresh 不可を前提**とし、model 起動直前にコンテナ内で `/cx/bin/codex login status` を確認する。期限が近い・不明な場合は、host 側で通常どおり Codex を使ってトークンを更新してから開始する。失敗した場合は STOP（retry allowance 非消費）。
 - model 起動後に認証エラーで中断した場合は infrastructure abort として STOP する（再 retry なし。本体手順書どおり）。
@@ -195,11 +247,18 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 ```toml
 model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
-sandbox_mode = "workspace-write"
 approval_policy = "never"
+default_permissions = "t1-workspace"
+
+[permissions.t1-workspace]
+description = "workspace-write equivalent; CODEX_HOME (auth.json) hidden from sandboxed commands"
+extends = ":workspace"
+
+[permissions.t1-workspace.filesystem]
+"/tmp/codex-home" = "deny"
 ```
 
-`approval_policy` の行は下記の推奨値です。Reviewer が別の値・省略を判断した場合はその判断に従って差し替え、記録します。
+`sandbox_mode` は置かない（置くと `default_permissions` が無視される。公式 [Permissions](https://learn.chatgpt.com/docs/permissions)）。`approval_policy` の行は下記の推奨値です。Reviewer が別の値・省略を判断した場合はその判断に従って差し替え、記録します。
 
 approval の扱い（根拠と Reviewer 判断事項）:
 
@@ -218,8 +277,8 @@ approval の扱い（根拠と Reviewer 判断事項）:
   - 値の陰性コントロール（`model_reasoning_effort = "bogus"`、`sandbox_mode = "bogus"`）: `[XX] config  config could not be loaded`（`error  invalid data`）。
   - (c) の 4 キー config: `[ok] config  loaded`、`config.toml parse  ok`、startup warning 行なし、`model  gpt-6.1-sol · openai`、`[ok] sandbox  restricted fs + restricted network · approval Never`。auth なしのため `[XX] auth` と、`--network none` のため websocket / reachability が DNS 解決失敗で `[XX]` / `[!!]` となり、doctor 全体の rc は 1。
   - 確認できたこと: 4 キーがいずれも 0.160.0 で未知キー扱いされず、型として受理され（不正値は読み込み失敗になる）、`model` と `approval_policy = "never"` が反映されること。
-  - **未検証**: `codex exec --strict-config` で 4 キーの config がエラーにならないこと（exec は model 起動を伴うため実行していない）、`sandbox_mode = "workspace-write"` と `model_reasoning_effort = "high"` の値が実効設定に反映されること（doctor の出力に表示項目が無い）、auth マウント後の `login status`。これらは (d) の preflight 項目とし、exec 時の反映は Run の trace / session 記録で確認する。
-- 公式 config 仕様: [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference)（旧 URL `https://developers.openai.com/codex/config-reference` から 308 リダイレクト、2026-10-08 参照）は `approval_policy` を「Controls when Codex pauses for approval before executing commands」とし、値を `on-request | never | { granular = {...} }`、`untrusted` は非サポート、`on-failure` は deprecated とする。対話には `on-request`、非対話には `never` を推奨している。`codex exec` の approval 既定値の記載は無い。sandbox 既定は [Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode) が read-only と記載する（このため `sandbox_mode` を明示する）。
+  - **未検証**: `codex exec --strict-config` で 4 キーの config がエラーにならないこと（exec は model 起動を伴うため実行していない）、`sandbox_mode = "workspace-write"`（修正版では permissions profile `t1-workspace`。`codex sandbox -P t1-workspace` と doctor では確認済み、`codex exec` 時の実効適用は未確認）と `model_reasoning_effort = "high"` の値が実効設定に反映されること（doctor の出力に表示項目が無い）、auth マウント後の `login status`。これらは (d) の preflight 項目とし、exec 時の反映は Run の trace / session 記録で確認する。
+- 公式 config 仕様: [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference)（旧 URL `https://developers.openai.com/codex/config-reference` から 308 リダイレクト、2026-10-08 参照）は `approval_policy` を「Controls when Codex pauses for approval before executing commands」とし、値を `on-request | never | { granular = {...} }`、`untrusted` は非サポート、`on-failure` は deprecated とする。対話には `on-request`、非対話には `never` を推奨している。`codex exec` の approval 既定値の記載は無い。sandbox 既定は [Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode) が read-only と記載する（このため sandbox を明示する。修正版では `sandbox_mode` の代わりに `default_permissions = "t1-workspace"` で与える）。
 - **推奨: `codex exec` で起動し、`approval_policy = "never"` を `config.toml` に明示する。** 理由: (1) `codex exec` は非対話で承認に答える人がおらず、0.160.0 の exec には approval を対話で求めるオプションが無い。(2) 公式仕様が非対話には `never` を推奨している。(3) exec の approval 既定値は公式に記載が無いため、既定任せにすると Run 記録から挙動を再構成できない。明示すれば sandbox 外の操作は承認待ちで止まらず失敗として model に返り、`workspace-write` の境界は sandbox 側で維持される。`--approve-for-me`・`--dangerously-bypass-approvals-and-sandbox` は使わない。
 - 最終決定は **Reviewer 判断事項**（「未解決の論点」5・6）:
   1. T1 retry を `codex exec` で実行するか、対話で実行するか。
@@ -234,6 +293,7 @@ CODEX_DIR=/abs/path/to/node_modules/@openai/codex/node_modules/@openai/codex-lin
 WS=/abs/path/to/fresh-external-workspace
 PROMPT=/abs/path/to/T1-r01/prompt.md
 SECCOMP="$PWD/experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json"
+CNAME=exp001-t1-r01
 ```
 
 | 変数        | 条件                                                                                                                                                                                                                                                     |
@@ -242,6 +302,7 @@ SECCOMP="$PWD/experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccom
 | `WS`        | Gate 4 / 6 のとおり新しく作った fresh external workspace（Gate 6 で reprepare 済み、Gate 9 の条件を満たすもの）                                                                                                                                         |
 | `PROMPT`    | Gate 7 で SHA-256 `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86` を確認した T1 `prompt.md`                                                                                                                                           |
 | `SECCOMP`   | 本 repo の `codex-bwrap-seccomp.json`。SHA-256 `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8` を `shasum -a 256 "$SECCOMP"` で確認する                                                                                              |
+| `CNAME`     | コンテナ名。(d) の host 側 mount 確認と (g) 後の証跡回収で `docker inspect` / `docker exec` の対象に使う |
 
 コンテナ起動前にhost側でbind元ファイルの存在・canonical path・凍結PromptとseccompのSHA-256・外部workspace・認証ファイルの権限を**read-only**確認します（認証ファイルの内容は読みません）。
 
@@ -256,16 +317,18 @@ python scripts/audit_exp001_g_bind_sources.py \
 
 このscriptのPASSは**bind元の静的検査だけ**です。Docker mountの実効状態、sandboxの書込許可・拒否、credential隔離、Codex認証、有効なReviewer Judgmentは証明しません。Dockerの `-v` はbind元が無いとディレクトリを自動作成し得るため、事前に存在を検査します。すべてのpathを絶対pathとし、realpathが元attemptのarchiveやRepository内workspaceを指さないことを再確認してください。
 
-`HOME` と `CODEX_HOME` は tmpfs `/tmp` 上に置く。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
+`HOME` は tmpfs `/tmp` 上に、`CODEX_HOME` は実行ユーザー所有・mode 700 の専用 tmpfs `/tmp/codex-home` に置く（auth.json はその中へ `:ro` bind）。host 側の mount 確認と Run 後の証跡回収のため、`docker run` に `--name "$CNAME"` を付ける（mount・権限は変えない）。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
 
 ```bash
 docker run --rm -it \
+  --name "$CNAME" \
   --platform linux/arm64 \
   --security-opt seccomp="$SECCOMP" \
   --security-opt no-new-privileges \
   --cap-drop ALL \
   --user "$(id -u):$(id -g)" \
   --read-only --tmpfs /tmp \
+  --tmpfs /tmp/codex-home:uid="$(id -u)",gid="$(id -g)",mode=700 \
   -e HOME=/tmp/home \
   -e CODEX_HOME=/tmp/codex-home \
   -v "$HOME/.codex/auth.json":/tmp/codex-home/auth.json:ro \
@@ -278,59 +341,95 @@ docker run --rm -it \
 
 shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login shell（Operator が (b) 以降を入力する shell）であり、非model preflight の `bash -lc '<cmd>'` はその中から起動する子の login shell である。どちらも login shell として `/etc/profile` 等のイメージ既定の初期化を読み、Operator は rc ファイルを追加しない。Run 時に Codex が model 生成コマンドを実行する shell は Codex が決める（T0 trace では `/usr/bin/zsh -lc`。G では zsh が無いため bash の `bash -lc` 相当になる想定で、実際の表記は Run の trace に残るものを記録する）。
 
-この `HOME=/tmp/home`・`CODEX_HOME=/tmp/codex-home` 設定（auth マウントなし、config.toml なし）で、`/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'` が model 非起動で `ok` / rc=0 となることを 2026-10-08 に docker（colima、arm64）で確認した。このとき `/cx/bin/codex --version` は `codex-cli 0.160.0`、Codex は `CODEX_HOME` が `/tmp` 配下のため PATH 用 helper を作らない旨の WARNING を出したが、sandbox 起動には影響しなかった。コンテナ内の `$SHELL` は `/bin/sh`、`getent passwd "$(id -u)"` は該当なし（host uid がイメージの passwd に無い）、`ps` はイメージに無く、`readlink /proc/$$/exe` は `/usr/bin/bash` だった。
+この `HOME=/tmp/home`・`CODEX_HOME=/tmp/codex-home` 設定（auth マウントなし、config.toml なし）で、`/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'` が model 非起動で `ok` / rc=0 となることを 2026-10-08 に Docker Desktop（docker context `desktop-linux`、docker v29.7.2）・arm64 で確認した。このとき `/cx/bin/codex --version` は `codex-cli 0.160.0`、Codex は `CODEX_HOME` が `/tmp` 配下のため PATH 用 helper を作らない旨の WARNING を出したが、sandbox 起動には影響しなかった。コンテナ内の `$SHELL` は `/bin/sh`、`getent passwd "$(id -u)"` は該当なし（host uid がイメージの passwd に無い）、`ps` はイメージに無く、`readlink /proc/$$/exe` は `/usr/bin/bash` だった。
 
 ## 非model確認手順（Gate 10 evidence）
 
 **Codex model を起動しない**状態で、retry に使う normal experimental sandbox 内の、fresh workspace（Gate 6 で reprepare 済み）をカレントディレクトリとして実行します。Gate 12 のため bytecode 書き込みを抑止します。
 
+手順 1〜5 は次のスクリプトで一括実行し、出力全文を記録します（`set -euo pipefail`。検査コマンド自体の失敗・空出力・タイムアウト・期待外の値は `STOP: <理由>` と非 0 終了。PASS は期待する肯定的証拠を確認した行だけ `PASS:` を出す）。イメージに `file` と `ps` は無いため、ELF 判定は `od` によるヘッダ `7f454c46` の確認、実行中 shell は `readlink /proc/$$/exe` で行います。最終行が `PASS:` でなければ STOP です。
+
+```bash
+cat > /tmp/nonmodel-1-5.sh <<'EOF'
+set -euo pipefail
+STOP() { echo "STOP: $*"; exit 1; }
+has() { local rc=0; grep "$@" || rc=$?; [ "$rc" -le 1 ] || STOP "grep error (rc=$rc)"; return "$rc"; }
+echo "== 1 environment"
+uname -a
+cat /etc/os-release
+echo "SHELL=${SHELL-<unset>}"
+rc=0
+getent passwd "$(id -u)" || rc=$?
+case $rc in 0) ;; 2) echo "getent: no passwd entry for uid $(id -u)" ;; *) STOP "getent failed (rc=$rc)" ;; esac
+echo "running shell exe: $(readlink /proc/$$/exe)"
+command -v bash || STOP "bash not found"
+if command -v zsh; then echo "zsh present"; else echo "zsh: not found"; fi
+echo "== 2 resolution"
+p=$(bash -lc 'command -v python') || STOP "command -v python failed (exit 127 = unresolved)"
+case $p in /*) echo "command -v python: $p" ;; *) STOP "python does not resolve to an absolute path: $p" ;; esac
+ta=$(bash -lc 'type -a python') || STOP "type -a python failed"
+[ -n "$ta" ] || STOP "type -a python printed nothing"
+printf '%s\n' "$ta"
+if has -qv '^python is /' <<<"$ta"; then STOP "type -a python shows a non-file entry (alias/function/builtin)"; fi
+v=$(bash -lc 'python --version' 2>&1) || STOP "python --version failed"
+case $v in "Python 3.12."*) echo "$v" ;; *) STOP "unexpected python version: $v" ;; esac
+echo "== 3 not a shim/wrapper"
+bash -lc 'ls -l "$(command -v python)"' || STOP "ls -l failed"
+bash -lc "python -c 'import sys; print(sys.executable); print(sys.version)'" || STOP "python -c failed"
+real=$(bash -lc 'readlink -f "$(command -v python)"') || STOP "readlink -f failed"
+[ -n "$real" ] || STOP "readlink -f printed nothing"
+echo "readlink -f: $real"
+hop=$p
+while [ -L "$hop" ]; do t=$(readlink "$hop") || STOP "readlink $hop failed"; echo "symlink: $hop -> $t"; case $t in /*) hop=$t ;; *) hop=$(dirname "$hop")/$t ;; esac; done
+case $real in *shims*|*.pyenv*|*.asdf*|*venv*) STOP "resolved path looks like a shim/venv: $real" ;; esac
+magic=$(od -An -tx1 -N4 "$real" | tr -d ' \n') || STOP "cannot read header of $real"
+[ "$magic" = 7f454c46 ] || STOP "$real is not an ELF executable (header $magic)"
+echo "ELF header: $magic"
+echo "== 4 PATH"
+path=$(bash -lc 'printenv PATH') || STOP "printenv PATH failed"
+[ -n "$path" ] || STOP "PATH is empty"
+echo "PATH=$path"
+echo "PASS: steps 1-4 recorded; operator must still attest no rc/PATH/alias/venv changes"
+echo "== 5 Gate 10/11 inside Codex sandbox"
+rc=0
+out=$(timeout 300 /cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests' 2>&1) || rc=$?
+printf '%s\n' "$out"
+echo "sandbox-test-exit=$rc"
+[ "$rc" -ne 124 ] || STOP "sandbox evidence command timed out"
+[ "$rc" -eq 1 ] || STOP "expected exit 1 (initial FAIL), got $rc"
+if has -Eq 'bwrap:|command not found' <<<"$out"; then STOP "sandbox/launcher error in output"; fi
+has -Eq '^Ran 2 tests in ' <<<"$out" || STOP "unittest did not report 'Ran 2 tests'"
+has -qxF 'FAILED (failures=1)' <<<"$out" || STOP "unittest did not report exactly 'FAILED (failures=1)'"
+[ "$(grep -cE '^(FAIL|ERROR): ' <<<"$out" || true)" = 1 ] || STOP "expected exactly one FAIL/ERROR entry"
+has -Eq '^FAIL: test_trims_and_lowercases \(' <<<"$out" || STOP "failing test is not test_trims_and_lowercases"
+has -qxF "AssertionError: 'ALICE' != 'alice'" <<<"$out" || STOP "assertion is not 'ALICE' != 'alice'"
+echo "PASS: Gate 10/11 python started in sandbox; Ran 2 tests, only test_trims_and_lowercases failed with 'ALICE' != 'alice'"
+EOF
+cd /work
+bash /tmp/nonmodel-1-5.sh
+```
+
 手順 2〜4 は通常のコンテナshellで解決経路を診断します。手順 5 のEvidence commandは同じ `bash -lc` 起動方式を **Codex sandbox内で**実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
 
-1. 環境識別を記録する。
+1. 環境識別を記録する（スクリプトの `== 1`）。`getent` は該当なし（rc=2）だけを許容し、それ以外の失敗は STOP。
 
-   ```bash
-   uname -a
-   cat /etc/os-release
-   echo "$SHELL"
-   getent passwd "$(id -u)" || true
-   ps -p $$ -o comm= 2>/dev/null || readlink /proc/$$/exe
-   command -v bash
-   command -v zsh
-   ```
-
-   Run 環境の login shell を記録する（G では bash。zsh はイメージに存在しないため `command -v zsh` は不在を示す）。`$SHELL` は非 root の host uid では未設定または `/bin/sh` になり得るため、`getent passwd` と実行中 shell（slim イメージには `ps` が無いので `readlink /proc/$$/exe`）を併記する。
+   Run 環境の login shell を記録する（G では bash。zsh はイメージに存在しないため `zsh: not found` と記録される）。`$SHELL` は非 root の host uid では未設定または `/bin/sh` になり得るため、`getent passwd` と実行中 shell（slim イメージには `ps` が無いので `readlink /proc/$$/exe`）を併記する。
 
    コンテナの場合はイメージ名と digest を host 側で記録する（例: `docker image inspect --format '{{.RepoDigests}}' <image>`）。
 
-2. 解決先を記録する（Run と同じ起動方式で、Operator が追加した設定が無い状態で）。
-
-   ```bash
-   bash -lc 'command -v python'
-   bash -lc 'type -a python'
-   bash -lc 'python --version'
-   ```
+2. 解決先を記録する（スクリプトの `== 2`。Run と同じ `bash -lc` 起動方式で、Operator が追加した設定が無い状態で）。
 
    - `command -v python` が exit 0 で絶対パスを返すこと。
-   - `type -a python` に `alias` / `function` が出ないこと。
+   - `type -a python` の全行が `python is /...` であること（`alias` / `function` / 空出力は STOP）。
+   - `python --version` が `Python 3.12.` で始まること。
 
-3. 解決先が shim / wrapper でないことを確認する。
+3. 解決先が shim / wrapper でないことを確認する（スクリプトの `== 3`）。
 
-   ```bash
-   bash -lc 'ls -l "$(command -v python)"'
-   bash -lc "python -c 'import sys; print(sys.executable); print(sys.version)'"
-   bash -lc 'file -L "$(command -v python)"'
-   bash -lc 'readlink -f "$(command -v python)"'
-   ```
-
-   - `file -L` が ELF / Mach-O 実行ファイルを示すこと（`shell script` / `text` は不可）。
-   - 解決経路に symlink がある場合は、全段の symlink とその所有パッケージ（例: `dpkg -S`、イメージ定義）を記録し、Operator が作成したものではないことを示す。
+   - `readlink -f` の解決先の先頭 4 バイトが ELF ヘッダ `7f454c46` であること（shell script / text は不可。イメージに `file` が無いため `od` で読む）。
+   - 解決経路に symlink がある場合は、全段の symlink（スクリプトが `symlink: A -> B` で出力）とその所有元（例: `dpkg -S`、イメージ定義）を記録し、Operator が作成したものではないことを示す。
    - パスに `shims` / `.pyenv` / `.asdf` / venv ディレクトリが含まれないこと。
 
-4. PATH が既定状態であることを記録する。
-
-   ```bash
-   bash -lc 'printenv PATH'
-   ```
+4. PATH が既定状態であることを記録する（スクリプトの `== 4`。空なら STOP）。
 
    retry 用に PATH を変更していないことを Operator が明記する。
 
@@ -338,13 +437,10 @@ shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login s
 
    **コンテナ通常shellでの成功はGate 10の証明ではありません。** Codex が生成コマンドを実行する Bubblewrap sandboxを経由し、Runと同じ `bash -lc` で frozen Evidence command を起動します。bytecode抑止はpreflightのみで、Evidence command自体は変えません。
 
-   ```bash
-   /cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
-   echo "sandbox-test-exit=$?"
-   ```
+   スクリプトの `== 5` が `/cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'` を `timeout 300` 付きで実行し、`sandbox-test-exit=<rc>` を記録する。rc が 1 以外・タイムアウト（124）・出力に `bwrap:` / `command not found`・`Ran 2 tests` が無い・`FAILED (failures=1)` の行が無い・`FAIL:` / `ERROR:` の項目がちょうど 1 つでない・その項目が `test_trims_and_lowercases` でない・`AssertionError: 'ALICE' != 'alice'` の行が無い場合は STOP。
 
    - **Gate 10**: sandbox内で `python` が起動し、実際にunittestの収集・実行まで到達したことを出力で確認する。exit 127、sandbox起動失敗、予期せぬ環境エラーはSTOP。
-   - **Gate 11**: untouched fixtureで期待された具体的なテストfailureが確認できること。**exit 1だけではPASSにしない**（bwrap起動エラー等も同じexit codeになり得る）。
+   - **Gate 11**: untouched fixtureで期待された具体的なテストfailureが確認できること。**exit 1だけではPASSにしない**（bwrap起動エラー等も同じexit codeになり得る）。期待する failure は untouched fixture（`tests/test_app.py`）の `test_trims_and_lowercases` が `AssertionError: 'ALICE' != 'alice'` で失敗し、`Ran 2 tests`・`FAILED (failures=1)` となること（2026-10-09 に同じイメージ digest で untouched fixture を実行し、この出力を確認した）。スクリプトはこれらを PASS 条件として照合し、不一致・判定不能（出力欠落・grep 失敗）は STOP する。
    - 実際のmodel Runが別sandbox policyでcommandを実行するならpreflightの適合性は未証明としてSTOPし、Reviewer判断を求める。
    - stdout/stderr、終了コード、sandbox起動コマンドを記録し、通常shellの解決経路診断と区別する。
 
@@ -382,8 +478,15 @@ Reviewer Judgment の `approval_policy` に応じて、次のどちらか**一�
 cat > "$CODEX_HOME/config.toml" <<'EOF'
 model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
-sandbox_mode = "workspace-write"
 approval_policy = "never"
+default_permissions = "t1-workspace"
+
+[permissions.t1-workspace]
+description = "workspace-write equivalent; CODEX_HOME (auth.json) hidden from sandboxed commands"
+extends = ":workspace"
+
+[permissions.t1-workspace.filesystem]
+"/tmp/codex-home" = "deny"
 EOF
 ```
 
@@ -393,7 +496,14 @@ EOF
 cat > "$CODEX_HOME/config.toml" <<'EOF'
 model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
-sandbox_mode = "workspace-write"
+default_permissions = "t1-workspace"
+
+[permissions.t1-workspace]
+description = "workspace-write equivalent; CODEX_HOME (auth.json) hidden from sandboxed commands"
+extends = ":workspace"
+
+[permissions.t1-workspace.filesystem]
+"/tmp/codex-home" = "deny"
 EOF
 ```
 
@@ -401,26 +511,288 @@ EOF
 
 「非model確認手順」の手順 1〜6 を実行し、特に手順 5 の**sandbox内**Evidence commandがunittest収集と期待する初期FAILへ到達したことを確認する。加えて次を実行して出力を記録する。
 
+以下の 2 スクリプトはどちらも `set -euo pipefail` で、検査コマンド自体の失敗（読み取り不能、コマンド不在 rc=126/127、パイプ途中の失敗、空出力、タイムアウト、sandbox 起動失敗）は `STOP: <理由>` と非 0 終了になる。PASS は期待する肯定的証拠を確認した行だけ `PASS:` で出し、`|| echo PASS` のような否定からの推論はしない。秘密値（auth の内容、環境変数の値）は出力しない。どちらも最終行が `PASS:` かつ rc=0 の場合に限り合格とする。
+
 ```bash
-/cx/bin/codex --version
-/cx/bin/codex login status
-cat "$CODEX_HOME/config.toml"
-/cx/bin/codex --strict-config doctor --all --ascii --no-color
-sha256sum /run-input/prompt.md
-/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'
-/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'if test -r /tmp/codex-home/auth.json; then echo "BLOCK: sandbox can read auth file"; exit 1; else echo "PASS: auth file not readable by sandbox process"; fi'
-find /work -maxdepth 3
-ls -la /run-input
+cat > /tmp/preflight-d.sh <<'EOF'
+set -euo pipefail
+STOP() { echo "STOP: $*"; exit 1; }
+has() { local rc=0; grep "$@" || rc=$?; [ "$rc" -le 1 ] || STOP "grep error (rc=$rc)"; return "$rc"; }
+CX=/cx/bin/codex
+EXPECT_APPROVAL=Never
+PROMPT_SHA=d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86
+# run <label> <allow-nonzero:0|1> <cmd...>: stdout+stderr -> OUT; STOP on timeout / missing command / empty output (and nonzero rc unless allowed)
+run() {
+  local label=$1 allow=$2 rc=0; shift 2
+  OUT=$(timeout 120 "$@" 2>&1) || rc=$?
+  [ "$rc" -ne 124 ] || STOP "$label: timeout"
+  [ "$rc" -ne 126 ] && [ "$rc" -ne 127 ] || STOP "$label: command not executable (rc=$rc)"
+  [ "$allow" = 1 ] || [ "$rc" -eq 0 ] || STOP "$label: exit $rc"
+  [ -n "$OUT" ] || STOP "$label: empty output"
+  RC=$rc
+}
+# env_check <keys>: only key names are inspected; values are never printed
+env_check() {
+  local keys=$1 hits rc=0
+  has -qx PATH <<<"$keys" || STOP "env key listing lacks PATH (listing failed?)"
+  hits=$(grep -E 'OPENAI|TOKEN|KEY|AUTH' <<<"$keys") || rc=$?
+  [ "$rc" -le 1 ] || STOP "grep error (rc=$rc)"
+  [ "$rc" -eq 1 ] && return 0
+  [ "$hits" = GPG_KEY ] && [ "${GPG_KEY-}" = 7169605F62C751356D054A26A821E680E5FA6305 ] && return 0
+  STOP "auth-like env keys present: $(tr '\n' ' ' <<<"$hits")"
+}
+
+run version 0 "$CX" --version
+printf '%s\n' "$OUT"
+has -qxF 'codex-cli 0.160.0' <<<"$OUT" || STOP "codex version is not 0.160.0"
+echo "PASS: codex-cli 0.160.0"
+
+[ -f /tmp/codex-home/auth.json ] && [ -s /tmp/codex-home/auth.json ] || STOP "auth.json is not mounted (missing or empty)"
+run login 0 "$CX" login status
+printf '%s\n' "$OUT"
+has -qxF 'Logged in using ChatGPT' <<<"$OUT" || STOP "login status is not 'Logged in using ChatGPT'"
+echo "PASS: logged in using ChatGPT"
+
+run config 0 cat "$CODEX_HOME/config.toml"
+printf '%s\n' "$OUT"
+has -qxF 'default_permissions = "t1-workspace"' <<<"$OUT" || STOP "config lacks default_permissions = t1-workspace"
+has -qxF '"/tmp/codex-home" = "deny"' <<<"$OUT" || STOP "config lacks /tmp/codex-home deny"
+if has -Eq '^[[:space:]]*sandbox_mode' <<<"$OUT"; then STOP "config contains sandbox_mode"; fi
+echo "PASS: config.toml content"
+
+run doctor 1 "$CX" --strict-config doctor --all --ascii --no-color
+printf '%s\n' "$OUT"
+echo "doctor-exit=$RC"
+has -Eq '\[ok\] config +(config )?loaded' <<<"$OUT" || STOP "doctor: config not [ok] loaded"
+has -Eq 'config\.toml parse +ok' <<<"$OUT" || STOP "doctor: config.toml parse not ok"
+has -Eq 'model +gpt-6\.1-sol' <<<"$OUT" || STOP "doctor: model is not gpt-6.1-sol"
+has -Eq "\[ok\] sandbox .*approval $EXPECT_APPROVAL" <<<"$OUT" || STOP "doctor: sandbox line not [ok] with approval $EXPECT_APPROVAL"
+has -Eq '\[ok\] auth +auth is configured' <<<"$OUT" || STOP "doctor: auth not configured"
+if has -Eq 'unrecognized configuration setting|is ignored' <<<"$OUT"; then STOP "doctor: startup warning about config keys"; fi
+echo "PASS: doctor lines"
+
+run prompt-sha 0 sha256sum /run-input/prompt.md
+printf '%s\n' "$OUT"
+[ "${OUT%% *}" = "$PROMPT_SHA" ] || STOP "prompt SHA-256 mismatch"
+echo "PASS: prompt SHA-256"
+
+run sandbox-ok 0 "$CX" sandbox -P t1-workspace -C /work -- bash -lc 'echo SANDBOX_OK'
+printf '%s\n' "$OUT"
+has -qxF SANDBOX_OK <<<"$OUT" || STOP "sandbox did not print SANDBOX_OK"
+echo "PASS: sandbox starts"
+
+read -r -d '' AUTH_PROBE <<'P' || true
+set -euo pipefail
+echo SANDBOX_ALIVE
+command -v cat >/dev/null || { echo "UNKNOWN: cat missing"; exit 4; }
+if err=$(cat /tmp/codex-home/auth.json 2>&1 >/dev/null); then echo "BLOCK: sandbox can read auth file"; exit 3; fi
+case $err in *"Permission denied"*|*"No such file or directory"*) echo AUTH_DENIED ;; *) echo "UNKNOWN: unexpected error class"; exit 4 ;; esac
+P
+run auth-probe 0 "$CX" sandbox -P t1-workspace -C /work -- bash -lc "$AUTH_PROBE"
+printf '%s\n' "$OUT"
+has -qxF SANDBOX_ALIVE <<<"$OUT" || STOP "auth probe did not run inside sandbox"
+has -qxF AUTH_DENIED <<<"$OUT" || STOP "auth probe did not report AUTH_DENIED"
+echo "PASS: auth file exists (container side) and is not readable inside sandbox"
+
+keys=$(compgen -e) || STOP "compgen -e failed"
+env_check "$keys"
+echo "PASS: no auth-like env keys in container shell (GPG_KEY image default allowed)"
+
+read -r -d '' ENV_PROBE <<'P' || true
+set -euo pipefail
+echo SANDBOX_ALIVE
+compgen -e | sed 's/^/KEY /'
+echo ENV_LIST_END
+P
+run env-probe 0 "$CX" sandbox -P t1-workspace -C /work -- bash -lc "$ENV_PROBE"
+has -qxF SANDBOX_ALIVE <<<"$OUT" || STOP "env probe did not run inside sandbox"
+has -qxF ENV_LIST_END <<<"$OUT" || STOP "env probe listing incomplete"
+skeys=$(sed -n 's/^KEY //p' <<<"$OUT")
+printf '%s\n' "$skeys"
+env_check "$skeys"
+echo "PASS: no auth-like env keys inside sandbox (GPG_KEY image default allowed)"
+
+run find-work 0 find /work -maxdepth 3
+printf '%s\n' "$OUT"
+run ls-run-input 0 ls -la /run-input
+printf '%s\n' "$OUT"
+run ls-A 0 ls -A /run-input
+[ "$OUT" = prompt.md ] || STOP "/run-input contains something other than prompt.md"
+echo "PASS: /run-input contains only prompt.md (compare /work listing with Gate 6 fixture set manually)"
+echo "PASS: preflight (d) container checks complete"
+EOF
+bash /tmp/preflight-d.sh
 ```
 
-- `--version` が `codex-cli 0.160.0`、`login status` がログイン済み（ChatGPT）、prompt の SHA-256 が Gate 7 の値、sandbox が `ok` であること。
-- `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）であること。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
-- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`sandbox_mode = "workspace-write"` と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
-- Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`ls -la /run-input` が `prompt.md` のみであることを確認する。あわせて host 側で、(a) の `docker run` の `-v` 一覧が auth.json・`CODEX_DIR`・`PROMPT`・`WS` の 4 つだけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを記録する。
+- `EXPECT_APPROVAL` は (c) の判断に対応する doctor の approval 表記（明示 `never` なら `Never`）。Reviewer が別値・省略を判断した場合は、その doctor 表記に置き換えて記録する。
+- 環境変数は `compgen -e` でキー名だけを列挙する（`env | cut -d= -f1` は値に改行を含む変数で値の断片をキーとして出力し得るため使わない）。列挙結果に `PATH` が無い場合は列挙失敗として STOP。`GPG_KEY` はイメージ定義の公開鍵 fingerprint（`docker image inspect` の `Config.Env` で確認、秘密ではない）であり、コンテナ側の値がイメージ既定値と一致する場合に限り許容する。
+
+Codex 本体プロセスの到達性（`/tmp/proc-check.sh`）:
+
+```bash
+cat > /tmp/proc-check.sh <<'EOF'
+set -euo pipefail
+STOP() { echo "STOP: $*"; exit 1; }
+has() { local rc=0; grep "$@" || rc=$?; [ "$rc" -le 1 ] || STOP "grep error (rc=$rc)"; return "$rc"; }
+CX=/cx/bin/codex
+PROBE_OUT=/tmp/proc-probe.txt
+# /proc/<pid>/stat の comm は空白や ')' を含み得るため、最後の ') ' 以降を分割する（ppid=2、starttime=20）
+stat_field() { local s n=$2 rest; s=$(cat "/proc/$1/stat" 2>/dev/null) || return 1; case $s in *') '*) ;; *) return 1 ;; esac; rest=${s##*) }; set -f; set -- $rest; set +f; [ $# -ge 20 ] || return 1; shift $((n - 1)); printf '%s\n' "$1"; }
+# 消えたプロセスは読み飛ばし、存在するのに読めない場合だけ失敗にする
+find_codex() { local p=$1 want=$2 e s c pp out
+  if ! e=$(readlink "/proc/$p/exe" 2>/dev/null); then [ -e "/proc/$p" ] && return 1; return 0; fi
+  if [ "$e" = "$want" ]; then echo "$p"; return 0; fi
+  for s in /proc/[0-9]*/stat; do c=${s#/proc/}; c=${c%/stat}
+    if ! pp=$(stat_field "$c" 2); then [ -e "/proc/$c" ] && return 1; continue; fi
+    if [ "$pp" = "$p" ]; then out=$(find_codex "$c" "$want") || return 1; [ -z "$out" ] || echo "$out"; fi
+  done; }
+identify_codex() { local cands n
+  cands=$(find_codex "$1" "$2") || STOP "cannot read /proc/<pid>/stat or exe while searching from pid $1"
+  n=$(grep -c . <<<"$cands" || true)
+  [ "$n" = 1 ] || STOP "expected exactly 1 process with exe $2 under pid $1, found ${n:-?}"
+  CODEX_PID=$cands
+  CODEX_START=$(stat_field "$CODEX_PID" 20) || STOP "cannot read starttime of pid $CODEX_PID"
+  CODEX_PPID=$(stat_field "$CODEX_PID" 2) || STOP "cannot read ppid of pid $CODEX_PID"
+  echo "PASS: codex pid $CODEX_PID ppid $CODEX_PPID exe $2 starttime $CODEX_START"; }
+read -r -d '' PROBE <<'P' || true
+set -uo pipefail
+sleep 5
+echo PROBE_BEGIN
+echo "PIDNS $(readlink /proc/self/ns/pid)"
+n=0
+for p in /proc/[0-9]*; do
+  [ "${p#/proc/}" = "$$" ] && { echo "pid $$ self (probe, skipped)"; continue; }
+  st=unknown cm=unknown
+  if s=$(cat "$p/stat" 2>/dev/null); then case $s in *") "*) cm=${s#*\(}; cm=${cm%\)*}; set -f; set -- ${s##*") "}; set +f; [ $# -ge 20 ] && st=${20} ;; esac; fi
+  echo "pid ${p#/proc/} starttime $st comm $cm"
+  for f in environ maps; do
+    if err=$(head -c1 "$p/$f" 2>&1 >/dev/null); then echo "  BLOCK: $f reachable"
+    else case $err in *"Permission denied"*) echo "  $f denied" ;; *) echo "  $f unknown" ;; esac; fi
+  done
+  if err=$( (exec 3<"$p/mem") 2>&1 ); then echo "  BLOCK: mem reachable"
+  else case $err in *"Permission denied"*) echo "  mem denied" ;; *) echo "  mem unknown" ;; esac; fi
+  if err=$(ls "$p/fd" 2>&1 >/dev/null); then echo "  BLOCK: fd reachable"
+  else case $err in *"Permission denied"*) echo "  fd denied" ;; *) echo "  fd unknown" ;; esac; fi
+  n=$((n + 1))
+done
+echo "PROBE_END entries $n"
+P
+# timeout 等のラッパーを挟まず起動する（ラッパーと Codex の starttime が同じ clock tick になり対応付けが一意にならないため）
+# 同定区間（sleep 1〜identify_codex〜comm/cmdline 読み取り）の時間制限（20 秒）。超過は USR1 で STOP。watchdog は bash（comm が codex でない）なので同定・対応付けに混ざらない
+IDENT_LIMIT=20
+IDENT_T0=$SECONDS
+trap 'STOP "codex identification exceeded ${IDENT_LIMIT}s"' USR1
+( sleep "$IDENT_LIMIT"; kill -USR1 $$ 2>/dev/null ) &
+IDWATCH=$!
+"$CX" sandbox -P t1-workspace -C /work -- bash -lc "$PROBE" > "$PROBE_OUT" 2>&1 &
+TARGET=$!
+WATCH=
+trap 'kill "$TARGET" $IDWATCH $WATCH 2>/dev/null || true' EXIT
+sleep 1
+# $! 自身の exe が /cx/bin/codex ならそれを、そうでなければ子孫のうち exe が一致する最上位プロセスを候補にする。候補がちょうど 1 つでなければ STOP
+identify_codex "$TARGET" "$CX"
+CODEX_COMM=$(cat "/proc/$CODEX_PID/comm") || STOP "cannot read comm of pid $CODEX_PID"
+mapfile -d '' -t ARGV < "/proc/$CODEX_PID/cmdline" || STOP "cannot read cmdline of pid $CODEX_PID"
+echo "comm: $CODEX_COMM argv[0..1]: ${ARGV[0]-} ${ARGV[1]-}"
+OWN_NS=$(readlink /proc/self/ns/pid) || STOP "cannot read own pid namespace"
+kill "$IDWATCH" 2>/dev/null || true
+trap - USR1
+IDWATCH=
+[ $((SECONDS - IDENT_T0)) -le "$IDENT_LIMIT" ] || STOP "codex identification exceeded ${IDENT_LIMIT}s"
+# 時間制限（60 秒）。同定の後に起動し、watchdog 自身が Codex と同じ starttime を持たないようにする
+( sleep 60; kill "$TARGET" 2>/dev/null ) &
+WATCH=$!
+rc=0
+wait "$TARGET" || rc=$?
+kill "$WATCH" 2>/dev/null || true
+trap - EXIT
+cat "$PROBE_OUT"
+[ "$rc" -ne 143 ] || STOP "sandbox probe killed by 60s watchdog"
+[ "$rc" -eq 0 ] || STOP "sandbox probe failed (rc=$rc)"
+has -qxF PROBE_BEGIN "$PROBE_OUT" || STOP "probe did not start inside sandbox"
+has -Eq '^PROBE_END entries [1-9][0-9]*$' "$PROBE_OUT" || STOP "probe output incomplete"
+# 判定は対象エントリ（starttime と comm が一致）だけで行う。probe 自身は除外済み、他プロセスの行は記録のみ
+match() { awk -v st="$CODEX_START" -v cm="$CODEX_COMM" -v want="${1-}" '$1 == "pid" && $3 == "starttime" && $4 == st && substr($0, index($0, " comm ") + 6) == cm && (want == "" || $2 == want)' "$PROBE_OUT"; }
+n=$(match | grep -c . || true)
+[ "$n" = 1 ] || STOP "expected exactly 1 probe entry with starttime $CODEX_START comm $CODEX_COMM, found ${n:-?} (not visible / not mappable)"
+if has -qxF "PIDNS $OWN_NS" "$PROBE_OUT"; then [ "$(match "$CODEX_PID" | grep -c . || true)" = 1 ] || STOP "shared pid namespace but pid differs"; fi
+key=$(match)
+entry=$(awk -v key="$key" '$1 == "pid" { on = ($0 == key); next } $1 == "PROBE_END" { on = 0 } on' "$PROBE_OUT")
+printf '%s\n%s\n' "$key" "$entry"
+[ "$(grep -c . <<<"$entry" || true)" = 4 ] || STOP "codex entry does not have exactly 4 result lines"
+[ "$(grep -cE '^  (environ|maps|mem|fd) denied$' <<<"$entry" || true)" = 4 ] || STOP "codex entry lacks 4 denied lines (unknown or BLOCK)"
+echo "PASS: codex pid $CODEX_PID environ/maps/mem/fd denied from sandbox"
+EOF
+bash /tmp/proc-check.sh
+```
+
+host 側（repo ルート、コンテナ起動中の別ターミナル）で mount を確認する（Gate 13）。スクリプトは repo 外・Git 管理外の作業ディレクトリに保存して実行する。
+
+```bash
+set -euo pipefail
+STOP() { echo "STOP: $*"; exit 1; }
+: "${CNAME:?}" "${WS:?}" "${CODEX_DIR:?}" "${PROMPT:?}"
+AUTH_SRC=${AUTH_SRC:-$HOME/.codex/auth.json}
+RUNS=$(realpath "$PWD/experiments/EXP-001-t0-vs-t1/runs") || STOP "cannot resolve runs/ (run from repo root)"
+m=$(docker inspect --format '{{range .Mounts}}{{.Type}}|{{.Source}}|{{.Destination}}|{{.RW}}{{"\n"}}{{end}}' "$CNAME") || STOP "docker inspect $CNAME failed"
+m=$(sed '/^$/d' <<<"$m")
+[ -n "$m" ] || STOP "no mounts reported"
+printf '%s\n' "$m"
+other=$(awk -F'|' '$1 != "bind" && $1 != "tmpfs"' <<<"$m")
+[ -z "$other" ] || STOP "mount of unexpected type: $(cut -d'|' -f1,3 <<<"$other" | tr '\n' ' ')"
+# bind: 4 entries, each Source(realpath)/Destination/RW must equal the expected value
+binds=""
+while IFS='|' read -r type src dst rw; do
+  [ "$type" = bind ] || continue
+  r=$(realpath "$src") || STOP "cannot resolve bind source for $dst"
+  binds+="$r|$dst|$rw"$'\n'
+done <<<"$m"
+exp=""
+for e in "$AUTH_SRC|/tmp/codex-home/auth.json|false" "$CODEX_DIR|/cx|false" "$PROMPT|/run-input/prompt.md|false" "$WS|/work|true"; do
+  r=$(realpath "${e%%|*}") || STOP "cannot resolve expected source for ${e#*|}"
+  exp+="$r|${e#*|}"$'\n'
+done
+[ "$(sort <<<"$binds")" = "$(sort <<<"$exp")" ] || STOP "bind mounts differ from exactly auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw"
+# tmpfs: allowlist /tmp and /tmp/codex-home only (in .Mounts if listed there, and in HostConfig.Tmpfs)
+allowed=$(printf '%s\n' /tmp /tmp/codex-home)
+td=$(awk -F'|' '$1 == "tmpfs" { print $3 }' <<<"$m" | sort)
+[ -z "$td" ] || [ "$td" = "$allowed" ] || STOP "tmpfs mounts in .Mounts are not exactly /tmp and /tmp/codex-home"
+ht=$(docker inspect --format '{{range $k, $v := .HostConfig.Tmpfs}}{{$k}}{{"\n"}}{{end}}' "$CNAME") || STOP "docker inspect HostConfig.Tmpfs failed"
+ht=$(sed '/^$/d' <<<"$ht" | sort)
+printf 'HostConfig.Tmpfs: %s\n' "$(tr '\n' ' ' <<<"$ht")"
+[ "$ht" = "$allowed" ] || STOP "HostConfig.Tmpfs is not exactly /tmp and /tmp/codex-home"
+while IFS='|' read -r src dst rw; do
+  [ -n "$src" ] || continue
+  case "$src/" in "$RUNS"/*) STOP "$dst source is under runs/" ;; esac
+  case "$RUNS/" in "$src"/*) STOP "$dst source contains runs/" ;; esac
+  case $src in *infrastructure-failures*) STOP "$dst source references infrastructure-failures" ;; esac
+done <<<"$binds"
+ws=$(realpath "$WS") || STOP "cannot resolve WS"
+case "$ws/" in "$RUNS"/*) STOP "WS is under runs/" ;; esac
+echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw) and tmpfs only at /tmp and /tmp/codex-home; none under or containing runs/"
+```
+
+実行例: `CNAME="$CNAME" WS="$WS" CODEX_DIR="$CODEX_DIR" PROMPT="$PROMPT" bash <作業ディレクトリ>/host-mounts.sh`（`AUTH_SRC` 省略時は `$HOME/.codex/auth.json`。最終行 `PASS:` かつ rc=0 のみ合格）。
+
+- bind は 4 件ちょうどで、各 Source（realpath）・Destination・RW が期待値（auth.json → `/tmp/codex-home/auth.json` ro、`CODEX_DIR` → `/cx` ro、`PROMPT` → `/run-input/prompt.md` ro、`WS` → `/work` rw）と一致すること。
+- tmpfs は許可リスト（`/tmp` と `/tmp/codex-home` のみ）として別に検査する。`--tmpfs` は Docker の版により `.Mounts` に `Type: tmpfs` で現れる場合と `HostConfig.Tmpfs` にだけ現れる場合があるため、`.Mounts` に現れた tmpfs の宛先と `HostConfig.Tmpfs` のキーの両方が許可リストと一致することを確認する。
+- bind・tmpfs 以外の型（volume 等）、許可外の宛先、件数の過不足はいずれも STOP。
+- 2026-10-09 に Docker Desktop（context `desktop-linux`）で、上記 `docker run` と同じフラグ構成（イメージ digest・seccomp・`--tmpfs` 2 つ・非 root・`--cap-drop ALL`・`--read-only`・`no-new-privileges`・`--name`）に `--rm -d --network none` を加え、auth はダミーファイル、`CODEX_DIR` はスクラッチの Codex 0.160.0 配布物（起動しない）、`PROMPT`・`WS` はスクラッチのダミーで起動し、本スクリプトが PASS することを確認した。このとき `--tmpfs` の 2 件は `.Mounts` に現れず `HostConfig.Tmpfs` にだけ現れた。tmpfs を 1 つ追加した場合・bind を 1 つ追加した場合はそれぞれ STOP した（Codex・model は起動していない）。
+
+- `--version` が `codex-cli 0.160.0`、`login status` が `Logged in using ChatGPT`、prompt の SHA-256 が Gate 7 の値、sandbox が `SANDBOX_OK` を出すこと（それぞれ `/tmp/preflight-d.sh` の `PASS:` 行）。
+- `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）、`[ok] auth  auth is configured` であること。auth 読み取りテストが `PASS` であること（`BLOCK`・判定不能・sandbox 実行失敗は STOP）。以上は**本物の auth を mount した Run と同一構成**での再確認であり、ダミー auth での事前確認では代替しない。
+- 環境変数: コンテナ・sandbox の両方で認証関連キー（`OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むキー名。イメージ既定の `GPG_KEY` を除く）が無いこと。キー名のみを出力し、値は出力しない。キー一覧の取得失敗・`PATH` を含まない一覧・sandbox 内で `ENV_LIST_END` まで到達しない場合は STOP。
+- Codex 本体プロセス: PASS は、**実行例 `/tmp/proc-check.sh` が exit 0 で最終行に `PASS:` を出力し、対象の Codex 本体プロセスを確実に同定でき、その `environ` / `maps` / `mem` / `fd` のすべてへのアクセスが denied の場合に限る**。同定は cmdline の `codex` 文字列一致に頼らず、次の手順で行う。
+  1. コンテナ側シェル（sandbox の外）で `codex sandbox` をバックグラウンド起動し、`$!` を起点 PID とする。**同定の必須条件は `readlink /proc/<pid>/exe` が `/cx/bin/codex`（(a) の `docker run` で `CODEX_DIR` を `/cx` に mount した Codex 0.160.0 バイナリの絶対パス）と一致すること**であり、判定は exe だけで行う。`$!` はシェルの subshell・`timeout` 等のラッパーの pid になり得るため、`$!` 自身の exe が一致しなければ、`/proc/*/stat` の ppid（comm に空白や `)` を含み得るため、最後の `)` 以降を分割した第 2 フィールド）をたどって `$!` の子孫を探索し、exe が一致する最上位のプロセスを候補とする（一致したプロセスの子孫は探索しない。Codex が同一バイナリで起動する sandbox helper を本体と取り違えないため）。候補がちょうど 1 つの場合に限りそれを対象 PID とする。あわせて `/proc/<pid>/cmdline` の argv[0..1] が `codex sandbox`（argv[0] は `/cx/bin/codex`）であることを補助情報として記録する（cmdline は判定に使わない）。対象 PID について ppid と `/proc/<pid>/stat` の第 22 フィールド（最後の `)` 以降の第 20 フィールドとして読む。starttime。boot 起点の clock tick で pid namespace に依存しない）と comm を記録する（イメージに `ps` は無いため `/proc` から読む）。記録するのは pid・ppid・exe・comm・argv[0..1]・starttime のみで、`environ` 等の秘密値は出力しない。`timeout` 等のラッパーを挟むとラッパーと Codex の starttime が同じ clock tick になり対応付けが一意にならないため、Codex は直接バックグラウンド起動し、60 秒の時間制限は同定後に起動する watchdog で掛ける（打ち切りは STOP）。起動から同定・comm/cmdline 読み取りまでの初期区間にも 20 秒の上限を設け、Codex 起動前に開始した別の watchdog（bash。exe・comm が Codex と異なるため同定・対応付けに混ざらない）が超過時に `STOP` させる。区間終了時に経過秒数も再確認し、超過なら STOP。
+  2. sandbox 内の probe は cmdline で絞らず、見えるすべての pid（probe 自身は除外）について pid・starttime・comm・各ファイルの到達可否を出力する（内容は `/dev/null` に捨て、秘密値は出力しない。`mem` は offset 0 の読み取りが未マップで失敗し得るため open 可否で判定する）。`denied` はエラーが `Permission denied` の場合だけで、それ以外のエラーは `unknown`。probe は `PROBE_BEGIN` と `PROBE_END entries <n>` を出し、どちらかが無ければ STOP。
+  3. 対応付け: probe 出力のうち starttime と comm が手順 1 の値と一致するエントリがちょうど 1 つあり、pid namespace が共有されている場合は pid も一致することを確認し、そのエントリを対象とする。判定は対象エントリの 4 行がすべて `denied` であることだけで行う（他プロセスの行は記録のみ。probe 自身の行は自分の `environ` を読めるため判定に含めない）。
+  - `/tmp/proc-check.sh` が `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、対象エントリに `BLOCK` または `unknown` がある、対象 PID の exe が `/cx/bin/codex` と一致しない・`readlink` で読めない・exe が一致する候補が 0 個または複数で一意に特定できない、対象を対応付けできない（starttime 一致なし・複数一致・`stat` を読めず `unknown`）、sandbox 内から対象プロセスが見えない（pid namespace 分離等。見えないことは到達拒否の証明にならない）、または sandbox 実行失敗なら **STOP（判定不能、model 起動前）**。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
+- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用（`codex sandbox -P t1-workspace` での挙動は確認済みだが exec 時の適用は未確認）と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
+- Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`/run-input` が `prompt.md` のみであることは `/tmp/preflight-d.sh` が `ls -A` で確認する（`find` / `ls` の失敗・空出力は STOP）。fixture のファイル集合との照合は Operator が出力全文で行う。あわせて host 側の `host-mounts.sh` で、`docker inspect` の bind mount が 4 つ（auth.json・`CODEX_DIR`・`PROMPT`・`WS`。Source・Destination・RW が期待値と一致）だけで、tmpfs が `/tmp` と `/tmp/codex-home` だけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを確認し、出力を記録する（`docker inspect` 失敗・bind の不一致・許可外の tmpfs や型は STOP）。
 
 ### (e) STOP 判定
 
-(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、証跡回収の非model検証が未完了、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、検査コマンド自体が失敗した（読み取り不能、コマンド不在、パイプ途中の失敗、空出力、タイムアウト、sandbox 起動失敗）、`/tmp/nonmodel-1-5.sh`・`/tmp/preflight-d.sh`・`/tmp/proc-check.sh`・`host-mounts.sh` のいずれかが `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `maps` / `mem` / `fd` のいずれかに到達できる、または対象プロセスの exe が `/cx/bin/codex` と一致しない・読めない・一意に特定できない、対象を対応付けできない・sandbox 内から見えないために到達可否を判定できない、(d) の実行例が `STOP:` を出力した・非 0 で終了した、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
 
 ### (f) Reviewer Judgment の確認
 
@@ -432,14 +804,68 @@ Issue #15 に `ACCEPT N1 + G` と approval / 実行方式（「未解決の論�
 
 ```bash
 date '+%Y-%m-%dT%H:%M:%S%z'
-/cx/bin/codex exec -C /work - < /run-input/prompt.md
+rc=0
+/cx/bin/codex exec -C /work - < /run-input/prompt.md || rc=$?
+printf '%s\n' "$rc" > /tmp/exit-code
 ```
 
 - `-m` / `-s` / `-c` は付けず、Model・Effort・sandbox・approval は (c) の `config.toml` だけから与える。Reviewer が対話実行を選んだ場合は、この行を Reviewer Judgment に記された対話起動コマンドに置き換える。
+- 終了コードは証跡回収のため `/tmp/exit-code` に書く（model 起動コマンド自体は変えない）。
+
+#### 証跡回収（model 終了後、コンテナ shell を閉じる前に host 側で実行）
+
+`SINK` は model workspace にマウントせず Git に入れない host 側の保存先ディレクトリ。スクリプトは repo 外・Git 管理外の作業ディレクトリに保存して実行する。
+
+```bash
+set -euo pipefail
+STOP() { echo "STOP: $*"; exit 1; }
+has() { local rc=0; grep "$@" || rc=$?; [ "$rc" -le 1 ] || STOP "grep error (rc=$rc)"; return "$rc"; }
+: "${CNAME:?}" "${SINK:?}"
+[ -d "$SINK" ] || STOP "sink directory does not exist"
+umask 077
+perm() { stat -f '%Lp %u' "$1" 2>/dev/null || stat -c '%a %u' "$1"; }
+[ "$(perm "$SINK")" = "700 $(id -u)" ] || STOP "SINK must be mode 700 and owned by the operator"
+out="$SINK/evidence.tar"
+[ ! -e "$out" ] || STOP "$out already exists"
+docker exec "$CNAME" tar -C /tmp -cf - codex-home/sessions exit-code > "$out" || STOP "docker exec tar failed"
+[ -s "$out" ] || STOP "evidence.tar is empty"
+list=$(tar -tf "$out") || STOP "evidence.tar is not a readable tar"
+printf '%s\n' "$list"
+has -qx 'exit-code' <<<"$list" || STOP "exit-code missing"
+has -Eq '^codex-home/sessions/.+[^/]$' <<<"$list" || STOP "no session files"
+if has -q 'auth\.json' <<<"$list"; then STOP "auth.json in evidence.tar"; fi
+chmod 600 "$out" || STOP "chmod 600 failed"
+[ "$(perm "$out")" = "600 $(id -u)" ] || STOP "evidence.tar must be mode 600 and owned by the operator"
+scan=$(mktemp -d "$SINK/.scan.XXXXXX") || STOP "mktemp failed"
+trap 'rm -rf "$scan"' EXIT
+tar -xf "$out" -C "$scan" || STOP "cannot extract evidence.tar for scanning"
+# 値は出力せず、パターンごとの該当ファイル数だけを出す
+found=0
+for pat in '(access|refresh|id)_token' 'eyJ[A-Za-z0-9_-]{10,}' '(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}' 'Bearer [A-Za-z0-9._~+/=-]+' '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'; do
+  rc=0
+  files=$(LC_ALL=C grep -rEal -e "$pat" "$scan") || rc=$?
+  [ "$rc" -le 1 ] || STOP "secret scan failed (rc=$rc)"
+  n=0
+  [ "$rc" -eq 1 ] || n=$(grep -c . <<<"$files")
+  echo "secret-scan pattern#$((found + 1)): $n file(s)"
+  [ "$n" = 0 ] || { echo "STOP: secret-like pattern found ($n file(s)); values not printed"; exit 1; }
+  found=$((found + 1))
+done
+echo "PASS: evidence.tar (600, SINK 700) contains session files and exit-code, no auth.json, no secret-like patterns"
+```
+
+実行例: `CNAME="$CNAME" SINK=<host 側保存先> bash <作業ディレクトリ>/collect-evidence.sh`。`docker exec` の失敗（コンテナ消失を含む）、空の tar、`exit-code` またはセッションファイルの欠落、`auth.json` の混入、既存ファイルの上書き、`SINK` が mode 700・Operator 所有でない、`evidence.tar` を 600 にできない、秘密値パターン（`access_token` / `refresh_token` / `id_token`、JWT 接頭辞 `eyJ`、`sk-`、`Bearer `、email 形式）の検出、検査自体の失敗（展開不能・grep エラー）はいずれも `STOP:` と非 0 終了になる。秘密値パターンは値を出力せず、パターンごとの該当ファイル数だけを出す。model 起動後のため retry は再実行せず、STOP 理由を limitation として記録する。
+
+回収した証跡の取り扱い（実行ゲート。満たせなければ Issue へ添付しない）:
+
+1. 権限: `SINK` は mode 700、`evidence.tar` は mode 600、どちらも Operator 所有であること（`collect-evidence.sh` が検査）。展開・抜粋は `SINK` 配下でのみ行い、作業後も 700/600 を保つ。
+2. 閲覧者: 回収物を開くのは Operator のみ。Reviewer・他者・AI エージェントへ archive や展開物をそのまま渡さない。
+3. sanitize: Issue #15 へ添付するのは、Operator が抜粋した必要最小限の部分（実効 config 値、exit code、ファイル一覧等）だけとし、添付前に抜粋に対して上記と同じ秘密値パターン検査を実行して 0 件であることを確認する（検出・検査失敗なら添付しない）。archive 全体・セッションファイル全文は添付しない。
+4. `collect-evidence.sh` が秘密値パターンで STOP した場合は、該当ファイル数だけを記録し、内容は Operator がローカルで確認する。検出結果を limitation として記録する。
 
 ## Reviewer が ACCEPT した場合の後続手順
 
-1. Reviewer Judgment（例: `EXP-001 T1 r01 Gate 10 environment: ACCEPT N1 + G (python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258, arm64, Codex 0.160.0 workspace-write via bwrap, seccomp codex-bwrap-seccomp.json sha256:085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8, cap-drop ALL, non-root)`）を Issue #15 に記録する。構成は「候補 G の提案構成（Reviewer 判断材料）」節のとおりとし、変更する場合は再度 Reviewer 判断を求める。
+1. Reviewer Judgment（例: `EXP-001 T1 r01 Gate 10 environment: ACCEPT N1 + G (python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258, arm64, Codex 0.160.0 permissions profile t1-workspace (:workspace + deny /tmp/codex-home) via bwrap, seccomp codex-bwrap-seccomp.json sha256:085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8, cap-drop ALL, non-root)`）を Issue #15 に記録する。構成は「候補 G の提案構成（Reviewer 判断材料）」節のとおりとし、変更する場合は再度 Reviewer 判断を求める。
 2. 本体 [EXP-001_RETRY_T1_R01.md](EXP-001_RETRY_T1_R01.md) の Gate 10 直後にある本文書への参照行の「（Reviewer判断待ち）」を、承認済み表記（Issue #15 の Reviewer Judgment へのリンク付き）へ更新する PR を出す。本体の Gate 1〜13 の文言は変えない。
 
 ## 比較妥当性の limitation
@@ -448,6 +874,7 @@ date '+%Y-%m-%dT%H:%M:%S%z'
 - shell 起動方式が異なる（T0 r01: `/usr/bin/zsh -lc` / T1 r01 retry: `bash -lc`）。
 - CPU アーキテクチャ: T1 r01 retry は arm64 固定。T0 r01 のアーキテクチャは記録が無く不明。
 - Codex config: T0 r01 側の approval 等の config 記録と起動方式（`codex exec` / 対話）の記録が無いため、T1 r01 retry の approval 設定・起動方式が T0 と同一であることは保証できない（「未解決の論点」5・6 の Reviewer 判断で T1 側の値を確定し、その値を開示する）。
+- sandbox profile: T1 r01 retry は `:workspace` を継承し認証領域を追加 deny した派生 profile `t1-workspace` を使い、T0 の normal experimental sandbox（`workspace-write`）と同一とは認定しない。T0/T1 比較は引き続き `environment-confounded / descriptive-only` とする。
 - OS・shell・Python 版の差は paired comparison（T0 vs T1）の交絡要因になり得ます。本 limitation は EXP-001 summary で**開示対象**とし、`normalize-name` r01 の T0/T1 比較を解釈する際に併記します。
 - この limitation は Evaluation semantics・Counting を変更しません。開示のみを求めます。
 
@@ -469,3 +896,4 @@ date '+%Y-%m-%dT%H:%M:%S%z'
 7. sandbox内でmodelが起動するコマンドから `auth.json` を読み取れないことを非modelで確認できたか（不能ならSTOP）。
 8. `--rm` + tmpfs `CODEX_HOME` が消える前に、必要な観測事実を機密保護したhost-side sinkへ保存できることを確認したか（不能ならSTOP）。
 9. G環境のT1とT0 r01の環境不一致を踏まえ、当該ペアを `environment-confounded / descriptive-only` として扱うか（Topology効果の因果主張を禁じる判断）。
+10. `codex exec` 実行時に permissions profile `t1-workspace` が実効適用されることは Run 前に確認できない（`codex sandbox -P t1-workspace` と doctor のみ確認済み）。Run 後の trace 確認だけでなく、この未確認を Reviewer が承知のうえで受容するか。

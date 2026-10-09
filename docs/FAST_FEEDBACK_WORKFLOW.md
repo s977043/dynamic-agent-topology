@@ -19,7 +19,7 @@ DAT has two independent feedback loops:
 | **Repository development** | Small docs/guard/tool changes, local validation, review, learn, next improvement PR within the existing approval policy | Silently change a frozen file, grant itself authority, auto-merge a protected Harness change |
 | **EXP-001 empirical** | Execute the already-authorized frozen matrix one Run at a time; validate captured artifacts promptly; report operational impediments outside the fresh Run context | Change prompt, topology, role, fixture, evaluation semantics, matrix, fixed model/effort, or use earlier Run feedback in later Run prompts |
 
-A repository development consultation is **not** a component of T0 or T1, does not run inside the empirical Codex session, and is never fed into its frozen prompt. The Operator follows the approved Run procedure without improvising a different environment.
+Cross-run feedback prohibition remains absolute for EXP-001: improvements discovered in one empirical Run must not alter later frozen Run conditions. A repository development consultation is **not** a component of T0 or T1, does not run inside the empirical Codex session, and is never fed into its frozen prompt. The Operator follows the approved Run procedure without improvising a different environment.
 
 ## Smallest safe feedback loop
 

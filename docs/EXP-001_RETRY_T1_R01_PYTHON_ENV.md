@@ -185,7 +185,7 @@ independent review の指摘により、次の 2 経路をダミー auth・model
 | 確認 | 結果 |
 | --- | --- |
 | コンテナ・sandbox 内の環境変数キーに `OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むものが無い | 未実施 |
-| sandbox 内から外側の codex プロセスの `/proc/<pid>/environ`・`fd`（各エントリの `readlink`・open）・`mem`・`maps` が参照できない | ダミー auth で `fd` の判定基準を実測（(d) の「`fd` の判定基準」）。本物の auth での確認は (d) |
+| sandbox 内から外側の codex プロセスの `/proc/<pid>/environ`・`mem`・`maps`・`root`・`cwd`・`fd`（各エントリの `readlink`・open）・`fdinfo` が参照できない | ダミー auth で実測（(d) の「`fd`・`fdinfo` の判定基準」「`/proc/<pid>` 全体の評価」）。本物の auth での確認は (d) |
 
 (d) の同定関数（`stat_field` / `find_codex` / `identify_codex`）は、2026-10-09 に候補 G イメージ（`--rm --network none`、Codex 非起動）で、`/cx/bin/codex` の代わりに `/bin/sleep` のコピーをダミー exe として単体テストした。(a) 通常の子プロセス 1 つ: `PASS`、(b) comm が `a) b` のプロセスと同居・それ自体を対象: いずれも `PASS`（旧 `cut -d' ' -f4` は ppid に `S` を返し誤る、新方式は正しい ppid）、(c) 存在しない pid: `STOP`（rc=1）、(d) 候補 2 つ: `STOP`（rc=1）、候補 0 件: `STOP`（rc=1）。sandbox 内 probe の starttime 読み取りも同方式で一致を確認した。Codex 本体での同定・到達性の実機確認は本番 preflight の (d) で行う。
 
@@ -696,18 +696,28 @@ for p in /proc/[0-9]*; do
   done
   if err=$( (exec 3<"$p/mem") 2>&1 ); then echo "  BLOCK: mem reachable"
   else case $err in *"Permission denied"*) echo "  mem denied" ;; *) echo "  mem unknown" ;; esac; fi
-  # fd: 一覧は同一 uid なら取れる。判定は各エントリの readlink（参照先パス）と open（中身）がすべて Permission denied か（readlink は -v でないとエラー文を出さない）
+  # root/cwd: 外側プロセスの fs 視点をたどれるか（auth.json へのパス経路）
+  for f in root cwd; do
+    if err=$(ls -A "$p/$f/" 2>&1 >/dev/null); then echo "  BLOCK: $f reachable"
+    else case $err in *"Permission denied"*) echo "  $f denied" ;; *) echo "  $f unknown" ;; esac; fi
+  done
+  # fd: 一覧は同一 uid なら取れる。判定は各エントリの readlink（参照先パス）・open（中身）・fdinfo（pos・flags・ino 等）がすべて Permission denied か（readlink は -v でないとエラー文を出さない）
   if l=$(ls -A "$p/fd" 2>&1); then
-    fd=denied k=0
+    fd=denied fi=denied k=0
     for f in $l; do k=$((k + 1))
       if err=$(readlink -v "$p/fd/$f" 2>&1 >/dev/null); then fd=BLOCK; break; fi
       case $err in *"Permission denied"*) ;; *) fd=unknown ;; esac
       if err=$( (exec 3<"$p/fd/$f") 2>&1 ); then fd=BLOCK; break; fi
       case $err in *"Permission denied"*) ;; *) fd=unknown ;; esac
     done
-    [ "$k" -gt 0 ] || fd=unknown
+    for f in $l; do
+      if err=$(head -c1 "$p/fdinfo/$f" 2>&1 >/dev/null); then fi=BLOCK; break; fi
+      case $err in *"Permission denied"*) ;; *) fi=unknown ;; esac
+    done
+    [ "$k" -gt 0 ] || { fd=unknown; fi=unknown; }
     case $fd in denied) echo "  fd denied" ;; BLOCK) echo "  BLOCK: fd reachable" ;; *) echo "  fd unknown" ;; esac
-  else case $l in *"Permission denied"*) echo "  fd denied" ;; *) echo "  fd unknown" ;; esac; fi
+    case $fi in denied) echo "  fdinfo denied" ;; BLOCK) echo "  BLOCK: fdinfo reachable" ;; *) echo "  fdinfo unknown" ;; esac
+  else case $l in *"Permission denied"*) echo "  fd denied"; echo "  fdinfo denied" ;; *) echo "  fd unknown"; echo "  fdinfo unknown" ;; esac; fi
   n=$((n + 1))
 done
 echo "PROBE_END entries $n"
@@ -754,9 +764,9 @@ if has -qxF "PIDNS $OWN_NS" "$PROBE_OUT"; then [ "$(match "$CODEX_PID" | grep -c
 key=$(match)
 entry=$(awk -v key="$key" '$1 == "pid" { on = ($0 == key); next } $1 == "PROBE_END" { on = 0 } on' "$PROBE_OUT")
 printf '%s\n%s\n' "$key" "$entry"
-[ "$(grep -c . <<<"$entry" || true)" = 4 ] || STOP "codex entry does not have exactly 4 result lines"
-[ "$(grep -cE '^  (environ|maps|mem|fd) denied$' <<<"$entry" || true)" = 4 ] || STOP "codex entry lacks 4 denied lines (unknown or BLOCK)"
-echo "PASS: codex pid $CODEX_PID environ/maps/mem denied and every fd entry readlink/open denied from sandbox"
+[ "$(grep -c . <<<"$entry" || true)" = 7 ] || STOP "codex entry does not have exactly 7 result lines"
+[ "$(grep -cE '^  (environ|maps|mem|root|cwd|fd|fdinfo) denied$' <<<"$entry" || true)" = 7 ] || STOP "codex entry lacks 7 denied lines (unknown or BLOCK)"
+echo "PASS: codex pid $CODEX_PID environ/maps/mem/root/cwd denied and every fd entry readlink/open/fdinfo denied from sandbox"
 EOF
 bash /tmp/proc-check.sh
 ```
@@ -819,12 +829,14 @@ echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw)
 - `--version` が `codex-cli 0.160.0`、`login status` が `Logged in using ChatGPT`、prompt の SHA-256 が Gate 7 の値、sandbox が `SANDBOX_OK` を出すこと（それぞれ `/tmp/preflight-d.sh` の `PASS:` 行）。
 - `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）、`[ok] auth  auth is configured` であること。auth 読み取りテストが `PASS` であること（`BLOCK`・判定不能・sandbox 実行失敗は STOP）。以上は**本物の auth を mount した Run と同一構成**での再確認であり、ダミー auth での事前確認では代替しない。
 - 環境変数: コンテナ・sandbox の両方で認証関連キー（`OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むキー名。イメージ既定の `GPG_KEY` を除く）が無いこと。キー名のみを出力し、値は出力しない。キー一覧の取得失敗・`PATH` を含まない一覧・sandbox 内で `ENV_LIST_END` まで到達しない場合は STOP。
-- Codex 本体プロセス: PASS は、**実行例 `/tmp/proc-check.sh` が exit 0 で最終行に `PASS:` を出力し、対象の Codex 本体プロセスを確実に同定でき、その `environ` / `maps` / `mem` へのアクセスと、`fd` の各エントリの `readlink`・`open` がすべて denied の場合に限る**（`fd` の判定基準は下記「`fd` の判定基準」）。同定は cmdline の `codex` 文字列一致に頼らず、次の手順で行う。
+- Codex 本体プロセス: PASS は、**実行例 `/tmp/proc-check.sh` が exit 0 で最終行に `PASS:` を出力し、対象の Codex 本体プロセスを確実に同定でき、その `environ` / `maps` / `mem` の読み取り・open、`root` / `cwd` 配下の一覧、`fd` の各エントリの `readlink`・`open`、`fdinfo` の各エントリの読み取りがすべて `Permission denied` の場合に限る**（判定基準は下記「`fd`・`fdinfo` の判定基準」）。同定は cmdline の `codex` 文字列一致に頼らず、次の手順で行う。
   1. コンテナ側シェル（sandbox の外）で `codex sandbox` をバックグラウンド起動し、`$!` を起点 PID とする。**同定の必須条件は `readlink /proc/<pid>/exe` が `/cx/bin/codex`（(a) の `docker run` で `CODEX_DIR` を `/cx` に mount した Codex 0.160.0 バイナリの絶対パス）と一致すること**であり、判定は exe だけで行う。`$!` はシェルの subshell・`timeout` 等のラッパーの pid になり得るため、`$!` 自身の exe が一致しなければ、`/proc/*/stat` の ppid（comm に空白や `)` を含み得るため、最後の `)` 以降を分割した第 2 フィールド）をたどって `$!` の子孫を探索し、exe が一致する最上位のプロセスを候補とする（一致したプロセスの子孫は探索しない。Codex が同一バイナリで起動する sandbox helper を本体と取り違えないため）。候補がちょうど 1 つの場合に限りそれを対象 PID とする。あわせて `/proc/<pid>/cmdline` の argv[0..1] が `codex sandbox`（argv[0] は `/cx/bin/codex`）であることを補助情報として記録する（cmdline は判定に使わない）。対象 PID について ppid と `/proc/<pid>/stat` の第 22 フィールド（最後の `)` 以降の第 20 フィールドとして読む。starttime。boot 起点の clock tick で pid namespace に依存しない）と comm を記録する（イメージに `ps` は無いため `/proc` から読む）。記録するのは pid・ppid・exe・comm・argv[0..1]・starttime のみで、`environ` 等の秘密値は出力しない。`timeout` 等のラッパーを挟むとラッパーと Codex の starttime が同じ clock tick になり対応付けが一意にならないため、Codex は直接バックグラウンド起動し、60 秒の時間制限は同定後に起動する watchdog で掛ける（打ち切りは STOP）。起動から同定・comm/cmdline 読み取りまでの初期区間にも 20 秒の上限を設け、Codex 起動前に開始した別の watchdog（bash。exe・comm が Codex と異なるため同定・対応付けに混ざらない）が超過時に `STOP` させる。区間終了時に経過秒数も再確認し、超過なら STOP。
-  2. sandbox 内の probe は cmdline で絞らず、見えるすべての pid（probe 自身は除外）について pid・starttime・comm・各ファイルの到達可否を出力する（内容は `/dev/null` に捨て、秘密値は出力しない。`mem` は offset 0 の読み取りが未マップで失敗し得るため open 可否で判定する。`fd` は一覧を取り、各エントリについて `readlink` と open を試み、参照先パスも内容も出力しない。一覧自体が denied ならそれも `fd denied`）。`denied` はエラーが `Permission denied` の場合だけで、それ以外のエラー（一覧と読み取りの間にエントリが消えた場合の `No such file` を含む）や一覧が 0 件は `unknown`。probe は `PROBE_BEGIN` と `PROBE_END entries <n>` を出し、どちらかが無ければ STOP。
-  3. 対応付け: probe 出力のうち starttime と comm が手順 1 の値と一致するエントリがちょうど 1 つあり、pid namespace が共有されている場合は pid も一致することを確認し、そのエントリを対象とする。判定は対象エントリの 4 行がすべて `denied` であることだけで行う（他プロセスの行は記録のみ。probe 自身の行は自分の `environ` を読めるため判定に含めない）。
-  - `fd` の判定基準: 判定対象は「`fd` を列挙できるか」ではなく「列挙した各エントリの参照先（`readlink`）と中身（open）に到達できるか」とする。根拠: proc(5) は `/proc/<pid>/fd/` の symlink の参照（dereference）と `readlink` を ptrace access mode `PTRACE_MODE_READ_FSCREDS` の検査で制御すると定めており（`environ`・`mem` と同じ検査系統）、一覧はディレクトリの通常の権限で決まる。sandbox は Codex と同じ uid で動くため一覧は取れるが、一覧から得られるのは fd 番号（件数）だけで、パス・中身・ソケットの相手は得られない。fail-closed は次で保つ: (1) 全エントリについて `readlink`・open の両方が `Permission denied` の場合だけ `fd denied`、(2) どれか 1 つでも成功すれば `BLOCK`、(3) `Permission denied` 以外のエラー・0 件は `unknown`（いずれも STOP）。Codex が auth.json を fd として保持していても、参照先・中身に届かないことをこの判定で直接示す（auth.json を開いたままにしないことには依存しない）。
-  - 2026-10-09 の実測（ダミー auth、`codex sandbox -P t1-workspace` のみ、model 非起動、`--network none`、本節の `docker run` と同じイメージ・seccomp・非 root・`--cap-drop ALL`・`--read-only`・tmpfs）: sandbox 内から Codex 本体（`exe=/cx/bin/codex`、fd 10 件）の `fd` 一覧は取れたが、`readlink` 0/10・open 0/10 で、auth.json への参照・ダミー秘密値の読み取りは 0 件。sandbox の外（コンテナ shell）から見た同プロセスの fd は `/dev/null`・出力ファイル・eventpoll・eventfd・socket・pidfd だけで auth.json は無かった。sandbox 内の Codex helper と probe 自身（sandbox 内のプロセス）は `readlink`・open が成功し、probe が到達可能を `BLOCK` として検出できることも確認した（陽性対照）。本書の `/tmp/proc-check.sh`（本 fd 判定版）は対象エントリ 4 行すべて `denied` で `PASS:`・rc=0、同じ実行で sandbox 内のプロセスの行は `BLOCK` となった。なお `readlink` は `-v` を付けないと失敗時にエラー文を出さず `unknown`（STOP）になる（同日実測）。sandbox の pid namespace はコンテナと別（`/proc/self/ns/pid` が異なる）だが、`/proc` はコンテナのものが見えている。
+  2. sandbox 内の probe は cmdline で絞らず、見えるすべての pid（probe 自身は除外）について pid・starttime・comm・各ファイルの到達可否を出力する（内容は `/dev/null` に捨て、秘密値は出力しない。`mem` は offset 0 の読み取りが未マップで失敗し得るため open 可否で判定する。`root` / `cwd` は配下の一覧を試みる。`fd` は一覧を取り、各エントリについて `readlink` と open を試み、同じ番号の `fdinfo/<n>` の読み取りも試みる（`fdinfo/` の一覧は denied になり得るため `fd/` の一覧の番号を使う）。参照先パスも内容も出力しない。`fd/` の一覧自体が denied なら `fd denied`・`fdinfo denied`）。`denied` はエラーが `Permission denied` の場合だけで、それ以外のエラー（一覧と読み取りの間にエントリが消えた場合の `No such file` を含む）や一覧が 0 件は `unknown`。probe は `PROBE_BEGIN` と `PROBE_END entries <n>` を出し、どちらかが無ければ STOP。
+  3. 対応付け: probe 出力のうち starttime と comm が手順 1 の値と一致するエントリがちょうど 1 つあり、pid namespace が共有されている場合は pid も一致することを確認し、そのエントリを対象とする。判定は対象エントリの 7 行（`environ`・`maps`・`mem`・`root`・`cwd`・`fd`・`fdinfo`）がすべて `denied` であることだけで行う（他プロセスの行は記録のみ。probe 自身の行は自分の `environ` を読めるため判定に含めない）。
+  - `fd`・`fdinfo` の判定基準: 判定対象は「`fd` を列挙できるか」ではなく「列挙した各エントリの参照先（`readlink`）・中身（open）・`fdinfo` に到達できるか」とする。根拠: proc(5)（proc_pid_fd(5)・proc_pid_fdinfo(5)）は `/proc/<pid>/fd/` の symlink の参照（dereference）・`readlink` と `/proc/<pid>/fdinfo/` を ptrace access mode `PTRACE_MODE_READ_FSCREDS` の検査で制御すると定めており（`environ`・`mem` と同じ検査系統）、`fd/` の一覧はディレクトリの通常の権限で決まる。sandbox は Codex と同じ uid で動くため `fd/` の一覧は取れる。fail-closed は次で保つ: (1) `fd` は全エントリについて `readlink`・open の両方が `Permission denied` の場合だけ `fd denied`、`fdinfo` は全エントリの読み取りが `Permission denied` の場合だけ `fdinfo denied`、(2) **`readlink`・open・`fdinfo` の読み取りのどれか 1 つでも 1 エントリで成功すれば `BLOCK`**、(3) `Permission denied` 以外のエラー・0 件は `unknown`（いずれも STOP）。`fdinfo` が読めた場合を「許容するメタデータ」として通す扱いは採らない（読めれば STOP）。Codex が auth.json を fd として保持していても、参照先・中身に届かないことをこの判定で直接示す（auth.json を開いたままにしないことには依存しない）。
+  - fd 列挙で分かる範囲: `fd/` の一覧から得られるのは fd 番号と件数だけである。pipe・socket・anon_inode の種別と inode 番号（`socket:[<ino>]` 等）は symlink の `readlink` 結果であり、`readlink` が denied なら得られない。`fd/<n>` の symlink 自体への `stat`（lstat）は symlink であることしか返さない。`fdinfo` に含まれる pos・flags・mnt_id・ino、eventfd のカウンタ、epoll の監視対象（`tfd`）、`scm_fds`、pidfd の `Pid` 等も `fdinfo` が denied なので得られない（2026-10-09 実測。下記）。
+  - 2026-10-09 の実測（ダミー auth、`codex sandbox -P t1-workspace` のみ、model 非起動、`--network none`、本節の `docker run` と同じイメージ・seccomp・非 root・`--cap-drop ALL`・`--read-only`・tmpfs）: sandbox 内から Codex 本体（`exe=/cx/bin/codex`、fd 10 件）の `fd` 一覧は取れたが、`readlink` 0/10・open 0/10 で、auth.json への参照・ダミー秘密値の読み取りは 0 件。sandbox の外（コンテナ shell）から見た同プロセスの fd は `/dev/null`・出力ファイル・eventpoll・eventfd・socket・pidfd だけで auth.json は無かった。sandbox 内の Codex helper と probe 自身（sandbox 内のプロセス）は `readlink`・open が成功し、probe が到達可能を `BLOCK` として検出できることも確認した（陽性対照）。本書の `/tmp/proc-check.sh`（`fdinfo`・`root`・`cwd` 追加前の版）は対象エントリ 4 行すべて `denied` で `PASS:`・rc=0、同じ実行で sandbox 内のプロセスの行は `BLOCK` となった。なお `readlink` は `-v` を付けないと失敗時にエラー文を出さず `unknown`（STOP）になる（同日実測）。sandbox の pid namespace はコンテナと別（`/proc/self/ns/pid` が異なる）だが、`/proc` はコンテナのものが見えている。
+  - `/proc/<pid>` 全体の評価（2026-10-09 追加実測。同じダミー auth・同じコンテナ構成・`codex sandbox -P t1-workspace` のみ、model 非起動。値は記録せず可否と種類だけ記録）: sandbox 内から Codex 本体（`exe` が sandbox 内から読めない `comm=codex` のプロセス）について、`fdinfo/` の一覧と `fdinfo/<n>` の読み取りは全 10 件 `Permission denied`。`environ`・`mem`・`maps`・`smaps`・`smaps_rollup`・`pagemap`・`auxv`・`stack`・`io`・`map_files/` は `Permission denied`、`cwd`・`root`・`exe`・`ns/*` の `readlink` も `Permission denied`、`task/<tid>/` 配下の `environ`・`mem`・`maps`・`fdinfo` も `Permission denied`。読めたのは `status`・`stat`・`statm`・`cmdline`・`comm`・`limits`・`wchan`・`sched`・`schedstat`・`oom_score`・`cgroup`・`loginuid`・`sessionid`・`mountinfo`・`mounts`・`mountstats`・`coredump_filter`、`task/` の一覧と `task/<tid>/status`（`syscall`・`personality`・`timerslack_ns`・`attr/current` は `Permission denied` 以外のエラー）。読めたものはプロセスの状態・資源量・スケジューラ統計・cgroup・mount 構成・argv で、ダミー秘密値の文字列は 0 件だった。argv は Operator が渡す `codex sandbox`／`codex exec` の引数で、auth は argv・環境変数ではなく `CODEX_HOME/auth.json` から読む構成のため秘密値を含まない。これらは判定対象に加えず記録のみとする。sandbox の外（コンテナ shell）から見た同プロセスの `fd` は `/dev/null`・出力ファイル・anon_inode（eventpoll・eventfd・pidfd）・socket で auth.json は無く、`fdinfo` の項目は pos・flags・mnt_id・ino と種別ごとの eventfd-count/eventfd-id/eventfd-semaphore・tfd・scm_fds・Pid/NSpid だった（いずれもメタデータ。sandbox からは denied）。追加した `root`・`cwd`・`fdinfo` の判定を含む本書の `/tmp/proc-check.sh` は同構成で対象エントリ 7 行すべて `denied`・`PASS:`・rc=0 となり、同じ実行で sandbox 内のプロセス（Codex helper・probe の親 shell）の行は `fdinfo`・`root`・`cwd` を含む 7 行すべて `BLOCK` となった（陽性対照）。
   - 検討して採らなかった対策: (a) Codex 0.160.0 の `codex sandbox --help` と permissions profile に pid namespace や `/proc` の見え方を変える設定は無い。(b) profile の filesystem deny で `/proc/<pid>` を指定する案は、Codex の pid が起動ごとに変わり事前に書けず、`/proc` 全体の deny は sandbox 内の Python・shell の動作を変え Gate 10 の比較条件に影響し得る。(c) `/proc` の `hidepid` 再 mount は `CAP_SYS_ADMIN` を要し `--cap-drop ALL`・非 root では不可。加えて `hidepid` は**別 uid** のプロセスを隠す機能で、同一 uid の sandbox からは隠せない。
   - `/tmp/proc-check.sh` が `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、対象エントリに `BLOCK` または `unknown` がある、対象 PID の exe が `/cx/bin/codex` と一致しない・`readlink` で読めない・exe が一致する候補が 0 個または複数で一意に特定できない、対象を対応付けできない（starttime 一致なし・複数一致・`stat` を読めず `unknown`）、sandbox 内から対象プロセスが見えない（pid namespace 分離等。見えないことは到達拒否の証明にならない）、または sandbox 実行失敗なら **STOP（判定不能、model 起動前）**。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
 - 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用（`codex sandbox -P t1-workspace` での挙動は確認済みだが exec 時の適用は未確認）と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
@@ -832,7 +844,7 @@ echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw)
 
 ### (e) STOP 判定
 
-(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、検査コマンド自体が失敗した（読み取り不能、コマンド不在、パイプ途中の失敗、空出力、タイムアウト、sandbox 起動失敗）、`/tmp/nonmodel-1-5.sh`・`/tmp/preflight-d.sh`・`/tmp/proc-check.sh`・`host-mounts.sh` のいずれかが `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `maps` / `mem`、または `fd` のいずれかのエントリの参照先（`readlink`）・中身（open）に到達できる、または対象プロセスの exe が `/cx/bin/codex` と一致しない・読めない・一意に特定できない、対象を対応付けできない・sandbox 内から見えないために到達可否を判定できない、(d) の実行例が `STOP:` を出力した・非 0 で終了した、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、検査コマンド自体が失敗した（読み取り不能、コマンド不在、パイプ途中の失敗、空出力、タイムアウト、sandbox 起動失敗）、`/tmp/nonmodel-1-5.sh`・`/tmp/preflight-d.sh`・`/tmp/proc-check.sh`・`host-mounts.sh` のいずれかが `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `maps` / `mem`・`root` / `cwd` 配下、または `fd` のいずれかのエントリの参照先（`readlink`）・中身（open）・`fdinfo` に到達できる、または対象プロセスの exe が `/cx/bin/codex` と一致しない・読めない・一意に特定できない、対象を対応付けできない・sandbox 内から見えないために到達可否を判定できない、(d) の実行例が `STOP:` を出力した・非 0 で終了した、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
 
 ### (f) Reviewer Judgment の確認
 

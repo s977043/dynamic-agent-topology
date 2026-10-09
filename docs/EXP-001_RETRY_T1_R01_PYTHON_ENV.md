@@ -121,7 +121,7 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 ### Codex CLI と sandbox
 
 - Codex CLI **0.160.0**（T0 trace と同版）の linux-arm64 musl バイナリ（`aarch64-unknown-linux-musl`）を read-only でマウントして使う。イメージにレイヤは追加しない。
-- sandbox: Codex `workspace-write` 相当（Linux では bubblewrap）。`sandbox_mode` ではなく、built-in `:workspace` を継承し `CODEX_HOME`（`/tmp/codex-home`）だけを `deny` にした permissions profile `t1-workspace` で与える（「認証隔離・CODEX_HOME 所有権・証跡回収の検証」参照）。
+- sandbox: Linux では bubblewrap。`sandbox_mode` ではなく permissions profile `t1-workspace` で与える。`t1-workspace` は **built-in `:workspace` を継承し、認証領域 `CODEX_HOME`（`/tmp/codex-home`）を追加 deny した派生 profile** であり、`:workspace` と完全同一ではない。T0 の normal experimental sandbox（`workspace-write`）と同一とは認定しない（「比較妥当性の limitation」参照。「認証隔離・CODEX_HOME 所有権・証跡回収の検証」参照）。
 - docker seccomp: moby 既定プロファイル（moby/profiles seccomp v0.2.3。docker `v29.7.2` タグの `vendor/modules.txt` で `github.com/moby/profiles/seccomp v0.2.3` を確認、取得元 `https://raw.githubusercontent.com/moby/profiles/seccomp/v0.2.3/seccomp/default.json`、取得ファイル SHA-256 `536529b665dd0972c37bfb569f5d4ac8a53592e7b00752bc39ff063ca9864c74`）に、`clone` `unshare` `mount` `umount2` `pivot_root` の **5 syscall のみ** を `SCMP_ACT_ALLOW` で追加した最小プロファイル。
   - 配置: [`experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json`](../experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccomp.json)
   - SHA-256: `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8`
@@ -178,6 +178,15 @@ Issue #15 の preflight STOP（`CODEX_HOME` が root:root 755 で config.toml �
 | `CODEX_HOME/sessions/...` への書き込み（uid 502、ダミー rollout） | 不可（親が root 755） | 成功 |
 | `docker exec <name> tar -C /tmp -cf - codex-home/sessions exit-code > <host sink>/evidence.tar` | — | 成功。tar に `sessions/.../rollout-dummy.jsonl` とダミー終了コードを含み、auth.json は含まない（パスを列挙して除外） |
 
+#### 環境変数・Codex 本体プロセスへの到達性（未実施、model 起動前 STOP 条件）
+
+independent review の指摘により、次の 2 経路をダミー auth・model 非起動で確認する計画とした。2026-10-09 の作業では、ダミー auth を使うコンテナ起動が Operator 側ツールの実行許可で拒否され、**実施できていない**。結果は**未確認**であり、(d) の該当項目が PASS するまで model を起動しない。
+
+| 確認 | 結果 |
+| --- | --- |
+| コンテナ・sandbox 内の環境変数キーに `OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むものが無い | 未実施 |
+| sandbox 内から外側の codex プロセスの `/proc/<pid>/environ`・`fd`・`mem`・`maps` が参照できない | 未実施 |
+
 根拠（公式、2026-10-09 参照）:
 
 - [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference): `default_permissions`（built-in は `:read-only` / `:workspace` / `:danger-full-access`、「Don't combine with `sandbox_mode` or `[sandbox_workspace_write]`」）、`permissions.<name>.extends`、`permissions.<name>.filesystem.<path-or-glob>`（`"read" | "write" | "deny"`、「Use `"deny"` to deny reads for matching paths」）。
@@ -187,10 +196,11 @@ Issue #15 の preflight STOP（`CODEX_HOME` が root:root 755 で config.toml �
 解釈と限界:
 
 - `CODEX_HOME` 全体を deny しても、Codex 本体（sandbox 外のプロセス）は auth を読め（`[ok] auth`）、sessions を書ける。sandbox 内コマンドだけが `CODEX_HOME` を参照できない。
-- `codex exec` が `default_permissions = "t1-workspace"` を実際に使うことは model 非起動では**直接確認できない**。doctor の sandbox 行と、同じ profile を明示した `codex sandbox -P t1-workspace` の結果からの推定である。Run 後に trace / session 記録で profile と sandbox の実効値を確認し、異なれば limitation として記録する。
+- **確認済み**: `codex sandbox -P t1-workspace`（profile を明示した sandbox 単体）の挙動と、doctor の sandbox 行（`restricted fs + restricted network · approval Never`）。**未確認**: `codex exec` 実行時に `default_permissions = "t1-workspace"` が実効適用されること。後者は model 非起動では**直接確認できない**。doctor の sandbox 行と、同じ profile を明示した `codex sandbox -P t1-workspace` の結果からの推定である。Run 後に trace / session 記録で profile と sandbox の実効値を確認し、異なれば limitation として記録する。ただし Run 後の確認は事後であり、**Run 前に確認できないことを Reviewer が承知のうえで受容するか**を判断事項とする（「未解決の論点」10）。
 - permissions profile は公式に Beta であり、版が変わると挙動が変わり得る（0.160.0 固定で確認）。
 - session 記録の回収はダミーファイルで実証した。Codex が `exec` 時に実際に書く rollout の形式・場所は model 非起動では未確認。Run では model 終了後・コンテナ停止前に `docker exec` で `codex-home/sessions` を回収し、回収できなければ limitation として記録する。
 - 単一のプローブ群はあらゆる exfiltration 経路を否定しない（既存の注記どおり）。
+- 残余リスク（非 model の確認では否定できない経路）: Codex 本体プロセスのメモリ上のトークン（`/proc/<pid>/mem` が拒否されても、kernel / bwrap の脆弱性経由の参照は否定できない）、Codex 本体が model 通信で送る認証ヘッダ自体、sandbox 外で Codex が実行するツール（MCP 等。本構成では設定しない）、Docker Desktop VM / host 側からの参照。
 - Gate 10 との関係: `--tmpfs /tmp/codex-home` の mount option（所有者・mode）と、`/tmp/codex-home` だけを deny する profile は、`python` の解決経路（PATH・`/usr/local/bin`・イメージ既定の login shell 初期化）に触れない。Operator が rc ファイル・PATH・alias・venv を追加する操作ではない。sandbox 内の `python` 起動は修正構成でも確認した。
 
 ### 残るリスク
@@ -263,7 +273,7 @@ approval の扱い（根拠と Reviewer 判断事項）:
   - 値の陰性コントロール（`model_reasoning_effort = "bogus"`、`sandbox_mode = "bogus"`）: `[XX] config  config could not be loaded`（`error  invalid data`）。
   - (c) の 4 キー config: `[ok] config  loaded`、`config.toml parse  ok`、startup warning 行なし、`model  gpt-6.1-sol · openai`、`[ok] sandbox  restricted fs + restricted network · approval Never`。auth なしのため `[XX] auth` と、`--network none` のため websocket / reachability が DNS 解決失敗で `[XX]` / `[!!]` となり、doctor 全体の rc は 1。
   - 確認できたこと: 4 キーがいずれも 0.160.0 で未知キー扱いされず、型として受理され（不正値は読み込み失敗になる）、`model` と `approval_policy = "never"` が反映されること。
-  - **未検証**: `codex exec --strict-config` で 4 キーの config がエラーにならないこと（exec は model 起動を伴うため実行していない）、`sandbox_mode = "workspace-write"`（修正版では permissions profile `t1-workspace`）と `model_reasoning_effort = "high"` の値が実効設定に反映されること（doctor の出力に表示項目が無い）、auth マウント後の `login status`。これらは (d) の preflight 項目とし、exec 時の反映は Run の trace / session 記録で確認する。
+  - **未検証**: `codex exec --strict-config` で 4 キーの config がエラーにならないこと（exec は model 起動を伴うため実行していない）、`sandbox_mode = "workspace-write"`（修正版では permissions profile `t1-workspace`。`codex sandbox -P t1-workspace` と doctor では確認済み、`codex exec` 時の実効適用は未確認）と `model_reasoning_effort = "high"` の値が実効設定に反映されること（doctor の出力に表示項目が無い）、auth マウント後の `login status`。これらは (d) の preflight 項目とし、exec 時の反映は Run の trace / session 記録で確認する。
 - 公式 config 仕様: [Config reference](https://learn.chatgpt.com/docs/config-file/config-reference)（旧 URL `https://developers.openai.com/codex/config-reference` から 308 リダイレクト、2026-10-08 参照）は `approval_policy` を「Controls when Codex pauses for approval before executing commands」とし、値を `on-request | never | { granular = {...} }`、`untrusted` は非サポート、`on-failure` は deprecated とする。対話には `on-request`、非対話には `never` を推奨している。`codex exec` の approval 既定値の記載は無い。sandbox 既定は [Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode) が read-only と記載する（このため sandbox を明示する。修正版では `sandbox_mode` の代わりに `default_permissions = "t1-workspace"` で与える）。
 - **推奨: `codex exec` で起動し、`approval_policy = "never"` を `config.toml` に明示する。** 理由: (1) `codex exec` は非対話で承認に答える人がおらず、0.160.0 の exec には approval を対話で求めるオプションが無い。(2) 公式仕様が非対話には `never` を推奨している。(3) exec の approval 既定値は公式に記載が無いため、既定任せにすると Run 記録から挙動を再構成できない。明示すれば sandbox 外の操作は承認待ちで止まらず失敗として model に返り、`workspace-write` の境界は sandbox 側で維持される。`--approve-for-me`・`--dangerously-bypass-approvals-and-sandbox` は使わない。
 - 最終決定は **Reviewer 判断事項**（「未解決の論点」5・6）:
@@ -469,18 +479,23 @@ cat "$CODEX_HOME/config.toml"
 sha256sum /run-input/prompt.md
 /cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'echo ok'
 /cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'if cat /tmp/codex-home/auth.json >/dev/null 2>&1; then echo "BLOCK: sandbox can read auth file"; exit 1; elif test -e /tmp/codex-home/auth.json; then echo "PASS: auth file exists but is not readable by sandbox process"; else echo "PASS: auth file not visible to sandbox process"; fi'
+env | cut -d= -f1 | grep -E 'OPENAI|TOKEN|KEY|AUTH' || echo "PASS: no auth-like env keys"
+/cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'env | cut -d= -f1 | grep -E "OPENAI|TOKEN|KEY|AUTH" || echo "PASS: no auth-like env keys in sandbox"'
+/cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'for p in /proc/[0-9]*; do c=$(tr "\0" " " < $p/cmdline 2>/dev/null); case "$c" in *codex*) ;; *) continue;; esac; echo "pid ${p#/proc/}"; for f in environ maps mem; do if head -c1 $p/$f >/dev/null 2>&1; then echo "  BLOCK: $f reachable"; else echo "  $f denied"; fi; done; if ls $p/fd >/dev/null 2>&1; then echo "  BLOCK: fd reachable"; else echo "  fd denied"; fi; done'
 find /work -maxdepth 3
 ls -la /run-input
 ```
 
 - `--version` が `codex-cli 0.160.0`、`login status` がログイン済み（ChatGPT）、prompt の SHA-256 が Gate 7 の値、sandbox が `ok` であること。
-- `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）、`[ok] auth  auth is configured` であること。auth 読み取りテストが `PASS` であること（`BLOCK`・判定不能・sandbox 実行失敗は STOP）。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
-- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、permissions profile `t1-workspace` と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
+- `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）、`[ok] auth  auth is configured` であること。auth 読み取りテストが `PASS` であること（`BLOCK`・判定不能・sandbox 実行失敗は STOP）。以上は**本物の auth を mount した Run と同一構成**での再確認であり、ダミー auth での事前確認では代替しない。
+- 環境変数: コンテナ・sandbox の両方で認証関連キー（`OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むキー名）が無いこと。キー名のみを出力し、値は出力しない。
+- Codex 本体プロセス: sandbox 内から外側の codex プロセス（`codex sandbox` 自身を含む）の `environ` / `maps` / `mem` / `fd` がすべて denied であること。1 つでも `BLOCK`、codex プロセスを判定できない、または sandbox 実行失敗なら STOP（model 起動前）。pid namespace 分離で codex プロセスが見えない場合は、`/proc` に見える pid 一覧を記録したうえで PASS とする。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
+- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用（`codex sandbox -P t1-workspace` での挙動は確認済みだが exec 時の適用は未確認）と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
 - Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`ls -la /run-input` が `prompt.md` のみであることを確認する。あわせて host 側で、(a) の `docker run` の `-v` 一覧が auth.json・`CODEX_DIR`・`PROMPT`・`WS` の 4 つだけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを記録する。
 
 ### (e) STOP 判定
 
-(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、証跡回収の非model検証が未完了、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `fd` / `mem` 等に到達できるか判定不能、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
 
 ### (f) Reviewer Judgment の確認
 
@@ -508,6 +523,7 @@ date '+%Y-%m-%dT%H:%M:%S%z'
 - shell 起動方式が異なる（T0 r01: `/usr/bin/zsh -lc` / T1 r01 retry: `bash -lc`）。
 - CPU アーキテクチャ: T1 r01 retry は arm64 固定。T0 r01 のアーキテクチャは記録が無く不明。
 - Codex config: T0 r01 側の approval 等の config 記録と起動方式（`codex exec` / 対話）の記録が無いため、T1 r01 retry の approval 設定・起動方式が T0 と同一であることは保証できない（「未解決の論点」5・6 の Reviewer 判断で T1 側の値を確定し、その値を開示する）。
+- sandbox profile: T1 r01 retry は `:workspace` を継承し認証領域を追加 deny した派生 profile `t1-workspace` を使い、T0 の normal experimental sandbox（`workspace-write`）と同一とは認定しない。T0/T1 比較は引き続き `environment-confounded / descriptive-only` とする。
 - OS・shell・Python 版の差は paired comparison（T0 vs T1）の交絡要因になり得ます。本 limitation は EXP-001 summary で**開示対象**とし、`normalize-name` r01 の T0/T1 比較を解釈する際に併記します。
 - この limitation は Evaluation semantics・Counting を変更しません。開示のみを求めます。
 
@@ -529,3 +545,4 @@ date '+%Y-%m-%dT%H:%M:%S%z'
 7. sandbox内でmodelが起動するコマンドから `auth.json` を読み取れないことを非modelで確認できたか（不能ならSTOP）。
 8. `--rm` + tmpfs `CODEX_HOME` が消える前に、必要な観測事実を機密保護したhost-side sinkへ保存できることを確認したか（不能ならSTOP）。
 9. G環境のT1とT0 r01の環境不一致を踏まえ、当該ペアを `environment-confounded / descriptive-only` として扱うか（Topology効果の因果主張を禁じる判断）。
+10. `codex exec` 実行時に permissions profile `t1-workspace` が実効適用されることは Run 前に確認できない（`codex sandbox -P t1-workspace` と doctor のみ確認済み）。Run 後の trace 確認だけでなく、この未確認を Reviewer が承知のうえで受容するか。

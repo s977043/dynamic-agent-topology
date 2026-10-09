@@ -6,8 +6,9 @@
 
 ## 原則
 
-- **人間がmergeを持つ。** Agentは記録と提案までを自律的に行い、mergeは人間が判断します。
-- **ハーネスの規則変更は人間レビュー必須。** `AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則・Guard、`scripts/validate_agent_guidance.py` をAgentが自分の判断だけで緩めません。Learning ledgerへの事実に基づく追記は例外として許可します。
+- **HOTL（Human-on-the-loop）で運用する。** 人間は事前承認したポリシー（下記の自律境界）の範囲で、監視・停止・事後受理を担います。範囲内の操作は Agent が機械ゲートを満たしたうえで実行し、各段階の結果を Issue / PR に記録します。
+- **ハーネスの規則変更は人間が承認する。** `AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則・自律境界・Guard、`scripts/validate_agent_guidance.py` の変更は、Agent が起案（差分・理由・影響範囲・ロールバック案）まで行い、人間が承認して merge します。merge 後に Agent が設定と実効権限を再確認します。Learning ledger への事実に基づく追記は例外として Agent が行えます。
+- **自己承認をしない。** 判断材料・変更を作成または修正した Agent セッションは、それを承認しません。
 - **Evidenceのない学びは昇格しない。** PR / commit / CI run / Issueへのリンクがない記録は候補のままです。
 - **Proseより機械的なGuardを優先する。** 昇格先は CI・validator → hook → permission設定 → `AGENTS.md` の文章 → skill の順に検討します。
 
@@ -17,18 +18,22 @@
 | ------- | ----------------------------------------------------------------------- | ------------------------ |
 | Observe | CI失敗、レビュー指摘、validator失敗、permission拒否、ユーザー訂正を拾う | Agent                    |
 | Learn   | 下の Learning ledger に、Evidence・発生回数・状態を追記する             | Agent                    |
-| Promote | 同種が2回以上でEvidenceが揃ったら、改善PRを出す                         | Agentが提案、人間がmerge |
+| Promote | 同種が2回以上でEvidenceが揃ったら、改善PRを出す                         | Agentが起案、自律境界に従いmerge |
 | Enforce | 採用した対策をCI / hook / 設定として常時有効にする                      | Harness                  |
 | Measure | 再発率、CI初回pass率、レビューループ数、permission prompt数を見る       | 定期棚卸し               |
 
 ## 自律境界
 
-| Agentが自律的に行ってよい | 人間の承認が必要                             |
-| ------------------------- | -------------------------------------------- |
-| Learning ledgerへの追記   | merge、release、tag                          |
-| 改善PRのdraft作成         | Guard（hook・permission・`AGENTS.md`）の変更 |
-| validator / testの実行    | Feature Freezeの改訂、Frozen artifactの変更  |
-| 自分のbranchへのpush      | 他Agentが担当するbranchへのpush、force push  |
+| 操作 | 実行者 | 条件 |
+| --- | --- | --- |
+| Learning ledger・Issue への記録、draft PR、validator / test、自分の branch への push | Agent | 記録と通知を残す |
+| 通常 PR の merge | Agent | 次をすべて満たす: 必須 CI 全 pass、作成者と別セッションの独立レビューで指摘解消、下記「人間が承認」の対象パスを含まない |
+| Reviewer Judgment（Run acceptance、disposition の ACCEPT 等） | 独立 Agent Reviewer または人間 | 作成者と別セッション。Frozen 例外など高リスクの判断は別モデルも用いる。記録には runtime・model・session ID・根拠リンクを書く |
+| EXP-001 の一回限りの model 起動（retry allowance の消費） | Agent | 手順書の全 Gate と preflight を機械的に検査して合格、Reviewer Judgment が記録済み、retry 未消費、Runtime/Model/Effort が固定、重複起動を防止、attestation・trace・Evidence を保存。異常時は停止し、追加起動はしない |
+| ハーネス規則・自律境界・権限・Guard の変更 | 人間が承認して merge | Agent は起案まで |
+| Feature Freeze の改訂、Frozen artifact の変更、release / tag、force push、削除、secret | 人間 | — |
+
+人間はいつでも停止・差し戻しができます。停止の指示を受けたら、Agent は進行中の操作を安全な状態で止め、状態を報告します。
 
 1 branchは1 Agentが担当します。同じbranchに別Agentがpushしている場合は、上書きせず最新のheadに積み直し、pushは `--force-with-lease` に限ります。
 

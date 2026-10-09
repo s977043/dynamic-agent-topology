@@ -164,6 +164,24 @@ Reviewer が `ACCEPT N1 + G` を判断するための具体構成です。この
 - AppArmor の `docker-default` プロファイルが有効な host（Ubuntu 等）では `mount` が AppArmor 側で拒否され、本構成が再現しない可能性がある（確認環境の colima では未検証の論点）。その場合も `apparmor=unconfined` は使わず STOP し、Reviewer 判断を求める。
 - 確認は colima・arm64・kernel `7.0.12-linuxkit` に限られる。別 host / 別 kernel / amd64 では再確認が必要。
 
+### 独立レビューで確認した停止条件（比較妥当性・認証・証跡）
+
+この節は候補 G の**追加検証要求**であり、`ACCEPT N1 + G` や retry 開始を宣言するものではありません。以下の3点はPR #116で「確認済み」としたsandbox起動テストからは導けないため、Reviewer判断と実hostでの非model evidenceが必要です。
+
+1. **比較妥当性（交絡）**: accepted T0 r01のOS・Python・CPUアーキテクチャ・起動方式・approval設定は復元できません。T1をG（arm64/Linux/bash）で計測した場合、r01のT0/T1差をTopologyの因果効果と断定しません。RunのArtifact acceptanceと、Topology効果の主張を分離し、Issue #15と最終集計に `environment-confounded / descriptive-only` を明示してください。残りのペアで環境が同等と実測できるかも別途確認します。Freezeのmetricや18-slot countは変更しません。
+2. **認証情報の機密性**: `auth.json:ro` が保証するのは**書き込み不可**であって、modelが実行するコマンドからの**読み取り不可**ではありません。最終構成で `login status` が有効になった後、**model非起動**の `codex sandbox` から読み取れないことを値を表示せずに確認してください。読める、判定不能、sandbox実行失敗のいずれも**STOP**。代替認証・隔離方法を独立レビューするまでmodel起動禁止です。単一のnegative testはあらゆるexfiltration経路を否定するものではなく、最小確認にすぎません。
+3. **実行証跡の残存**: 推奨Docker起動は `--rm`、`CODEX_HOME` はtmpfs `/tmp`配下です。コンテナ終了時にセッション記録が失われます。また標準の `codex exec` 出力だけでWorker→Verifierの全eventやtoken計測を取得できるとは限りません。**model起動前**に、ホスト側の安全な保存先（model workspaceにマウントせず、Gitに入れない）へ必要な観測データ・終了コードを確実に取り出せる方式を非modelで試験し、その方式・権限・sanitize手順をIssue #15で独立レビューしてください。セッションがコンテナ内に残る方式なら、`--rm`で消える前に取り出す手順と異常終了時の制約を明示します。未実証ならSTOPです。生のsession log・認証情報・hidden reasoningを公開しないでください。
+
+安全なnegative testの例（**実際にauthをmountし、ログインが確認された同じ構成のsandbox**で実施。内容を出力しない）:
+
+```bash
+/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'if test -r /tmp/codex-home/auth.json; then echo "BLOCK: sandbox can read auth file"; exit 1; else echo "PASS: auth file not readable by sandbox process"; fi'
+```
+
+`login status` / Docker mountの確認によってhost側のauthファイルが確実に配置されたことを確認したうえで、この結果を解釈します。検査時には認証ファイルの内容・環境変数に含む秘密情報をstdoutやIssueへ載せません。PASSでもmodelの秘密アクセスを完全に否定できるわけではありません。
+
+**Reviewer gate**: N1の解釈、比較交絡を許す範囲、sandboxの認証情報隔離、証跡回収手段、起動方式、approval policyを**個別に**判断し、#15へ根拠を記録します。1つでもBLOCK/UNKNOWNなら `ACCEPT N1 + G` のみを根拠にmodelを開始してはいけません。
+
 ### 認証
 
 - ホストの `~/.codex/auth.json` **のみ**を `:ro` でマウントし、`CODEX_HOME` はコンテナ内の fresh なディレクトリとする（ホストの config・sessions・履歴は持ち込まない）。
@@ -225,6 +243,19 @@ SECCOMP="$PWD/experiments/EXP-001-t0-vs-t1/pilot/retry-t1-r01/codex-bwrap-seccom
 | `PROMPT`    | Gate 7 で SHA-256 `d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86` を確認した T1 `prompt.md`                                                                                                                                           |
 | `SECCOMP`   | 本 repo の `codex-bwrap-seccomp.json`。SHA-256 `085e468fa8e70d8c839a9abab4d74a1ab2abad74a8c26f15234ba62a8ac2e1e8` を `shasum -a 256 "$SECCOMP"` で確認する                                                                                              |
 
+コンテナ起動前にhost側でbind元ファイルの存在・canonical path・凍結PromptとseccompのSHA-256・外部workspace・認証ファイルの権限を**read-only**確認します（認証ファイルの内容は読みません）。
+
+```bash
+python scripts/audit_exp001_g_bind_sources.py \
+  --workspace "$WS" \
+  --prompt "$PROMPT" \
+  --codex-dir "$CODEX_DIR" \
+  --seccomp "$SECCOMP" \
+  --auth-file "$HOME/.codex/auth.json"
+```
+
+このscriptのPASSは**bind元の静的検査だけ**です。Docker mountの実効状態、sandboxの書込許可・拒否、credential隔離、Codex認証、有効なReviewer Judgmentは証明しません。Dockerの `-v` はbind元が無いとディレクトリを自動作成し得るため、事前に存在を検査します。すべてのpathを絶対pathとし、realpathが元attemptのarchiveやRepository内workspaceを指さないことを再確認してください。
+
 `HOME` と `CODEX_HOME` は tmpfs `/tmp` 上に置く。codex は PATH を変更せず `/cx/bin/codex` の**絶対パス**で起動する。
 
 ```bash
@@ -253,7 +284,7 @@ shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login s
 
 **Codex model を起動しない**状態で、retry に使う normal experimental sandbox 内の、fresh workspace（Gate 6 で reprepare 済み）をカレントディレクトリとして実行します。Gate 12 のため bytecode 書き込みを抑止します。
 
-手順 2〜5 は、実 Run と同じ login shell 起動方式（候補 G ではイメージ既定の bash による `bash -lc '<cmd>'`。zsh は追加しない）で実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
+手順 2〜4 は通常のコンテナshellで解決経路を診断します。手順 5 のEvidence commandは同じ `bash -lc` 起動方式を **Codex sandbox内で**実行し、その表記のまま記録します。login shell が読む Run 環境既定の初期化（イメージ / OS の標準状態）は Run と同条件として扱い、Operator が追加・変更した設定（rc ファイル追記、`export PATH=...`、`alias`、venv activate 等）が無いことを Operator が明記します。
 
 1. 環境識別を記録する。
 
@@ -305,19 +336,23 @@ shell の関係: `docker run ... bash -l` はコンテナ内の対話用 login s
 
 5. Gate 10 / 11 を確認する（model 起動なし）。
 
+   **コンテナ通常shellでの成功はGate 10の証明ではありません。** Codex が生成コマンドを実行する Bubblewrap sandboxを経由し、Runと同じ `bash -lc` で frozen Evidence command を起動します。bytecode抑止はpreflightのみで、Evidence command自体は変えません。
+
    ```bash
-   bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
-   echo "exit=$?"
+   /cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests'
+   echo "sandbox-test-exit=$?"
    ```
 
-   - command が起動すること（exit 127 でないこと）= Gate 10。
-   - 未変更 fixture で期待どおりの初期 Evidence FAIL になること = Gate 11。
+   - **Gate 10**: sandbox内で `python` が起動し、実際にunittestの収集・実行まで到達したことを出力で確認する。exit 127、sandbox起動失敗、予期せぬ環境エラーはSTOP。
+   - **Gate 11**: untouched fixtureで期待された具体的なテストfailureが確認できること。**exit 1だけではPASSにしない**（bwrap起動エラー等も同じexit codeになり得る）。
+   - 実際のmodel Runが別sandbox policyでcommandを実行するならpreflightの適合性は未証明としてSTOPし、Reviewer判断を求める。
+   - stdout/stderr、終了コード、sandbox起動コマンドを記録し、通常shellの解決経路診断と区別する。
 
 6. Gate 12 として fixture file set / bytes を再照合する（既存手順どおり）。
 
 ### 記録方法
 
-- 上記 1〜5 の command（手順 2〜5 は Run と同じ login shell 起動の表記のまま。G では `bash -lc`）と出力全文、実行日時（タイムゾーン付き）、Operator 名を、retry の preflight 記録として Issue #15 側の reviewed disposition に添付する（runs/ や archive には書き込まない）。
+- 上記 1〜5 の command（手順 2〜4 の通常shell診断と手順 5 のCodex sandbox内Evidenceを区別する）と出力全文、実行日時（タイムゾーン付き）、Operator 名を、retry の preflight 記録として Issue #15 側の reviewed disposition に添付する（runs/ や archive には書き込まない）。
 - 「normal experimental sandbox 内で実行した」ことは、sandbox mode 設定値（Codex の sandbox / approval 設定）と、確認を同じ sandbox・同じ workspace パスで行った旨を併記して示す。host shell で代替確認した結果は Gate 10 evidence として扱わない。
 - 1 項目でも条件を満たさなければ STOP。retry allowance は消費しない。
 
@@ -364,7 +399,7 @@ EOF
 
 ### (d) 非model preflight
 
-「非model確認手順」の手順 1〜6 を実行し、加えて次を実行して出力を記録する。
+「非model確認手順」の手順 1〜6 を実行し、特に手順 5 の**sandbox内**Evidence commandがunittest収集と期待する初期FAILへ到達したことを確認する。加えて次を実行して出力を記録する。
 
 ```bash
 /cx/bin/codex --version
@@ -373,6 +408,7 @@ cat "$CODEX_HOME/config.toml"
 /cx/bin/codex --strict-config doctor --all --ascii --no-color
 sha256sum /run-input/prompt.md
 /cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'echo ok'
+/cx/bin/codex sandbox -P :workspace -C /work -- bash -lc 'if test -r /tmp/codex-home/auth.json; then echo "BLOCK: sandbox can read auth file"; exit 1; else echo "PASS: auth file not readable by sandbox process"; fi'
 find /work -maxdepth 3
 ls -la /run-input
 ```
@@ -384,11 +420,11 @@ ls -la /run-input
 
 ### (e) STOP 判定
 
-(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、証跡回収の非model検証が未完了、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
 
 ### (f) Reviewer Judgment の確認
 
-Issue #15 に `ACCEPT N1 + G` と approval / 実行方式（「未解決の論点」5・6）の Reviewer Judgment が記録済みであることを確認する。未記録なら STOP。
+Issue #15 に `ACCEPT N1 + G` と approval / 実行方式（「未解決の論点」5・6）に加え、比較交絡の扱い・auth読み取り隔離テスト・host側の証跡保存方式についての**個別のReviewer Judgment**が記録済みであることを確認する。未記録またはBLOCKなら STOP。
 
 ### (g) 唯一の model 起動操作
 
@@ -430,3 +466,6 @@ date '+%Y-%m-%dT%H:%M:%S%z'
 4. 本 disposition を残り matrix slot（T0 側を含む）にも適用するか。本文書は T1 r01 retry のみを対象とし、他 Run には流用しない。
 5. T1 retry を `codex exec` で実行するか、対話で実行するか（T0 の起動方式は記録上不明。推奨: `codex exec`）。limitation「Codex config」に対応。
 6. `approval_policy` を明示するか、明示するならどの値か（推奨: `never`。根拠は「最小 Codex config」節）。limitation「Codex config」に対応。
+7. sandbox内でmodelが起動するコマンドから `auth.json` を読み取れないことを非modelで確認できたか（不能ならSTOP）。
+8. `--rm` + tmpfs `CODEX_HOME` が消える前に、必要な観測事実を機密保護したhost-side sinkへ保存できることを確認したか（不能ならSTOP）。
+9. G環境のT1とT0 r01の環境不一致を踏まえ、当該ペアを `environment-confounded / descriptive-only` として扱うか（Topology効果の因果主張を禁じる判断）。

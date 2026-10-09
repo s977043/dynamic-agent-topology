@@ -481,7 +481,14 @@ sha256sum /run-input/prompt.md
 /cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'if cat /tmp/codex-home/auth.json >/dev/null 2>&1; then echo "BLOCK: sandbox can read auth file"; exit 1; elif test -e /tmp/codex-home/auth.json; then echo "PASS: auth file exists but is not readable by sandbox process"; else echo "PASS: auth file not visible to sandbox process"; fi'
 env | cut -d= -f1 | grep -E 'OPENAI|TOKEN|KEY|AUTH' || echo "PASS: no auth-like env keys"
 /cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'env | cut -d= -f1 | grep -E "OPENAI|TOKEN|KEY|AUTH" || echo "PASS: no auth-like env keys in sandbox"'
-/cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'for p in /proc/[0-9]*; do c=$(tr "\0" " " < $p/cmdline 2>/dev/null); case "$c" in *codex*) ;; *) continue;; esac; echo "pid ${p#/proc/}"; for f in environ maps mem; do if head -c1 $p/$f >/dev/null 2>&1; then echo "  BLOCK: $f reachable"; else echo "  $f denied"; fi; done; if ls $p/fd >/dev/null 2>&1; then echo "  BLOCK: fd reachable"; else echo "  fd denied"; fi; done'
+# Codex 本体プロセスの同定（コンテナ側シェルで実行。sandbox 内の probe は 5 秒待ってから走る）
+/cx/bin/codex sandbox -P t1-workspace -C /work -- bash -lc 'sleep 5; for p in /proc/[0-9]*; do st=$(cut -d" " -f22 $p/stat 2>/dev/null || echo unknown); echo "pid ${p#/proc/} starttime $st"; for f in environ maps; do if head -c1 $p/$f >/dev/null 2>&1; then echo "  BLOCK: $f reachable"; else echo "  $f denied"; fi; done; if (exec 3<$p/mem) 2>/dev/null; then echo "  BLOCK: mem reachable"; else echo "  mem denied"; fi; if ls $p/fd >/dev/null 2>&1; then echo "  BLOCK: fd reachable"; else echo "  fd denied"; fi; done' > /tmp/proc-probe.txt 2>&1 &
+TARGET=$!
+echo "target pid $TARGET starttime $(cut -d' ' -f22 /proc/$TARGET/stat)"
+ps -o pid,ppid,lstart,args -p "$TARGET"
+readlink /proc/$TARGET/exe
+wait "$TARGET"
+cat /tmp/proc-probe.txt
 find /work -maxdepth 3
 ls -la /run-input
 ```
@@ -489,13 +496,17 @@ ls -la /run-input
 - `--version` が `codex-cli 0.160.0`、`login status` がログイン済み（ChatGPT）、prompt の SHA-256 が Gate 7 の値、sandbox が `ok` であること。
 - `doctor` の Configuration 欄が `[ok] config  loaded`・`config.toml parse  ok` で、`unrecognized configuration setting` / `is ignored` の startup warning が無く、`model` が `gpt-6.1-sol`、sandbox 行の approval が (c) の判断どおり（明示 `never` なら `approval Never`）、`[ok] auth  auth is configured` であること。auth 読み取りテストが `PASS` であること（`BLOCK`・判定不能・sandbox 実行失敗は STOP）。以上は**本物の auth を mount した Run と同一構成**での再確認であり、ダミー auth での事前確認では代替しない。
 - 環境変数: コンテナ・sandbox の両方で認証関連キー（`OPENAI` / `TOKEN` / `KEY` / `AUTH` を含むキー名）が無いこと。キー名のみを出力し、値は出力しない。
-- Codex 本体プロセス: sandbox 内から外側の codex プロセス（`codex sandbox` 自身を含む）の `environ` / `maps` / `mem` / `fd` がすべて denied であること。1 つでも `BLOCK`、codex プロセスを判定できない、または sandbox 実行失敗なら STOP（model 起動前）。pid namespace 分離で codex プロセスが見えない場合は、`/proc` に見える pid 一覧を記録したうえで PASS とする。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
+- Codex 本体プロセス: PASS は、**対象の Codex 本体プロセスを確実に同定でき、その `environ` / `maps` / `mem` / `fd` のすべてへのアクセスが denied の場合に限る**。同定は cmdline の `codex` 文字列一致に頼らず、次の手順で行う。
+  1. コンテナ側シェル（sandbox の外）で `codex sandbox` をバックグラウンド起動し、`$!` を対象 PID とする。`codex` を直接 exec しているため `$!` が Codex 本体であり、`ps -o pid,ppid,lstart,args` と `readlink /proc/<pid>/exe`（`/cx/bin/codex` であること）で対象 PID・起動時刻・実体を記録する。あわせて `/proc/<pid>/stat` の第 22 フィールド（starttime。boot 起点の clock tick で pid namespace に依存しない）を記録する。
+  2. sandbox 内の probe は cmdline で絞らず、見えるすべての pid について pid・starttime・各ファイルの到達可否を出力する（内容は `/dev/null` に捨て、秘密値は出力しない。`mem` は offset 0 の読み取りが未マップで失敗し得るため open 可否で判定する）。
+  3. 対応付け: probe 出力のうち starttime が手順 1 の値と一致するエントリがちょうど 1 つあり、pid namespace が共有されている場合は pid も一致することを確認し、そのエントリを対象とする。
+  - 1 つでも `BLOCK`、対象を同定・対応付けできない（starttime 一致なし・複数一致・`stat` を読めず `unknown`）、sandbox 内から対象プロセスが見えない（pid namespace 分離等。見えないことは到達拒否の証明にならない）、または sandbox 実行失敗なら **STOP（判定不能、model 起動前）**。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
 - 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用（`codex sandbox -P t1-workspace` での挙動は確認済みだが exec 時の適用は未確認）と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
 - Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`ls -la /run-input` が `prompt.md` のみであることを確認する。あわせて host 側で、(a) の `docker run` の `-v` 一覧が auth.json・`CODEX_DIR`・`PROMPT`・`WS` の 4 つだけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを記録する。
 
 ### (e) STOP 判定
 
-(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `fd` / `mem` 等に到達できるか判定不能、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
+(a)〜(d) と本体 Gate 1〜13 のいずれかを満たさない、`login status` が未ログイン・期限不明、sandboxからauthが読み取れる、本物の auth を mount した同一構成での auth 読み取り拒否・証跡回収の非model再確認が未完了、環境変数に認証関連キーがある、sandbox から Codex 本体プロセスの `environ` / `maps` / `mem` / `fd` のいずれかに到達できる、または対象プロセスを同定・対応付けできない・sandbox 内から見えないために到達可否を判定できない、または (d) の出力が想定と異なる場合は STOP し、retry allowance を消費しない。
 
 ### (f) Reviewer Judgment の確認
 

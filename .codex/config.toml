@@ -4,3 +4,12 @@ sandbox_mode = "workspace-write"
 
 [shell_environment_policy]
 set = { PYTHONDONTWRITEBYTECODE = "1" }
+
+# Advisory repository-development roles; never part of EXP-001 empirical T0/T1.
+[agents.agile-coach]
+description = "Fast Feedbackの仮説・最小検証・準備過剰をread-onlyで助言する"
+config_file = "agents/agile-coach.toml"
+
+[agents.scrum-master]
+description = "阻害要因・判断待ち・次の最小アクションをread-onlyで助言する"
+config_file = "agents/scrum-master.toml"

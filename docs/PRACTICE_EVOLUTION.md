@@ -24,7 +24,7 @@ DATは、AI Agent Teamの構造を仮説として比較する**仕様・実験�
 | 層 | DATでの位置づけ | 変更に対する扱い |
 | --- | --- | --- |
 | **Values / Principles** | 対話、価値、協調、適応、技術的卓越性、誠実な検証 | 短期的な便宜で軽視しない。現実とのずれがあれば解釈を問い直す |
-| **Safety / Authority / Experimental integrity** | 秘密情報保護、実効権限、Human-ownedの承認、EvidenceとJudgmentの分離、Feature Freeze、比較可能性 | 実行Agentが勝手に緩和しない。変更には既存の正本と責任者の判断が必要 |
+| **Safety / Authority / Experimental integrity** | 秘密情報保護、実効権限、ハーネス規則変更時のHuman承認、EvidenceとJudgmentの分離、Feature Freeze、比較可能性 | 実行Agentが勝手に緩和しない。変更には既存の正本と責任者の判断が必要 |
 | **Contracts / Decisions** | Schema、Role/Permission境界、実験Control、凍結条件、現行の運用合意 | 所管する正本をEvidence・Review・必要な承認とともに変更する |
 | **Practices / Tools** | バッチサイズ、Agentの使い分け、レビュー、preflightの進め方、開発ツール | 小さく試し、効果・負担・副作用でKeep / Adapt / Revert / Deferを選ぶ |
 | **Evidence / History** | 実測Run、STOP理由、Trace、CI、Issue/PR、外部研究、当時の判断 | 改ざん・後付けの成功扱いをしない。後続の判断は履歴を残して追記する |

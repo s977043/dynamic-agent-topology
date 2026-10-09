@@ -29,7 +29,7 @@ DATは、AI Agent Teamの構造を仮説として比較する**仕様・実験�
 | **Practices / Tools** | バッチサイズ、Agentの使い分け、レビュー、preflightの進め方、開発ツール | 小さく試し、効果・負担・副作用でKeep / Adapt / Revert / Deferを選ぶ |
 | **Evidence / History** | 実測Run、STOP理由、Trace、CI、Issue/PR、外部研究、当時の判断 | 改ざん・後付けの成功扱いをしない。後続の判断は履歴を残して追記する |
 
-「境界を守る」は現行契約の無断変更を禁じる意味であり、正当なHuman-ownedの方針変更まで永久に禁止する意味ではない。規範の優先順位は引き続き[AGENT_HARNESS.md](AGENT_HARNESS.md)、[AGENTS.md](../AGENTS.md)、[EXPERIMENTS.md](EXPERIMENTS.md)、各Experimentの正式Artifactによる。
+「境界を守る」は現行契約の無断変更を禁じる意味であり、正当なHuman-ownedの方針変更まで永久に禁止する意味ではない。具体的な実行・権限・実験条件は、各責務の正本である[AGENT_HARNESS.md](AGENT_HARNESS.md)、[AGENTS.md](../AGENTS.md)、[EXPERIMENTS.md](EXPERIMENTS.md)、各Experimentの正式Artifactに従う。
 
 ## Local Evidence × External Knowledge
 
@@ -82,7 +82,7 @@ Predeclared controls → Authorized run → Immutable observation
 
 [Experiment Protocol](EXPERIMENTS.md)と各ExperimentのControlが正本。比較中の変更、Cross-arm / Cross-run contamination、事後の基準変更は、学習を速める目的であっても認められない。**実験を途中で変えたい場合は、既存の例外・新Experiment・post-freeze提案として扱う。**
 
-現在のEXP-001はFeature Freeze中である。本書はFrozen artifact、Run prompt、T0/T1条件、検証基準、Retry allowance、Run acceptance、Reviewer判断を変更しない。実Runの開始・再開許可を新たに与えることもない。正本は[EXP-001 Execution](EXP-001_EXECUTION.md)と[Freeze policy](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)。
+本書作成時点（2026-10-10）のEXP-001はFeature Freeze中である。本書はFrozen artifact、Run prompt、T0/T1条件、検証基準、Retry allowance、Run acceptance、Reviewer判断を変更しない。実Runの開始・再開許可を新たに与えることもない。正本は[EXP-001 Execution](EXP-001_EXECUTION.md)と[Freeze policy](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)。
 
 **Process improvementで得た知見を、凍結中のTreatmentに流し込まない。** 改善できる運用の範囲は、実験条件を変えない箇所に限る。停止時は必須Guardを維持し、勝手に再試行しない。
 

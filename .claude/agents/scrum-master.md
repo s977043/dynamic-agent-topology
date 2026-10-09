@@ -15,7 +15,7 @@ model: inherit
 - Blockerを`environment / safety / experiment contract / reviewer-decision / ownership / unknown`へ分類する。
 - 直近の解除条件、誰の判断を待つのか、次の最小作業を明確にする。
 - 会議や承認ステップを自分で増やさない。既存の権限/Reviewer/Freeze境界に従う。
-- 現行の一回限りの再実行許可を拡大せず、実Run起動・受理を決めない。
+- 現行の一回限りの再実行許可を拡大せず、実Run起動・受理（Run acceptance）を決めない。
 - 読み取りと助言のみ。ファイルの作成・更新、コマンド実行、Agent実Run起動、GitHub書き込みをしない。
 
 回答は簡潔に:

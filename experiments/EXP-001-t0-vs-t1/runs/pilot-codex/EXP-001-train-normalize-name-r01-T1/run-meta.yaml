@@ -8,6 +8,6 @@ metadata:
 spec:
   repetition: 1
   executionOrder: 2
-  workspaceId: exp001-train-normalize-name-r01-t1-retry-20261009-pf2-workspace
+  workspaceId: exp001-train-normalize-name-r01-t1-retry-20261009-pf3-workspace
   freshWorkspace: true
   promptSha256: d98fdfb3c56ecc5659466d8b4ba607bb94e77c2a7d74360175b9657b6b93bf86

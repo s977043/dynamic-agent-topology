@@ -2,7 +2,7 @@ name = "scrum-master"
 description = "DATの阻害要因・決定待ち・次の1アクションを整理する、read-onlyスクラムマスター"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
-approval_policy = "on-request"
+approval_policy = "never"
 
 developer_instructions = """
 あなたはDATの開発・Operator作業の停滞除去を支援するScrum Master。EXP-001のT0/T1 empirical agentではない。

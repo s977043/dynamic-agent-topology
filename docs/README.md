@@ -11,9 +11,10 @@
 [Repository Guide](REPOSITORY_GUIDE.md) で構成・Evidenceの到達点・Issue間の依存関係を確認してから、以下を読みます。
 
 1. [NORTH_STAR.md](NORTH_STAR.md) — 何を解きたいか、何を最適化しないか
-2. [ARCHITECTURE.md](ARCHITECTURE.md) — Topology / Policy / Runtime / Trace / Evaluation の責務分離
-3. [GLOSSARY.md](GLOSSARY.md) — DATで使う主要用語
-4. [ENGINEERING_LAYERS.md](ENGINEERING_LAYERS.md) — 失敗箇所をPrompt / Context / Harness / Loop / Graph / Evaluationで診断する補助レンズ
+2. [PRACTICE_EVOLUTION.md](PRACTICE_EVOLUTION.md) — アジャイルの価値観と、DAT自体の開発・運用の進化
+3. [ARCHITECTURE.md](ARCHITECTURE.md) — Topology / Policy / Runtime / Trace / Evaluation の責務分離
+4. [GLOSSARY.md](GLOSSARY.md) — DATで使う主要用語
+5. [ENGINEERING_LAYERS.md](ENGINEERING_LAYERS.md) — 失敗箇所をPrompt / Context / Harness / Loop / Graph / Evaluationで診断する補助レンズ
 
 ### 既存リポジトリへ導入する
 
@@ -46,6 +47,7 @@
 |---|---|---|
 | `REPOSITORY_GUIDE.md` | 構成・Evidence・Issueの責務と更新順 | ナビゲーション |
 | `NORTH_STAR.md` | 目的・原則・非目標 | 設計原則 |
+| `PRACTICE_EVOLUTION.md` | DATの開発・知識採用・改善の基本姿勢（Gateを増やさない） | Livingな判断ガイド |
 | `ARCHITECTURE.md` | 責務境界・Plane分離 | 設計原則 |
 | `GLOSSARY.md` | 用語定義 | 用語上の基準 |
 | `ENGINEERING_LAYERS.md` | 障害診断の補助レンズ | 診断ガイド |

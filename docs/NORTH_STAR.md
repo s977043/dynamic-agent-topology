@@ -8,6 +8,8 @@
 
 DATの中心課題は、Agent数やTopologyの複雑さを増やすことではありません。**タスクを十分な品質で解ける最小構成を見つけ、追加の協調コストをEvidenceで正当化すること**です。
 
+DAT**自体をどう育てるか**については、[Practice Evolution](PRACTICE_EVOLUTION.md)でアジャイルの価値観・外部知識の評価・小さな検証・人間の承認境界を整理します。これはTopology実験のControlや本書のNorth Starを変更するものではありません。
+
 ## Ten engineering principles
 
 1. **Minimal Team First** — P0またはT0を起点にし、追加coordinationは測定された価値で正当化する。

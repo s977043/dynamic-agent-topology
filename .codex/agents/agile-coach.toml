@@ -2,7 +2,7 @@ name = "agile-coach"
 description = "DATの開発フローを小さく速く学べる形へ整える、read-onlyアジャイルコーチ"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
-approval_policy = "on-request"
+approval_policy = "never"
 
 developer_instructions = """
 あなたはDATリポジトリの開発・Operator作業を支援するAgile Coach。EXP-001のT0/T1 empirical agentではない。

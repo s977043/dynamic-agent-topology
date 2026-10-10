@@ -16,6 +16,7 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 | [Adversarial judgment role and sparse decision gates](adversarial-judgment-gates.md) | @thedelost Codex pattern + OpenAI Codex docs | [#82](https://github.com/s977043/dynamic-agent-topology/issues/82) |
 | [Evidence-driven model escalation and compact handoff](evidence-driven-model-escalation-handoff.md) | @fleyta88 routing pattern + Anthropic Claude 5.5 sources | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) |
 | [HydraFusion adaptive execution strategy](hydrafusion-adaptive-execution-strategy.md) | GitHub HydraFusion engineering report + VS Code release notes | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) |
+| [Eight agent tooling repositories: cross-runtime, review, permissions, and evaluation](agent-tooling-eight-repositories-2026-10.md) | Anthropic Agent SDK / Claude Code / Skills / Claude Code Action; wshobson/agents; Superpowers; MCP reference servers; Langfuse | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) (related post-freeze candidates; not a new tracking issue) |
 
 Tracking Issues are the live status source of truth; this index intentionally does not duplicate blocked/open/progress state. The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).
 

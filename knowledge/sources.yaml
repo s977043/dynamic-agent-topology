@@ -118,3 +118,51 @@ sources:
     url: "https://www.publickey1.jp/blog/26/vs_codeaiaihydrafusion.html"
     published_at: "2026-10-07"
     adopted: []
+
+  - id: claude-agent-sdk-python-2026
+    type: repository
+    title: "Anthropic Claude Agent SDK (Python)"
+    url: "https://github.com/anthropics/claude-agent-sdk-python"
+    adopted: []
+
+  - id: wshobson-agents-2026
+    type: repository
+    title: "wshobson/agents: cross-harness agent and skill catalog"
+    url: "https://github.com/wshobson/agents"
+    adopted: []
+
+  - id: anthropic-claude-code-2026
+    type: repository
+    title: "Anthropic Claude Code"
+    url: "https://github.com/anthropics/claude-code"
+    adopted: []
+
+  - id: obra-superpowers-2026
+    type: repository
+    title: "obra/superpowers agent development methodology"
+    url: "https://github.com/obra/superpowers"
+    adopted: []
+
+  - id: anthropic-skills-2026
+    type: repository
+    title: "Anthropic Skills reference examples"
+    url: "https://github.com/anthropics/skills"
+    adopted: []
+
+  - id: mcp-reference-servers-2026
+    type: repository
+    title: "Model Context Protocol reference servers"
+    url: "https://github.com/modelcontextprotocol/servers"
+    adopted: []
+
+  - id: anthropic-claude-code-action-2026
+    type: repository
+    title: "Anthropic Claude Code Action"
+    url: "https://github.com/anthropics/claude-code-action"
+    adopted: []
+
+  - id: langfuse-2026
+    type: repository
+    title: "Langfuse LLM observability and evaluation"
+    url: "https://github.com/langfuse/langfuse"
+    adopted: []

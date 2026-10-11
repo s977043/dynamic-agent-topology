@@ -1,0 +1,6 @@
+--- a/app.py
++++ b/app.py
+@@ -1,2 +1,2 @@
+ def normalize_name(value: str) -> str:
+-    return value.strip().upper()
++    return value.strip().lower()

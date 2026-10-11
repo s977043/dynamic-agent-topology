@@ -1,0 +1,25 @@
+RUNTIME WORKER EVIDENCE
+COMMAND: python -m unittest discover -s tests
+EXIT: 0
+RESULT: PASS
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+RUNTIME VERIFIER EVIDENCE (independent subagent session, no file edits)
+COMMAND: python -m unittest discover -s tests
+EXIT: 0
+RESULT: PASS
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+VERIFIER VERDICT: PASS, no findings (not ground truth; deterministic evidence is authoritative)
+
+OPERATOR POST-RUN RECHECK: not performed (run-kit-g does not execute model-written code on the host).
+
+ACCEPTANCE: trim and lowercase observed in implementation (value.strip().lower()); existing tests unchanged and PASS; API signature unchanged. Only app.py changed.
+CONTAINER EXIT: codex exit-code 0, docker exec rc 0.

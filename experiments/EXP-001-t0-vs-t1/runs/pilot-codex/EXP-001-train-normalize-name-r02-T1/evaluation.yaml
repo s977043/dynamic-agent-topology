@@ -1,0 +1,43 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-train-normalize-name-r02-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+  blockId: EXP-001-train-normalize-name-r02
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 144552
+  outputTokens: 903
+  wallClockMs: 47000
+verdict: pass
+notes: First r02 matrix Run, executed with run-kit-g (candidate G; Issue 15 environment Judgments
+  6107822908 / 6107845799, the kit checked 6107822908 for this Run). Worker session spawned one Verifier subagent (fork_turns none, same model/effort
+  per turn_context); Verifier ran read-only inspection and the deterministic command, made no
+  file edits, returned PASS with no findings. Deterministic unittest 2/2 PASS (Worker and
+  Verifier), tests unchanged, API unchanged, only app.py changed. No host-side rerun (run-kit-g
+  does not execute model-written code on the host). Tokens are the sum of both sessions' final
+  total_token_usage. wallClockMs spans (g) stdout date to separate container date (second
+  precision). r01 comparisons are environment-confounded and descriptive-only; r02 onward runs
+  T0 and T1 in the same candidate G environment. No hidden reasoning copied.

@@ -1,0 +1,103 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-train-normalize-name-r02-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+  blockId: EXP-001-train-normalize-name-r02
+executionSubject:
+  kind: AgentTopology
+  name: T1-worker-verifier
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-11T10:08:42+00:00'
+  details:
+    sessionId: 01a12a6f-a6e6-7fe0-99f6-6133d5dbf4be
+    freshSession: true
+    crossRunFeedbackUsed: false
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: pwd; rg --files -g 'AGENTS.md' -g '*.py' -g 'pyproject.toml' -g 'README*' -g 'setup.cfg'
+  details:
+    exitCode: 0
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: cat app.py; cat tests/test_app.py; AGENTS.md lookup
+  details:
+    exitCode: 0
+- sequence: 3
+  type: action
+  actor: worker
+  artifact: app.py
+  details:
+    operation: apply_patch update
+    status: completed
+- sequence: 4
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 5
+  type: handoff
+  actor: worker
+  target: verifier
+  timestamp: '2026-10-11T10:09:14.462Z'
+  details:
+    tool: spawn_agent
+    taskName: verifier
+    forkTurns: none
+    verifierSessionId: 01a12a70-22f8-7953-90d4-783b34102db2
+    parentThreadId: 01a12a6f-a6e6-7fe0-99f6-6133d5dbf4be
+    agentPath: /root/verifier
+    verifierModel: gpt-6.1-sol
+    verifierEffort: high
+    handoffMessageContent: not readable (opaque in session record)
+- sequence: 6
+  type: review
+  actor: verifier
+  artifact: app.py; tests/test_app.py
+  details:
+    commands:
+    - cat app.py
+    - cat tests/test_app.py
+    implementationEdits: 0
+- sequence: 7
+  type: verify
+  actor: verifier
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 8
+  type: handoff
+  actor: verifier
+  target: worker
+  timestamp: '2026-10-11T10:09:24.915Z'
+  details:
+    verdict: PASS
+    findings: 0
+- sequence: 9
+  type: finish
+  actor: worker
+  timestamp: '2026-10-11T10:09:29+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  humanInterventions: 0
+  inputTokens: 144552
+  outputTokens: 903
+  wallClockMs: 47000

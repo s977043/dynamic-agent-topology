@@ -81,6 +81,8 @@ r02 以降の残り 16 Run を、T0・T1 とも候補 G の同一構成で 1 Run
 
 3 つの形式のいずれにも、`docs/AGENT_HARNESS.md` の自律境界が求める独立 Reviewer の記録として、`Reviewer:` で始まり `runtime:`・`model:`・`session:`（8 文字以上の ID）を含む行が必須です。例: `Reviewer: 独立 Reviewer（runtime: codex 0.160.1、model: gpt-6-luna、session: <session ID>）`。この行が無ければ STOP します。
 
+この照合は記録の構文を確かめるだけで、Reviewer が実在すること、作成者から独立していることは証明しません。独立性は、Reviewer の出力を転記するオーガナイザーと、HOTL で監視する Human が確認する要件です。
+
 ### 環境 Judgment（`--env-judgment-comment`、Issue #15）
 
 ```text
@@ -94,7 +96,7 @@ condition-3: <Run ごとの構成照合の根拠へのリンク>
 
 - `environment disposition: CONDITIONAL` を含む行が 1 つでもあれば STOP します。
 - `kit:` の SHA は `origin/main` に含まれている必要があります。その SHA の `run-kit-g/SHA256SUMS` が、実行するキットの `SHA256SUMS` とバイト単位で一致しなければ STOP です（キットを変更したら Judgment を取り直す）。
-- `condition-1`〜`3` は、それぞれちょうど 1 行の `https://github.com/s977043/dynamic-agent-topology/...` リンクです。
+- `condition-1`〜`3` は、それぞれちょうど 1 行の `https://github.com/s977043/dynamic-agent-topology/...` リンクで、3 つが互いに異なる URL である必要があります。
 - 条件 4（r01 の開示）は集計時の条件のため、ここでは照合しません。
 
 ### Run acceptance（`--prior-accept-comment`）
@@ -103,6 +105,7 @@ condition-3: <Run ごとの構成照合の根拠へのリンク>
 Reviewer: <runtime: …、model: …、session: <ID>>
 EXP-001 Run acceptance: ACCEPT
 runId: <直前の matrix Run の runId>
+evidence: https://github.com/s977043/dynamic-agent-topology/(pull|issues)/<番号>...（1 行以上）
 ```
 
 `runId:` 行が対象の runId と一致し、他の runId を名指ししていないことを確認します。
@@ -115,7 +118,10 @@ EXP-001 slot disposition: NEW-ATTEMPT
 runId: <runId>
 attempt: <記録済み attempt 数 + 1>
 reason: <同じ slot の新しい attempt を認める理由（10 文字以上）>
+evidence: https://github.com/s977043/dynamic-agent-topology/(pull|issues)/<番号>...（1 行以上）
 ```
+
+`evidence:` の行は、この repository の pull / issues へのリンクに限ります。1 行も無い場合や、形式が不正な行がある場合は STOP します。
 
 T1 r01 の acceptance（6106366753）は、フォーマット導入前の例外として、直前 Run が r01-T1 の場合に限り判定行だけで受け付けます（このコメントにも Reviewer 行はあります）。
 

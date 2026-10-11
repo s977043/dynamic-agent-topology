@@ -212,6 +212,19 @@ REPO_URL = r"https://github\.com/s977043/dynamic-agent-topology/\S+"
 REVIEWER = re.compile(r"Reviewer:.*\bruntime:\s*\S+.*\bmodel:\s*\S+.*\bsession:.*[0-9A-Za-z_-]{8,}")
 
 
+EVIDENCE = re.compile(r"evidence: https://github\.com/s977043/dynamic-agent-topology/(pull|issues)/[0-9]+\S*")
+
+
+def require_evidence(lines: list[str], what: str) -> None:
+    # Syntax only: links to the review grounds. It does not prove the Reviewer exists or is independent.
+    found = [line for line in lines if line.startswith("evidence:")]
+    if not found:
+        raise Stop(f"{what}: no 'evidence: <pull/issue link>' line")
+    bad = [line for line in found if not EVIDENCE.fullmatch(line)]
+    if bad:
+        raise Stop(f"{what}: malformed evidence line(s): {len(bad)}")
+
+
 def require_reviewer(lines: list[str], what: str) -> None:
     if not any(REVIEWER.match(line) for line in lines):
         raise Stop(f"{what}: no 'Reviewer:' line with runtime, model and session ID")
@@ -228,10 +241,14 @@ def cmd_env_judgment(args) -> None:
     if len(kits) != 1:
         raise Stop("environment Judgment must name exactly one 'kit: PR #<n> merge <40-hex sha>' line")
     sha = kits[0].group(1)
+    links = []
     for n in (1, 2, 3):
         hits = [line for line in lines if re.fullmatch(rf"condition-{n}: {REPO_URL}", line)]
         if len(hits) != 1:
             raise Stop(f"environment Judgment must have exactly one 'condition-{n}: <repository link>' line")
+        links.append(hits[0].split(": ", 1)[1])
+    if len(set(links)) != 3:
+        raise Stop("environment Judgment: condition-1..3 must link to three different URLs")
     git = ["git", "-C", args.repo]
     if subprocess.run(git + ["merge-base", "--is-ancestor", sha, args.main_ref], capture_output=True).returncode != 0:
         raise Stop(f"kit merge {sha} is not contained in {args.main_ref}")
@@ -246,6 +263,7 @@ def cmd_run_acceptance(args) -> None:
     require_line(lines, "EXP-001 Run acceptance: ACCEPT", "Run acceptance")
     require_line(lines, f"runId: {args.run_id}", "Run acceptance")
     require_reviewer(lines, "Run acceptance")
+    require_evidence(lines, "Run acceptance")
     if any(re.fullmatch(r"runId: \S+", line) and line != f"runId: {args.run_id}" for line in lines):
         raise Stop("Run acceptance names another runId")
     print(f"PASS: Run acceptance for {args.run_id}")
@@ -257,6 +275,7 @@ def cmd_slot_disposition(args) -> None:
     require_line(lines, f"runId: {args.run_id}", "slot disposition")
     require_line(lines, f"attempt: {args.attempt}", "slot disposition")
     require_reviewer(lines, "slot disposition")
+    require_evidence(lines, "slot disposition")
     if not any(re.fullmatch(r"reason: \S.{9,}", line) for line in lines):
         raise Stop("slot disposition: no 'reason:' line (why a new attempt of this slot is allowed)")
     print(f"PASS: slot disposition allows attempt {args.attempt} of {args.run_id}")

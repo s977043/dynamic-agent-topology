@@ -74,14 +74,18 @@ grep -q 'docker ps failed' "$T/out" && echo "OK   STOP reason is the failed dock
 pipe() { local body=$1; shift; printf '%s\n' "$body" | G "$@"; }
 EJ=(env-judgment --repo "$REPO_TOP" --main-ref HEAD --kitrel experiments/EXP-001-t0-vs-t1/pilot/run-kit-g --kit-dir "$KIT")
 L='https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-1'
+L2='https://github.com/s977043/dynamic-agent-topology/pull/135'
+L3='https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-3'
+EV="evidence: https://github.com/s977043/dynamic-agent-topology/pull/200"
 RV='Reviewer: 独立 Reviewer（runtime: codex 0.160.1、model: gpt-6-luna、session: `01a129b7-f13d-74c1-977d-9f6477bdf150`）'
 HEAD_SHA=$(git -C "$REPO_TOP" rev-parse HEAD)
-env_body() { printf '%s\nEXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' "$1" "$2" "$L" "$L" "$L"; }
+env_body() { printf '%s\nEXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' "$1" "$2" "$L" "${3:-$L2}" "$L3"; }
 expect STOP "CONDITIONAL ACCEPT environment Judgment" pipe "$(printf '%s\nEXP-001 r02+ environment disposition: CONDITIONAL ACCEPT' "$RV")" "${EJ[@]}"
 expect STOP "ACCEPT line plus a CONDITIONAL line" pipe "$(env_body "$RV" "$HEAD_SHA")
 EXP-001 r02+ environment disposition: CONDITIONAL ACCEPT" "${EJ[@]}"
 expect STOP "ACCEPT without condition evidence lines" pipe "$(printf '%s\nEXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s' "$RV" "$HEAD_SHA")" "${EJ[@]}"
 expect STOP "ACCEPT for a kit merge that is not on main" pipe "$(env_body "$RV" "$(printf '%040d' 0)")" "${EJ[@]}"
+expect STOP "environment Judgment with duplicated condition links" pipe "$(env_body "$RV" "$HEAD_SHA" "$L")" "${EJ[@]}"
 expect STOP "environment Judgment without a Reviewer line" pipe "$(env_body '' "$HEAD_SHA")" "${EJ[@]}"
 expect STOP "environment Judgment whose Reviewer line lacks the session" pipe "$(env_body 'Reviewer: runtime: codex, model: gpt-6-luna' "$HEAD_SHA")" "${EJ[@]}"
 if git -C "$REPO_TOP" show "HEAD:experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/SHA256SUMS" 2>/dev/null | cmp -s - "$KIT/SHA256SUMS"; then
@@ -89,14 +93,17 @@ if git -C "$REPO_TOP" show "HEAD:experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/SH
 else
   echo "SKIP positive environment Judgment case (kit not committed at HEAD)"
 fi
-expect STOP "Run acceptance without a runId line" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT' "$RV")" run-acceptance --run-id "$RID"
-expect STOP "Run acceptance for another runId" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: EXP-001-train-normalize-name-r02-T0' "$RV")" run-acceptance --run-id "$RID"
-expect STOP "Run acceptance without a Reviewer line" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RID")" run-acceptance --run-id "$RID"
-expect PASS "Run acceptance in record format" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RV" "$RID")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance without a runId line" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\n%s' "$RV" "$EV")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance for another runId" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: EXP-001-train-normalize-name-r02-T0\n%s' "$RV" "$EV")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance without a Reviewer line" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: %s\n%s' "$RID" "$EV")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance without an evidence link" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RV" "$RID")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance with a malformed evidence link" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s\nevidence: https://example.com/pull/1' "$RV" "$RID")" run-acceptance --run-id "$RID"
+expect PASS "Run acceptance in record format" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s\n%s' "$RV" "$RID" "$EV")" run-acceptance --run-id "$RID"
 SD=$(printf 'EXP-001 slot disposition: NEW-ATTEMPT\nrunId: %s\nattempt: 2' "$RID")
 RS='reason: preflight STOP before (g) caused by an infrastructure fault; model never started'
-expect STOP "slot disposition for a different attempt" pipe "$(printf '%s\n%s\n%s' "$RV" "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 3
-expect STOP "slot disposition without a Reviewer line" pipe "$(printf '%s\n%s' "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 2
-expect STOP "slot disposition without a reason line" pipe "$(printf '%s\n%s' "$RV" "$SD")" slot-disposition --run-id "$RID" --attempt 2
-expect PASS "slot disposition in record format" pipe "$(printf '%s\n%s\n%s' "$RV" "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 2
+expect STOP "slot disposition for a different attempt" pipe "$(printf '%s\n%s\n%s\n%s' "$RV" "$SD" "$RS" "$EV")" slot-disposition --run-id "$RID" --attempt 3
+expect STOP "slot disposition without a Reviewer line" pipe "$(printf '%s\n%s\n%s' "$SD" "$RS" "$EV")" slot-disposition --run-id "$RID" --attempt 2
+expect STOP "slot disposition without a reason line" pipe "$(printf '%s\n%s\n%s' "$RV" "$SD" "$EV")" slot-disposition --run-id "$RID" --attempt 2
+expect STOP "slot disposition without an evidence link" pipe "$(printf '%s\n%s\n%s' "$RV" "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 2
+expect PASS "slot disposition in record format" pipe "$(printf '%s\n%s\n%s\n%s' "$RV" "$SD" "$RS" "$EV")" slot-disposition --run-id "$RID" --attempt 2
 [ "$fail" = 0 ] && echo "PASS: selftest" || { echo "STOP: selftest failed"; exit 1; }

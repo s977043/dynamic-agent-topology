@@ -6,6 +6,8 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
+import pwd
 import re
 import subprocess
 import sys
@@ -206,6 +208,13 @@ def require_line(lines: list[str], line: str, what: str) -> None:
 
 
 REPO_URL = r"https://github\.com/s977043/dynamic-agent-topology/\S+"
+# AGENT_HARNESS.md 自律境界: an independent Reviewer's record names runtime, model and session ID.
+REVIEWER = re.compile(r"Reviewer:.*\bruntime:\s*\S+.*\bmodel:\s*\S+.*\bsession:.*[0-9A-Za-z_-]{8,}")
+
+
+def require_reviewer(lines: list[str], what: str) -> None:
+    if not any(REVIEWER.match(line) for line in lines):
+        raise Stop(f"{what}: no 'Reviewer:' line with runtime, model and session ID")
 
 
 def cmd_env_judgment(args) -> None:
@@ -214,6 +223,7 @@ def cmd_env_judgment(args) -> None:
     if any(re.search(r"environment disposition:\s*CONDITIONAL", line) for line in lines):
         raise Stop("environment Judgment is CONDITIONAL (conditions not recorded as satisfied)")
     require_line(lines, "EXP-001 r02+ environment disposition: ACCEPT", "environment Judgment")
+    require_reviewer(lines, "environment Judgment")
     kits = [m for m in (re.fullmatch(r"kit: PR #[0-9]+ merge ([0-9a-f]{40})", line) for line in lines) if m]
     if len(kits) != 1:
         raise Stop("environment Judgment must name exactly one 'kit: PR #<n> merge <40-hex sha>' line")
@@ -235,6 +245,7 @@ def cmd_run_acceptance(args) -> None:
     lines = body_lines()
     require_line(lines, "EXP-001 Run acceptance: ACCEPT", "Run acceptance")
     require_line(lines, f"runId: {args.run_id}", "Run acceptance")
+    require_reviewer(lines, "Run acceptance")
     if any(re.fullmatch(r"runId: \S+", line) and line != f"runId: {args.run_id}" for line in lines):
         raise Stop("Run acceptance names another runId")
     print(f"PASS: Run acceptance for {args.run_id}")
@@ -245,6 +256,9 @@ def cmd_slot_disposition(args) -> None:
     require_line(lines, "EXP-001 slot disposition: NEW-ATTEMPT", "slot disposition")
     require_line(lines, f"runId: {args.run_id}", "slot disposition")
     require_line(lines, f"attempt: {args.attempt}", "slot disposition")
+    require_reviewer(lines, "slot disposition")
+    if not any(re.fullmatch(r"reason: \S.{9,}", line) for line in lines):
+        raise Stop("slot disposition: no 'reason:' line (why a new attempt of this slot is allowed)")
     print(f"PASS: slot disposition allows attempt {args.attempt} of {args.run_id}")
 
 
@@ -261,7 +275,39 @@ def attempts(registry: Path, run_id: str) -> list[int]:
     return sorted(found)
 
 
+def check_registry(path: Path) -> None:
+    try:
+        st = path.stat()
+    except FileNotFoundError as exc:
+        raise Stop(f"attempt registry {path} not found (create it once: mkdir -p -m 700 {path})") from exc
+    except OSError as exc:
+        raise Stop(f"attempt registry {path} cannot be read: {exc}") from exc
+    if not path.is_dir() or path.is_symlink():
+        raise Stop(f"attempt registry {path} is not a directory")
+    if st.st_uid != os.getuid() or (st.st_mode & 0o777) != 0o700:
+        raise Stop(f"attempt registry {path} must be owned by the operator with mode 700")
+    if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
+        raise Stop(f"attempt registry {path} is not readable/writable")
+
+
+def cmd_registry_path(args) -> None:
+    # The registry follows the OS user database, not the caller's $HOME (prevents an accidental second ledger).
+    db_home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+    env_home = os.environ.get("HOME", "")
+    if not env_home or os.path.realpath(env_home) != os.path.realpath(db_home):
+        raise Stop(f"HOME ({env_home or 'unset'}) differs from the user database home ({db_home})")
+    path = db_home / ".exp001-run-kit-g" / "attempts"
+    check_registry(path)
+    print(path)
+
+
+def cmd_check_registry(args) -> None:
+    check_registry(Path(args.path))
+    print(f"PASS: attempt registry {args.path}")
+
+
 def cmd_attempt_count(args) -> None:
+    check_registry(Path(args.registry))
     print(len(attempts(Path(args.registry), args.run_id)))
 
 
@@ -270,7 +316,7 @@ def cmd_reserve_attempt(args) -> None:
     if not re.fullmatch(r"EXP-001-[a-z]+-[a-z-]+-r0[1-3]-T[01]", args.run_id):
         raise Stop("attempt registry is for matrix runIds only")
     registry = Path(args.registry)
-    registry.mkdir(mode=0o700, parents=True, exist_ok=True)
+    check_registry(registry)
     (registry / args.run_id).mkdir(mode=0o700, exist_ok=True)
     existing = attempts(registry, args.run_id)
     if existing != list(range(1, len(existing) + 1)):
@@ -330,6 +376,10 @@ def main() -> int:
     p = sub.add_parser("slot-disposition"); p.add_argument("--run-id", required=True)
     p.add_argument("--attempt", type=int, required=True)
     p.set_defaults(func=cmd_slot_disposition)
+    p = sub.add_parser("registry-path")
+    p.set_defaults(func=cmd_registry_path)
+    p = sub.add_parser("check-registry"); p.add_argument("--path", required=True)
+    p.set_defaults(func=cmd_check_registry)
     p = sub.add_parser("attempt-count"); p.add_argument("--registry", required=True); p.add_argument("--run-id", required=True)
     p.set_defaults(func=cmd_attempt_count)
     p = sub.add_parser("reserve-attempt"); p.add_argument("--registry", required=True); p.add_argument("--run-id", required=True)

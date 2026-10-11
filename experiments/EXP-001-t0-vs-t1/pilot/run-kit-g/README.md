@@ -49,11 +49,16 @@ r02 以降の残り 16 Run を、T0・T1 とも候補 G の同一構成で 1 Run
 
 ### attempt の記録（実 Run のみ）
 
-`pilot/OPERATOR.md` の「通常Runでは同じrunIdを再prepareしません」を機械的に守るため、実 Run は prepare の直前に `~/.exp001-run-kit-g/attempts/<runId>/attempt-<N>` を `mkdir` で原子的に予約します。この場所は `--work-root` に依存しない固定パスです。
+`pilot/OPERATOR.md` の「通常Runでは同じrunIdを再prepareしません」を機械的に守るため、実 Run は prepare の直前に `<home>/.exp001-run-kit-g/attempts/<runId>/attempt-<N>` を `mkdir` で原子的に予約します。
 
+- `<home>` は OS のユーザー DB（`pwd.getpwuid`）から引きます。環境変数 `HOME` にも `--work-root` にも依存しません。
+- `HOME` がユーザー DB の home と食い違う場合は STOP します。台帳ディレクトリが無い・ディレクトリでない・Operator 所有の mode 700 でない・読めない場合も STOP します。
+- 台帳は最初に一度だけ Operator が作ります: `mkdir -p -m 700 ~/.exp001-run-kit-g/attempts`。キットは自動では作りません（別の場所に新しい台帳ができるのを防ぐため）。
 - 記録は preflight の STOP や `--dry-run` の後も残し、キットは削除しません。
 - 記録がある runId を再実行すると、引数検査の段階で STOP します。続けるには、Issue #15 にレビュー済みの slot disposition を記録し、そのコメント ID を `--slot-disposition-comment` で渡します。このコメントには、次の attempt 番号が書かれている必要があります。
 - 練習モードには、この制約を掛けません。
+
+この仕組みは、うっかり起きる同じ slot の再 prepare・再実行を防ぐためのものです。Security Boundary ではありません（`pilot/FREEZE.md` と同じ立場）。台帳を手で消す、別のユーザーや別のマシンで実行する、といった意図的な迂回は防げません。Run の記録は最終的に Issue #15 と `runs/` で照合します。
 
 ## パラメータ
 
@@ -74,9 +79,12 @@ r02 以降の残り 16 Run を、T0・T1 とも候補 G の同一構成で 1 Run
 
 キットは、コメント本文の各行の前後の空白を除いたうえで、次の行が**完全一致**で存在することを確認します。投稿者（`s977043`）と Issue も照合します。本文はログに残しません。
 
+3 つの形式のいずれにも、`docs/AGENT_HARNESS.md` の自律境界が求める独立 Reviewer の記録として、`Reviewer:` で始まり `runtime:`・`model:`・`session:`（8 文字以上の ID）を含む行が必須です。例: `Reviewer: 独立 Reviewer（runtime: codex 0.160.1、model: gpt-6-luna、session: <session ID>）`。この行が無ければ STOP します。
+
 ### 環境 Judgment（`--env-judgment-comment`、Issue #15）
 
 ```text
+Reviewer: <runtime: …、model: …、session: <ID>>
 EXP-001 r02+ environment disposition: ACCEPT
 kit: PR #<番号> merge <40 桁の merge commit SHA>
 condition-1: <Scenario 別 Gate 11 期待 FAIL の根拠へのリンク>
@@ -92,6 +100,7 @@ condition-3: <Run ごとの構成照合の根拠へのリンク>
 ### Run acceptance（`--prior-accept-comment`）
 
 ```text
+Reviewer: <runtime: …、model: …、session: <ID>>
 EXP-001 Run acceptance: ACCEPT
 runId: <直前の matrix Run の runId>
 ```
@@ -101,10 +110,14 @@ runId: <直前の matrix Run の runId>
 ### slot disposition（`--slot-disposition-comment`、Issue #15）
 
 ```text
+Reviewer: <runtime: …、model: …、session: <ID>>
 EXP-001 slot disposition: NEW-ATTEMPT
 runId: <runId>
 attempt: <記録済み attempt 数 + 1>
+reason: <同じ slot の新しい attempt を認める理由（10 文字以上）>
 ```
+
+T1 r01 の acceptance（6106366753）は、フォーマット導入前の例外として、直前 Run が r01-T1 の場合に限り判定行だけで受け付けます（このコメントにも Reviewer 行はあります）。
 
 ## Scenario 別の Gate 11 期待 FAIL
 

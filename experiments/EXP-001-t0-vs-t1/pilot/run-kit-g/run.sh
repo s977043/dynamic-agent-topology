@@ -14,8 +14,10 @@ ARTIFACT_ROOT=experiments/EXP-001-t0-vs-t1/runs/pilot-codex
 GH_REPO=s977043/dynamic-agent-topology
 JUDGMENT_ISSUE=15
 JUDGMENT_AUTHOR=s977043
-# Fixed attempt registry outside every repository and work root: one reserved attempt per matrix runId (OPERATOR.md 2).
-ATTEMPT_REGISTRY=$HOME/.exp001-run-kit-g/attempts
+# Attempt registry (real mode): <home from the OS user database>/.exp001-run-kit-g/attempts, resolved by gates.py
+# registry-path. It does not follow $HOME; a $HOME that differs from the user database, or a missing/unreadable
+# registry, is STOP. One reserved attempt per matrix runId (OPERATOR.md 2).
+ATTEMPT_REGISTRY=
 TIMEOUT_S=1800
 export PYTHONDONTWRITEBYTECODE=1
 
@@ -58,6 +60,7 @@ case $MODE in
     [[ $PRIOR_ACCEPT =~ ^[0-9]+$ ]] && [[ $ENV_JUDGMENT =~ ^[0-9]+$ ]] || die "real mode needs --prior-accept-comment and --env-judgment-comment"
     [ -z "$SLOT_DISP" ] || [[ $SLOT_DISP =~ ^[0-9]+$ ]] || die "--slot-disposition-comment must be a comment id"
     [ "$PRACTICE_MODEL" = 0 ] || die "--practice-model is for practice mode only"
+    ATTEMPT_REGISTRY=$("$PY" -I -B "$KIT_DIR/host/gates.py" registry-path) || die "attempt registry: $ATTEMPT_REGISTRY"
     ATTEMPTS=$("$PY" -I -B "$KIT_DIR/host/gates.py" attempt-count --registry "$ATTEMPT_REGISTRY" --run-id "$RUN_ID") || die "attempt registry: $ATTEMPTS"
     if [ "$ATTEMPTS" != 0 ] && [ -z "$SLOT_DISP" ]; then
       die "$RUN_ID already has $ATTEMPTS recorded attempt(s) in $ATTEMPT_REGISTRY; re-prepare/re-run needs a reviewed slot disposition for attempt $((ATTEMPTS + 1)) (--slot-disposition-comment)"
@@ -139,7 +142,10 @@ need() { grep -qxF -- "$1" "$2" || STOP PROTOCOL "missing expected line in $(bas
 inexec() { docker exec -i "$CNAME" bash -l < "$1"; }
 gates() { "$PY" -I -B "$KIT_DIR/host/gates.py" "$@"; }
 render() { "$PY" -I -B "$KIT_DIR/host/render.py" "$@"; }
-hashes() { (cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(shasum -a 256 < "$f" | cut -c1-64)" "$f"; done); }
+hashes() { # file set + SHA-256; any failure (cd, find, shasum) makes the function fail
+  (cd "$1" || exit 1; files=$(find . -type f) || exit 1; LC_ALL=C sort <<<"$files" | while IFS= read -r f; do
+    h=$(shasum -a 256 < "$f" | cut -c1-64) || exit 1; [ ${#h} = 64 ] || exit 1; printf '%s  %s\n' "$h" "$f"; done)
+}
 check_comment() { # check_comment <id> <issue|any> <gates record-format subcommand> [args...]: body is checked, never logged
   local id=$1 issue=$2 meta; shift 2
   meta=$(gh api "repos/$GH_REPO/issues/comments/$id" --jq '.user.login + " " + (.issue_url|split("/")|last)') || STOP PROTOCOL "cannot fetch comment $id"
@@ -207,9 +213,12 @@ command -v timeout >/dev/null || STOP PROTOCOL "timeout not found"
 "$PY" --version | grep -q '^Python 3\.12\.' || STOP PROTOCOL "--python is not Python 3.12"
 "$PY" -I -c 'import yaml' || STOP PROTOCOL "--python lacks PyYAML"
 [ -f "$AUTH_SRC" ] && [ -s "$AUTH_SRC" ] || STOP SAFETY "auth file missing or empty (content is never read)"
-[ -z "$(docker ps -aq --filter "name=^${CNAME}\$")" ] || STOP SAFETY "container $CNAME already exists"
+out=$(docker ps -aq --filter "name=^${CNAME}\$") || STOP SAFETY "docker ps failed (cannot confirm that $CNAME does not exist)"
+[ -z "$out" ] || STOP SAFETY "container $CNAME already exists"
 (cd "$KIT_DIR" && shasum -a 256 -c SHA256SUMS) > "$LOGD/kit-sha.log" 2>&1 || STOP PROTOCOL "kit SHA256SUMS mismatch"
-[ "$(find "$KIT_DIR" -type f | grep -c .)" = "$(( $(grep -c . "$KIT_DIR/SHA256SUMS") + 1 ))" ] || STOP PROTOCOL "kit has files not listed in SHA256SUMS"
+out=$(find "$KIT_DIR" -type f) || STOP PROTOCOL "cannot list kit files"
+n=$(grep -c . "$KIT_DIR/SHA256SUMS") || STOP PROTOCOL "cannot read kit SHA256SUMS"
+[ "$(grep -c . <<<"$out" || true)" = "$((n + 1))" ] || STOP PROTOCOL "kit has files not listed in SHA256SUMS"
 git -C "$REPO" fetch --quiet origin || STOP PROTOCOL "git fetch origin failed"
 KIT_ON_MAIN=1
 while IFS= read -r line; do
@@ -251,7 +260,8 @@ phase gate1-5
 git -C "$REPO" worktree add --detach "$WT" origin/main >/dev/null 2>&1 || STOP PROTOCOL "worktree add failed"
 MAIN_SHA=$(git -C "$WT" rev-parse HEAD)
 log "checkout $WT at origin/main $MAIN_SHA"
-[ -z "$(git -C "$WT" status --porcelain=v1 --untracked-files=all)" ] || STOP PROTOCOL "Gate 4: checkout not clean"
+out=$(git -C "$WT" status --porcelain=v1 --untracked-files=all) || STOP PROTOCOL "Gate 4: git status failed"
+[ -z "$out" ] || STOP PROTOCOL "Gate 4: checkout not clean"
 [ ! -e "$WS" ] || STOP PROTOCOL "Gate 4: workspace exists"
 cd "$WT"
 "$PY" -B scripts/validate_experiment_freeze.py > "$LOGD/gate1.log" 2>&1 || STOP PROTOCOL "Gate 1: Feature Freeze validation"
@@ -284,7 +294,8 @@ if [ "$MODE" = real ]; then
     --run-id "$RUN_ID" --workspace "$WS" --workspace-id "$WSID" > "$LOGD/gate6.log" 2>&1 || STOP PROTOCOL "Gate 6: prepare_pilot_run.py failed"
   RUN_META=$WT/$ARTIFACT_ROOT/$RUN_ID/run-meta.yaml
   PROMPT_SRC=$WT/$ARTIFACT_ROOT/$RUN_ID/prompt.md
-  [ "$(git status --porcelain=v1 --untracked-files=all | LC_ALL=C sort | tr '\n' '|')" = "?? $ARTIFACT_ROOT/$RUN_ID/prompt.md|?? $ARTIFACT_ROOT/$RUN_ID/run-meta.yaml|" ] || STOP PROTOCOL "Gate 6: prepare changed more than the run directory"
+  out=$(git status --porcelain=v1 --untracked-files=all) || STOP PROTOCOL "Gate 6: git status failed"
+  [ "$(LC_ALL=C sort <<<"$out" | tr '\n' '|')" = "?? $ARTIFACT_ROOT/$RUN_ID/prompt.md|?? $ARTIFACT_ROOT/$RUN_ID/run-meta.yaml|" ] || STOP PROTOCOL "Gate 6: prepare changed more than the run directory"
   FIX_DIR=$WT/$FIXTURE
 else
   PREP=$RD/practice-prep
@@ -304,8 +315,8 @@ PROMPT_SHA=$(sed -n 's/^promptSha256=//p' <<<"$META_OUT")
 [ -n "$SCENARIO" ] && [[ $PROMPT_SHA =~ ^[0-9a-f]{64}$ ]] || STOP PROTOCOL "Gate 7/8: scenario / prompt SHA-256 not determined"
 log "Gate 7 PASS (prompt SHA-256 $PROMPT_SHA = run-meta promptSha256) / Gate 8 PASS (metadata; scenario $SCENARIO)"
 diff -r "$FIX_DIR" "$WS" > "$LOGD/gate9-diff.log" || STOP PROTOCOL "Gate 9: workspace differs from fixture"
-hashes "$FIX_DIR" > "$LOGD/fixture.sha256"
-hashes "$WS" > "$LOGD/ws-gate9.sha256"
+hashes "$FIX_DIR" > "$LOGD/fixture.sha256" || STOP PROTOCOL "Gate 9: cannot hash fixture"
+hashes "$WS" > "$LOGD/ws-gate9.sha256" || STOP PROTOCOL "Gate 9: cannot hash workspace"
 cmp -s "$LOGD/fixture.sha256" "$LOGD/ws-gate9.sha256" || STOP PROTOCOL "Gate 9: file set / SHA-256"
 gates fixture-hashes --table "$KIT_DIR/expectations/fixtures.sha256" --scenario "$SCENARIO" --observed "$LOGD/ws-gate9.sha256" >> "$STATUS_LOG" || STOP PROTOCOL "Gate 9: recorded fixture hashes"
 log "Gate 9 PASS"
@@ -405,13 +416,14 @@ log "proc-check PASS"
 phase gate13
 CNAME="$CNAME" WS="$WS" CODEX_DIR="$CODEX_DIR" PROMPT="$PROMPT" AUTH_SRC="$AUTH_SRC" bash "$GEN/host-mounts.sh" > "$LOGD/gate13-mounts.log" 2>&1 || STOP SAFETY "host-mounts (Gate 13 mount audit)"
 [ "$(tail -1 "$LOGD/gate13-mounts.log" | cut -c1-5)" = "PASS:" ] || STOP SAFETY "host-mounts last line is not PASS:"
-(cd "$WS" && find . -mindepth 1 | sed 's|^\.|/work|' | LC_ALL=C sort) > "$LOGD/gate13-ws-expected.txt"
+out=$(cd "$WS" && find . -mindepth 1) || STOP PROTOCOL "Gate 13: cannot list workspace"
+sed 's|^\.|/work|' <<<"$out" | LC_ALL=C sort > "$LOGD/gate13-ws-expected.txt"
 awk '/^\/work(\/|$)/' "$LOGD/d2.log" | grep -vx /work | LC_ALL=C sort > "$LOGD/gate13-ws-container.txt"
 cmp -s "$LOGD/gate13-ws-expected.txt" "$LOGD/gate13-ws-container.txt" || STOP PROTOCOL "Gate 13: /work listing differs from fixture set"
 log "Gate 13 PASS"
 phase gate12
 diff -r "$FIX_DIR" "$WS" > "$LOGD/gate12-diff.log" || STOP PROTOCOL "Gate 12: workspace changed during preflight"
-hashes "$WS" > "$LOGD/ws-gate12.sha256"
+hashes "$WS" > "$LOGD/ws-gate12.sha256" || STOP PROTOCOL "Gate 12: cannot hash workspace"
 cmp -s "$LOGD/fixture.sha256" "$LOGD/ws-gate12.sha256" || STOP PROTOCOL "Gate 12: file set / SHA-256"
 log "Gate 12 PASS"
 phase preflight-scan
@@ -423,11 +435,13 @@ rc=0; secret_scan "$LOGD" || rc=$?
 phase f-final
 if [ "$MODE" = real ]; then
   git -C "$REPO" fetch --quiet origin || STOP PROTOCOL "git fetch origin failed"
-  [ -z "$(git -C "$REPO" ls-tree --name-only "origin/main" "$ARTIFACT_ROOT/$RUN_ID")" ] || STOP PROTOCOL "origin/main now has a run directory for $RUN_ID"
+  out=$(git -C "$REPO" ls-tree --name-only "origin/main" "$ARTIFACT_ROOT/$RUN_ID") || STOP PROTOCOL "git ls-tree origin/main failed"
+  [ -z "$out" ] || STOP PROTOCOL "origin/main now has a run directory for $RUN_ID"
   check_env_judgment
   check_prior_accept
 fi
-[ -n "$(docker ps -q --filter "name=^${CNAME}\$")" ] || STOP SAFETY "container not running"
+out=$(docker ps -q --filter "name=^${CNAME}\$") || STOP SAFETY "docker ps failed"
+[ -n "$out" ] || STOP SAFETY "container not running"
 log "(e)(f) PASS: every preflight check passed"
 
 if [ "$DRY_RUN" = 1 ]; then

@@ -47,32 +47,56 @@ expect() { # expect <PASS|STOP> <name> <command...>
 }
 R=$T/registry
 RID=EXP-001-train-normalize-name-r02-T1
+REPO_TOP=$(git -C "$KIT" rev-parse --show-toplevel)
+mkdir -m 700 "$R" "$T/wr" "$T/wr2" "$T/home" "$T/shim"
+printf 'dummy\n' > "$T/auth.json"
+# attempt registry: re-prepare, missing / unreadable registry, HOME that differs from the user database
 expect PASS "first attempt is reserved" G reserve-attempt --registry "$R" --run-id "$RID" --expect-existing 0
 expect STOP "re-prepare of a runId with an existing attempt" G reserve-attempt --registry "$R" --run-id "$RID" --expect-existing 0
 expect PASS "attempt 2 with the existing attempt acknowledged" G reserve-attempt --registry "$R" --run-id "$RID" --expect-existing 1
-REPO_TOP=$(git -C "$KIT" rev-parse --show-toplevel)
-mkdir -p "$T/home/.exp001-run-kit-g/attempts/$RID/attempt-1" "$T/wr"
-printf 'dummy\n' > "$T/auth.json"
+expect STOP "attempt registry not found" G attempt-count --registry "$T/no-registry" --run-id "$RID"
+mkdir -m 755 "$T/open-registry"
+expect STOP "attempt registry with a mode other than 700" G attempt-count --registry "$T/open-registry" --run-id "$RID"
+expect STOP "HOME differs from the user database home" env HOME="$T/home" "$PY" -I -B "$KIT/host/gates.py" registry-path
 RUNARGS=(--run-id "$RID" --workspace-id exp001-selftest-ws --fixture fixtures/exp-001/train/normalize-name --work-root "$T/wr"
   --repo "$REPO_TOP" --codex-dir "$T" --python "$PY" --auth-file "$T/auth.json" --prior-accept-comment 1 --env-judgment-comment 2)
-expect STOP "run.sh re-run of a runId with a recorded attempt and no slot disposition" env HOME="$T/home" bash "$KIT/run.sh" "${RUNARGS[@]}"
-expect STOP "run.sh real mode with --practice-model" env HOME="$T/home" bash "$KIT/run.sh" "${RUNARGS[@]}" --slot-disposition-comment 3 --practice-model
+expect STOP "run.sh real mode with a changed HOME" env HOME="$T/home" bash "$KIT/run.sh" "${RUNARGS[@]}"
+expect STOP "run.sh real mode with --practice-model" bash "$KIT/run.sh" "${RUNARGS[@]}" --practice-model
 [ -z "$(ls -A "$T/wr")" ] && echo "OK   run.sh stopped before creating any run directory" || { echo "FAIL run.sh created files"; fail=1; }
+# a failing command with empty output must not pass a check (docker ps fails before the container-exists check)
+printf '#!/bin/sh\nexit 1\n' > "$T/shim/docker"
+chmod 700 "$T/shim/docker"
+expect STOP "docker ps fails with empty output" env PATH="$T/shim:$PATH" bash "$KIT/run.sh" --mode practice --run-id PRACTICE-leap-r01 \
+  --workspace-id practice-selftest-ws --fixture experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/rehearsal/fixture --work-root "$T/wr2" \
+  --repo "$REPO_TOP" --codex-dir "$T" --python "$PY" --auth-file "$T/auth.json"
+grep -q 'docker ps failed' "$T/out" && echo "OK   STOP reason is the failed docker ps" || { echo "FAIL STOP reason: $(tail -2 "$T/out" | head -1)"; fail=1; }
+# record formats (Reviewer line with runtime / model / session is required in all three)
 pipe() { local body=$1; shift; printf '%s\n' "$body" | G "$@"; }
 EJ=(env-judgment --repo "$REPO_TOP" --main-ref HEAD --kitrel experiments/EXP-001-t0-vs-t1/pilot/run-kit-g --kit-dir "$KIT")
 L='https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-1'
-expect STOP "CONDITIONAL ACCEPT environment Judgment" pipe "EXP-001 r02+ environment disposition: CONDITIONAL ACCEPT" "${EJ[@]}"
-expect STOP "ACCEPT line plus a CONDITIONAL line" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nEXP-001 r02+ environment disposition: CONDITIONAL ACCEPT\nkit: PR #135 merge %040d\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' 0 "$L" "$L" "$L")" "${EJ[@]}"
-expect STOP "ACCEPT without condition evidence lines" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %040d' 0)" "${EJ[@]}"
-expect STOP "ACCEPT for a kit merge that is not on main" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %040d\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' 0 "$L" "$L" "$L")" "${EJ[@]}"
+RV='Reviewer: 独立 Reviewer（runtime: codex 0.160.1、model: gpt-6-luna、session: `01a129b7-f13d-74c1-977d-9f6477bdf150`）'
 HEAD_SHA=$(git -C "$REPO_TOP" rev-parse HEAD)
+env_body() { printf '%s\nEXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' "$1" "$2" "$L" "$L" "$L"; }
+expect STOP "CONDITIONAL ACCEPT environment Judgment" pipe "$(printf '%s\nEXP-001 r02+ environment disposition: CONDITIONAL ACCEPT' "$RV")" "${EJ[@]}"
+expect STOP "ACCEPT line plus a CONDITIONAL line" pipe "$(env_body "$RV" "$HEAD_SHA")
+EXP-001 r02+ environment disposition: CONDITIONAL ACCEPT" "${EJ[@]}"
+expect STOP "ACCEPT without condition evidence lines" pipe "$(printf '%s\nEXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s' "$RV" "$HEAD_SHA")" "${EJ[@]}"
+expect STOP "ACCEPT for a kit merge that is not on main" pipe "$(env_body "$RV" "$(printf '%040d' 0)")" "${EJ[@]}"
+expect STOP "environment Judgment without a Reviewer line" pipe "$(env_body '' "$HEAD_SHA")" "${EJ[@]}"
+expect STOP "environment Judgment whose Reviewer line lacks the session" pipe "$(env_body 'Reviewer: runtime: codex, model: gpt-6-luna' "$HEAD_SHA")" "${EJ[@]}"
 if git -C "$REPO_TOP" show "HEAD:experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/SHA256SUMS" 2>/dev/null | cmp -s - "$KIT/SHA256SUMS"; then
-  expect PASS "unconditional ACCEPT for this kit (HEAD as main)" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' "$HEAD_SHA" "$L" "$L" "$L")" "${EJ[@]}"
+  expect PASS "unconditional ACCEPT with Reviewer record for this kit (HEAD as main)" pipe "$(env_body "$RV" "$HEAD_SHA")" "${EJ[@]}"
 else
   echo "SKIP positive environment Judgment case (kit not committed at HEAD)"
 fi
-expect STOP "Run acceptance without a runId line" pipe "EXP-001 Run acceptance: ACCEPT" run-acceptance --run-id "$RID"
-expect STOP "Run acceptance for another runId" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: EXP-001-train-normalize-name-r02-T0')" run-acceptance --run-id "$RID"
-expect PASS "Run acceptance in record format" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RID")" run-acceptance --run-id "$RID"
-expect STOP "slot disposition for a different attempt" pipe "$(printf 'EXP-001 slot disposition: NEW-ATTEMPT\nrunId: %s\nattempt: 2' "$RID")" slot-disposition --run-id "$RID" --attempt 3
+expect STOP "Run acceptance without a runId line" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT' "$RV")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance for another runId" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: EXP-001-train-normalize-name-r02-T0' "$RV")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance without a Reviewer line" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RID")" run-acceptance --run-id "$RID"
+expect PASS "Run acceptance in record format" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RV" "$RID")" run-acceptance --run-id "$RID"
+SD=$(printf 'EXP-001 slot disposition: NEW-ATTEMPT\nrunId: %s\nattempt: 2' "$RID")
+RS='reason: preflight STOP before (g) caused by an infrastructure fault; model never started'
+expect STOP "slot disposition for a different attempt" pipe "$(printf '%s\n%s\n%s' "$RV" "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 3
+expect STOP "slot disposition without a Reviewer line" pipe "$(printf '%s\n%s' "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 2
+expect STOP "slot disposition without a reason line" pipe "$(printf '%s\n%s' "$RV" "$SD")" slot-disposition --run-id "$RID" --attempt 2
+expect PASS "slot disposition in record format" pipe "$(printf '%s\n%s\n%s' "$RV" "$SD" "$RS")" slot-disposition --run-id "$RID" --attempt 2
 [ "$fail" = 0 ] && echo "PASS: selftest" || { echo "STOP: selftest failed"; exit 1; }

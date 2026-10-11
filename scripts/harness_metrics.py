@@ -60,6 +60,24 @@ class ApiOnlyRedirectHandler(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
+def rate_limit_hint(error: HTTPError) -> str:
+    """Explain 403/429 caused by rate limiting, using only non-secret rate limit headers."""
+    headers = error.headers
+    if error.code not in (403, 429) or headers is None:
+        return ""
+    remaining = headers.get("x-ratelimit-remaining")
+    retry_after = headers.get("retry-after")
+    if remaining != "0" and retry_after is None:
+        return ""
+    details = []
+    reset = headers.get("x-ratelimit-reset")
+    if reset and reset.isdigit():
+        details.append(f"reset {datetime.fromtimestamp(int(reset), timezone.utc).isoformat(timespec='seconds')}")
+    if retry_after:
+        details.append(f"retry-after {retry_after}s")
+    return f" (GitHub API rate limit exceeded; {', '.join(details) or 'retry later'})"
+
+
 def github_fetcher(token: str | None) -> Fetcher:
     headers = {
         "Accept": "application/vnd.github+json",
@@ -78,7 +96,7 @@ def github_fetcher(token: str | None) -> Fetcher:
             with opener.open(Request(url, headers=headers, method="GET"), timeout=20) as response:
                 return json.load(response), next_link(response.headers.get("Link"))
         except HTTPError as error:
-            raise RuntimeError(f"GET {url}: HTTP {error.code}") from error
+            raise RuntimeError(f"GET {url}: HTTP {error.code}{rate_limit_hint(error)}") from error
 
     return fetch
 
@@ -280,7 +298,9 @@ def main(argv: list[str] | None = None) -> int:
     window = parser.add_mutually_exclusive_group()
     window.add_argument("--days", type=int, default=7)
     window.add_argument("--since", help="ISO date/time (UTC if no offset)")
-    parser.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
+    output.add_argument("--json-out", type=Path, help="also write JSON to this path while printing Markdown")
     args = parser.parse_args(argv)
     if not REPO_PATTERN.fullmatch(args.repo):
         parser.error("--repo must use the owner/name form")
@@ -300,9 +320,12 @@ def main(argv: list[str] | None = None) -> int:
         **collect_pr_metrics(github_fetcher(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")), args.repo, since),
         "ledger": summarize_ledger(parse_ledger(args.ledger.read_text(encoding="utf-8"))),
     }
+    report_json = json.dumps(report, ensure_ascii=False, indent=2)
     if args.json:
-        print(json.dumps(report, ensure_ascii=False, indent=2))
+        print(report_json)
     else:
+        if args.json_out:
+            args.json_out.write_text(report_json + "\n", encoding="utf-8")
         print(render_markdown(report), end="")
     return 0
 

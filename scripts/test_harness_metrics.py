@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from email.message import Message
 from pathlib import Path
+import contextlib
+import io
+import json
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+from urllib.error import HTTPError  # noqa: E402
 from urllib.request import Request  # noqa: E402
 
+import harness_metrics  # noqa: E402
 from harness_metrics import (  # noqa: E402
     ApiOnlyRedirectHandler, collect_pr_metrics, fmt, github_fetcher, main, next_link, parse_ledger, percentile,
     render_markdown, summarize_ledger,
@@ -182,5 +189,37 @@ check("1 / 2（50%）" in markdown and "判定不能（最初の head commit の
 check("| #3 | 判定不能 | 0 |" in markdown, "per-PR row")
 check(all(fmt(p / q, "{:.0%}") == "{:.0f}%".format(p / q * 100) for q in range(1, 201) for p in range(q + 1)),
       "percent format matches the previous rate * 100 rendering")
+
+rate_headers = Message()
+rate_headers["x-ratelimit-remaining"] = "0"
+rate_headers["x-ratelimit-reset"] = "1791676800"
+rate_error = HTTPError("https://api.github.com/x", 403, "Forbidden", rate_headers, None)
+with contextlib.ExitStack() as stack:
+    stack.callback(setattr, harness_metrics, "build_opener", harness_metrics.build_opener)
+
+    class RateLimitedOpener:
+        def open(self, *args, **kwargs):
+            raise rate_error
+
+    harness_metrics.build_opener = lambda *handlers: RateLimitedOpener()
+    try:
+        github_fetcher("secret-token")("/x")
+        raise AssertionError("rate limited request must fail")
+    except RuntimeError as exc:
+        check("HTTP 403 (GitHub API rate limit exceeded; reset 2026-10-11T00:00:00+00:00)" in str(exc)
+              and "secret-token" not in str(exc), "rate limit 403 is explained without the token")
+
+with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
+    stack.callback(setattr, harness_metrics, "github_fetcher", harness_metrics.github_fetcher)
+    harness_metrics.github_fetcher = lambda token: fake_fetch
+    ledger_path = Path(tmp) / "ledger.md"
+    ledger_path.write_text(LEDGER, encoding="utf-8")
+    json_path = Path(tmp) / "out.json"
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        main(["--repo", REPO, "--since", "2026-10-01", "--ledger", str(ledger_path), "--json-out", str(json_path)])
+    written = json.loads(json_path.read_text(encoding="utf-8"))
+    check(stdout.getvalue() == render_markdown(written) and written["ledger"] == summary,
+          "--json-out writes the same report as JSON while printing Markdown")
 
 print("harness metrics tests OK")

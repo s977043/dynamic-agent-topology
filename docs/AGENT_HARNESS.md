@@ -20,7 +20,7 @@
 | Learn   | 下の Learning ledger に、Evidence・発生回数・状態を追記する             | Agent                    |
 | Promote | 同種が2回以上でEvidenceが揃ったら、改善PRを出す                         | Agentが起案、自律境界に従いmerge |
 | Enforce | 採用した対策をCI / hook / 設定として常時有効にする                      | Harness                  |
-| Measure | 再発率、CI初回pass率、レビューループ数、permission prompt数を見る（下記「Measure」） | 定期棚卸し               |
+| Measure | 再発率、CI初回pass率、レビューループ数を見る（permission prompt 数は記録が残らないため対象外。下記「Measure」） | 定期棚卸し               |
 
 ## 自律境界
 
@@ -71,6 +71,8 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | L-006 | CIと異なるlocalのPythonでのみ検証し、CI（Python 3.12）で `validate` が失敗した | PR #85 CI run 37541615338 | 1 | promoted | `AGENTS.md` の Python 3.12 検証ルール |
 | L-007 | push/API の権限エラーを回避するため、ワーカーが `gh auth switch` で active アカウントを変更した。active アカウントは同一マシンの全セッションで共有されるため、並行セッションの書き込み先が変わり得る | PR #110 作業時（2026-10-08） | 1 | candidate | アカウント切替はせず、コマンド単位で認証トークンを渡す。委託プロンプトの境界に明記 |
 | L-008 | Agent の Edit 後に走る自動整形 hook が、レビュー済み SHA-256 表を含む文書の表の空白を書き換えた（ワーカーが気づき HEAD から作り直した） | PR #110 作業時（2026-10-08）、`docs/EXP-001_RETRY_T1_R01.md`。PR #112 作業時の再発（PR #112 本文に記録） | 2 | promoted | `.prettierignore`（併せて、編集後に意図した行以外の差分が無いことを `git diff` で確認する） |
+| L-009 | 独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO-GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効） | PR #130 の Run acceptance レビュー（Issue #15 comment 6106366753 に至る 4 回） | 3 | candidate | 判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする |
+| L-010 | 『指摘ゼロ』を完了の定義にした机上レビューの往復が収束せず（15 回以上）、Run が進まなかった | PR #110・#116・#121・#122 のレビュー往復、本番スクリプトの NO-GO 3 回 | 2 | candidate | 必須を安全・秘密値・プロトコル違反・回収不能の 4 分類に絞り、推奨は事後改善に回す。同箇所の指摘が続く場合はドライランやリハーサルで実際に動かして確かめる |
 
 状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004、L-006。L-006 は検証結果の報告が実態とずれたEvidence完全性の問題）。昇格には原則2回以上の観測が必要で、これらはその例外です。
 
@@ -93,6 +95,7 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 
 1. 月曜の `harness-metrics.yml` の Job Summary と artifact を Agent が読む（必要なら `workflow_dispatch` で再実行）。
 2. 前週との差分を見る: CI 初回 pass 率の低下、レビューループ数の多い PR、回数 2 以上の candidate、Evidence 欠落。
+   CI 初回 pass 率は committer date からの推定値で誤分類があり得るため、確定値ではなく傾向として見る。
 3. 新しい観測や回数の増加は、Evidence を添えて Learning ledger に追記する（事実の追記は Agent が行える）。
 4. 回数 2 以上で Evidence の揃った candidate は、`promoted` への変更と対策（Guard の追加・規則の変更）を draft PR として起案する。規則・Guard の変更は人間が承認して merge する（「原則」「自律境界」に従う）。
 5. 棚卸しの結果（見た run、追記・起案した PR）を PR 本文または Issue に記録する。

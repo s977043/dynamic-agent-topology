@@ -36,8 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          python scripts/harness_metrics.py --repo "${GITHUB_REPOSITORY}" > harness-metrics.md
-          python scripts/harness_metrics.py --repo "${GITHUB_REPOSITORY}" --json > harness-metrics.json
+          python scripts/harness_metrics.py --repo "${GITHUB_REPOSITORY}" --json-out harness-metrics.json > harness-metrics.md
 
       - name: Publish metrics summary
         if: always()

@@ -1,0 +1,8 @@
+train-normalize-name  e7a5fcbcadc9aaea89f373ad6cab3cce054b61306840d074e5a65c1214977317  ./app.py
+train-normalize-name  cb80792df004a94bcb0430e4adc20d06f2776059887457c5f6b428e9b74e3e4d  ./tests/test_app.py
+test-clamp-boundaries  9d5470a2dbf6cf26e7f70780a3d9d840be1ca3217c30fa55f8270d6a05e758c5  ./app.py
+test-clamp-boundaries  bf68b4b9b27885f5ae08150b37f9af2ef7a54f5007e4c7e876f4599c2f948967  ./tests/test_app.py
+regression-safe-divide  8625c5ea6bb21887d46b66efeac207900e5949b3c0f6959c8e99d4e6713524d5  ./app.py
+regression-safe-divide  22b60276f68e15a7524d42cb96b1613f34c0435383a0076668e9c7ef8f693abe  ./tests/test_app.py
+practice-leap  0f8442ca8922d445f1317e731385da1ee2a5252191f1edd260171610e9d3a175  ./leap.py
+practice-leap  ef1da524f5cac5a6b1b80673ffa636a641b27c4f5c10adb7c87024e56094fd33  ./tests/test_leap.py

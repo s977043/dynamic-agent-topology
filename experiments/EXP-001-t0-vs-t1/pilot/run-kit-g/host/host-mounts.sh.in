@@ -1,0 +1,43 @@
+set -euo pipefail
+STOP() { echo "STOP: $*"; exit 1; }
+: "${CNAME:?}" "${WS:?}" "${CODEX_DIR:?}" "${PROMPT:?}"
+AUTH_SRC=${AUTH_SRC:-$HOME/.codex/auth.json}
+RUNS=$(realpath "$PWD/experiments/EXP-001-t0-vs-t1/runs") || STOP "cannot resolve runs/ (run from repo root)"
+m=$(docker inspect --format '{{range .Mounts}}{{.Type}}|{{.Source}}|{{.Destination}}|{{.RW}}{{"\n"}}{{end}}' "$CNAME") || STOP "docker inspect $CNAME failed"
+m=$(sed '/^$/d' <<<"$m")
+[ -n "$m" ] || STOP "no mounts reported"
+printf '%s\n' "$m"
+other=$(awk -F'|' '$1 != "bind" && $1 != "tmpfs"' <<<"$m")
+[ -z "$other" ] || STOP "mount of unexpected type: $(cut -d'|' -f1,3 <<<"$other" | tr '\n' ' ')"
+# bind: 4 entries, each Source(realpath)/Destination/RW must equal the expected value
+binds=""
+while IFS='|' read -r type src dst rw; do
+  [ "$type" = bind ] || continue
+  r=$(realpath "$src") || STOP "cannot resolve bind source for $dst"
+  binds+="$r|$dst|$rw"$'\n'
+done <<<"$m"
+exp=""
+for e in "$AUTH_SRC|/tmp/codex-home/auth.json|false" "$CODEX_DIR|/cx|false" "$PROMPT|/run-input/prompt.md|false" "$WS|/work|true"; do
+  r=$(realpath "${e%%|*}") || STOP "cannot resolve expected source for ${e#*|}"
+  exp+="$r|${e#*|}"$'\n'
+done
+[ "$(sort <<<"$binds")" = "$(sort <<<"$exp")" ] || STOP "bind mounts differ from exactly auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw"
+psha=$(shasum -a 256 < "$PROMPT" | cut -c1-64) || STOP "cannot hash PROMPT"
+[ "$psha" = @@PROMPT_SHA256@@ ] || STOP "PROMPT bind source SHA-256 differs from Gate 7"
+# tmpfs: allowlist /tmp and /tmp/codex-home only (in .Mounts if listed there, and in HostConfig.Tmpfs)
+allowed=$(printf '%s\n' /tmp /tmp/codex-home)
+td=$(awk -F'|' '$1 == "tmpfs" { print $3 }' <<<"$m" | sort)
+[ -z "$td" ] || [ "$td" = "$allowed" ] || STOP "tmpfs mounts in .Mounts are not exactly /tmp and /tmp/codex-home"
+ht=$(docker inspect --format '{{range $k, $v := .HostConfig.Tmpfs}}{{$k}}{{"\n"}}{{end}}' "$CNAME") || STOP "docker inspect HostConfig.Tmpfs failed"
+ht=$(sed '/^$/d' <<<"$ht" | sort)
+printf 'HostConfig.Tmpfs: %s\n' "$(tr '\n' ' ' <<<"$ht")"
+[ "$ht" = "$allowed" ] || STOP "HostConfig.Tmpfs is not exactly /tmp and /tmp/codex-home"
+while IFS='|' read -r src dst rw; do
+  [ -n "$src" ] || continue
+  case "$src/" in "$RUNS"/*) STOP "$dst source is under runs/" ;; esac
+  case "$RUNS/" in "$src"/*) STOP "$dst source contains runs/" ;; esac
+  case $src in *infrastructure-failures*) STOP "$dst source references infrastructure-failures" ;; esac
+done <<<"$binds"
+ws=$(realpath "$WS") || STOP "cannot resolve WS"
+case "$ws/" in "$RUNS"/*) STOP "WS is under runs/" ;; esac
+echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw) and tmpfs only at /tmp and /tmp/codex-home; none under or containing runs/"

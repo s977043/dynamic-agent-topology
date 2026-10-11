@@ -20,7 +20,7 @@ python scripts/validate_experiment_freeze.py
 python scripts/validate_project.py --project examples/brownfield --dat-root .
 ```
 
-Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. Set `PYTHONDONTWRITEBYTECODE=1` so runs do not leave `__pycache__` inside frozen fixtures. Verify new or changed scripts with Python 3.12 (CI's version) before reporting them as passing; for example, `Path.glob` with a trailing `**` returns only directories on 3.12, and 3.13+ APIs such as `PurePath.full_match` are unavailable.
+Tests are standalone scripts, not pytest: `python scripts/test_<area>.py`. `PYTHONDONTWRITEBYTECODE=1` keeps runs from leaving `__pycache__` inside frozen fixtures; tool settings already set it, and in environments without them set it yourself. Verify new or changed scripts with Python 3.12 (CI's version) before reporting them as passing; for example, `Path.glob` with a trailing `**` returns only directories on 3.12, and 3.13+ APIs such as `PurePath.full_match` are unavailable.
 
 When adding a new artifact kind, add its schema in `schemas/`, a semantic check if it has cross-file references, and wire both into `spec-lint.yml`. Schema validity alone is not sufficient.
 
@@ -33,7 +33,7 @@ When adding a new artifact kind, add its schema in `schemas/`, a semantic check 
 EXP-001 is under Feature Freeze; `pilot/freeze.yaml` lists the frozen files (experiment, prompts, scenarios, `fixtures/exp-001/`, T0/T1 topologies, worker/verifier roles, schemas, pilot scripts) and `validate_experiment_freeze.py` enforces blob SHAs. Non-listed files such as `pilot/FREEZE.md`, `OPERATOR.md`, `RUNBOOK.md`, and `runs/` are not frozen.
 
 - Do not edit frozen files. A blocking defect stops execution and follows the freeze exception procedure in `pilot/FREEZE.md`; everything else is a post-EXP-001 proposal tracked in an issue.
-- Pilot runs are executed by an Operator in a fresh external workspace and fresh Codex session (`docs/EXP-001_EXECUTION.md`, `pilot/OPERATOR.md`). Agents must not start that session in the Operator's place, re-prepare an existing `runId`, or create result artifacts without a real run.
+- Pilot runs are executed by an Operator in a fresh external workspace and a fresh model session using the runtime fixed by the pilot spec (`docs/EXP-001_EXECUTION.md`, `experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md`). Normal runs are executed by the Operator. Agents must not start that session in the Operator's place, except for the EXP-001 one-time retry model launch (consuming the retry allowance) under all HOTL conditions in `docs/AGENT_HARNESS.md`: every Gate and preflight in the procedure passes mechanical checks, a Reviewer Judgment is recorded, the retry is unconsumed, Runtime/Model/Effort are fixed, duplicate launches are prevented, and the attestation, trace, and Evidence are preserved; on any anomaly the Agent stops and makes no further launch. Agents must not re-prepare an existing `runId`; the only exceptions are Operator-controlled operations under the documented procedures (the #48 pre-measurement recovery and the #51 limited retry in `OPERATOR.md` §3 and `docs/EXP-001_RETRY_51.md`, and the T1 r01 one-time retry in `docs/EXP-001_RETRY_T1_R01.md`). Agents must not create result artifacts without a real run.
 - Issue #15 is the live run status; docs only record checkpoints and may lag behind it.
 
 ## Evidence discipline
@@ -45,9 +45,13 @@ EXP-001 is under Feature Freeze; `pilot/freeze.yaml` lists the frozen files (exp
 
 ## Changes and PRs
 
-- Record recurring failures and review findings in the Learning ledger of `docs/AGENT_HARNESS.md`; it also defines what agents may do without human approval.
+- Record recurring failures and review findings in the Learning ledger of `docs/AGENT_HARNESS.md`.
+- Autonomy follows the HOTL rules in `docs/AGENT_HARNESS.md` (the source of truth; this is a summary). Agents may merge a normal PR only when all required CI passes and an independent review in a separate session has no unresolved findings. Changes to `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.codex/`, the rules in `docs/AGENT_HARNESS.md`, or `scripts/validate_agent_guidance.py` are drafted by agents and merged by a human. Freeze revisions, releases/tags, force pushes, and deletions are human-only.
+- Never approve what your own session produced. Hand an independent review to a fresh session, passing the decision material as files or links, not summaries.
 - Commit messages and PR titles start with a conventional prefix such as `docs:`, `schema:`, `audit:`, `ci:`, `fix:`, `chore:`. Write PR titles, PR bodies, issues, and review comments in Japanese; keep the prefix and code identifiers as-is.
-- Other agents may work on the same branches concurrently: fetch right before pushing, push with `--force-with-lease=<branch>:<known sha>`, and stop instead of committing if the worktree has changes you did not make.
+- One branch, one agent. Shared refs can still be touched by others: fetch right before pushing, confirm the current branch, push with `--force-with-lease=<branch>:<known sha>`, and stop if the worktree has changes you did not make.
+- Do not switch the global CLI or auth account; pass credentials per command.
+- After editing, check `git diff` for unintended changes (for example, a formatting hook rewriting a hash table).
 - Fill `.github/pull_request_template.md`, including the freeze check. Topology/routing/role/verifier/experiment-method changes need a falsifiable hypothesis.
 - Releases follow `docs/RELEASE_READINESS.md`: never move a published tag.
 - Never commit secrets, private source code, confidential prompts, or unsanitized traces; report vulnerabilities via `SECURITY.md`.

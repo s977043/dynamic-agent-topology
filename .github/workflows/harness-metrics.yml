@@ -1,0 +1,58 @@
+name: Harness metrics
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 6 * * 1"
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metrics:
+    name: Weekly harness metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Collect harness metrics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python scripts/harness_metrics.py --repo "${GITHUB_REPOSITORY}" --json-out harness-metrics.json > harness-metrics.md
+
+      - name: Publish metrics summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s harness-metrics.md ]]; then
+            cat harness-metrics.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Metrics output was not produced. Inspect the failed collect step." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: harness-metrics
+          path: harness-metrics.json
+          if-no-files-found: ignore
+          retention-days: 14

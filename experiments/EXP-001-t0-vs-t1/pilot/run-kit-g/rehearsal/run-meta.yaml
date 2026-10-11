@@ -1,0 +1,12 @@
+apiVersion: dat/v1alpha1
+kind: PilotRunMetadata
+metadata:
+  runId: PRACTICE-leap-r01
+  blockId: PRACTICE-leap
+  scenario: practice-leap
+  condition: practice
+spec:
+  repetition: 1
+  executionOrder: 1
+  freshWorkspace: true
+  promptSha256: 051488a403cd2acd8577e4753813244c8576f88b2548865b5e6b670a8181b674

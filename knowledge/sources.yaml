@@ -166,3 +166,15 @@ sources:
     title: "Langfuse LLM observability and evaluation"
     url: "https://github.com/langfuse/langfuse"
     adopted: []
+
+  - id: anthropic-claude-code-advisor-2026
+    type: product-documentation
+    title: "Claude Code: Escalate hard decisions with the advisor tool"
+    url: "https://code.claude.com/docs/en/advisor"
+    adopted: []
+
+  - id: anthropic-claude-code-subagents-2026
+    type: product-documentation
+    title: "Claude Code: Create custom subagents"
+    url: "https://code.claude.com/docs/en/sub-agents"
+    adopted: []

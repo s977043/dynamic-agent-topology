@@ -49,7 +49,7 @@
 
 助言ロールはClaude Codeの`.claude/agents/`のみ。Codexには登録しない。Codexのsubagentは親のsandboxを引き継ぎ、ロール設定のread-onlyを保証できないため（PR #124の負側テスト）。
 
-Claude Codeで、必要なRoleに**相談タスクだけ**を委譲する。GitHubのIssue/PRから必要な部分、サニタイズ済み観測、現在の権限境界のみを渡す。ロールはRead/Grep/GlobしかなくIssue/PRを自分で取得できないため、リンクだけでなく内容を呼び出し側が渡す。subagent起動手段がなければ同じ問いをread-onlyレビューで使い、**独立Agentが実行したと偽らない**。
+Claude Codeで、必要なRoleに**相談タスクだけ**を委譲する。GitHubのIssue/PRから必要な部分と観測（どちらもサニタイズ済み）、現在の権限境界のみを渡す。ロールはRead/Grep/GlobしかなくIssue/PRを自分で取得できないため、リンクだけでなく内容を呼び出し側がサニタイズして渡す。subagent起動手段がなければ同じ問いをread-onlyレビューで使い、**独立Agentが実行したと偽らない**。
 
 **相談する条件（全Runでの呼び出しは不要）:**
 

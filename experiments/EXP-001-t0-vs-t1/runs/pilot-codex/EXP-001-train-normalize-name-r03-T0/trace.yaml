@@ -1,0 +1,71 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-train-normalize-name-r03-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T0
+  blockId: EXP-001-train-normalize-name-r03
+executionSubject:
+  kind: AgentTopology
+  name: T0-single-agent
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-11T11:27:48+00:00'
+  details:
+    sessionId: 01a12ab8-13ca-7f92-94a7-65cd465d5b5c
+    freshSession: true
+    crossRunFeedbackUsed: false
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: pwd; rg --files -g 'AGENTS.md' -g '*.py' -g 'pyproject.toml' -g 'README*' -g 'setup.cfg' -g 'setup.py'
+  details:
+    exitCode: 0
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: cat app.py
+  details:
+    exitCode: 0
+- sequence: 3
+  type: action
+  actor: worker
+  artifact: cat tests/test_app.py
+  details:
+    exitCode: 0
+- sequence: 4
+  type: action
+  actor: worker
+  artifact: app.py
+  details:
+    operation: apply_patch update
+    status: completed
+- sequence: 5
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 6
+  type: finish
+  actor: worker
+  timestamp: '2026-10-11T11:28:17+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  humanInterventions: 0
+  inputTokens: 59669
+  outputTokens: 395
+  wallClockMs: 29000

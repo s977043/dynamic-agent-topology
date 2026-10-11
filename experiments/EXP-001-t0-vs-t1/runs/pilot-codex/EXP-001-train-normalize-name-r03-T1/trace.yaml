@@ -1,0 +1,103 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-train-normalize-name-r03-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+  blockId: EXP-001-train-normalize-name-r03
+executionSubject:
+  kind: AgentTopology
+  name: T1-worker-verifier
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-11T14:57:22+00:00'
+  details:
+    sessionId: 01a12b77-f147-76f2-bf16-637aafe020f4
+    freshSession: true
+    crossRunFeedbackUsed: false
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: pwd && rg --files -g 'AGENTS.md' -g '*.py' -g 'pyproject.toml' -g 'README*' -g '!*EXP-001*'
+  details:
+    exitCode: 0
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: cat app.py tests/test_app.py; AGENTS.md lookup
+  details:
+    exitCode: 0
+- sequence: 3
+  type: action
+  actor: worker
+  artifact: app.py
+  details:
+    operation: apply_patch update
+    status: completed
+- sequence: 4
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 5
+  type: handoff
+  actor: worker
+  target: verifier
+  timestamp: '2026-10-11T14:57:53.881Z'
+  details:
+    tool: spawn_agent
+    taskName: verifier
+    forkTurns: all
+    verifierSessionId: 01a12b78-68f4-7593-868c-60916a3bbc6b
+    parentThreadId: 01a12b77-f147-76f2-bf16-637aafe020f4
+    forkedFromId: 01a12b77-f147-76f2-bf16-637aafe020f4
+    agentPath: /root/verifier
+    verifierModel: gpt-6.1-sol
+    verifierEffort: high
+    handoffMessageContent: not readable (opaque in session record)
+- sequence: 6
+  type: review
+  actor: verifier
+  artifact: app.py; tests/test_app.py
+  details:
+    commands:
+    - cat app.py tests/test_app.py
+    implementationEdits: 0
+- sequence: 7
+  type: verify
+  actor: verifier
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 8
+  type: handoff
+  actor: verifier
+  target: worker
+  timestamp: '2026-10-11T14:58:10.095Z'
+  details:
+    verdict: PASS
+    findings: 0
+- sequence: 9
+  type: finish
+  actor: worker
+  timestamp: '2026-10-11T14:58:17+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  humanInterventions: 0
+  inputTokens: 150982
+  outputTokens: 879
+  wallClockMs: 55000

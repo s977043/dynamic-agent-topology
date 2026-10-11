@@ -1,0 +1,47 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-train-normalize-name-r03-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+  blockId: EXP-001-train-normalize-name-r03
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 150982
+  outputTokens: 879
+  wallClockMs: 55000
+verdict: pass
+notes: Second r03 matrix Run (after r03-T0), executed with run-kit-g (candidate G; Issue 15 environment
+  Judgments 6107822908 / 6107845799, the kit checked 6107822908 for this Run) with the same
+  environment.conf, config.toml and launch line as r03-T0; only the prompt (T1 vs T0) differs. Worker session spawned one Verifier subagent
+  (same model/effort per turn_context). Unlike r01-T1 and r02-T1 (fork_turns none), the Worker
+  called spawn_agent with fork_turns all; the Verifier rollout records forked_from_id = root, and
+  its inherited history (before subagent_history_start_ordinal 9) holds only the root session_meta,
+  environment context and run prompt, with no Worker tool calls. Whether this meets the prompt's
+  separate role/context requirement is left to Reviewer judgment. Verifier ran read-only inspection
+  and the deterministic command, made no file edits (apply_patch 0, FileChange 0), returned PASS
+  with no findings. Deterministic unittest 2/2 PASS (Worker and Verifier), tests unchanged, API
+  unchanged, only app.py changed. No host-side rerun (run-kit-g does not execute model-written code
+  on the host). Tokens are the sum of both sessions' final total_token_usage. wallClockMs spans (g)
+  stdout date to separate container date (second precision). No hidden reasoning copied.

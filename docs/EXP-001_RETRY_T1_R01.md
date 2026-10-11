@@ -94,7 +94,7 @@ Before model invocation:
 
 If any gate fails, stop. Do not consume the retry allowance.
 
-Gate 10 の実行環境判定基準と非model確認手順: [EXP-001_RETRY_T1_R01_PYTHON_ENV.md](EXP-001_RETRY_T1_R01_PYTHON_ENV.md)（Reviewer判断待ち）。
+Gate 10 の実行環境判定基準と非model確認手順: [EXP-001_RETRY_T1_R01_PYTHON_ENV.md](EXP-001_RETRY_T1_R01_PYTHON_ENV.md)（承認済み・実施済み: #15 [6072534007](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6072534007) / [6106366753](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106366753)）。
 
 ## Single permitted retry
 

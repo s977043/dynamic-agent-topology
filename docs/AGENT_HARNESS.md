@@ -85,5 +85,5 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 
 1. **P1** — guidance drift validator、本書、Learning ledger（本PR）
 2. **P2** — PreToolUse hookでBash経由のFrozen file書き込みを検出（実装済み）
-3. **P3** — 指標の定期集計と週次棚卸し
+3. **P3** — 指標の定期集計と週次棚卸し（集計スクリプトのテスト `scripts/test_harness_metrics.py` は CI で実行）
 4. **P4（post-EXP-001）** — このハーネス自体をDATの実験として評価する（#21、#59 と関連）

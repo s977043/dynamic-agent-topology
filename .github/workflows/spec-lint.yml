@@ -178,3 +178,6 @@ jobs:
 
       - name: Test frozen Bash guard hook
         run: python scripts/test_guard_frozen_bash.py
+
+      - name: Test harness metrics collector
+        run: python scripts/test_harness_metrics.py

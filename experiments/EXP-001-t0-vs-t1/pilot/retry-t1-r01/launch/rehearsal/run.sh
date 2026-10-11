@@ -92,8 +92,10 @@ log "docker exec returned rc=$HOST_RC"
 [ "$HOST_RC" = 124 ] && log "TIMEOUT"
 
 docker exec "$CNAME" tar -C /tmp -cf - started-at finished-at codex-exit codex-home/sessions > "$R/sink/evidence.tar" 2>"$R/collect.err"
-log "collect rc=$? ($(tar -tf "$R/sink/evidence.tar" 2>/dev/null | wc -l | tr -d ' ') entries)"
-tar -tf "$R/sink/evidence.tar" | grep -q 'auth.json' && log "WARN: auth.json in evidence"
+COLLECT_RC=$?
+log "collect rc=$COLLECT_RC ($(tar -tf "$R/sink/evidence.tar" 2>/dev/null | wc -l | tr -d ' ') entries)"
+AUTH_IN_EVIDENCE=0
+tar -tf "$R/sink/evidence.tar" | grep -q 'auth.json' && { AUTH_IN_EVIDENCE=1; log "FAIL: auth.json in evidence"; }
 tar -xf "$R/sink/evidence.tar" -C "$R/sink" started-at finished-at codex-exit 2>/dev/null
 chmod 600 "$R/sink/evidence.tar"
 mkdir -p "$R/scan" && tar -xf "$R/sink/evidence.tar" -C "$R/scan" 2>/dev/null
@@ -103,3 +105,12 @@ rm -rf "$R/scan"
 docker stop "$CNAME" >/dev/null 2>&1 && log "container stopped" || log "WARN: container stop failed"
 (cd "$R/ws" && python3 -m unittest discover -s tests > "$R/tests-after.txt" 2>&1); log "tests-after rc=$?"
 summary
+
+FAIL=0
+[ "$HOST_RC" = 0 ] || { log "FAIL: codex exec rc=$HOST_RC"; FAIL=1; }
+[ "$COLLECT_RC" = 0 ] || { log "FAIL: evidence collection rc=$COLLECT_RC"; FAIL=1; }
+[ "$AUTH_IN_EVIDENCE" = 0 ] || FAIL=1
+[ "$(cat "$R/secret-hits" 2>/dev/null)" = 0 ] || { log "FAIL: secret pattern scan not clean"; FAIL=1; }
+[ "$(docker ps -q --filter name="^$CNAME$" | wc -l | tr -d ' ')" = 0 ] || { log "FAIL: container left running"; FAIL=1; }
+[ "$FAIL" = 0 ] && log "PASS: rehearsal $N" || log "STOP: rehearsal $N failed a mandatory gate"
+exit "$FAIL"

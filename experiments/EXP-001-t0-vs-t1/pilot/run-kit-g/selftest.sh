@@ -98,6 +98,8 @@ expect STOP "Run acceptance for another runId" pipe "$(printf '%s\nEXP-001 Run a
 expect STOP "Run acceptance without a Reviewer line" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: %s\n%s' "$RID" "$EV")" run-acceptance --run-id "$RID"
 expect STOP "Run acceptance without an evidence link" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RV" "$RID")" run-acceptance --run-id "$RID"
 expect STOP "Run acceptance with a malformed evidence link" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s\nevidence: https://example.com/pull/1' "$RV" "$RID")" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance with an evidence link that has text after the number" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s\nevidence: https://github.com/s977043/dynamic-agent-topology/pull/200garbage' "$RV" "$RID")" run-acceptance --run-id "$RID"
+expect PASS "Run acceptance with an evidence link to a comment anchor" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s\nevidence: https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106366753' "$RV" "$RID")" run-acceptance --run-id "$RID"
 expect PASS "Run acceptance in record format" pipe "$(printf '%s\nEXP-001 Run acceptance: ACCEPT\nrunId: %s\n%s' "$RV" "$RID" "$EV")" run-acceptance --run-id "$RID"
 SD=$(printf 'EXP-001 slot disposition: NEW-ATTEMPT\nrunId: %s\nattempt: 2' "$RID")
 RS='reason: preflight STOP before (g) caused by an infrastructure fault; model never started'

@@ -212,7 +212,7 @@ REPO_URL = r"https://github\.com/s977043/dynamic-agent-topology/\S+"
 REVIEWER = re.compile(r"Reviewer:.*\bruntime:\s*\S+.*\bmodel:\s*\S+.*\bsession:.*[0-9A-Za-z_-]{8,}")
 
 
-EVIDENCE = re.compile(r"evidence: https://github\.com/s977043/dynamic-agent-topology/(pull|issues)/[0-9]+\S*")
+EVIDENCE = re.compile(r"evidence: https://github\.com/s977043/dynamic-agent-topology/(pull|issues)/[0-9]+([/?#]\S*)?")
 
 
 def require_evidence(lines: list[str], what: str) -> None:

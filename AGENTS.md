@@ -33,7 +33,7 @@ When adding a new artifact kind, add its schema in `schemas/`, a semantic check 
 EXP-001 is under Feature Freeze; `pilot/freeze.yaml` lists the frozen files (experiment, prompts, scenarios, `fixtures/exp-001/`, T0/T1 topologies, worker/verifier roles, schemas, pilot scripts) and `validate_experiment_freeze.py` enforces blob SHAs. Non-listed files such as `pilot/FREEZE.md`, `OPERATOR.md`, `RUNBOOK.md`, and `runs/` are not frozen.
 
 - Do not edit frozen files. A blocking defect stops execution and follows the freeze exception procedure in `pilot/FREEZE.md`; everything else is a post-EXP-001 proposal tracked in an issue.
-- Pilot runs are executed by an Operator in a fresh external workspace and a fresh model session using the runtime fixed by the pilot spec (`docs/EXP-001_EXECUTION.md`, `experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md`). Agents must not start that session in the Operator's place, re-prepare an existing `runId`, or create result artifacts without a real run.
+- Pilot runs are executed by an Operator in a fresh external workspace and a fresh model session using the runtime fixed by the pilot spec (`docs/EXP-001_EXECUTION.md`, `experiments/EXP-001-t0-vs-t1/pilot/OPERATOR.md`). Agents start that session only under the HOTL conditions in `docs/AGENT_HARNESS.md` (all Gates and preflight pass mechanical checks, a Reviewer Judgment is recorded, the retry is unconsumed, Runtime/Model/Effort are fixed, duplicate launches are prevented, and evidence is preserved). Agents must not re-prepare an existing `runId` without a reviewed disposition, or create result artifacts without a real run.
 - Issue #15 is the live run status; docs only record checkpoints and may lag behind it.
 
 ## Evidence discipline

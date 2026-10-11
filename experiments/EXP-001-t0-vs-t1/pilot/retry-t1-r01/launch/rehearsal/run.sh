@@ -98,8 +98,15 @@ AUTH_IN_EVIDENCE=0
 tar -tf "$R/sink/evidence.tar" | grep -q 'auth.json' && { AUTH_IN_EVIDENCE=1; log "FAIL: auth.json in evidence"; }
 tar -xf "$R/sink/evidence.tar" -C "$R/sink" started-at finished-at codex-exit 2>/dev/null
 chmod 600 "$R/sink/evidence.tar"
-mkdir -p "$R/scan" && tar -xf "$R/sink/evidence.tar" -C "$R/scan" 2>/dev/null
-grep -rlE 'eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{16}|"(access|refresh|id)_token"|Bearer [A-Za-z0-9]' "$R/scan" "$R/codex-stdout.log" 2>/dev/null | wc -l | tr -d ' ' > "$R/secret-hits"
+SCAN_OK=1
+mkdir -p "$R/scan" && tar -xf "$R/sink/evidence.tar" -C "$R/scan" || { log "FAIL: evidence extraction for secret scan"; SCAN_OK=0; }
+grep -rlE 'eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{16}|"(access|refresh|id)_token"|Bearer [A-Za-z0-9]' "$R/scan" "$R/codex-stdout.log" > "$R/secret-files" 2>"$R/scan.err"
+case $? in
+  0) wc -l < "$R/secret-files" | tr -d ' ' > "$R/secret-hits" ;;
+  1) echo 0 > "$R/secret-hits" ;;
+  *) log "FAIL: secret scan error"; SCAN_OK=0; echo error > "$R/secret-hits" ;;
+esac
+rm -f "$R/secret-files"
 rm -rf "$R/scan"
 
 docker stop "$CNAME" >/dev/null 2>&1 && log "container stopped" || log "WARN: container stop failed"
@@ -110,6 +117,7 @@ FAIL=0
 [ "$HOST_RC" = 0 ] || { log "FAIL: codex exec rc=$HOST_RC"; FAIL=1; }
 [ "$COLLECT_RC" = 0 ] || { log "FAIL: evidence collection rc=$COLLECT_RC"; FAIL=1; }
 [ "$AUTH_IN_EVIDENCE" = 0 ] || FAIL=1
+[ "$SCAN_OK" = 1 ] || FAIL=1
 [ "$(cat "$R/secret-hits" 2>/dev/null)" = 0 ] || { log "FAIL: secret pattern scan not clean"; FAIL=1; }
 [ "$(docker ps -q --filter name="^$CNAME$" | wc -l | tr -d ' ')" = 0 ] || { log "FAIL: container left running"; FAIL=1; }
 [ "$FAIL" = 0 ] && log "PASS: rehearsal $N" || log "STOP: rehearsal $N failed a mandatory gate"

@@ -201,8 +201,9 @@ independent review の指摘により、次の 2 経路をダミー auth・model
 
 - `CODEX_HOME` 全体を deny しても、Codex 本体（sandbox 外のプロセス）は auth を読め（`[ok] auth`）、sessions を書ける。sandbox 内コマンドだけが `CODEX_HOME` を参照できない。
 - **確認済み**: `codex sandbox -P t1-workspace`（profile を明示した sandbox 単体）の挙動と、doctor の sandbox 行（`restricted fs + restricted network · approval Never`）。**未確認**: `codex exec` 実行時に `default_permissions = "t1-workspace"` が実効適用されること。後者は model 非起動では**直接確認できない**。doctor の sandbox 行と、同じ profile を明示した `codex sandbox -P t1-workspace` の結果からの推定である。Run 後に trace / session 記録で profile と sandbox の実効値を確認し、異なれば limitation として記録する。ただし Run 後の確認は事後であり、**Run 前に確認できないことを Reviewer が承知のうえで受容するか**を判断事項とする（「未解決の論点」10）。
+  - **練習課題での実証（2026-10-11 リハーサル r4。実験枠外の練習課題、本物 auth の `:ro` bind、本書と同じコンテナ構成・config で `codex exec --skip-git-repo-check` を 1 回実行。`launch/README.md` 参照）**: session 記録（rollout）の実効値は `model: gpt-6.1-sol`、`reasoning_effort: high`、`approval_policy: never`、`sandbox_policy: workspace-write`（`network_access: false`）、`permission_profile: managed / restricted`（entries に `/tmp/codex-home`）、`cli_version: 0.160.0` だった。`codex exec` 実行時に `t1-workspace`（`/tmp/codex-home` deny）が実効になることを練習課題で確認した。本番 Run でも trace / session 記録で同じ実効値を再確認する。
 - permissions profile は公式に Beta であり、版が変わると挙動が変わり得る（0.160.0 固定で確認）。
-- session 記録の回収はダミーファイルで実証した。Codex が `exec` 時に実際に書く rollout の形式・場所は model 非起動では未確認。Run では model 終了後・コンテナ停止前に `docker exec` で `codex-home/sessions` を回収し、回収できなければ limitation として記録する。
+- session 記録の回収はダミーファイルで実証し、リハーサル r4 で `codex exec` が実際に書いた `codex-home/sessions` の回収も確認した（evidence.tar 8 エントリ、`auth.json` なし、秘密値パターン 0 件）。Run では model 終了後・コンテナ停止前に `docker exec` で `codex-home/sessions` を回収し、回収できなければ limitation として記録する。
 - 単一のプローブ群はあらゆる exfiltration 経路を否定しない（既存の注記どおり）。
 - 残余リスク（非 model の確認では否定できない経路）: Codex 本体プロセスのメモリ上のトークン（`/proc/<pid>/mem` が拒否されても、kernel / bwrap の脆弱性経由の参照は否定できない）、Codex 本体が model 通信で送る認証ヘッダ自体、sandbox 外で Codex が実行するツール（MCP 等。本構成では設定しない）、Docker Desktop VM / host 側からの参照。
 - Gate 10 との関係: `--tmpfs /tmp/codex-home` の mount option（所有者・mode）と、`/tmp/codex-home` だけを deny する profile は、`python` の解決経路（PATH・`/usr/local/bin`・イメージ既定の login shell 初期化）に触れない。Operator が rc ファイル・PATH・alias・venv を追加する操作ではない。sandbox 内の `python` 起動は修正構成でも確認した。
@@ -839,7 +840,7 @@ echo "PASS: exactly 4 bind mounts (auth.json:ro, CODEX_DIR:ro, PROMPT:ro, WS:rw)
   - `/proc/<pid>` 全体の評価（2026-10-09 追加実測。同じダミー auth・同じコンテナ構成・`codex sandbox -P t1-workspace` のみ、model 非起動。値は記録せず可否と種類だけ記録）: sandbox 内から Codex 本体（`exe` が sandbox 内から読めない `comm=codex` のプロセス）について、`fdinfo/` の一覧と `fdinfo/<n>` の読み取りは全 10 件 `Permission denied`。`environ`・`mem`・`maps`・`smaps`・`smaps_rollup`・`pagemap`・`auxv`・`stack`・`io`・`map_files/` は `Permission denied`、`cwd`・`root`・`exe`・`ns/*` の `readlink` も `Permission denied`、`task/<tid>/` 配下の `environ`・`mem`・`maps`・`fdinfo` も `Permission denied`。読めたのは `status`・`stat`・`statm`・`cmdline`・`comm`・`limits`・`wchan`・`sched`・`schedstat`・`oom_score`・`cgroup`・`loginuid`・`sessionid`・`mountinfo`・`mounts`・`mountstats`・`coredump_filter`、`task/` の一覧と `task/<tid>/status`（`syscall`・`personality`・`timerslack_ns`・`attr/current` は `Permission denied` 以外のエラー）。読めたものはプロセスの状態・資源量・スケジューラ統計・cgroup・mount 構成・argv で、ダミー秘密値の文字列は 0 件だった。argv は Operator が渡す `codex sandbox`／`codex exec` の引数で、auth は argv・環境変数ではなく `CODEX_HOME/auth.json` から読む構成のため秘密値を含まない。これらは判定対象に加えず記録のみとする。sandbox の外（コンテナ shell）から見た同プロセスの `fd` は `/dev/null`・出力ファイル・anon_inode（eventpoll・eventfd・pidfd）・socket で auth.json は無く、`fdinfo` の項目は pos・flags・mnt_id・ino と種別ごとの eventfd-count/eventfd-id/eventfd-semaphore・tfd・scm_fds・Pid/NSpid だった（いずれもメタデータ。sandbox からは denied）。追加した `root`・`cwd`・`fdinfo` の判定を含む本書の `/tmp/proc-check.sh` は同構成で対象エントリ 7 行すべて `denied`・`PASS:`・rc=0 となり、同じ実行で sandbox 内のプロセス（Codex helper・probe の親 shell）の行は `fdinfo`・`root`・`cwd` を含む 7 行すべて `BLOCK` となった（陽性対照）。
   - 検討して採らなかった対策: (a) Codex 0.160.0 の `codex sandbox --help` と permissions profile に pid namespace や `/proc` の見え方を変える設定は無い。(b) profile の filesystem deny で `/proc/<pid>` を指定する案は、Codex の pid が起動ごとに変わり事前に書けず、`/proc` 全体の deny は sandbox 内の Python・shell の動作を変え Gate 10 の比較条件に影響し得る。(c) `/proc` の `hidepid` 再 mount は `CAP_SYS_ADMIN` を要し `--cap-drop ALL`・非 root では不可。加えて `hidepid` は**別 uid** のプロセスを隠す機能で、同一 uid の sandbox からは隠せない。
   - `/tmp/proc-check.sh` が `STOP:` を出力した・非 0 で終了した・最終行が `PASS:` でない、対象エントリに `BLOCK` または `unknown` がある、対象 PID の exe が `/cx/bin/codex` と一致しない・`readlink` で読めない・exe が一致する候補が 0 個または複数で一意に特定できない、対象を対応付けできない（starttime 一致なし・複数一致・`stat` を読めず `unknown`）、sandbox 内から対象プロセスが見えない（pid namespace 分離等。見えないことは到達拒否の証明にならない）、または sandbox 実行失敗なら **STOP（判定不能、model 起動前）**。0.160.0 の doctor は `--strict-config` を受け付けるが未知キーでエラー終了しない（警告のみ）ため、判定は rc ではなくこれらの行で行う（「最小 Codex config」節の陽性コントロール参照）。
-- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用（`codex sandbox -P t1-workspace` での挙動は確認済みだが exec 時の適用は未確認）と `model_reasoning_effort = "high"` の実効値。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
+- 次は model 非起動では**未検証**のため、記録対象として扱う: `codex exec --strict-config` で config がエラーにならないこと、`codex exec` 実行時の permissions profile `t1-workspace` の実効適用と `model_reasoning_effort = "high"` の実効値。後二者はリハーサル r4（練習課題）の session 記録で実効を確認済みだが、本番 Run でも再確認する。Run 後に trace / session 記録で実効値を確認し、異なれば limitation として記録する。
 - Gate 13（過去 attempt の情報を持ち込まない）: `find /work -maxdepth 3` の出力全文を記録し、Gate 6 で reprepare した fixture のファイル集合と照合して、それ以外のファイル（過去 T1 attempt の archive、patch、messages、STOP-REPORT 等）が無いことを確認する。`/run-input` が `prompt.md` のみであることは `/tmp/preflight-d.sh` が `ls -A` で確認する（`find` / `ls` の失敗・空出力は STOP）。fixture のファイル集合との照合は Operator が出力全文で行う。あわせて host 側の `host-mounts.sh` で、`docker inspect` の bind mount が 4 つ（auth.json・`CODEX_DIR`・`PROMPT`・`WS`。Source・Destination・RW が期待値と一致）だけで、tmpfs が `/tmp` と `/tmp/codex-home` だけであり、repo の `runs/`・`infrastructure-failures/` やそれらを含む親ディレクトリがマウントされていないこと、`$WS` 自体がそれらの配下でないことを確認し、出力を記録する（`docker inspect` 失敗・bind の不一致・許可外の tmpfs や型は STOP）。
 
 ### (e) STOP 判定
@@ -857,9 +858,16 @@ Issue #15 に `ACCEPT N1 + G` と approval / 実行方式（「未解決の論�
 ```bash
 date '+%Y-%m-%dT%H:%M:%S%z'
 rc=0
-/cx/bin/codex exec -C /work - < /run-input/prompt.md || rc=$?
+/cx/bin/codex exec --skip-git-repo-check -C /work - < /run-input/prompt.md || rc=$?
 printf '%s\n' "$rc" > /tmp/exit-code
+exit "$rc"
 ```
+
+- `--skip-git-repo-check` を付ける理由: model workspace（fixture コピー）は git リポジトリではない。リハーサル r2・r3（練習課題、同構成）では、この option なしの `codex exec -C /work - < /run-input/prompt.md` が `Not inside a trusted directory and --skip-git-repo-check was not specified.` を出して model 呼び出し前に exit 1 で終了した。`config.toml` に `[projects."/work"] trust_level = "trusted"` を加えても解消しなかった（r3）。option なしのままでは本番 (g) も同じ失敗をし、retry allowance を消費して infrastructure abort になる。r4 では option 付きで end-to-end に完走した（codex-exit 0）。
+- T0 との差（limitation）: T0 r01 ではこの失敗が起きていない。T0 はホストの Codex 設定（信頼済みプロジェクト等）で起動した可能性がある（**推測、未検証**）。T1 側は fresh `CODEX_HOME` のため trust 設定を持たず、option で git リポジトリ検査を外す。起動オプションが T0 と同一である保証はない。
+- 末尾の `exit "$rc"` は Codex の終了コードを `docker exec` の rc に伝播させる。リハーサル r2 では最終コマンドが別のコマンドだったため、Codex が exit 1 でも `docker exec` の rc が 0 になった。
+- `login status` は 1 行目に警告（`could not create PATH aliases ...`）を出すことがあるため、(d) の判定は `head -1` ではなく行一致（`has -qxF 'Logged in using ChatGPT'`）で行う（リハーサル r1 は `head -1` で失敗）。
+- session 記録の回収は、リハーサル r4 で `codex exec` 実行後の `codex-home/sessions` を回収できることを確認した。r2・r3 では Codex が即終了して sessions が作られず、回収は一部失敗した。
 
 - `-m` / `-s` / `-c` は付けず、Model・Effort・sandbox・approval は (c) の `config.toml` だけから与える。Reviewer が対話実行を選んだ場合は、この行を Reviewer Judgment に記された対話起動コマンドに置き換える。
 - 終了コードは証跡回収のため `/tmp/exit-code` に書く（model 起動コマンド自体は変えない）。
@@ -948,4 +956,4 @@ echo "PASS: evidence.tar (600, SINK 700) contains session files and exit-code, n
 7. sandbox内でmodelが起動するコマンドから `auth.json` を読み取れないことを非modelで確認できたか（不能ならSTOP）。
 8. `--rm` + tmpfs `CODEX_HOME` が消える前に、必要な観測事実を機密保護したhost-side sinkへ保存できることを確認したか（不能ならSTOP）。
 9. G環境のT1とT0 r01の環境不一致を踏まえ、当該ペアを `environment-confounded / descriptive-only` として扱うか（Topology効果の因果主張を禁じる判断）。
-10. `codex exec` 実行時に permissions profile `t1-workspace` が実効適用されることは Run 前に確認できない（`codex sandbox -P t1-workspace` と doctor のみ確認済み）。Run 後の trace 確認だけでなく、この未確認を Reviewer が承知のうえで受容するか。
+10. `codex exec` 実行時に permissions profile `t1-workspace` が実効適用されることは、本番 Run 前に本番課題では確認できない。練習課題のリハーサル r4 では session 記録で実効適用（`permission_profile: managed / restricted`、entries に `/tmp/codex-home`、`sandbox_policy: workspace-write`、`network_access: false`）を確認した。練習課題での実証を根拠に受容し、本番でも Run 後の trace で再確認するか。

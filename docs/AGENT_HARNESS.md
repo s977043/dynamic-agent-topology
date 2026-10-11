@@ -38,12 +38,14 @@
 | --- | --- | --- |
 | Learning ledger・Issue への記録、draft PR、validator / test、自分の branch への push | Agent | 記録と通知を残す |
 | 通常 PR の merge | Agent | 次をすべて満たす: 必須 CI 全 pass、作成者と別セッションの独立レビューで指摘解消、下記「人間が承認」の対象パスを含まない |
-| Reviewer Judgment（Run acceptance、disposition の ACCEPT 等） | 独立 Agent Reviewer または人間 | 作成者と別セッション。Frozen 例外など高リスクの判断は別モデルも用いる。記録には runtime・model・session ID・根拠リンクを書く |
+| Reviewer Judgment（Run acceptance、disposition の ACCEPT 等） | 独立 Agent Reviewer または人間 | 作成者と別セッション。Frozen 例外など高リスクの判断は別モデルも用いる（例: Codex（GPT 系）、Antigravity CLI（`agy`、Gemini 系）。下記）。記録には runtime・model・session ID・根拠リンクを書く |
 | EXP-001 の一回限りの model 起動（retry allowance の消費） | Agent | 手順書の全 Gate と preflight を機械的に検査して合格、Reviewer Judgment が記録済み、retry 未消費、Runtime/Model/Effort が固定、重複起動を防止、attestation・trace・Evidence を保存。異常時は停止し、追加起動はしない |
 | ハーネス規則・自律境界・権限・Guard の変更 | 人間が承認して merge | Agent は起案まで |
 | Feature Freeze の改訂、Frozen artifact の変更、release / tag、force push、削除、secret | 人間 | — |
 
 人間はいつでも停止・差し戻しができます。停止の指示を受けたら、Agent は進行中の操作を安全な状態で止め、状態を報告します。
+
+Reviewer Judgment の別モデルに Antigravity CLI を使う場合は、headless（`-p`）で `--mode plan --sandbox` を付けて起動します。この起動ではシェルが必要な tool が自動で拒否されることを確認しています。書き込み tool が拒否されるかは確認していないため、レビュー対象は使い捨ての checkout にします。headless では作業ディレクトリと `--add-dir` の外のファイル読み取りが拒否されるため、レビュー対象の checkout を作業ディレクトリにして起動し、それ以外の判断材料はローカルファイルにまとめて `--add-dir` で渡します。tool が 1 つでも拒否されると判断を出力せずに終わる（`denied_actions` に記録され、`response` は空）ため、依頼文に「シェルは使えないので、ハッシュの再計算やテストの再実行はせず記録の値どうしを照合する」ことと、読めるディレクトリの絶対パスを書きます。`--dangerously-skip-permissions` は使いません。記録の session ID には `--output-format json` の `conversation_id` を、model には `--model` で明示した値を書きます（usage に model が出ないため）。
 
 1 branchは1 Agentが担当します。同じbranchに別Agentがpushしている場合は、上書きせず最新のheadに積み直し、pushは `--force-with-lease` に限ります。
 

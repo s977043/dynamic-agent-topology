@@ -1,0 +1,8 @@
+set -euo pipefail
+mkdir -m 700 "$RUN_INPUT"
+cp "$PROMPT_SRC" "$RUN_INPUT/prompt.md"
+chmod 400 "$RUN_INPUT/prompt.md"
+ls -A "$RUN_INPUT"
+shasum -a 256 "$RUN_INPUT/prompt.md"
+[ "$(shasum -a 256 < "$RUN_INPUT/prompt.md" | cut -c1-64)" = @@PROMPT_SHA256@@ ]
+PROMPT="$RUN_INPUT/prompt.md"

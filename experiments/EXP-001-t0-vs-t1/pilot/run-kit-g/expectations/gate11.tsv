@@ -1,0 +1,5 @@
+#scenario	fixturePath	ran	failedLine	kind	test	assertType	assertMsg
+train-normalize-name	fixtures/exp-001/train/normalize-name	2	FAILED (failures=1)	FAIL	test_trims_and_lowercases	AssertionError	'ALICE' != 'alice'
+test-clamp-boundaries	fixtures/exp-001/test/clamp-boundaries	3	FAILED (failures=1)	FAIL	test_low_boundary	AssertionError	10 != 0
+regression-safe-divide	fixtures/exp-001/regression/safe-divide	2	FAILED (failures=1)	FAIL	test_zero_division_contract	AssertionError	None != 0.0
+practice-leap	experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/rehearsal/fixture	3	FAILED (failures=1)	FAIL	test_century_is_not_leap	AssertionError	True is not false

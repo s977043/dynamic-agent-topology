@@ -1,0 +1,43 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r02-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: test-clamp-boundaries
+  condition: T0
+  blockId: EXP-001-test-clamp-boundaries-r02
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 4
+  acceptanceCriteriaTotal: 4
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  inputTokens: 59648
+  outputTokens: 342
+  wallClockMs: 26000
+verdict: pass
+notes: First Run of the test-clamp-boundaries r02 block (r02-T0, executionOrder 1), executed with
+  run-kit-g (candidate G; Issue 15 environment Judgment 6107822908 checked by the kit) with the same
+  environment.conf, config.toml and launch line as r01-T1 and r01-T0; the prompt differs from
+  r01-T0 only in the header runId, blockId and executionOrder. Single rollout, no spawn_agent or
+  wait_agent calls, no subagent session; one Worker made the only FileChange (app.py, below-low
+  branch returns low) and ran the deterministic command. Deterministic unittest 3/3 PASS, tests
+  unchanged, API unchanged. No host-side rerun (run-kit-g does not execute model-written code on
+  the host). Tokens are the session's final total_token_usage. wallClockMs spans (g) stdout date
+  to separate container date (second precision). No hidden reasoning copied.

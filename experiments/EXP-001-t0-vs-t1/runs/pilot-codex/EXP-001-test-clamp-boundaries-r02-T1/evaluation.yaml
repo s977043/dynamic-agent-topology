@@ -1,0 +1,49 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r02-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: test-clamp-boundaries
+  condition: T1
+  blockId: EXP-001-test-clamp-boundaries-r02
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 4
+  acceptanceCriteriaTotal: 4
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 150091
+  outputTokens: 987
+  wallClockMs: 44000
+verdict: pass
+notes: Test-split matrix Run r02-T1 (executionOrder 2), executed with run-kit-g (candidate G;
+  Issue 15 environment Judgment 6107822908 checked by the kit) with the same environment.conf,
+  config.toml and launch line as r02-T0; the only condition difference is the prompt (T1 Topology
+  Contract). Worker session spawned one Verifier subagent (same model/effort per turn_context)
+  with fork_turns none; the Verifier rollout has no forked_from_id and no inherited history, its
+  recorded items before its first tool call are its own developer/environment items and the
+  encrypted handoff message, with no Run prompt, no Worker tool calls and no clamp-specific Worker
+  output. Verifier ran read-only inspection and the deterministic command, made no file edits
+  (apply_patch 0, FileChange 0), returned PASS with no findings. The Worker's 10 s wait_agent timed
+  out before the Verifier finished; the Verifier result reached the Worker as an agent message
+  before the Worker's final answer. Deterministic unittest 3/3 PASS (Worker and Verifier), tests
+  unchanged, API unchanged, only app.py changed (below-low branch returns low). No host-side rerun
+  (run-kit-g does not execute model-written code on the host). Tokens are the sum of both sessions'
+  final total_token_usage. wallClockMs spans (g) stdout date to separate container date (second
+  precision). No hidden reasoning copied.

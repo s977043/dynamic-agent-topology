@@ -1,0 +1,104 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r02-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: test-clamp-boundaries
+  condition: T1
+  blockId: EXP-001-test-clamp-boundaries-r02
+executionSubject:
+  kind: AgentTopology
+  name: T1-worker-verifier
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-11T21:34:36+00:00'
+  details:
+    sessionId: 01a12ce3-9de2-7b00-b48d-59e61a5572b3
+    freshSession: true
+    crossRunFeedbackUsed: false
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: pwd; rg --files -g AGENTS.md -g '*.py' -g 'pyproject.toml' -g 'README*' -g '!**/EXP-001*'
+  details:
+    exitCode: 0
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: cat app.py; cat tests/test_app.py; ls -la
+  details:
+    exitCode: 0
+- sequence: 3
+  type: action
+  actor: worker
+  artifact: app.py
+  details:
+    operation: apply_patch update
+    status: completed
+- sequence: 4
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 5
+  type: handoff
+  actor: worker
+  target: verifier
+  timestamp: '2026-10-11T21:35:01.535Z'
+  details:
+    tool: spawn_agent
+    taskName: verifier
+    forkTurns: none
+    verifierSessionId: 01a12ce3-fdb4-7c42-86c3-7c8c14a1f192
+    parentThreadId: 01a12ce3-9de2-7b00-b48d-59e61a5572b3
+    forkedFromId: null
+    agentPath: /root/verifier
+    verifierModel: gpt-6.1-sol
+    verifierEffort: high
+    handoffMessageContent: not readable (opaque in session record)
+- sequence: 6
+  type: review
+  actor: verifier
+  artifact: app.py; tests/test_app.py
+  details:
+    commands:
+    - cat app.py
+    - cat tests/test_app.py
+    implementationEdits: 0
+- sequence: 7
+  type: verify
+  actor: verifier
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 8
+  type: handoff
+  actor: verifier
+  target: worker
+  timestamp: '2026-10-11T21:35:16.204Z'
+  details:
+    verdict: PASS
+    findings: 0
+- sequence: 9
+  type: finish
+  actor: worker
+  timestamp: '2026-10-11T21:35:20+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  humanInterventions: 0
+  inputTokens: 150091
+  outputTokens: 987
+  wallClockMs: 44000

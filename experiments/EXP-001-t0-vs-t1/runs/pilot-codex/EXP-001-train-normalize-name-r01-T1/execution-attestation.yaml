@@ -1,0 +1,16 @@
+apiVersion: dat/v1alpha1
+kind: PilotExecutionAttestation
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T1
+  blockId: EXP-001-train-normalize-name-r01
+  scenario: train-normalize-name
+  condition: T1
+spec:
+  sessionId: 01a129a2-d571-7d33-a166-ff3950df951a
+  freshSession: true
+  crossRunFeedbackUsed: false
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+  startedAt: 2026-10-11T06:24:59+0000
+  finishedAt: 2026-10-11T06:25:50+0000

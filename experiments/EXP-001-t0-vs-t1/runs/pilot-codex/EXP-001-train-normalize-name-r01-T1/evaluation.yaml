@@ -1,0 +1,43 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T1
+  blockId: EXP-001-train-normalize-name-r01
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 183853
+  outputTokens: 1137
+  wallClockMs: 51000
+verdict: pass
+notes: One-time T1 r01 retry under docs/EXP-001_RETRY_T1_R01.md (total Codex attempts 4; original
+  incomplete T1 attempt preserved separately, not counted). Worker session spawned one Verifier
+  subagent (fork_turns none, same model/effort per turn_context); Verifier ran read-only inspection
+  and the deterministic command, made no file edits, returned PASS with no findings. Deterministic
+  unittest 2/2 PASS (Worker and Verifier), tests unchanged, API unchanged, only app.py changed.
+  Tokens are the sum of both sessions' final total_token_usage. wallClockMs spans (g) stdout
+  date to separate container date (second precision). Environment differs from T0 (Linux arm64
+  container, bash, --skip-git-repo-check, fresh CODEX_HOME); comparison is environment-confounded
+  and descriptive-only. No hidden reasoning copied.

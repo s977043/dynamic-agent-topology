@@ -35,7 +35,7 @@
 
 人間はいつでも停止・差し戻しができます。停止の指示を受けたら、Agent は進行中の操作を安全な状態で止め、状態を報告します。
 
-Reviewer Judgment の別モデルに Antigravity CLI を使う場合は、read-only にするため headless（`-p`）で `--mode plan --sandbox` を付けて起動します。シェルが必要な tool は自動で拒否され、ファイル読み取りだけで判断する形になります。headless では作業ディレクトリと `--add-dir` の外のファイル読み取りが拒否されるため、レビュー対象の checkout を作業ディレクトリにして起動し、それ以外の判断材料はローカルファイルにまとめて `--add-dir` で渡します。`--dangerously-skip-permissions` は使いません。記録の session ID には `--output-format json` の `conversation_id` を、model には `--model` で明示した値を書きます（usage に model が出ないため）。
+Reviewer Judgment の別モデルに Antigravity CLI を使う場合は、read-only にするため headless（`-p`）で `--mode plan --sandbox` を付けて起動します。シェルが必要な tool は自動で拒否され、ファイル読み取りだけで判断する形になります。headless では作業ディレクトリと `--add-dir` の外のファイル読み取りが拒否されるため、レビュー対象の checkout を作業ディレクトリにして起動し、それ以外の判断材料はローカルファイルにまとめて `--add-dir` で渡します。tool が 1 つでも拒否されると判断を出力せずに終わる（`denied_actions` に記録され、`response` は空）ため、依頼文に「シェルは使えないので、ハッシュの再計算やテストの再実行はせず記録の値どうしを照合する」ことと、読めるディレクトリの絶対パスを書きます。`--dangerously-skip-permissions` は使いません。記録の session ID には `--output-format json` の `conversation_id` を、model には `--model` で明示した値を書きます（usage に model が出ないため）。
 
 1 branchは1 Agentが担当します。同じbranchに別Agentがpushしている場合は、上書きせず最新のheadに積み直し、pushは `--force-with-lease` に限ります。
 

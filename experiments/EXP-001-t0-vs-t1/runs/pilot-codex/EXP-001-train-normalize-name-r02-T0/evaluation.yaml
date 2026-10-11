@@ -1,0 +1,43 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-train-normalize-name-r02-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: train-normalize-name
+  condition: T0
+  blockId: EXP-001-train-normalize-name-r02
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  inputTokens: 74477
+  outputTokens: 335
+  wallClockMs: 29000
+verdict: pass
+notes: Second r02 matrix Run, executed with run-kit-g (candidate G; Issue 15 environment Judgments
+  6107822908 / 6107845799, the kit checked 6107822908 for this Run) with the same environment.conf,
+  config.toml and launch line as r02-T1; only the prompt (T0 vs T1 topology contract) differs.
+  Single rollout, no spawn_agent or wait_agent calls, no subagent session; one Worker made the
+  only FileChange (app.py) and ran the deterministic command. Deterministic unittest 2/2 PASS,
+  tests unchanged, API unchanged. No host-side rerun (run-kit-g does not execute model-written
+  code on the host). Tokens are the session's final total_token_usage. wallClockMs spans (g)
+  stdout date to separate container date (second precision). r01 comparisons are
+  environment-confounded and descriptive-only. No hidden reasoning copied.

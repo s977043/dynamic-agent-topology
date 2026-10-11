@@ -20,7 +20,7 @@
 | Learn   | 下の Learning ledger に、Evidence・発生回数・状態を追記する             | Agent                    |
 | Promote | 同種が2回以上でEvidenceが揃ったら、改善PRを出す                         | Agentが起案、自律境界に従いmerge |
 | Enforce | 採用した対策をCI / hook / 設定として常時有効にする                      | Harness                  |
-| Measure | 再発率、CI初回pass率、レビューループ数、permission prompt数を見る（下記「Measure」） | 定期棚卸し               |
+| Measure | 再発率、CI初回pass率、レビューループ数を見る（permission prompt 数は記録が残らないため対象外。下記「Measure」） | 定期棚卸し               |
 
 ## 自律境界
 
@@ -91,6 +91,7 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 
 1. 月曜の `harness-metrics.yml` の Job Summary と artifact を Agent が読む（必要なら `workflow_dispatch` で再実行）。
 2. 前週との差分を見る: CI 初回 pass 率の低下、レビューループ数の多い PR、回数 2 以上の candidate、Evidence 欠落。
+   CI 初回 pass 率は committer date からの推定値で誤分類があり得るため、確定値ではなく傾向として見る。
 3. 新しい観測や回数の増加は、Evidence を添えて Learning ledger に追記する（事実の追記は Agent が行える）。
 4. 回数 2 以上で Evidence の揃った candidate は、`promoted` への変更と対策（Guard の追加・規則の変更）を draft PR として起案する。規則・Guard の変更は人間が承認して merge する（「原則」「自律境界」に従う）。
 5. 棚卸しの結果（見た run、追記・起案した PR）を PR 本文または Issue に記録する。

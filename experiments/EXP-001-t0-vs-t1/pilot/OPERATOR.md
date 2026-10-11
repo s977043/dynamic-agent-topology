@@ -72,6 +72,8 @@ runs/pilot-codex/<runId>/
 
 ### 通常の実行手順
 
+以下の手順（新しいCodex session/contextの開始を含む）はOperatorが実行します。Agentが代わりにmodelを起動できるのは、EXP-001のone-time retry（#51の限定再試行、T1 r01 one-time retry）のmodel起動に限り、[`docs/AGENT_HARNESS.md`](../../../docs/AGENT_HARNESS.md) のHOTL全条件を満たす場合だけです。その場合もOperatorが統制し、手順・Gate・判断記録・停止の責任はOperator側にあります。
+
 #51の最初のT0には、[限定再試行手順](../../../docs/EXP-001_RETRY_51.md)を適用できます。これは #48 の実測前復旧とは別の例外で、元の実セッションを保存し、手順の独立レビュー・merge後に一度だけ再試行します。他のRunやtask failureには適用しません。
 
 1. fresh workspaceでScenarioの初期deterministic Evidenceが失敗することを確認する。初期状態でPASSする場合はRunを開始せず、#15で停止理由を記録する。

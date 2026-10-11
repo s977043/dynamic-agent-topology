@@ -34,4 +34,45 @@ for s in train-normalize-name test-clamp-boundaries regression-safe-divide pract
   if "$PY" -I -B "$KIT/host/render.py" "$KIT/container/nonmodel-1-5.sh.in" "$T/nonmodel-$s.sh" "${EXPECT[@]}" && bash -n "$T/nonmodel-$s.sh"; then echo "OK   render $s"; else echo "FAIL render $s"; fail=1; fi
 done
 if "$PY" -I -B "$KIT/host/render.py" "$KIT/host/prompt-copy.sh.in" "$T/bad.sh" 'PROMPT_SHA256=$(id)' 2>/dev/null; then echo "FAIL unsafe value accepted"; fail=1; else echo "OK   unsafe value rejected"; fi
+# Negative tests of the record formats, the attempt registry and run.sh argument gates (no network, Docker or gh).
+G() { "$PY" -I -B "$KIT/host/gates.py" "$@"; }
+expect() { # expect <PASS|STOP> <name> <command...>
+  local want=$1 name=$2 rc=0; shift 2
+  "$@" > "$T/out" 2>&1 || rc=$?
+  if { [ "$want" = PASS ] && [ "$rc" = 0 ]; } || { [ "$want" = STOP ] && [ "$rc" != 0 ] && grep -q 'STOP' "$T/out"; }; then
+    echo "OK   $want: $name -> $(tail -1 "$T/out" | cut -c1-160)"
+  else
+    echo "FAIL expected $want: $name (rc=$rc: $(tail -1 "$T/out"))"; fail=1
+  fi
+}
+R=$T/registry
+RID=EXP-001-train-normalize-name-r02-T1
+expect PASS "first attempt is reserved" G reserve-attempt --registry "$R" --run-id "$RID" --expect-existing 0
+expect STOP "re-prepare of a runId with an existing attempt" G reserve-attempt --registry "$R" --run-id "$RID" --expect-existing 0
+expect PASS "attempt 2 with the existing attempt acknowledged" G reserve-attempt --registry "$R" --run-id "$RID" --expect-existing 1
+REPO_TOP=$(git -C "$KIT" rev-parse --show-toplevel)
+mkdir -p "$T/home/.exp001-run-kit-g/attempts/$RID/attempt-1" "$T/wr"
+printf 'dummy\n' > "$T/auth.json"
+RUNARGS=(--run-id "$RID" --workspace-id exp001-selftest-ws --fixture fixtures/exp-001/train/normalize-name --work-root "$T/wr"
+  --repo "$REPO_TOP" --codex-dir "$T" --python "$PY" --auth-file "$T/auth.json" --prior-accept-comment 1 --env-judgment-comment 2)
+expect STOP "run.sh re-run of a runId with a recorded attempt and no slot disposition" env HOME="$T/home" bash "$KIT/run.sh" "${RUNARGS[@]}"
+expect STOP "run.sh real mode with --practice-model" env HOME="$T/home" bash "$KIT/run.sh" "${RUNARGS[@]}" --slot-disposition-comment 3 --practice-model
+[ -z "$(ls -A "$T/wr")" ] && echo "OK   run.sh stopped before creating any run directory" || { echo "FAIL run.sh created files"; fail=1; }
+pipe() { local body=$1; shift; printf '%s\n' "$body" | G "$@"; }
+EJ=(env-judgment --repo "$REPO_TOP" --main-ref HEAD --kitrel experiments/EXP-001-t0-vs-t1/pilot/run-kit-g --kit-dir "$KIT")
+L='https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-1'
+expect STOP "CONDITIONAL ACCEPT environment Judgment" pipe "EXP-001 r02+ environment disposition: CONDITIONAL ACCEPT" "${EJ[@]}"
+expect STOP "ACCEPT line plus a CONDITIONAL line" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nEXP-001 r02+ environment disposition: CONDITIONAL ACCEPT\nkit: PR #135 merge %040d\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' 0 "$L" "$L" "$L")" "${EJ[@]}"
+expect STOP "ACCEPT without condition evidence lines" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %040d' 0)" "${EJ[@]}"
+expect STOP "ACCEPT for a kit merge that is not on main" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %040d\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' 0 "$L" "$L" "$L")" "${EJ[@]}"
+HEAD_SHA=$(git -C "$REPO_TOP" rev-parse HEAD)
+if git -C "$REPO_TOP" show "HEAD:experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/SHA256SUMS" 2>/dev/null | cmp -s - "$KIT/SHA256SUMS"; then
+  expect PASS "unconditional ACCEPT for this kit (HEAD as main)" pipe "$(printf 'EXP-001 r02+ environment disposition: ACCEPT\nkit: PR #135 merge %s\ncondition-1: %s\ncondition-2: %s\ncondition-3: %s' "$HEAD_SHA" "$L" "$L" "$L")" "${EJ[@]}"
+else
+  echo "SKIP positive environment Judgment case (kit not committed at HEAD)"
+fi
+expect STOP "Run acceptance without a runId line" pipe "EXP-001 Run acceptance: ACCEPT" run-acceptance --run-id "$RID"
+expect STOP "Run acceptance for another runId" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: EXP-001-train-normalize-name-r02-T0')" run-acceptance --run-id "$RID"
+expect PASS "Run acceptance in record format" pipe "$(printf 'EXP-001 Run acceptance: ACCEPT\nrunId: %s' "$RID")" run-acceptance --run-id "$RID"
+expect STOP "slot disposition for a different attempt" pipe "$(printf 'EXP-001 slot disposition: NEW-ATTEMPT\nrunId: %s\nattempt: 2' "$RID")" slot-disposition --run-id "$RID" --attempt 3
 [ "$fail" = 0 ] && echo "PASS: selftest" || { echo "STOP: selftest failed"; exit 1; }

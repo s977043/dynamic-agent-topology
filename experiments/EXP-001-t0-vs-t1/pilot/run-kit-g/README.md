@@ -18,8 +18,8 @@ r02 以降の残り 16 Run を、T0・T1 とも候補 G の同一構成で 1 Run
 | `container/proc-check.sh`・`container/config-never.sh`・`host/collect-evidence.sh` | T1 r01 の doc-extracted と同一のバイト列 |
 | `container/g.sh` | T1 r01 の (g) ブロックと同一のバイト列（唯一の model 起動操作） |
 | `host/render.py` | テンプレートの描画。値は許可パターンに一致するものだけ受け付ける |
-| `host/gates.py` | host 側の読み取り専用検査（matrix 順、run-meta、fixture、bind 元、Judgment 行） |
-| `selftest.sh` | T1 r01 の値で描画すると T1 r01 のスクリプトとバイト単位で一致することの確認（Docker・Codex 不要） |
+| `host/gates.py` | host 側の検査（matrix 順、run-meta、fixture、bind 元、記録フォーマット）と attempt の予約 |
+| `selftest.sh` | T1 r01 の値で描画すると T1 r01 のスクリプトとバイト単位で一致することの確認と、記録フォーマット・attempt 予約・引数の陰性テスト（Docker・Codex・gh 不要） |
 | `rehearsal/` | 実験枠外の練習課題（T1 r01 キットの `leap.py` 課題と prompt を流用）と、練習用 run-meta のテンプレート |
 | `SHA256SUMS` | 本ディレクトリの全ファイル（自身を除く）の SHA-256 |
 
@@ -39,12 +39,21 @@ r02 以降の残り 16 Run を、T0・T1 とも候補 G の同一構成で 1 Run
      --codex-dir <vendor/aarch64-unknown-linux-musl> --python <python3.12> \
      --prior-accept-comment <前 Run の ACCEPT コメント ID> \
      --env-judgment-comment <条件充足後の環境 Judgment コメント ID>
+     # 同じ runId に attempt の記録がある場合だけ: --slot-disposition-comment <ID>
    ```
 
    キットは `origin/main` に merge 済みのものと同一でなければ STOP します。prepare は `pilot/OPERATOR.md` の `prepare_pilot_run.py` を、`<work-root>/runs/<runId>/<時刻>/checkout`（`origin/main` の detached worktree）で実行します。
-3. 練習課題（model 非起動）: `--mode practice --dry-run --run-id PRACTICE-leap-r01 --fixture experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/rehearsal/fixture` に、上と同じ `--workspace-id`・`--work-root`・`--repo`・`--codex-dir`・`--python` を付けて実行する。`--dry-run` を外した練習課題の model 起動は、オーガナイザーの判断があるまで行わない。
+3. 練習課題: `--mode practice --run-id PRACTICE-leap-r01 --fixture experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/rehearsal/fixture` に、上と同じ `--workspace-id`・`--work-root`・`--repo`・`--codex-dir`・`--python` を付けて実行する。練習モードは常に dry-run（(g) の直前で停止）です。model を起動する練習は `--practice-model` を付けたときだけ (g) に進み、オーガナイザーの判断があるまで使わない。
 
 `<work-root>/runs/<runId>/<時刻>/status.log` に全工程を記録します。`<work-root>/locks/<runId>.lock` は (g) の直前に作り、存在すれば同じ runId では起動しません。
+
+### attempt の記録（実 Run のみ）
+
+`pilot/OPERATOR.md` の「通常Runでは同じrunIdを再prepareしません」を機械的に守るため、実 Run は prepare の直前に `~/.exp001-run-kit-g/attempts/<runId>/attempt-<N>` を `mkdir` で原子的に予約します。この場所は `--work-root` に依存しない固定パスです。
+
+- 記録は preflight の STOP や `--dry-run` の後も残し、キットは削除しません。
+- 記録がある runId を再実行すると、引数検査の段階で STOP します。続けるには、Issue #15 にレビュー済みの slot disposition を記録し、そのコメント ID を `--slot-disposition-comment` で渡します。このコメントには、次の attempt 番号が書かれている必要があります。
+- 練習モードには、この制約を掛けません。
 
 ## パラメータ
 
@@ -55,9 +64,47 @@ r02 以降の残り 16 Run を、T0・T1 とも候補 G の同一構成で 1 Run
 | `--fixture` | repo 相対の fixture パス | 期待値表と、凍結 scenario の `fixturePath` と一致すること |
 | prompt | prepare が生成する `runs/pilot-codex/<runId>/prompt.md`（指定しない） | SHA-256 が `run-meta.yaml` の `promptSha256` と一致、先頭行の runId |
 | Gate 11 期待 FAIL | `expectations/gate11.tsv` の Scenario 行（run-meta の scenario で選ぶ） | sandbox 内の Evidence command の出力 |
-| `--prior-accept-comment` | 直前の matrix Run の acceptance コメント | 投稿者 `s977043`、`EXP-001 Run acceptance: ACCEPT` 行と前 Run の runId。runId を書いていない T1 r01 の acceptance は、#15 の 6106366753 に限り受け付ける |
-| `--env-judgment-comment` | 環境 Judgment のコメント（Issue #15） | 投稿者 `s977043`、`EXP-001 r02+ environment disposition: ACCEPT` 行（`CONDITIONAL ` 付きも可）。条件充足前の 6106413517 は拒否 |
+| `--prior-accept-comment` | 直前の matrix Run の acceptance コメント | 投稿者 `s977043`、下記「Run acceptance」の記録フォーマット。フォーマット導入前の T1 r01 の acceptance は、#15 の 6106366753 に限り判定行だけで受け付ける |
+| `--env-judgment-comment` | 環境 Judgment のコメント（Issue #15） | 投稿者 `s977043`、下記「環境 Judgment」の記録フォーマット（無条件の ACCEPT。`CONDITIONAL` は STOP） |
+| `--slot-disposition-comment` | 記録済み attempt がある runId を進めるための disposition（Issue #15） | 投稿者 `s977043`、下記「slot disposition」の記録フォーマット、attempt 番号 = 記録済み件数 + 1 |
+| `--practice-model` | 練習モードで model 起動まで進める | 実 Run では指定すると STOP。指定しない練習モードは常に dry-run |
 | `--work-root`・`--repo`・`--codex-dir`・`--python`・`--auth-file` | 実行場所・入力 | `--work-root` が repo 外、`--auth-file` は既定 `~/.codex/auth.json`（内容は読まない） |
+
+## 記録フォーマット（機械照合）
+
+キットは、コメント本文の各行の前後の空白を除いたうえで、次の行が**完全一致**で存在することを確認します。投稿者（`s977043`）と Issue も照合します。本文はログに残しません。
+
+### 環境 Judgment（`--env-judgment-comment`、Issue #15）
+
+```text
+EXP-001 r02+ environment disposition: ACCEPT
+kit: PR #<番号> merge <40 桁の merge commit SHA>
+condition-1: <Scenario 別 Gate 11 期待 FAIL の根拠へのリンク>
+condition-2: <一般化キットとリハーサル・レビューの根拠へのリンク>
+condition-3: <Run ごとの構成照合の根拠へのリンク>
+```
+
+- `environment disposition: CONDITIONAL` を含む行が 1 つでもあれば STOP します。
+- `kit:` の SHA は `origin/main` に含まれている必要があります。その SHA の `run-kit-g/SHA256SUMS` が、実行するキットの `SHA256SUMS` とバイト単位で一致しなければ STOP です（キットを変更したら Judgment を取り直す）。
+- `condition-1`〜`3` は、それぞれちょうど 1 行の `https://github.com/s977043/dynamic-agent-topology/...` リンクです。
+- 条件 4（r01 の開示）は集計時の条件のため、ここでは照合しません。
+
+### Run acceptance（`--prior-accept-comment`）
+
+```text
+EXP-001 Run acceptance: ACCEPT
+runId: <直前の matrix Run の runId>
+```
+
+`runId:` 行が対象の runId と一致し、他の runId を名指ししていないことを確認します。
+
+### slot disposition（`--slot-disposition-comment`、Issue #15）
+
+```text
+EXP-001 slot disposition: NEW-ATTEMPT
+runId: <runId>
+attempt: <記録済み attempt 数 + 1>
+```
 
 ## Scenario 別の Gate 11 期待 FAIL
 
@@ -106,7 +153,7 @@ T1 r01 の Gate 1〜13 の番号を残し、retry 固有の項目を通常 Run �
 | --- | --- |
 | SAFETY | auth が sandbox から読める・判定不能、Codex 本体の `/proc` に到達できる、mount が許可リスト外、コンテナ制約の不一致、コンテナが停止できない |
 | SECRET | preflight ログ・stdout・証跡に秘密値パターン、環境変数に認証関連キー、証跡に `auth.json` |
-| PROTOCOL | Freeze・matrix 順・ACCEPT・Judgment・prompt・metadata・fixture・Gate 10/11/12/13 の不一致、キットの改変、`ENV-MISMATCH` |
+| PROTOCOL | Freeze・matrix 順・ACCEPT・Judgment（`CONDITIONAL` を含む）・slot disposition・attempt の重複・prompt・metadata・fixture・Gate 10/11/12/13 の不一致、キットの改変、`ENV-MISMATCH`、`--practice-model` なしで練習課題が (g) に到達 |
 | UNRECOVERABLE | (g) 後の終了コード・session・開始/終了時刻・`evidence.tar` の回収失敗、timeout 後に Codex の停止を確認できない |
 
 (g) 後の結果は `COMPLETED` / `INFRASTRUCTURE ABORT` / `UNDETERMINED` / `CONTAINER-NOT-STOPPED` のいずれかです（T1 r01 本番スクリプトと同じ分類）。秘密値パターンの検出は Run 結果を変えず、`HANDLING: quarantine` として Issue に添付しません。COMPLETED 以外は同じ runId で再実行せず、Issue #15 に記録して reviewed disposition を求めます。
@@ -121,7 +168,7 @@ T1 r01 の Gate 1〜13 の番号を残し、retry 固有の項目を通常 Run �
 | 構成の照合 | context と seccomp・(g) の SHA-256 | 加えて docker server version・kernel・OS、Codex バイナリ SHA-256、config.toml のバイト列 |
 | Judgment 確認 | T1 r01 の Gate 10 Judgment 3 件 | 環境 Judgment 1 件 + 直前 Run の ACCEPT |
 | bind 元監査 | `audit_exp001_g_bind_sources.py`（prompt SHA-256 が T1 r01 固定） | 同じスクリプトを無変更で呼び、prompt SHA-256 の照合だけ run-meta の値に置き換え |
-| ロック | 固定パス 1 つ | runId ごと |
+| ロック / attempt | 固定パス 1 つ | (g) 直前のロックは runId ごと。prepare 前に runId ごとの attempt を固定パスへ予約し、再実行には slot disposition が必要 |
 | コンテナ名 | `exp001-t1-r01` | `exp001-runkit-<runId 小文字>` |
 | Run 後の host での tests 実行 | あり（参考値） | なし（model が書いたコードを host で実行しない） |
 

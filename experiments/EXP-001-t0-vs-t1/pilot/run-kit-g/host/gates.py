@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -195,15 +196,99 @@ def cmd_practice_meta(args) -> None:
     print(f"PASS: practice run-meta written for {meta['metadata']['runId']}")
 
 
-def cmd_comment_body(args) -> None:
-    body = sys.stdin.read()
-    lines = body.splitlines()
-    if not any(re.fullmatch(args.line_pattern, line.strip()) for line in lines):
-        raise Stop("comment does not contain the required judgment line")
-    for needle in args.contains or []:
-        if needle not in body:
-            raise Stop("comment does not mention the required identifier")
-    print("PASS: judgment line present")
+def body_lines() -> list[str]:
+    return [line.strip() for line in sys.stdin.read().splitlines()]
+
+
+def require_line(lines: list[str], line: str, what: str) -> None:
+    if line not in lines:
+        raise Stop(f"{what}: required line {line!r} not found")
+
+
+REPO_URL = r"https://github\.com/s977043/dynamic-agent-topology/\S+"
+
+
+def cmd_env_judgment(args) -> None:
+    # Record format (README「環境 Judgment の記録フォーマット」): unconditional ACCEPT, the merged kit, and evidence per condition.
+    lines = body_lines()
+    if any(re.search(r"environment disposition:\s*CONDITIONAL", line) for line in lines):
+        raise Stop("environment Judgment is CONDITIONAL (conditions not recorded as satisfied)")
+    require_line(lines, "EXP-001 r02+ environment disposition: ACCEPT", "environment Judgment")
+    kits = [m for m in (re.fullmatch(r"kit: PR #[0-9]+ merge ([0-9a-f]{40})", line) for line in lines) if m]
+    if len(kits) != 1:
+        raise Stop("environment Judgment must name exactly one 'kit: PR #<n> merge <40-hex sha>' line")
+    sha = kits[0].group(1)
+    for n in (1, 2, 3):
+        hits = [line for line in lines if re.fullmatch(rf"condition-{n}: {REPO_URL}", line)]
+        if len(hits) != 1:
+            raise Stop(f"environment Judgment must have exactly one 'condition-{n}: <repository link>' line")
+    git = ["git", "-C", args.repo]
+    if subprocess.run(git + ["merge-base", "--is-ancestor", sha, args.main_ref], capture_output=True).returncode != 0:
+        raise Stop(f"kit merge {sha} is not contained in {args.main_ref}")
+    judged = subprocess.run(git + ["show", f"{sha}:{args.kitrel}/SHA256SUMS"], capture_output=True)
+    if judged.returncode != 0 or judged.stdout != (Path(args.kit_dir) / "SHA256SUMS").read_bytes():
+        raise Stop("the kit judged by the environment Judgment differs from this kit (SHA256SUMS)")
+    print(f"PASS: unconditional environment Judgment for kit {sha}")
+
+
+def cmd_run_acceptance(args) -> None:
+    lines = body_lines()
+    require_line(lines, "EXP-001 Run acceptance: ACCEPT", "Run acceptance")
+    require_line(lines, f"runId: {args.run_id}", "Run acceptance")
+    if any(re.fullmatch(r"runId: \S+", line) and line != f"runId: {args.run_id}" for line in lines):
+        raise Stop("Run acceptance names another runId")
+    print(f"PASS: Run acceptance for {args.run_id}")
+
+
+def cmd_slot_disposition(args) -> None:
+    lines = body_lines()
+    require_line(lines, "EXP-001 slot disposition: NEW-ATTEMPT", "slot disposition")
+    require_line(lines, f"runId: {args.run_id}", "slot disposition")
+    require_line(lines, f"attempt: {args.attempt}", "slot disposition")
+    print(f"PASS: slot disposition allows attempt {args.attempt} of {args.run_id}")
+
+
+def attempts(registry: Path, run_id: str) -> list[int]:
+    d = registry / run_id
+    if not d.exists():
+        return []
+    found = []
+    for entry in d.iterdir():
+        m = re.fullmatch(r"attempt-([1-9][0-9]*)", entry.name)
+        if not m or not entry.is_dir():
+            raise Stop(f"unexpected entry in attempt registry: {entry.name}")
+        found.append(int(m.group(1)))
+    return sorted(found)
+
+
+def cmd_attempt_count(args) -> None:
+    print(len(attempts(Path(args.registry), args.run_id)))
+
+
+def cmd_reserve_attempt(args) -> None:
+    # One attempt per invocation, reserved atomically (mkdir). Records are never removed by the kit.
+    if not re.fullmatch(r"EXP-001-[a-z]+-[a-z-]+-r0[1-3]-T[01]", args.run_id):
+        raise Stop("attempt registry is for matrix runIds only")
+    registry = Path(args.registry)
+    registry.mkdir(mode=0o700, parents=True, exist_ok=True)
+    (registry / args.run_id).mkdir(mode=0o700, exist_ok=True)
+    existing = attempts(registry, args.run_id)
+    if existing != list(range(1, len(existing) + 1)):
+        raise Stop(f"attempt registry for {args.run_id} is not contiguous: {existing}")
+    if len(existing) != args.expect_existing:
+        raise Stop(f"{args.run_id} has {len(existing)} recorded attempt(s), expected {args.expect_existing}")
+    target = registry / args.run_id / f"attempt-{len(existing) + 1}"
+    try:
+        target.mkdir(mode=0o700)
+    except FileExistsError as exc:
+        raise Stop(f"{target.name} was reserved concurrently") from exc
+    print(target)
+
+
+def cmd_legacy_acceptance(args) -> None:
+    # Only for the T1 r01 acceptance comment, which predates the record format and has no runId line.
+    require_line(body_lines(), "EXP-001 Run acceptance: ACCEPT", "Run acceptance")
+    print("PASS: legacy Run acceptance line present")
 
 
 def main() -> int:
@@ -236,8 +321,22 @@ def main() -> int:
     for name in ("--template", "--workspace-id", "--out"):
         p.add_argument(name, required=True)
     p.set_defaults(func=cmd_practice_meta)
-    p = sub.add_parser("comment-body"); p.add_argument("--line-pattern", required=True); p.add_argument("--contains", action="append")
-    p.set_defaults(func=cmd_comment_body)
+    p = sub.add_parser("env-judgment")
+    for name in ("--repo", "--main-ref", "--kitrel", "--kit-dir"):
+        p.add_argument(name, required=True)
+    p.set_defaults(func=cmd_env_judgment)
+    p = sub.add_parser("run-acceptance"); p.add_argument("--run-id", required=True)
+    p.set_defaults(func=cmd_run_acceptance)
+    p = sub.add_parser("slot-disposition"); p.add_argument("--run-id", required=True)
+    p.add_argument("--attempt", type=int, required=True)
+    p.set_defaults(func=cmd_slot_disposition)
+    p = sub.add_parser("attempt-count"); p.add_argument("--registry", required=True); p.add_argument("--run-id", required=True)
+    p.set_defaults(func=cmd_attempt_count)
+    p = sub.add_parser("reserve-attempt"); p.add_argument("--registry", required=True); p.add_argument("--run-id", required=True)
+    p.add_argument("--expect-existing", type=int, required=True)
+    p.set_defaults(func=cmd_reserve_attempt)
+    p = sub.add_parser("legacy-acceptance")
+    p.set_defaults(func=cmd_legacy_acceptance)
     args = parser.parse_args()
     try:
         args.func(args)

@@ -14,7 +14,8 @@ ARTIFACT_ROOT=experiments/EXP-001-t0-vs-t1/runs/pilot-codex
 GH_REPO=s977043/dynamic-agent-topology
 JUDGMENT_ISSUE=15
 JUDGMENT_AUTHOR=s977043
-REJECTED_ENV_JUDGMENTS=" 6106413517 "   # CONDITIONAL ACCEPT given before its conditions were met
+# Fixed attempt registry outside every repository and work root: one reserved attempt per matrix runId (OPERATOR.md 2).
+ATTEMPT_REGISTRY=$HOME/.exp001-run-kit-g/attempts
 TIMEOUT_S=1800
 export PYTHONDONTWRITEBYTECODE=1
 
@@ -23,10 +24,12 @@ usage() {
 usage: run.sh --run-id ID --workspace-id ID --fixture REL --work-root DIR --repo DIR --codex-dir DIR --python PY
               [--mode real|practice] [--dry-run] [--auth-file FILE]
               [--prior-accept-comment ID --env-judgment-comment ID]   (required in real mode)
+              [--slot-disposition-comment ID]   (real mode, only when the runId already has a recorded attempt)
+              [--practice-model]                (practice mode: start the model; without it practice is always a dry-run)
 U
   exit 2
 }
-MODE=real DRY_RUN=0 RUN_ID= WSID= FIXTURE= WORK_ROOT= REPO= CODEX_DIR= PY= PRIOR_ACCEPT= ENV_JUDGMENT=
+MODE=real DRY_RUN=0 RUN_ID= WSID= FIXTURE= WORK_ROOT= REPO= CODEX_DIR= PY= PRIOR_ACCEPT= ENV_JUDGMENT= SLOT_DISP= PRACTICE_MODEL=0
 AUTH_SRC=$HOME/.codex/auth.json
 while [ $# -gt 0 ]; do
   case $1 in
@@ -42,6 +45,8 @@ while [ $# -gt 0 ]; do
     --auth-file) AUTH_SRC=$2; shift 2 ;;
     --prior-accept-comment) PRIOR_ACCEPT=$2; shift 2 ;;
     --env-judgment-comment) ENV_JUDGMENT=$2; shift 2 ;;
+    --slot-disposition-comment) SLOT_DISP=$2; shift 2 ;;
+    --practice-model) PRACTICE_MODEL=1; shift ;;
     *) usage ;;
   esac
 done
@@ -51,10 +56,19 @@ case $MODE in
   real)
     [[ $RUN_ID =~ ^EXP-001-[a-z]+-[a-z-]+-r0[1-3]-T[01]$ ]] || die "real mode needs an EXP-001 matrix runId"
     [[ $PRIOR_ACCEPT =~ ^[0-9]+$ ]] && [[ $ENV_JUDGMENT =~ ^[0-9]+$ ]] || die "real mode needs --prior-accept-comment and --env-judgment-comment"
-    case $REJECTED_ENV_JUDGMENTS in *" $ENV_JUDGMENT "*) die "comment $ENV_JUDGMENT is not an applicable environment Judgment" ;; esac ;;
+    [ -z "$SLOT_DISP" ] || [[ $SLOT_DISP =~ ^[0-9]+$ ]] || die "--slot-disposition-comment must be a comment id"
+    [ "$PRACTICE_MODEL" = 0 ] || die "--practice-model is for practice mode only"
+    ATTEMPTS=$("$PY" -I -B "$KIT_DIR/host/gates.py" attempt-count --registry "$ATTEMPT_REGISTRY" --run-id "$RUN_ID") || die "attempt registry: $ATTEMPTS"
+    if [ "$ATTEMPTS" != 0 ] && [ -z "$SLOT_DISP" ]; then
+      die "$RUN_ID already has $ATTEMPTS recorded attempt(s) in $ATTEMPT_REGISTRY; re-prepare/re-run needs a reviewed slot disposition for attempt $((ATTEMPTS + 1)) (--slot-disposition-comment)"
+    fi
+    [ "$ATTEMPTS" != 0 ] || [ -z "$SLOT_DISP" ] || die "--slot-disposition-comment given but $RUN_ID has no recorded attempt" ;;
   practice)
     [[ $RUN_ID =~ ^PRACTICE-[A-Za-z0-9-]+$ ]] || die "practice mode needs a PRACTICE- runId"
-    [ "$FIXTURE" = "$KITREL/rehearsal/fixture" ] || die "practice mode uses only $KITREL/rehearsal/fixture" ;;
+    [ "$FIXTURE" = "$KITREL/rehearsal/fixture" ] || die "practice mode uses only $KITREL/rehearsal/fixture"
+    [ -z "$SLOT_DISP" ] || die "--slot-disposition-comment is for real mode only"
+    # Practice is a dry-run unless the model start is explicitly requested (organizer decision).
+    [ "$PRACTICE_MODEL" = 1 ] || DRY_RUN=1 ;;
   *) usage ;;
 esac
 REPO_TOP=$(git -C "$REPO" rev-parse --show-toplevel) || die "--repo is not a git checkout"
@@ -126,28 +140,27 @@ inexec() { docker exec -i "$CNAME" bash -l < "$1"; }
 gates() { "$PY" -I -B "$KIT_DIR/host/gates.py" "$@"; }
 render() { "$PY" -I -B "$KIT_DIR/host/render.py" "$@"; }
 hashes() { (cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(shasum -a 256 < "$f" | cut -c1-64)" "$f"; done); }
-check_comment() { # check_comment <id> <issue|any> <line-regex> [contains]
-  local id=$1 issue=$2 pat=$3 meta
+check_comment() { # check_comment <id> <issue|any> <gates record-format subcommand> [args...]: body is checked, never logged
+  local id=$1 issue=$2 meta; shift 2
   meta=$(gh api "repos/$GH_REPO/issues/comments/$id" --jq '.user.login + " " + (.issue_url|split("/")|last)') || STOP PROTOCOL "cannot fetch comment $id"
   [ "${meta%% *}" = "$JUDGMENT_AUTHOR" ] || STOP PROTOCOL "comment $id is not by $JUDGMENT_AUTHOR"
   [ "$issue" = any ] || [ "${meta#* }" = "$issue" ] || STOP PROTOCOL "comment $id is not on #$issue"
-  if [ $# -ge 4 ]; then
-    gh api "repos/$GH_REPO/issues/comments/$id" --jq .body | gates comment-body --line-pattern "$pat" --contains "$4" >> "$LOGD/judgments.log" || STOP PROTOCOL "comment $id lacks the judgment line or $4"
-  else
-    gh api "repos/$GH_REPO/issues/comments/$id" --jq .body | gates comment-body --line-pattern "$pat" >> "$LOGD/judgments.log" || STOP PROTOCOL "comment $id lacks the judgment line"
-  fi
-  log "judgment comment $id: author=$JUDGMENT_AUTHOR on #${meta#* } PASS"
+  gh api "repos/$GH_REPO/issues/comments/$id" --jq .body | gates "$@" >> "$LOGD/judgments.log" || STOP PROTOCOL "comment $id does not satisfy the $1 record format ($(tail -1 "$LOGD/judgments.log"))"
+  log "judgment comment $id ($1): author=$JUDGMENT_AUTHOR on #${meta#* } PASS"
 }
-# The T1 r01 acceptance (#15 comment 6106366753) predates this kit and does not name the runId, so it is accepted
-# only as the acceptance of that Run. Every later acceptance comment must name the prior runId.
+check_env_judgment() {
+  check_comment "$ENV_JUDGMENT" "$JUDGMENT_ISSUE" env-judgment --repo "$REPO" --main-ref origin/main --kitrel "$KITREL" --kit-dir "$KIT_DIR"
+}
+# The T1 r01 acceptance (#15 comment 6106366753) predates the record format and has no runId line, so it is accepted
+# only as the acceptance of that Run. Every later acceptance must use the record format (judgment line + runId line).
 KNOWN_ACCEPT_RUN=EXP-001-train-normalize-name-r01-T1
 KNOWN_ACCEPT_ID=6106366753
 check_prior_accept() {
   if [ "$PRIOR" = "$KNOWN_ACCEPT_RUN" ]; then
     [ "$PRIOR_ACCEPT" = "$KNOWN_ACCEPT_ID" ] || STOP PROTOCOL "acceptance of $PRIOR must be comment $KNOWN_ACCEPT_ID"
-    check_comment "$PRIOR_ACCEPT" "$JUDGMENT_ISSUE" 'EXP-001 Run acceptance: ACCEPT'
+    check_comment "$PRIOR_ACCEPT" "$JUDGMENT_ISSUE" legacy-acceptance
   else
-    check_comment "$PRIOR_ACCEPT" any 'EXP-001 Run acceptance: ACCEPT' "$PRIOR"
+    check_comment "$PRIOR_ACCEPT" any run-acceptance --run-id "$PRIOR"
   fi
 }
 # Container-side codex process control. $1 = check | TERM | KILL. rc 0 = matched (alive / signaled), 1 = none, 2 = cannot determine.
@@ -189,7 +202,7 @@ secret_scan() { # counts only; 0 = clean, 1 = hit, 2 = scan error
 
 # ---------------------------------------------------------------- 0. pre-checks
 phase 0-precheck
-log "mode=$MODE dry-run=$DRY_RUN runId=$RUN_ID workspaceId=$WSID fixture=$FIXTURE RD=$RD container=$CNAME"
+log "mode=$MODE dry-run=$DRY_RUN practice-model=$PRACTICE_MODEL runId=$RUN_ID workspaceId=$WSID fixture=$FIXTURE RD=$RD container=$CNAME"
 command -v timeout >/dev/null || STOP PROTOCOL "timeout not found"
 "$PY" --version | grep -q '^Python 3\.12\.' || STOP PROTOCOL "--python is not Python 3.12"
 "$PY" -I -c 'import yaml' || STOP PROTOCOL "--python lacks PyYAML"
@@ -228,7 +241,7 @@ sed -n '/^cat > /,/^EOF$/p' "$KIT_DIR/container/config-never.sh" | sed '1d;$d' >
 [ "$(sha "$GEN/config.toml")" = "$CONFIG_TOML_SHA256" ] || ENV_MISMATCH "config.toml bytes"
 log "configuration check PASS: context=$DOCKER_CONTEXT server=$DOCKER_SERVER_VERSION kernel=$DOCKER_KERNEL image=$IMAGE codex=$CODEX_PACKAGE_VERSION/$CODEX_BIN_SHA256 config=$CONFIG_TOML_SHA256 (g)=$G_SHA256"
 if [ "$MODE" = real ]; then
-  check_comment "$ENV_JUDGMENT" "$JUDGMENT_ISSUE" 'EXP-001 r02\+ environment disposition: (CONDITIONAL )?ACCEPT'
+  check_env_judgment
 else
   log "environment Judgment comment: N/A (practice)"
 fi
@@ -260,6 +273,12 @@ log "Gate 4 PASS / Gate 5 PASS"
 # ---------------------------------------------------------------- 3. prepare (Gate 6) and Gates 7-9
 phase gate6-9
 if [ "$MODE" = real ]; then
+  if [ "$ATTEMPTS" != 0 ]; then
+    check_comment "$SLOT_DISP" "$JUDGMENT_ISSUE" slot-disposition --run-id "$RUN_ID" --attempt "$((ATTEMPTS + 1))"
+  fi
+  ATTEMPT_DIR=$(gates reserve-attempt --registry "$ATTEMPT_REGISTRY" --run-id "$RUN_ID" --expect-existing "$ATTEMPTS") || STOP PROTOCOL "attempt reservation: $ATTEMPT_DIR"
+  printf 'run-dir: %s\ndry-run: %s\nslot-disposition: %s\n' "$RD" "$DRY_RUN" "${SLOT_DISP:-none}" > "$ATTEMPT_DIR/record"
+  log "attempt $((ATTEMPTS + 1)) of $RUN_ID reserved at $ATTEMPT_DIR (kept even if this attempt STOPs or is a dry-run)"
   git diff --quiet origin/main -- scripts/prepare_pilot_run.py || STOP PROTOCOL "Gate 6: prepare_pilot_run.py differs from origin/main"
   "$PY" -B scripts/prepare_pilot_run.py --pilot "$PILOT_REL/pilot.yaml" --matrix "$PILOT_REL/run-matrix.yaml" \
     --run-id "$RUN_ID" --workspace "$WS" --workspace-id "$WSID" > "$LOGD/gate6.log" 2>&1 || STOP PROTOCOL "Gate 6: prepare_pilot_run.py failed"
@@ -405,7 +424,7 @@ phase f-final
 if [ "$MODE" = real ]; then
   git -C "$REPO" fetch --quiet origin || STOP PROTOCOL "git fetch origin failed"
   [ -z "$(git -C "$REPO" ls-tree --name-only "origin/main" "$ARTIFACT_ROOT/$RUN_ID")" ] || STOP PROTOCOL "origin/main now has a run directory for $RUN_ID"
-  check_comment "$ENV_JUDGMENT" "$JUDGMENT_ISSUE" 'EXP-001 r02\+ environment disposition: (CONDITIONAL )?ACCEPT'
+  check_env_judgment
   check_prior_accept
 fi
 [ -n "$(docker ps -q --filter "name=^${CNAME}\$")" ] || STOP SAFETY "container not running"
@@ -426,6 +445,7 @@ if [ "$DRY_RUN" = 1 ]; then
   [ "$STOP_RC" = 0 ] || exit 1
   exit 0
 fi
+[ "$MODE" = real ] || [ "$PRACTICE_MODEL" = 1 ] || STOP PROTOCOL "practice model start requires --practice-model"
 mkdir -m 700 -p "$WR/locks"
 mkdir "$LOCK" || STOP PROTOCOL "lock acquisition failed (concurrent or prior start)"
 printf '%s\n' "$RD" > "$LOCK/run-dir"

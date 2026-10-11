@@ -1,0 +1,48 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r01-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: test-clamp-boundaries
+  condition: T1
+  blockId: EXP-001-test-clamp-boundaries-r01
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 4
+  acceptanceCriteriaTotal: 4
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 131173
+  outputTokens: 901
+  wallClockMs: 47000
+verdict: pass
+notes: First test-split matrix Run (r01-T1, executionOrder 1), executed with run-kit-g (candidate G;
+  Issue 15 environment Judgment 6107822908 checked by the kit) with the same environment.conf,
+  config.toml and launch line as r03-T1; the prompt and fixture are those of test-clamp-boundaries.
+  Worker session spawned one Verifier subagent (same model/effort per turn_context) with fork_turns
+  all, as in r03-T1; the Verifier rollout records forked_from_id = root, and its inherited history
+  (before subagent_history_start_ordinal 9) holds only the root session_meta, environment context
+  and run prompt, with no Worker tool calls and no clamp-specific Worker output. Whether this meets
+  the prompt's separate role/context requirement is left to Reviewer judgment. Verifier ran
+  read-only inspection and the deterministic command, made no file edits (apply_patch 0,
+  FileChange 0), returned PASS with no findings. Deterministic unittest 3/3 PASS (Worker and
+  Verifier), tests unchanged, API unchanged, only app.py changed (below-low branch returns low).
+  No host-side rerun (run-kit-g does not execute model-written code on the host). Tokens are the
+  sum of both sessions' final total_token_usage. wallClockMs spans (g) stdout date to separate
+  container date (second precision). No hidden reasoning copied.

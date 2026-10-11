@@ -29,7 +29,7 @@
 - **Agile Coach**（`.claude/agents/agile-coach.md`）: 実測の学習目標、最小の安全な確認、準備の肥大化を見直す。
 - **Scrum Master**（`.claude/agents/scrum-master.md`）: impediment、判断待ち、次の一手を可視化する。
 - 助言ロールはClaude Codeの`.claude/agents/`のみ。Codexには登録しない。Codexのsubagentは親のsandboxを引き継ぎ、ロール設定のread-onlyを保証できないため（PR #124の負側テスト）。
-- 両ロールともread-onlyの**助言**専用。独立Reviewer、Verifier、Humanの承認権限を持たない。どちらか一方または両方を必要な時だけ呼び、全Run必須の新Gateを作らない。
+- 両ロールともread-onlyの**助言**専用（`tools: Read, Grep, Glob`）。Claude Code 2.1.296でWrite・Edit・Bash・WebFetchが使えないことを確認済み。WebSearch・MCPはNOT_TESTEDだが、どちらもtoolsに含まれない。独立Reviewer、Verifier、Humanの承認権限を持たない。どちらか一方または両方を必要な時だけ呼び、全Run必須の新Gateを作らない。
 - 実験用のfresh Codex sessionへ過去Runの出力や相談記録を入力しない。現在のRun実行権限はIssue #15と承認済み手順で判断する。
 
 ## 自律境界

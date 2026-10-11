@@ -1,0 +1,13 @@
+apiVersion: dat/v1alpha1
+kind: PilotRunMetadata
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r01-T0
+  blockId: EXP-001-test-clamp-boundaries-r01
+  scenario: test-clamp-boundaries
+  condition: T0
+spec:
+  repetition: 1
+  executionOrder: 2
+  workspaceId: exp001-test-clamp-boundaries-r01-t0-20261011-runkitg
+  freshWorkspace: true
+  promptSha256: 2cd71d0fe8effbeb418758b4c13fabad8cc39e979ce2003ec55c24fd9629d71c

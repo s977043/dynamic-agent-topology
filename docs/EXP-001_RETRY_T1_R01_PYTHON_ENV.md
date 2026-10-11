@@ -1,8 +1,13 @@
-# EXP-001 T1 r01 retry — Gate 10 実行環境 disposition（draft / Reviewer判断待ち）
+# EXP-001 T1 r01 retry — Gate 10 実行環境 disposition（承認済み・実施済み）
 
 ## Status
 
-**Draft. Reviewer Judgment required.** この文書は [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) の Gate 10 を満たす実行環境の判定基準と、model起動前の非model確認手順を提案します。merge前、またはReviewerが下記「判定基準」を承認する前に、retryを開始してはいけません。
+**Accepted and executed（T1 r01 専用、完了）.** この文書は [T1 r01 one-time infrastructure retry](EXP-001_RETRY_T1_R01.md) の Gate 10 を満たす実行環境の判定基準と、model起動前の非model確認手順を定めます。判断と結果の記録先は Issue #15 です。
+
+- Gate 10 Reviewer Judgment: CONDITIONAL ACCEPT N1 + G（[6072534007](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6072534007)、2026-10-09T01:42:49Z）。追加受容: #121（[6075082166](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6075082166)）、#122（[6077525859](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6077525859)）
+- preflight 3 全 PASS（[6077937201](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6077937201)）、model 起動前 GO（[6106214254](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106214254)、2026-10-11T06:23:49Z）
+- 本番 Run: 2026-10-11T06:24:59Z〜06:25:50Z、COMPLETED、Run acceptance ACCEPT（[6106366753](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106366753)、[PR #130](https://github.com/s977043/dynamic-agent-topology/pull/130) merged `fad8ddb1`）。complete matrix Runs 2/18、attempts 4
+- retry allowance は消費済みです。この disposition は T1 r01 専用で、以後どの Run にも再利用しません（残り slot は #15 [6105758769](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6105758769) の別提案で判断）。
 
 この文書は次を**変更しません**:
 

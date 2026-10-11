@@ -46,11 +46,10 @@
 | Runtime | Agile Coach | Scrum Master |
 | --- | --- | --- |
 | Claude Code | `.claude/agents/agile-coach.md` | `.claude/agents/scrum-master.md` |
-| Codex（project config） | `.codex/agents/agile-coach.toml` | `.codex/agents/scrum-master.toml` |
 
-Runtimeがproject subagentをサポートする場合、必要なRoleに**相談タスクだけ**を委譲する。GitHubのIssue/PRリンク、サニタイズ済み観測、現在の権限境界のみを渡す。subagent起動手段がなければ同じ問いをread-onlyレビューで使い、**独立Agentが実行したと偽らない**。
+助言ロールはClaude Codeの`.claude/agents/`のみ。Codexには登録しない。Codexのsubagentは親のsandboxを引き継ぎ、ロール設定のread-onlyを保証できないため（PR #124の負側テスト）。
 
-Codex の助言ロールは `sandbox_mode = "read-only"` / `approval_policy = "never"` を指定する。これは**権限昇格を求めず、書き込みを許可しない**ための設定意図であり、読める秘密情報の範囲まで制限するattestationではない。実使用前に対象バージョンと設定優先順位を確認し、ダミーのファイル書き込み・ネットワーク・権限昇格の負側試験を行う。拒否が不明なら提案段階に留める。
+Claude Codeで、必要なRoleに**相談タスクだけ**を委譲する。GitHubのIssue/PRリンク、サニタイズ済み観測、現在の権限境界のみを渡す。subagent起動手段がなければ同じ問いをread-onlyレビューで使い、**独立Agentが実行したと偽らない**。
 
 **相談する条件（全Runでの呼び出しは不要）:**
 
@@ -79,7 +78,7 @@ Goal / 現在承認済みの次アクション:
 
 ### 相談依頼の例（開発セッション内で使用）
 
-Claude Code / Codexの**通常の開発セッション**で、実行環境が対応するプロジェクトSubagentの名前を明示して依頼する。単なるRoleの読み込みと、実際に独立Agentを起動したことは区別して記録する。
+Claude Codeの**通常の開発セッション**で、プロジェクトSubagentの名前を明示して依頼する。単なるRoleの読み込みと、実際に独立Agentを起動したことは区別して記録する。
 
 ```text
 DATのIssue #15とdocs/FAST_FEEDBACK_WORKFLOW.md、現在の未達Gateを確認。

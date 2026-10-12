@@ -1,0 +1,16 @@
+apiVersion: dat/v1alpha1
+kind: PilotExecutionAttestation
+metadata:
+  runId: EXP-001-regression-safe-divide-r01-T0
+  blockId: EXP-001-regression-safe-divide-r01
+  scenario: regression-safe-divide
+  condition: T0
+spec:
+  sessionId: 01a12f0e-3f25-7533-adcb-af5dd970ba86
+  freshSession: true
+  crossRunFeedbackUsed: false
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+  startedAt: 2026-10-12T07:40:24+0000
+  finishedAt: 2026-10-12T07:41:07+0000

@@ -1,0 +1,46 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-regression-safe-divide-r01-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: regression-safe-divide
+  condition: T0
+  blockId: EXP-001-regression-safe-divide-r01
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  inputTokens: 60182
+  outputTokens: 347
+  wallClockMs: 43000
+verdict: pass
+notes: First Run of the regression-safe-divide r01 block (r01-T0, executionOrder 1) and the first
+  regression-split Run of EXP-001, executed with run-kit-g (candidate G; Issue 15 environment
+  Judgment 6107822908 checked by the kit) with the same environment.conf, config.toml and launch line
+  as test-clamp-boundaries r03-T0. Single rollout, no spawn_agent or wait_agent calls, no subagent
+  session; one Worker made the only FileChange (app.py, the b == 0 branch returns 0.0 instead of
+  None) and ran the deterministic command. Besides pwd and rg (whose globs include setup.cfg), the
+  Worker ran cat app.py, cat tests/test_app.py and ls -la, all read-only. Deterministic unittest 2/2
+  PASS; test_regular_division (the existing regular-division behavior) still passes, the a / b
+  branch is unchanged, tests unchanged and API unchanged, so no regression was detected. No host-side
+  rerun (run-kit-g does not execute model-written code on the host). Tokens are the session's final
+  total_token_usage. wallClockMs spans (g) stdout date to separate container date (second
+  precision). No hidden reasoning copied.

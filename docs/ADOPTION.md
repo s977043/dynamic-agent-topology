@@ -15,6 +15,20 @@ DATは、既存プロジェクトをいきなりMulti-Agent化するための仕
 
 **A5に到達することは成功条件ではありません。** A2 / A3 / 固定T0/T1が最適なProjectもあります。
 
+## A0: 任意のWorkflow Brief（業務課題から始める）
+
+Agentの役割や人数を決める前に、導入対象の業務を短く確認します。これは初回相談用の**任意の問い**であり、新しい必須Artifact、承認Gate、Topology推薦規則ではありません。会話や既存Issueに残すだけでも構いません。
+
+1. **Outcome / Bottleneck**: 誰のどの作業が滞り、何が改善すれば成功か。処理件数だけでなく、成果や待ち時間を明確にする。
+2. **Task / Delegation**: 定型処理、判断の要る作業、人間が保持する最終判断を分ける。まずAgentを使わないP0やSingle AgentのT0で足りるか確認する。
+3. **Capabilities / Trust**: 現在接続されているRuntime、Tool、データ、実効Permissionを確認する。Promptに「使える」と書くだけでToolや権限が生まれるわけではない。秘密情報・外部書き込み・不可逆操作の境界を明示する。
+4. **Evidence / Cost**: 成功条件、既存の検査方法、失敗・回帰・人間介入・時間・Tokenなどの比較可能な観測項目を決める。未取得は未知として扱い、効果を推測しない。
+5. **Smallest safe test**: 現行Workflowを変更せず取得できる最初のSignalと、停止・差し戻し条件を決める。実測で不足が確認されるまでエージェントやHandoffを増やさない。
+
+例えばPRレビュー待ちが課題なら、最初に既存CIとレビュー待ち時間を観測し（A1〜A2）、成功条件と人間のmerge判断を整理します。Reviewer Agentを増やすことは解決策の**候補**であり、最初から3〜5体のチームを組む必要はありません。追加する場合は[Complexity Promotion Rule](#complexity-promotion-rule)に従い、品質・安全性と協調コストのEvidenceで判断します。
+
+このWorkflow BriefはDATの仕様そのものではなく、A0の会話を助ける入口です。Role Contract、Permission Boundary、Handoff、Runtimeの実効制御、独立Evaluationの正本は既存の[Architecture](ARCHITECTURE.md)と機械可読Artifactです。EXP-001のFeature Freeze中は、ここで得たアイデアを凍結実験のPrompt・条件へ反映しません。
+
 ## Reference layout
 
 ```text

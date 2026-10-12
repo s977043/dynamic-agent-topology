@@ -202,3 +202,9 @@ sources:
     title: "Claude Code: Create custom subagents"
     url: "https://code.claude.com/docs/en/sub-agents"
     adopted: []
+- id: scrumorg-model-switch-workflow-2026
+    type: engineering-report
+    title: "To Switch, or Not to Switch the AI Model"
+    url: "https://www.scrum.org/resources/blog/switch-or-not-switch-ai-model"
+    published_at: "2026-10-11"
+    adopted: []

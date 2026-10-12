@@ -193,13 +193,17 @@ check(parse_review("Verdict: MERGE_OK\nVerdict: MERGE_OK\n必須: 0 件\n推奨:
 
 HOME = str(Path.home())
 LOCAL_PKG = {"checkout": "/private/tmp/s/pkg/checkout", "materials": "/private/tmp/s/pkg/materials"}
-replacements = local_replacements(LOCAL_PKG)
+replacements = local_replacements(LOCAL_PKG, home="/home/runner")
 check(sanitize("a /private/tmp/s/pkg/checkout/scripts/x.py:3 b /tmp/s/pkg/materials/pr.md c", replacements)
       == "a <checkout>/scripts/x.py:3 b <materials>/pr.md c", "package paths become placeholders")
-check(sanitize(f"see {HOME}/notes.md and `{HOME}`", replacements) == "see ~/notes.md and `~`", "home becomes ~")
+check(sanitize("see /home/runner/notes.md and `/home/runner` /home/runner-2/x", replacements)
+      == "see ~/notes.md and `~` <local-path>", "a home under /home becomes ~ before other /home paths are hidden")
+mac = local_replacements(None, home="/Users/me")
+check(sanitize("see /Users/me/notes.md and /Users/someone/x", mac) == "see ~/notes.md and <local-path>",
+      "a home under /Users becomes ~ before other /Users paths are hidden")
 check(sanitize("x /Users/someone/a.md y (/private/tmp/other/b) [/Users/z]", replacements)
       == "x <local-path> y (<local-path>) [<local-path>]", "other local absolute paths are hidden")
-check(sanitize("a /tmp/other/c b /home/runner/d", replacements) == "a <local-path> b <local-path>",
+check(sanitize("a /tmp/other/c b /home/someone-else/d", replacements) == "a <local-path> b <local-path>",
       "/tmp and /home paths are hidden")
 check(sanitize("[a](file:///Users/z/a.md) docs/Users/x.md", replacements) == "a docs/Users/x.md",
       "file links are removed and repository-relative paths are kept")

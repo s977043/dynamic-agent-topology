@@ -266,11 +266,11 @@ def strip_file_links(text: str) -> str:
     return re.sub(r"file://[^\s`'\"()\[\]<>]+", "", text)
 
 
-def local_replacements(package: dict | None) -> list[tuple[str, str]]:
+def local_replacements(package: dict | None, home: str | None = None) -> list[tuple[str, str]]:
     pairs = []
     if package:
         pairs += [(package[key], f"<{key}>") for key in ("checkout", "materials") if package.get(key)]
-    pairs.append((str(Path.home()), "~"))
+    pairs.append((home or str(Path.home()), "~"))
     # macOS reports /tmp paths under /private/tmp; reviewers may print either form.
     pairs += [(path.removeprefix("/private"), label) for path, label in pairs if path.startswith("/private/tmp/")]
     return sorted(pairs, key=lambda pair: len(pair[0]), reverse=True)

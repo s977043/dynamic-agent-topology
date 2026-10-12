@@ -28,7 +28,7 @@ Commit Organizer may be an internal task of the existing Worker. Adding a new ag
 
 ## Post-freeze falsifiable hypothesis
 
-H1: On changes where two intended units overlap within the same file, non-interactive hunk selection improves independently judged **per-commit semantic accuracy** versus standard path-scoped Git operations at tolerable incremental latency/complexity.
+H1: On changes where two intended units overlap within the same file, a non-interactive hunk-selection CLI improves independently judged **per-commit semantic accuracy and/or cost** versus standard Git with a reviewed partial-stage patch (the capability-matched baseline), without unacceptable leakage or recovery costs.
 
 H0 / rejection conditions: the added mechanism has no meaningful benefit on typical workloads; worsens task success, recovery cost, leakage to another worker's changes, or human oversight; or violates a repository gate.
 
@@ -42,8 +42,11 @@ H2: For simple changes that map cleanly to file paths, the extra mechanism has *
 
 | Arm | Mechanism | Purpose |
 | --- | --- | --- |
-| T0 | Standard Git: explicit path staging and reviewed patches if essential | Deterministic/minimal baseline |
-| T1 | Non-interactive hunk selection, initially mocked or isolated; optional upstream CLI only after separate approval | Incremental hunk precision |
+| T0a | Standard Git: explicit path staging only | Minimal operational baseline; use for simple file-disjoint cases, not a capability-matched hunk comparison |
+| T0b | Standard Git: explicit partial staging via reviewed patch + `git apply --cached --check` (or an equivalent human-reviewed `git add -p` procedure) | Capability-matched hunk baseline |
+| T1 | Non-interactive hunk selection, initially mocked or isolated; optional upstream CLI only after separate approval | Test incremental safety/accuracy/cost versus T0b |
+
+**Comparison validity:** T1–T0a on mixed-file tasks is *not* evidence of tool-specific improvement because T0a cannot express the same selection. Primary hunk-level comparison is T1–T0b; report T0a as a lower-complexity operational reference. If T0b cannot be performed safely or repeatably, report the comparison as `INCONCLUSIVE`, not T1 superiority.
 
 Randomize or counterbalance order and reset to equivalent fresh snapshots between arms. Include failures and aborted runs in the denominator.
 

@@ -173,6 +173,24 @@ sources:
     url: "https://github.com/raine/git-surgeon"
     adopted: []
 
+  - id: xai-grok-bot-bots-2026
+    type: product-documentation
+    title: "xAI Grok Bot: Create and manage Bots"
+    url: "https://docs.x.ai/grok-bot/bots"
+    adopted: []
+
+  - id: xai-grok-bot-skills-routines-2026
+    type: product-documentation
+    title: "xAI Grok Bot: Skills and routines"
+    url: "https://docs.x.ai/grok-bot/skills-routines-and-automations"
+    adopted: []
+
+  - id: xai-grok-bot-approvals-2026
+    type: product-documentation
+    title: "xAI Grok Bot: Approvals, security, and privacy"
+    url: "https://docs.x.ai/grok-bot/approvals-security-and-privacy"
+    adopted: []
+
   - id: anthropic-claude-code-advisor-2026
     type: product-documentation
     title: "Claude Code: Escalate hard decisions with the advisor tool"

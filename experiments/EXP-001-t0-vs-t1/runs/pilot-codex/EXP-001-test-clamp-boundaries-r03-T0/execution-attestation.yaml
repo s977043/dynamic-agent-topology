@@ -1,0 +1,16 @@
+apiVersion: dat/v1alpha1
+kind: PilotExecutionAttestation
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r03-T0
+  blockId: EXP-001-test-clamp-boundaries-r03
+  scenario: test-clamp-boundaries
+  condition: T0
+spec:
+  sessionId: 01a12eee-2053-7730-86a9-f7b9a1238e11
+  freshSession: true
+  crossRunFeedbackUsed: false
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+  startedAt: 2026-10-12T07:05:19+0000
+  finishedAt: 2026-10-12T07:06:11+0000

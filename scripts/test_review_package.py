@@ -146,6 +146,9 @@ research = render_prompt(PACKAGE, "codex", (TEMPLATE_DIR / "research-note.md").r
 check("PR #7 は研究ノート" in research and "{{" not in research, "template placeholders are filled")
 check("Feature Freeze" in research, "template perspectives are embedded")
 expect_exit(lambda: render_prompt(PACKAGE, "agy", "{{UNKNOWN}}"), "unknown placeholder is rejected")
+for bad in ("{{PR }}", "{{ HEAD}}", "{{pr}}", "{{}}"):
+    message = expect_exit(lambda: render_prompt(PACKAGE, "agy", f"PR {bad}"), f"malformed placeholder {bad} is rejected")
+    check("malformed" in message and bad in message, f"malformed placeholder {bad} is named")
 
 no_checkout = dict(PACKAGE, checkout=None)
 text = render_prompt(no_checkout, "agy", template)
@@ -196,6 +199,8 @@ check(sanitize("a /private/tmp/s/pkg/checkout/scripts/x.py:3 b /tmp/s/pkg/materi
 check(sanitize(f"see {HOME}/notes.md and `{HOME}`", replacements) == "see ~/notes.md and `~`", "home becomes ~")
 check(sanitize("x /Users/someone/a.md y (/private/tmp/other/b) [/Users/z]", replacements)
       == "x <local-path> y (<local-path>) [<local-path>]", "other local absolute paths are hidden")
+check(sanitize("a /tmp/other/c b /home/runner/d", replacements) == "a <local-path> b <local-path>",
+      "/tmp and /home paths are hidden")
 check(sanitize("[a](file:///Users/z/a.md) docs/Users/x.md", replacements) == "a docs/Users/x.md",
       "file links are removed and repository-relative paths are kept")
 
@@ -208,7 +213,7 @@ AGY_JSON = {"conversation_id": "conv-1", "status": "SUCCESS",
                         "- [x](file:///Users/me/x.md)\n- /tmp/s/pkg/materials/pr.md と /Users/someone/y.md\n"}
 
 with tempfile.TemporaryDirectory() as tmp:
-    (Path(tmp) / "package.json").write_text(json.dumps(LOCAL_PKG), encoding="utf-8")
+    (Path(tmp) / "package.json").write_text(json.dumps(dict(LOCAL_PKG, head=HEAD)), encoding="utf-8")
     codex_path = Path(tmp) / "review-codex.md"
     codex_path.write_text(CODEX_OUT, encoding="utf-8")
     agy_path = Path(tmp) / "review-agy.json"
@@ -243,6 +248,16 @@ with tempfile.TemporaryDirectory() as tmp:
           and "Reviewer 1: Verdict のサマリー行が見つからない" in out, "an empty agy response is recorded as unknown")
     check('"<checkout>"' in out and '"<local-path>"' in out and "/Users/" not in out and "/tmp/" not in out,
           "denied_actions paths are replaced")
+
+    message = expect_exit(lambda: main(["record", "--head", "c" * 40, "--package", tmp, "--agy", str(agy_path)]),
+                          "a --head that differs from the package head must stop")
+    check("differs from the package head" in message, "head mismatch is explained")
+
+    codex_path.write_text("  \n", encoding="utf-8")
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        main(["record", "--head", HEAD, "--codex", str(codex_path), "--codex-session", "s-2"])
+    check("出力が空です" in stdout.getvalue() and "**不明**" in stdout.getvalue(), "an empty Codex output is noted")
 
     expect_exit(lambda: main(["record", "--head", HEAD, "--codex", str(codex_path)]), "Codex needs a session ID")
     expect_exit(lambda: main(["record", "--head", HEAD]), "record needs at least one reviewer")

@@ -26,7 +26,8 @@ REVIEWERS = ("codex", "agy")
 DEFAULT_MODELS = {"codex": "gpt-6-luna", "agy": "gemini-3.8-flash-high"}
 TEMPLATE_KEYS = ("PR", "HEAD", "CHECKOUT", "MATERIALS")
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
-LOCAL_PATH = re.compile(r"(?<![\w.~-])/(?:Users|private/tmp)/[^\s`'\"()\[\]<>]*")
+BRACES = re.compile(r"\{\{(.*?)\}\}")
+LOCAL_PATH = re.compile(r"(?<![\w.~-])/(?:Users|home|private/tmp|tmp)/[^\s`'\"()\[\]<>]*")
 SUMMARY_LINES = {
     "verdict": ("Verdict", re.compile(r"\**Verdict\**\s*[:：]\s*\**\s*(MERGE_OK|CHANGES_REQUIRED)\s*\**")),
     "required": ("必須", re.compile(r"\**必須(?:（merge を妨げる）)?\**\s*[:：]\s*\**\s*(\d+)\s*\**\s*件\**")),
@@ -176,6 +177,9 @@ def build(args: argparse.Namespace, runner: Runner = run) -> dict:
 
 
 def fill_template(template: str, values: dict[str, str]) -> str:
+    malformed = ["{{" + inner + "}}" for inner in BRACES.findall(template) if not re.fullmatch(r"[A-Z_]+", inner)]
+    if malformed:
+        raise SystemExit(f"malformed template placeholder(s): {', '.join(malformed)}; write e.g. {{{{PR}}}}")
     unknown = sorted(set(PLACEHOLDER.findall(template)) - set(values))
     if unknown:
         raise SystemExit(f"unknown template placeholder(s): {', '.join(unknown)}; use {', '.join(TEMPLATE_KEYS)}")
@@ -315,17 +319,21 @@ def runtime_label(name: str, version: str | None) -> str:
 
 
 def record(args: argparse.Namespace) -> str:
-    replacements = local_replacements(load_package(args.package.resolve()) if args.package else None)
+    package = load_package(args.package.resolve()) if args.package else None
+    if package and package["head"] != args.head:
+        raise SystemExit(f"--head {args.head} differs from the package head {package['head']}; check which head was reviewed")
+    replacements = local_replacements(package)
     reviewers = []
     if args.codex:
         if not args.codex_session:
             raise SystemExit("--codex needs --codex-session")
+        output = args.codex.read_text(encoding="utf-8")
         reviewers.append({
             "name": "Codex",
             "runtime": f"{runtime_label('codex', args.codex_version)} / {args.codex_model}（read-only）",
             "session": args.codex_session,
-            "output": sanitize(args.codex.read_text(encoding="utf-8"), replacements),
-            "note": "",
+            "output": sanitize(output, replacements),
+            "note": "" if output.strip() else "出力が空です（ログで Codex の終了状態を確認してください）",
         })
     if args.agy:
         session, response, note = load_agy(args.agy)

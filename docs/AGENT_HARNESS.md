@@ -51,7 +51,7 @@ Reviewer Judgment の別モデルに Antigravity CLI を使う場合は、headle
 
 - `build <PR> --out <dir> [--issue N] [--comment ID]`: `materials/`（PR 本文とコメント、base との差分、Issue 本文、Issue コメント、main の SHA）と、PR head の detached checkout（`checkout/`。`--no-checkout` で省略）を作ります。
 - `prompt --package <dir> --reviewer codex|agy [--template <file>]`: 観点テンプレート（`scripts/review_templates/`）に、PR 番号・head SHA・読めるディレクトリの絶対パス・判定基準（必須は 4 分類）を埋めた依頼文を `<dir>/prompt-<reviewer>.md` に書き、起動コマンド例を表示します。agy 向けには「シェルは使えない」を入れ、Codex 向けには入れません。
-- `record --head <SHA> --package <dir> [--codex <file> --codex-session <ID>] [--agy <json>]`: Verdict と必須・推奨の件数の表、runtime・model・session ID を含む記録コメントを標準出力に出します。Verdict と件数は所定のサマリー行からだけ読み、行が無い・複数あるときは `不明` と理由を書きます。公開されるため、Reviewer の出力（agy の `denied_actions` を含む）から `file://` リンクを除き、checkout と materials のパスを `<checkout>` / `<materials>` に、ホームディレクトリを `~` に、それ以外の `/Users/…`・`/private/tmp/…` の絶対パスを `<local-path>` に置き換えます。
+- `record --head <SHA> --package <dir> [--codex <file> --codex-session <ID>] [--agy <json>]`: Verdict と必須・推奨の件数の表、runtime・model・session ID を含む記録コメントを標準出力に出します。`--head` が package の head と違えば止まります。Verdict と件数は所定のサマリー行からだけ読み、行が無い・複数あるときは `不明` と理由を書きます。公開されるため、Reviewer の出力（agy の `denied_actions` を含む）から `file://` リンクを除き、checkout と materials のパスを `<checkout>` / `<materials>` に、ホームディレクトリを `~` に、それ以外の `/Users/…`・`/home/…`・`/private/tmp/…`・`/tmp/…` の絶対パスを `<local-path>` に置き換えます。
 
 1 branchは1 Agentが担当します。同じbranchに別Agentがpushしている場合は、上書きせず最新のheadに積み直し、pushは `--force-with-lease` に限ります。
 

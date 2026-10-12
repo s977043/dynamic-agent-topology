@@ -26,6 +26,12 @@ REVIEWERS = ("codex", "agy")
 DEFAULT_MODELS = {"codex": "gpt-6-luna", "agy": "gemini-3.8-flash-high"}
 TEMPLATE_KEYS = ("PR", "HEAD", "CHECKOUT", "MATERIALS")
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
+LOCAL_PATH = re.compile(r"(?<![\w.~-])/(?:Users|private/tmp)/[^\s`'\"()\[\]<>]*")
+SUMMARY_LINES = {
+    "verdict": ("Verdict", re.compile(r"\**Verdict\**\s*[:：]\s*\**\s*(MERGE_OK|CHANGES_REQUIRED)\s*\**")),
+    "required": ("必須", re.compile(r"\**必須(?:（merge を妨げる）)?\**\s*[:：]\s*\**\s*(\d+)\s*\**\s*件\**")),
+    "recommended": ("推奨", re.compile(r"\**推奨\**\s*[:：]\s*\**\s*(\d+)\s*\**\s*件\**")),
+}
 
 TOOLS_TEXT = {
     "codex": "ファイルの読み取りコマンド（cat・sed・grep・ls・git log / git show など）と作業ディレクトリの確認は使えます。",
@@ -124,6 +130,9 @@ def build(args: argparse.Namespace, runner: Runner = run) -> dict:
     if fetched != head:
         raise SystemExit(f"PR head moved while building: gh reports {head}, fetched {fetched}; retry")
     runner([*git, "fetch", "--quiet", "origin", *dict.fromkeys(["main", base])])
+    base_sha = runner([*git, "rev-parse", f"origin/{base}"]).strip()
+    if base_sha != pr["baseRefOid"]:
+        raise SystemExit(f"base {base} moved while building: gh reports {pr['baseRefOid']}, fetched {base_sha}; retry")
     main_sha = runner([*git, "rev-parse", "origin/main"]).strip()
 
     materials.mkdir(parents=True, exist_ok=True)
@@ -145,6 +154,8 @@ def build(args: argparse.Namespace, runner: Runner = run) -> dict:
             current = runner(["git", "-C", str(checkout), "rev-parse", "HEAD"]).strip()
             if current != head:
                 raise SystemExit(f"{checkout} exists at {current}, not PR head {head}; remove it or use another --out")
+            if runner(["git", "-C", str(checkout), "status", "--porcelain"]).strip():
+                raise SystemExit(f"{checkout} has uncommitted changes; remove it or use another --out")
         else:
             runner([*git, "worktree", "add", "--detach", str(checkout), head])
 
@@ -192,6 +203,7 @@ def render_prompt(package: dict, reviewer: str, template: str) -> str:
         "読めるのは次のディレクトリの中だけです（絶対パス）。",
         *dirs,
         "判断に必要な材料はここにそろえています。足りない材料があれば推測で補わず、「確認した範囲」に未確認として書いてください。",
+        "指摘箇所や確認した範囲には、リポジトリ相対パス（例: `scripts/x.py:12`）や `materials/pr.md` の形を使い、絶対パスは書かないでください（記録は公開されます）。",
         "",
         "## 観点",
         "",
@@ -247,18 +259,44 @@ def prompt(args: argparse.Namespace) -> str:
 def strip_file_links(text: str) -> str:
     text = re.sub(r"\[([^\]]*)\]\(file://[^)]*\)", r"\1", text)
     text = re.sub(r"<file://[^>]*>", "", text)
-    return re.sub(r"file://\S+", "", text)
+    return re.sub(r"file://[^\s`'\"()\[\]<>]+", "", text)
 
 
-def parse_review(text: str) -> dict:
-    verdict = re.search(r"Verdict\W*\s*(MERGE_OK|CHANGES_REQUIRED)", text)
-    required = re.search(r"必須[^\n:：]*[:：]\s*\**\s*(\d+)", text)
-    recommended = re.search(r"推奨[^\n:：]*[:：]\s*\**\s*(\d+)", text)
-    return {
-        "verdict": verdict.group(1) if verdict else "不明",
-        "required": required.group(1) if required else "不明",
-        "recommended": recommended.group(1) if recommended else "不明",
-    }
+def local_replacements(package: dict | None) -> list[tuple[str, str]]:
+    pairs = []
+    if package:
+        pairs += [(package[key], f"<{key}>") for key in ("checkout", "materials") if package.get(key)]
+    pairs.append((str(Path.home()), "~"))
+    # macOS reports /tmp paths under /private/tmp; reviewers may print either form.
+    pairs += [(path.removeprefix("/private"), label) for path, label in pairs if path.startswith("/private/tmp/")]
+    return sorted(pairs, key=lambda pair: len(pair[0]), reverse=True)
+
+
+def sanitize(text: str, replacements: list[tuple[str, str]]) -> str:
+    """Remove file:// links and local absolute paths from text that will be posted publicly."""
+    text = strip_file_links(text)
+    for path, label in replacements:
+        text = re.sub(re.escape(path) + r"(?![\w.-])", label, text)
+    return LOCAL_PATH.sub("<local-path>", text)
+
+
+def parse_review(text: str) -> tuple[dict, list[str]]:
+    """Read verdict and counts only from the prescribed summary lines; anything but exactly one line is unknown."""
+    hits: dict[str, list[str]] = {key: [] for key in SUMMARY_LINES}
+    for line in text.splitlines():
+        for key, (_, pattern) in SUMMARY_LINES.items():
+            match = pattern.fullmatch(line.strip())
+            if match:
+                hits[key].append(match.group(1))
+    parsed, notes = {}, []
+    for key, (label, _) in SUMMARY_LINES.items():
+        if len(hits[key]) == 1:
+            parsed[key] = hits[key][0]
+        else:
+            parsed[key] = "不明"
+            found = f" {len(hits[key])} 行ある" if hits[key] else "見つからない"
+            notes.append(f"{label} のサマリー行が{found}ため、確定値を記録していません")
+    return parsed, notes
 
 
 def load_agy(path: Path) -> tuple[str, str, str]:
@@ -269,7 +307,7 @@ def load_agy(path: Path) -> tuple[str, str, str]:
     if not response.strip():
         denied = data.get("denied_actions")
         note = f"response が空です（status: {data.get('status')}、denied_actions: {json.dumps(denied, ensure_ascii=False)}）"
-    return data.get("conversation_id") or "不明", strip_file_links(response), note
+    return data.get("conversation_id") or "不明", response, note
 
 
 def runtime_label(name: str, version: str | None) -> str:
@@ -277,6 +315,7 @@ def runtime_label(name: str, version: str | None) -> str:
 
 
 def record(args: argparse.Namespace) -> str:
+    replacements = local_replacements(load_package(args.package.resolve()) if args.package else None)
     reviewers = []
     if args.codex:
         if not args.codex_session:
@@ -285,7 +324,7 @@ def record(args: argparse.Namespace) -> str:
             "name": "Codex",
             "runtime": f"{runtime_label('codex', args.codex_version)} / {args.codex_model}（read-only）",
             "session": args.codex_session,
-            "output": args.codex.read_text(encoding="utf-8"),
+            "output": sanitize(args.codex.read_text(encoding="utf-8"), replacements),
             "note": "",
         })
     if args.agy:
@@ -294,8 +333,8 @@ def record(args: argparse.Namespace) -> str:
             "name": "Antigravity",
             "runtime": f"{runtime_label('antigravity', args.agy_version)} / {args.agy_model}（plan + sandbox）",
             "session": session,
-            "output": response,
-            "note": note,
+            "output": sanitize(response, replacements),
+            "note": sanitize(note, replacements),
         })
     if not reviewers:
         raise SystemExit("record needs --codex and/or --agy")
@@ -309,13 +348,16 @@ def record(args: argparse.Namespace) -> str:
         "| Reviewer | runtime / model | session | Verdict | 必須 | 推奨 |",
         "|---|---|---|---|---|---|",
     ]
+    notes = []
     for i, reviewer in enumerate(reviewers, 1):
-        parsed = parse_review(reviewer["output"])
-        reviewer["parsed"] = parsed
+        parsed, parse_notes = parse_review(reviewer["output"])
+        notes += [f"- Reviewer {i}: {note}" for note in parse_notes]
         lines.append(
             f"| {i} | {reviewer['runtime']} | `{reviewer['session']}` | **{parsed['verdict']}** "
             f"| {parsed['required']} | {parsed['recommended']} |"
         )
+    if notes:
+        lines += ["", "注記（`不明` の理由。出力の本文で確認してください）:", "", *notes]
     for i, reviewer in enumerate(reviewers, 1):
         lines += ["", f"<details><summary>Reviewer {i}（{reviewer['name']}）の出力</summary>", ""]
         if reviewer["note"]:
@@ -350,6 +392,7 @@ def parser() -> argparse.ArgumentParser:
 
     r = sub.add_parser("record", help="PR に投稿するレビュー記録コメントを標準出力に出す")
     r.add_argument("--head", required=True, help="レビューした PR head の SHA")
+    r.add_argument("--package", type=Path, help="build の出力ディレクトリ（checkout・materials のパスを伏せる）")
     r.add_argument("--codex", type=Path, help="codex exec -o の出力ファイル")
     r.add_argument("--codex-session", help="Codex の session ID")
     r.add_argument("--codex-model", default=DEFAULT_MODELS["codex"])

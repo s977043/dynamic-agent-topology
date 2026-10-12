@@ -13,8 +13,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from review_package import (  # noqa: E402
-    DEFAULT_TEMPLATE, TEMPLATE_DIR, build, comment_id, launch_command, main, parse_review, render_prompt,
-    strip_file_links,
+    DEFAULT_TEMPLATE, TEMPLATE_DIR, build, comment_id, launch_command, local_replacements, main, parse_review,
+    render_prompt, sanitize, strip_file_links,
 )
 
 HEAD = "a" * 40
@@ -44,7 +44,7 @@ def expect_exit(fn, reason: str) -> str:
     raise AssertionError(reason)
 
 
-def fake_runner(calls: list, fetched: str = HEAD, checkout_head: str = HEAD):
+def fake_runner(calls: list, fetched: str = HEAD, checkout_head: str = HEAD, base: str = MAIN, status: str = ""):
     def runner(cmd: list[str]) -> str:
         calls.append(cmd)
         if cmd[:3] == ["gh", "pr", "view"]:
@@ -57,9 +57,11 @@ def fake_runner(calls: list, fetched: str = HEAD, checkout_head: str = HEAD):
         if cmd[-2:] == ["rev-parse", "FETCH_HEAD"]:
             return fetched + "\n"
         if cmd[-2:] == ["rev-parse", "origin/main"]:
-            return MAIN + "\n"
+            return base + "\n"
         if cmd[-2:] == ["rev-parse", "HEAD"]:
             return checkout_head + "\n"
+        if cmd[-2:] == ["status", "--porcelain"]:
+            return status
         if "diff" in cmd:
             check(cmd[-1] == f"origin/main...{HEAD}", "diff is taken against the base")
             return "diff --git a/x b/x\n"
@@ -109,9 +111,21 @@ with tempfile.TemporaryDirectory() as tmp:
     check("moved" in message, "moved head is explained")
 
 with tempfile.TemporaryDirectory() as tmp:
+    message = expect_exit(lambda: build(build_args(Path(tmp)), fake_runner([], base="c" * 40)),
+                          "a base that differs from the PR's baseRefOid must stop")
+    check("base main moved" in message and not (Path(tmp) / "materials" / "pr-diff.patch").exists(),
+          "base mismatch stops before the diff is written")
+
+with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "checkout").mkdir()
     expect_exit(lambda: build(build_args(Path(tmp)), fake_runner([], checkout_head="c" * 40)),
                 "an existing checkout at another commit must stop")
+    message = expect_exit(lambda: build(build_args(Path(tmp)), fake_runner([], status=" M scripts/x.py\n")),
+                          "an existing checkout with uncommitted changes must stop")
+    check("uncommitted" in message, "dirty checkout is explained")
+    calls = []
+    build(build_args(Path(tmp)), fake_runner(calls))
+    check(not any("worktree" in cmd for cmd in calls), "a clean checkout at the PR head is reused")
 
 # prompt
 PACKAGE = {"pr": 7, "head": HEAD, "checkout": "/pkg/checkout", "materials": "/pkg/materials"}
@@ -124,6 +138,7 @@ for text in (agy, codex):
     check(all(word in text for word in ("安全:", "秘密値:", "プロトコル:", "回収不能:")) and "「推奨」" in text,
           "criteria limit required findings to 4 categories")
     check("Verdict: MERGE_OK | CHANGES_REQUIRED" in text and "確認した範囲:" in text, "output format is fixed")
+    check("リポジトリ相対パス" in text and "絶対パスは書かない" in text, "reviewers are asked for relative paths")
 check("シェルは使えない" in agy and "再計算はせず" in agy, "agy is told it has no shell")
 check("シェルは使えない" not in codex and "読み取りコマンド" in codex, "codex is told it may use read commands")
 
@@ -158,23 +173,50 @@ with tempfile.TemporaryDirectory() as tmp:
 # record
 check(strip_file_links("see [a.md](file:///Users/x/a.md) and <file:///tmp/b> file:///c/d ok") == "see a.md and   ok",
       "file:// links are removed")
-check(parse_review("**Verdict:** CHANGES_REQUIRED\n必須（merge を妨げる）: **2** 件\n推奨: 1 件")
-      == {"verdict": "CHANGES_REQUIRED", "required": "2", "recommended": "1"}, "verdict and counts are parsed")
-check(parse_review("no verdict")["verdict"] == "不明", "missing verdict is reported as unknown")
+check(strip_file_links("`file://` スキームのリンク") == "`file://` スキームのリンク", "a bare scheme name in prose is kept")
+check(parse_review("**Verdict:** CHANGES_REQUIRED  \n必須（merge を妨げる）: **2** 件\n推奨: 1 件\n- 推奨: 3 件の例")
+      == ({"verdict": "CHANGES_REQUIRED", "required": "2", "recommended": "1"}, []),
+      "verdict and counts are read from the summary lines only")
+parsed, notes = parse_review("前回は Verdict: MERGE_OK でした\n必須: 0 件\n")
+check(parsed == {"verdict": "不明", "required": "0", "recommended": "不明"} and len(notes) == 2
+      and "Verdict のサマリー行が見つからない" in notes[0], "a verdict outside the summary line is not used")
+parsed, notes = parse_review("Verdict: MERGE_OK\n必須: 0 件\n推奨: 0 件\n```\nVerdict: CHANGES_REQUIRED\n必須: 2 件\n```\n")
+check(parsed == {"verdict": "不明", "required": "不明", "recommended": "0"}
+      and any("Verdict のサマリー行が 2 行ある" in note for note in notes)
+      and any("必須 のサマリー行が 2 行ある" in note for note in notes),
+      "conflicting summary lines are recorded as unknown")
+check(parse_review("Verdict: MERGE_OK\nVerdict: MERGE_OK\n必須: 0 件\n推奨: 0 件")[0]["verdict"] == "不明",
+      "duplicated summary lines are recorded as unknown even when they agree")
 
-CODEX_OUT = "Verdict: MERGE_OK\n必須（merge を妨げる）: 0 件\n推奨: 1 件\n- [a.py:1] x\n確認した範囲:\n- diff\n"
+HOME = str(Path.home())
+LOCAL_PKG = {"checkout": "/private/tmp/s/pkg/checkout", "materials": "/private/tmp/s/pkg/materials"}
+replacements = local_replacements(LOCAL_PKG)
+check(sanitize("a /private/tmp/s/pkg/checkout/scripts/x.py:3 b /tmp/s/pkg/materials/pr.md c", replacements)
+      == "a <checkout>/scripts/x.py:3 b <materials>/pr.md c", "package paths become placeholders")
+check(sanitize(f"see {HOME}/notes.md and `{HOME}`", replacements) == "see ~/notes.md and `~`", "home becomes ~")
+check(sanitize("x /Users/someone/a.md y (/private/tmp/other/b) [/Users/z]", replacements)
+      == "x <local-path> y (<local-path>) [<local-path>]", "other local absolute paths are hidden")
+check(sanitize("[a](file:///Users/z/a.md) docs/Users/x.md", replacements) == "a docs/Users/x.md",
+      "file links are removed and repository-relative paths are kept")
+
+CODEX_OUT = (
+    "Verdict: MERGE_OK\n必須（merge を妨げる）: 0 件\n推奨: 1 件\n- [a.py:1] x\n確認した範囲:\n"
+    f"- /private/tmp/s/pkg/checkout/scripts/x.py:3 と {HOME}/notes.md\n"
+)
 AGY_JSON = {"conversation_id": "conv-1", "status": "SUCCESS",
-            "response": "Verdict: MERGE_OK\n必須（merge を妨げる）: 0 件\n推奨: 0 件\n確認した範囲:\n- [x](file:///Users/me/x.md)\n"}
+            "response": "Verdict: MERGE_OK\n必須（merge を妨げる）: 0 件\n推奨: 0 件\n確認した範囲:\n"
+                        "- [x](file:///Users/me/x.md)\n- /tmp/s/pkg/materials/pr.md と /Users/someone/y.md\n"}
 
 with tempfile.TemporaryDirectory() as tmp:
+    (Path(tmp) / "package.json").write_text(json.dumps(LOCAL_PKG), encoding="utf-8")
     codex_path = Path(tmp) / "review-codex.md"
     codex_path.write_text(CODEX_OUT, encoding="utf-8")
     agy_path = Path(tmp) / "review-agy.json"
     agy_path.write_text(json.dumps(AGY_JSON), encoding="utf-8")
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):
-        main(["record", "--head", HEAD, "--date", "2026-10-12", "--codex", str(codex_path), "--codex-session", "s-1",
-              "--codex-version", "0.160.1", "--agy", str(agy_path)])
+        main(["record", "--head", HEAD, "--date", "2026-10-12", "--package", tmp, "--codex", str(codex_path),
+              "--codex-session", "s-1", "--codex-version", "0.160.1", "--agy", str(agy_path)])
     comment = stdout.getvalue()
     check(comment.startswith("## 独立レビュー（AI 独立 Reviewer 2 本）— 2026-10-12"), "record has a heading")
     check(f"対象 head: `{HEAD}`" in comment, "record names the reviewed head")
@@ -182,17 +224,25 @@ with tempfile.TemporaryDirectory() as tmp:
           "Codex row has runtime, model, session, verdict and counts")
     check("| 2 | antigravity / gemini-3.8-flash-high（plan + sandbox） | `conv-1` | **MERGE_OK** | 0 | 0 |" in comment,
           "agy row uses conversation_id as the session")
-    check("file://" not in comment and "/Users/me" not in comment and "- x" in comment, "agy file links are removed")
+    check("file://" not in comment and "/Users/" not in comment and "/tmp/" not in comment and HOME not in comment
+          and "- x" in comment, "file links and local paths are removed")
+    check("- <checkout>/scripts/x.py:3 と ~/notes.md" in comment, "Codex output paths are replaced")
+    check("- <materials>/pr.md と <local-path>" in comment, "agy response paths are replaced")
+    check("注記" not in comment, "no note when every summary line is found once")
     check("<details><summary>Reviewer 1（Codex）の出力</summary>" in comment and "- [a.py:1] x" in comment,
           "reviewer outputs are folded into details")
 
     agy_path.write_text(json.dumps({"conversation_id": "conv-2", "status": "SUCCESS", "response": "",
-                                    "denied_actions": ["run_command"]}), encoding="utf-8")
+                                    "denied_actions": [{"tool": "run_command", "Cwd": "/private/tmp/s/pkg/checkout",
+                                                        "AbsolutePath": "/Users/someone/z"}]}), encoding="utf-8")
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):
-        main(["record", "--head", HEAD, "--agy", str(agy_path)])
-    check("**不明**" in stdout.getvalue() and "response が空" in stdout.getvalue() and "run_command" in stdout.getvalue(),
-          "an empty agy response is recorded with its denied actions")
+        main(["record", "--head", HEAD, "--package", tmp, "--agy", str(agy_path)])
+    out = stdout.getvalue()
+    check("**不明**" in out and "response が空" in out and "run_command" in out
+          and "Reviewer 1: Verdict のサマリー行が見つからない" in out, "an empty agy response is recorded as unknown")
+    check('"<checkout>"' in out and '"<local-path>"' in out and "/Users/" not in out and "/tmp/" not in out,
+          "denied_actions paths are replaced")
 
     expect_exit(lambda: main(["record", "--head", HEAD, "--codex", str(codex_path)]), "Codex needs a session ID")
     expect_exit(lambda: main(["record", "--head", HEAD]), "record needs at least one reviewer")

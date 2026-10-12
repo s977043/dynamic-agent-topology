@@ -27,7 +27,7 @@ Agentの役割や人数を決める前に、導入対象の業務を短く確認
 
 例えばPRレビュー待ちが課題なら、最初に既存CIとレビュー待ち時間を観測し（A1〜A2）、成功条件と既存の承認・merge権限、Humanへのエスカレーション条件を整理します。Reviewer Agentを増やすことは解決策の**候補**であり、最初から3〜5体のチームを組む必要はありません。追加する場合は[Complexity Promotion Rule](#complexity-promotion-rule)に従い、品質・安全性と協調コストのEvidenceで判断します。
 
-このWorkflow BriefはDATの仕様そのものではなく、A0の会話を助ける入口です。Role Contract、Permission Boundary、Handoff、Runtimeの実効制御、独立Evaluationの正本は既存の[Architecture](ARCHITECTURE.md)と機械可読Artifactです。EXP-001のFeature Freeze中は、ここで得たアイデアを凍結実験のPrompt・条件へ反映しません。
+このWorkflow BriefはDATの仕様そのものではなく、A0の会話を助ける入口です。Role Contract、Handoff、Evaluationの定義は既存の[Architecture](ARCHITECTURE.md)と該当Artifactを参照し、実効PermissionはRuntime-native設定と実行時Evidenceで別途確認します。EXP-001のFeature Freeze中は、ここで得たアイデアを凍結実験のPrompt・条件へ反映しません。
 
 ## Reference layout
 

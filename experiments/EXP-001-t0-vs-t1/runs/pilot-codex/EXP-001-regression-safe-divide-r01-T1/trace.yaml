@@ -1,0 +1,103 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-regression-safe-divide-r01-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: regression-safe-divide
+  condition: T1
+  blockId: EXP-001-regression-safe-divide-r01
+executionSubject:
+  kind: AgentTopology
+  name: T1-worker-verifier
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-12T08:10:26+00:00'
+  details:
+    sessionId: 01a12f29-bda1-7431-9fc6-b76e9f00d177
+    freshSession: true
+    crossRunFeedbackUsed: false
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: pwd; rg --files -g 'AGENTS.md' -g '*.py' -g 'pyproject.toml' -g 'README*' -g 'setup.cfg'
+  details:
+    exitCode: 0
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: cat app.py; cat tests/test_app.py; for p in /AGENTS.md /work/AGENTS.md; do if [ -f "$p" ]; then cat "$p"; fi; done
+  details:
+    exitCode: 0
+- sequence: 3
+  type: action
+  actor: worker
+  artifact: app.py
+  details:
+    operation: apply_patch update
+    status: completed
+- sequence: 4
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 5
+  type: handoff
+  actor: worker
+  target: verifier
+  timestamp: '2026-10-12T08:11:18.514Z'
+  details:
+    tool: spawn_agent
+    taskName: verifier
+    forkTurns: all
+    verifierSessionId: 01a12f2a-86d3-78b2-94bc-f57bee119a12
+    parentThreadId: 01a12f29-bda1-7431-9fc6-b76e9f00d177
+    forkedFromId: 01a12f29-bda1-7431-9fc6-b76e9f00d177
+    agentPath: /root/verifier
+    verifierModel: gpt-6.1-sol
+    verifierEffort: high
+    handoffMessageContent: not readable (opaque in session record)
+- sequence: 6
+  type: review
+  actor: verifier
+  artifact: app.py; tests/test_app.py
+  details:
+    commands:
+    - cat app.py tests/test_app.py
+    implementationEdits: 0
+- sequence: 7
+  type: verify
+  actor: verifier
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 8
+  type: handoff
+  actor: verifier
+  target: worker
+  timestamp: '2026-10-12T08:11:47.578Z'
+  details:
+    verdict: PASS
+    findings: 0
+- sequence: 9
+  type: finish
+  actor: worker
+  timestamp: '2026-10-12T08:11:58+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  humanInterventions: 0
+  inputTokens: 146871
+  outputTokens: 883
+  wallClockMs: 92000

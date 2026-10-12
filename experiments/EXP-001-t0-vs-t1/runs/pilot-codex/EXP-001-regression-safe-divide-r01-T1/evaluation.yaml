@@ -1,0 +1,59 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-regression-safe-divide-r01-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: regression-safe-divide
+  condition: T1
+  blockId: EXP-001-regression-safe-divide-r01
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 146871
+  outputTokens: 883
+  wallClockMs: 92000
+verdict: pass
+notes: Regression-split matrix Run r01-T1 (executionOrder 2), executed with run-kit-g (candidate G;
+  Issue 15 environment Judgment 6107822908 checked by the kit) with the same environment.conf,
+  config.toml and launch line as regression-safe-divide r01-T0. Worker session spawned one Verifier
+  subagent (same model/effort per turn_context) with fork_turns all, as in clamp-boundaries r03-T1;
+  the Verifier rollout records forked_from_id = root, and its inherited history (before
+  subagent_history_start_ordinal 9) holds only the root session_meta, task_started, developer
+  skills, environment context, world_state, turn_context, the Run prompt and the Verifier
+  multi_agent_role, with no Worker tool calls and no safe-divide-specific Worker output. The
+  Verifier therefore had the Run prompt in its initial context. Whether this meets the prompt's
+  separate role/context requirement is left to Reviewer judgment. The Verifier's own first
+  developer item (after ordinal 9) has two text parts (22228 and 271 chars) where r03-T1 had one
+  271-char part; no scenario markers were found in it. Verifier ran cat app.py tests/test_app.py
+  and the deterministic command in one exec call, made no file edits (apply_patch 0, FileChange
+  0), returned PASS with no findings. The Worker called wait_agent twice with timeout 10 s; the
+  first returned timed_out true at 08:11:38.501Z while the Verifier was still working (its exec
+  ran at 08:11:33-34Z); the second, called at 08:11:45.800Z, returned timed_out false at
+  08:11:47.569Z, after the Verifier's task_complete (08:11:47.552Z). The Verifier result reached
+  the Worker as an agent message at 08:11:47.578Z, before the Worker's final answer
+  (08:11:57.084Z). Deterministic unittest 2/2 PASS (Worker and Verifier). For regression,
+  test_regular_division (the existing regular-division behavior) passes in both sessions, the a /
+  b branch is unchanged, tests unchanged and API unchanged, so no regression was detected. Only
+  app.py changed (the b == 0 branch returns 0.0 instead of None). No host-side rerun (run-kit-g
+  does not execute model-written code on the host). Tokens are the sum of both sessions' final
+  total_token_usage. wallClockMs spans (g) stdout date to separate container date (second
+  precision). No hidden reasoning copied.

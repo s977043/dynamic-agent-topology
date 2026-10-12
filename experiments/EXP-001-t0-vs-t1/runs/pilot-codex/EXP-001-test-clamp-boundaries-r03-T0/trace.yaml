@@ -1,0 +1,77 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r03-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: test-clamp-boundaries
+  condition: T0
+  blockId: EXP-001-test-clamp-boundaries-r03
+executionSubject:
+  kind: AgentTopology
+  name: T0-single-agent
+runtime:
+  name: codex
+  version: 0.160.0
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-10-12T07:05:19+00:00'
+  details:
+    sessionId: 01a12eee-2053-7730-86a9-f7b9a1238e11
+    freshSession: true
+    crossRunFeedbackUsed: false
+- sequence: 1
+  type: action
+  actor: worker
+  artifact: pwd; rg --files -g 'AGENTS.md' -g '*.py' -g 'pyproject.toml' -g 'README*'
+  details:
+    exitCode: 0
+- sequence: 2
+  type: action
+  actor: worker
+  artifact: cat app.py
+  details:
+    exitCode: 0
+- sequence: 3
+  type: action
+  actor: worker
+  artifact: cat tests/test_app.py
+  details:
+    exitCode: 0
+- sequence: 4
+  type: action
+  actor: worker
+  artifact: for p in /AGENTS.md /work/AGENTS.md; do if [ -f "$p" ]; then cat "$p"; fi; done
+  details:
+    exitCode: 0
+- sequence: 5
+  type: action
+  actor: worker
+  artifact: app.py
+  details:
+    operation: apply_patch update
+    status: completed
+- sequence: 6
+  type: evidence
+  actor: worker
+  artifact: python -m unittest discover -s tests
+  details:
+    exitCode: 0
+- sequence: 7
+  type: finish
+  actor: worker
+  timestamp: '2026-10-12T07:06:11+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  humanInterventions: 0
+  inputTokens: 59860
+  outputTokens: 401
+  wallClockMs: 52000

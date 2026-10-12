@@ -1,0 +1,53 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-test-clamp-boundaries-r03-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: test-clamp-boundaries
+  condition: T1
+  blockId: EXP-001-test-clamp-boundaries-r03
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 4
+  acceptanceCriteriaTotal: 4
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 136597
+  outputTokens: 883
+  wallClockMs: 46000
+verdict: pass
+notes: Test-split matrix Run r03-T1 (executionOrder 1), executed with run-kit-g (candidate G;
+  Issue 15 environment Judgment 6107822908 checked by the kit) with the same environment.conf,
+  config.toml and launch line as r02-T1; the only differences from r02-T1 are the runId, blockId
+  and executionOrder header lines of the prompt. Worker session spawned one Verifier subagent (same
+  model/effort per turn_context) with fork_turns all, as in r01-T1; the Verifier rollout records
+  forked_from_id = root, and its inherited history (before subagent_history_start_ordinal 9) holds
+  only the root session_meta, task_started, developer skills, environment context, world_state,
+  turn_context, the Run prompt and the Verifier multi_agent_role, with no Worker tool calls and no
+  clamp-specific Worker output. The Verifier therefore had the Run prompt in its initial context.
+  Whether this meets the prompt's separate role/context requirement is left to Reviewer judgment.
+  Verifier ran read-only inspection and the deterministic command in one exec call, made no file
+  edits (apply_patch 0, FileChange 0), returned PASS with no findings. The Worker's 10 s wait_agent
+  returned timed_out true at 22:23:16.815Z, about 60 ms after the Verifier's task_complete
+  (22:23:16.755Z); the Verifier result reached the Worker as an agent message at 22:23:16.847Z,
+  before the Worker's final answer (22:23:19.796Z). Deterministic unittest 3/3 PASS (Worker and
+  Verifier), tests unchanged, API unchanged, only app.py changed (below-low branch returns low).
+  No host-side rerun (run-kit-g does not execute model-written code on the host). Tokens are the
+  sum of both sessions' final total_token_usage. wallClockMs spans (g) stdout date to separate
+  container date (second precision). No hidden reasoning copied.

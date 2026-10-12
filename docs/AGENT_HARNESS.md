@@ -83,7 +83,7 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | L-008 | Agent の Edit 後に走る自動整形 hook が、レビュー済み SHA-256 表を含む文書の表の空白を書き換えた（ワーカーが気づき HEAD から作り直した） | PR #110 作業時（2026-10-08）、`docs/EXP-001_RETRY_T1_R01.md`。PR #112 作業時の再発（PR #112 本文に記録） | 2 | promoted | `.prettierignore`（併せて、編集後に意図した行以外の差分が無いことを `git diff` で確認する） |
 | L-009 | 独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO-GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効） | PR #130 の Run acceptance レビュー（Issue #15 comment 6106366753 に至る 4 回） | 3 | candidate | 判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする |
 | L-010 | 『指摘ゼロ』を完了の定義にした机上レビューの往復が収束せず（15 回以上）、Run が進まなかった | PR #110・#116・#121・#122 のレビュー往復、本番スクリプトの NO-GO 3 回 | 2 | candidate | 必須を安全・秘密値・プロトコル違反・回収不能の 4 分類に絞り、推奨は事後改善に回す。同箇所の指摘が続く場合はドライランやリハーサルで実際に動かして確かめる |
-| L-011 | Judgment の適用範囲（scenario・rep）が引き継ぎや依頼文で略記（「r01」）されてセッション間に伝わり、範囲が広がって読まれた（対象は train/normalize-name の r01 ペアだけなのに、全 r01 を除外する集計案になった） | Issue #15 comment 6072534007、2026-10-12 の #15 本文「現在地」の訂正 | 1 | candidate | Judgment の条件を引き継ぐときは、scenario・rep・条件を一次ソースの文言どおりに書き、comment ID を添える |
+| L-011 | Judgment の適用範囲（scenario・rep）が引き継ぎや依頼文で略記（「r01」）されてセッション間に伝わり、範囲が広がって読まれた（対象は train/normalize-name の r01 ペアだけなのに、全 r01 を除外する集計案になりかけた） | Issue #15 comment 6072534007（T1 r01 retry の環境判断。当時の r01 は train/normalize-name だけ）、環境 Judgment 6107822908（条件 4「集計時の開示」の充足は判断していないと明記）、2026-10-12 の #15 本文「現在地」の訂正 | 1 | candidate | Judgment の条件を引き継ぐときは、scenario・rep・条件を一次ソースの文言どおりに書き、comment ID を添える |
 
 状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004、L-006。L-006 は検証結果の報告が実態とずれたEvidence完全性の問題）。昇格には原則2回以上の観測が必要で、これらはその例外です。
 

@@ -1,0 +1,13 @@
+apiVersion: dat/v1alpha1
+kind: PilotRunMetadata
+metadata:
+  runId: EXP-001-regression-safe-divide-r01-T1
+  blockId: EXP-001-regression-safe-divide-r01
+  scenario: regression-safe-divide
+  condition: T1
+spec:
+  repetition: 1
+  executionOrder: 2
+  workspaceId: exp001-regression-safe-divide-r01-t1-20261012-runkitg
+  freshWorkspace: true
+  promptSha256: 3d5f79c032596ce524afa04af05c8c50492e00ed5124036bed3b023b0c8c3383

@@ -21,6 +21,8 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 | [Grok Bot team operations patterns](grok-bot-team-operations-2026-10.md) | xAI Grok Bot official Bots / Skills / Approvals docs (SpeakerDeck unverified) | [#42](https://github.com/s977043/dynamic-agent-topology/issues/42) / [#63](https://github.com/s977043/dynamic-agent-topology/issues/63) / [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) (post-freeze candidate) |
 | [Eight agent tooling repositories: cross-runtime, review, permissions, and evaluation](agent-tooling-eight-repositories-2026-10.md) | Anthropic Agent SDK / Claude Code / Skills / Claude Code Action; wshobson/agents; Superpowers; MCP reference servers; Langfuse | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) (related post-freeze candidates; not a new tracking issue) |
 
+| [AI model switch workflow revalidation](model-switch-workflow-revalidation-2026-10.md) | Scrum.org — Stefan Wolpers (2026-10-11) | [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) |
+
 Tracking Issues are the live status source of truth; this index intentionally does not duplicate blocked/open/progress state. The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).
 
 ## Expected structure

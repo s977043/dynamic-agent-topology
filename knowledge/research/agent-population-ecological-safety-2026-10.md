@@ -92,7 +92,7 @@ DAT's current research question asks which topology works for which software tas
 Three quantities must **not** be collapsed:
 
 1. `agentInvocations`: actual model/agent calls within a DAT run (already observed in ExecutionTrace).
-2. `concurrentWorkerCount`: a **new candidate descriptive measure** for simultaneously working agents in a DAT execution. This counts workers, not ecological population units.
+2. `concurrentWorkerCount` (denoted **W** in the proposed SWE study): a **new candidate descriptive measure** for simultaneously working agents in a DAT execution. This counts workers, not ecological population units.
 3. `populationUnitCount`: the paper's count of active systems independently able to participate in subsequent joint attempts to establish additional units. Requires a separate operational definition in a **simulation**.
 
 Equally, `P(task success | N)` on SWE tasks is **not** paper `p(N)`. SWE success scaling may motivate, but does not identify, the ecological model.
@@ -114,7 +114,7 @@ Equally, `P(task success | N)` on SWE tasks is **not** paper `p(N)`. SWE success
 
 Use disposable, offline SWE fixtures with deterministic acceptance, no live secrets, no external targets, enforced resource/time limits, and independently observable effective permissions.
 
-Pilot **candidate**: `N = 1, 2, 4`; 3 scenarios × 2 repetitions = 18 exploratory runs for a **single predeclared cooperation/budget treatment**. This verifies safe execution, actual activated concurrency and useful trace/evaluation collection. Two repetitions are plainly insufficient for strong quantitative inference or rare-event safety claims. The 18 runs do **not** cover the full factorial.
+Pilot **candidate**: `W = 1, 2, 4` concurrently active workers (not ecological population units); 3 scenarios × 2 repetitions = 18 exploratory runs for a **single predeclared cooperation/budget treatment**. This verifies safe execution, actual activated concurrency and useful trace/evaluation collection. Two repetitions are plainly insufficient for strong quantitative inference or rare-event safety claims. The 18 runs do **not** cover the full factorial.
 
 Record run attempts, infrastructure aborts, partial traces, permissions, task outcome, coordination transitions, verified work products, total tokens, elapsed time, observed budget and stop outcomes. Use existing contracts where possible; keep extra research measurement as clearly non-normative supplementary data. Do not invent 0 values for unmeasured fields.
 
@@ -122,12 +122,12 @@ Record run attempts, infrastructure aborts, partial traces, permissions, task ou
 
 Only after Stage A succeeds, preregister a feasible factorial design:
 
-- N treatment: `1 / 2 / 4 / 8` if resources and safety gates allow (N=1 has no meaningful cooperation comparison).
-- Cooperation treatment: **independent parallel attempts** vs **explicit joint collaboration**.
+- SWE worker-count treatment: `W = 1 / 2 / 4 / 8` if resources and safety gates allow (W=1 has no meaningful cooperation comparison).
+- Cooperation treatment: **independent parallel attempts** vs **explicit joint collaboration**, controlling for how independent outputs are selected and verified.
 - Resource treatment: **total run budget fixed** vs **per-unit budget fixed**, analyzed **separately**; a larger N with larger total budget cannot establish a pure cooperation benefit.
 - Keep task distributions, repository revision, runtime, model, effort, evidence commands, permission policy and initial state comparable. Fresh workspace/session per arm; `blockId` for matched cases; balanced/randomized order to reduce time/order effects; prevent cross-arm artifacts and learned patches from leaking.
 - Independently verify outcomes and `configured ≠ actually invoked` for agent count / permissions / communication. Track timeouts/aborts and complete cost accounting.
-- Estimate outcome vs N with uncertainty (binomial intervals when defined, variance across scenarios, raw paired deltas). Preregister practical improvement and harm/reject limits; **do not** extrapolate beyond measured sizes or infer a critical population from SWE pass rate alone.
+- Estimate SWE outcome vs W with uncertainty (binomial intervals when defined, variance across scenarios, raw paired deltas). Preregister practical improvement and harm/reject limits; **do not** extrapolate beyond measured sizes or infer a critical population from SWE pass rate alone.
 
 ### Stage C — synthetic ecological dynamics (conditional, distinct work unit)
 
@@ -138,7 +138,7 @@ Build an **offline virtual-unit simulator** whose unit-creation outcome is deter
 Define before measurement:
 
 - eligible *virtual unit* and when it counts as active;
-- joint attempt, success, failures, time interval `tau`, independent baseline `q_sim`;
+- joint attempt, success, failures, time interval `tau`, independent baseline `q_sim`, and separately simulated ecological population size `N_sim`;
 - bounded virtual additions `kappa`, loss rate `mu` and total virtual population caps;
 - `p_sim(N)` outcome, independent ground truth and run-level evidence;
 - fit tests against increasing work, sublinear work, plateau and congestion, plus parameter uncertainty;
@@ -151,7 +151,7 @@ Synthetic `p_sim(N)` validates **only the simulation/model assumptions**, never 
 A valid study must explicitly report:
 
 - **assignment vs activation** of topology and collaboration;
-- **Agent-invocation count vs concurrency vs simulated ecological units**;
+- **Agent-invocation count vs concurrent SWE workers W vs simulated ecological population units N_sim**;
 - verified task success, coordination cost and full compute budget, rather than “more agents succeeded” alone;
 - enforcement boundary evidence (actual stop/budget/network/write restrictions), abort/missingness accounting, and whether the proposed sandbox remained contained;
 - `source theoretical prediction ≠ DAT observation ≠ simulation output ≠ adoption judgment`.
@@ -163,7 +163,7 @@ Potential blockers/rejections:
 - count of internal subagents cannot be reconciled with ecological units;
 - budget/effort/concurrency confounded or no meaningful independent-work control;
 - missing traces for timed-out, aborted or violating runs;
-- insufficient power / no credible estimate for success vs N;
+- insufficient power / no credible estimate for SWE task success vs W or unit-establishment success vs N_sim;
 - plateau or congestion contradicts unbounded-growth assumptions;
 - isolation and hard limits not demonstrably enforced.
 

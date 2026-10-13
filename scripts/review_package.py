@@ -300,6 +300,10 @@ def parse_review(text: str) -> tuple[dict, list[str]]:
             parsed[key] = "不明"
             found = f" {len(hits[key])} 行ある" if hits[key] else "見つからない"
             notes.append(f"{label} のサマリー行が{found}ため、確定値を記録していません")
+    # A success verdict is not actionable while blocking findings are present or uncounted.
+    if parsed["verdict"] == "MERGE_OK" and parsed["required"] != "0":
+        parsed["verdict"] = "不明"
+        notes.append("MERGE_OK ですが必須指摘が 0 件と確認できないため、承認扱いにしません")
     return parsed, notes
 
 

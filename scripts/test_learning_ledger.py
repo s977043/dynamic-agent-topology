@@ -19,9 +19,19 @@ data = json.loads(LEDGER.read_text(encoding='utf-8'))
 assert len(entries) >= 11
 assert summarize_ledger(legacy_rows(entries)) == summarize_ledger(parse_ledger(DOCUMENT.read_text()))
 assert {f'L-{i:03d}' for i in range(1, 12)} <= {e['id'] for e in entries}
-assert entries[0]['observedDates'] == []
-assert entries[6]['observedDates'] == ['2026-10-08']
 check_document(DOCUMENT.read_text(), entries)
+
+# Valid later observations and new IDs must not require test-source edits.
+updated = copy.deepcopy(data)
+entry = updated['entries'][0]
+entry['observedDates'] = ['2026-10-08', '2026-10-14']
+entry['count'] = max(entry['count'], 2)
+entry['evidence']['description'] += ' 観測日: 2026-10-08 / 2026-10-14'
+new_entry = copy.deepcopy(entry)
+new_entry['id'] = 'L-999999'
+updated['entries'].append(new_entry)
+assert len(validate(updated)) == len(entries) + 1
+check_document(render(validate(updated)), validate(updated))
 
 
 def rejects(mutator):

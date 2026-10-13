@@ -188,5 +188,8 @@ jobs:
       - name: Test harness metrics collector
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_harness_metrics.py
 
+      - name: Test Observe candidate collector
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_observe_learning.py
+
       - name: Test independent review kit
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_review_package.py

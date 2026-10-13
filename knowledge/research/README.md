@@ -11,6 +11,7 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 | Note | Primary source(s) | Tracking issue |
 |---|---|---|
 | [Raven executable-configuration evolution](raven-executable-configuration-evolution.md) | Raven / HarnessBank | [#21](https://github.com/s977043/dynamic-agent-topology/issues/21) |
+| [Agent population scaling and ecological safety](agent-population-ecological-safety-2026-10.md) | Crawley & Tanaka, *Ecology of AI Agents* (arXiv:2610.12436v1) | [#166](https://github.com/s977043/dynamic-agent-topology/issues/166) |
 | [Claude Code Mods runtime guardrails](claude-code-mods-runtime-guardrails.md) | Anthropic Claude Code Mods | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) |
 | [Evidence-backed compiled knowledge integrity](evidence-backed-compiled-knowledge-integrity.md) | Joon An LLM Wiki operating report | [#63](https://github.com/s977043/dynamic-agent-topology/issues/63) |
 | [Adversarial judgment role and sparse decision gates](adversarial-judgment-gates.md) | @thedelost Codex pattern + OpenAI Codex docs | [#82](https://github.com/s977043/dynamic-agent-topology/issues/82) |

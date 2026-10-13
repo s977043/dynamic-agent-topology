@@ -193,3 +193,6 @@ jobs:
 
       - name: Test independent review kit
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_review_package.py
+
+      - name: Test Promote draft proposals
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_harness_promote.py

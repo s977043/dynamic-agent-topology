@@ -3,6 +3,10 @@
 import copy
 import json
 import tempfile
+from contextlib import redirect_stdout
+from io import StringIO
+from unittest.mock import patch
+import harness_metrics
 from pathlib import Path
 
 from jsonschema import ValidationError
@@ -34,6 +38,7 @@ rejects(lambda d: d['entries'].append(copy.deepcopy(d['entries'][0])))
 rejects(lambda d: d['entries'][0].update(state='accepted'))
 rejects(lambda d: d['entries'][0].update(count=0))
 rejects(lambda d: d['entries'][0].update(observedDates=['2026-02-30']))
+rejects(lambda d: d['entries'][0].update(observedDates=['2026-10-14']))
 rejects(lambda d: d['entries'][0].update(observedDates=['2026-10-09', '2026-10-08']))
 rejects(lambda d: d['entries'][1].update(observedDates=['2026-10-08', '2026-10-09']))
 rejects(lambda d: d['entries'][0]['evidence'].update(description=''))
@@ -57,4 +62,18 @@ for text in (DOCUMENT.read_text().replace('Agent guidance', 'Changed guidance'),
         pass
     else:
         raise AssertionError('drift/duplicate markers accepted')
+with patch.object(harness_metrics, 'collect_pr_metrics', return_value={}), redirect_stdout(StringIO()) as output:
+    harness_metrics.main(['--json'])
+    assert json.loads(output.getvalue())['ledger'] == summarize_ledger(legacy_rows(entries))
+with tempfile.TemporaryDirectory() as tmp:
+    path = Path(tmp) / 'invalid.json'
+    path.write_text('{}')
+    with patch.object(harness_metrics, 'collect_pr_metrics') as fetch:
+        try:
+            harness_metrics.main(['--ledger', str(path)])
+        except ValidationError:
+            pass
+        else:
+            raise AssertionError('invalid JSON input accepted by metrics CLI')
+        fetch.assert_not_called()
 print('Learning ledger tests: PASS')

@@ -28,6 +28,8 @@ def validate(data: dict) -> list[dict]:
             if not value.strip():
                 raise ValueError(f"{entry['id']}: blank ledger text")
         dates = entry['observedDates']
+        if any(date not in entry['evidence']['description'] for date in dates):
+            raise ValueError(f"{entry['id']}: observedDates must be explicit in Evidence description")
         if dates != sorted(dates):
             raise ValueError(f"{entry['id']}: observedDates must be sorted")
         if len(dates) > entry['count']:

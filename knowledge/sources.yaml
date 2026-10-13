@@ -41,6 +41,13 @@ sources:
     published_at: "2026-07-15"
     adopted: []
 
+  - id: crawley-tanaka-ecology-of-ai-agents-2026
+    type: preprint
+    title: "Ecology of AI Agents: Collaboration Creates a Population Threshold for Takeoff"
+    url: "https://arxiv.org/abs/2610.12436"
+    published_at: "2026-10-08"
+    adopted: []
+
   - id: claude-code-mods-2026
     type: engineering-report
     title: "Customize Claude Code with mods"
@@ -203,9 +210,3 @@ sources:
     url: "https://code.claude.com/docs/en/sub-agents"
     adopted: []
 
-  - id: crawley-tanaka-ecology-of-ai-agents-2026
-    type: preprint
-    title: "Ecology of AI Agents: Collaboration Creates a Population Threshold for Takeoff"
-    url: "https://arxiv.org/abs/2610.12436"
-    published_at: "2026-10-08"
-    adopted: []

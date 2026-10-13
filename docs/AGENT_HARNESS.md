@@ -97,6 +97,9 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | L-009 | 独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO-GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効） | PR #130 の Run acceptance レビュー（Issue #15 comment 6106366753 に至る 4 回） | 3 | candidate | 判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする |
 | L-010 | 『指摘ゼロ』を完了の定義にした机上レビューの往復が収束せず（15 回以上）、Run が進まなかった | PR #110・#116・#121・#122 のレビュー往復、本番スクリプトの NO-GO 3 回 | 2 | candidate | 必須を安全・秘密値・プロトコル違反・回収不能の 4 分類に絞り、推奨は事後改善に回す。同箇所の指摘が続く場合はドライランやリハーサルで実際に動かして確かめる |
 | L-011 | Judgment の適用範囲（scenario・rep）が引き継ぎや依頼文で略記（「r01」）されてセッション間に伝わり、範囲が広がって読まれた（対象は train/normalize-name の r01 ペアだけなのに、全 r01 を除外する集計案になりかけた） | Issue #15 comment 6072534007（T1 r01 retry の環境判断。当時の r01 は train/normalize-name だけ）、環境 Judgment 6107822908（条件 4「集計時の開示」の充足は判断していないと明記）、2026-10-12 の #15 本文「現在地」の訂正 | 1 | candidate | Judgment の条件を引き継ぐときは、scenario・rep・条件を一次ソースの文言どおりに書き、comment ID を添える |
+| L-012 | GitHub自動観測（comment、原因未分類） | 2026-10-11 recommended=1; source timestamp=2026-10-11T07:12:30+00:00 | 1 | candidate | 原因確認と改善案の検討待ち |
+| L-013 | GitHub自動観測（ci、原因未分類） | 2026-10-12 CI conclusion=failure; run_id=38316631318; run_attempt=1; final job completed_at; source timestamp=2026-10-12T22:26:33+00:00 | 1 | candidate | 原因確認と改善案の検討待ち |
+| L-014 | GitHub自動観測（comment、原因未分類） | 2026-10-12 recommended=4; source timestamp=2026-10-12T07:56:34+00:00 | 1 | candidate | 原因確認と改善案の検討待ち |
 <!-- learning-ledger:generated:end -->
 
 状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004、L-006。L-006 は検証結果の報告が実態とずれたEvidence完全性の問題）。昇格には原則2回以上の観測が必要で、これらはその例外です。

@@ -169,6 +169,54 @@
       "observedDates": [
         "2026-10-12"
       ]
+    },
+    {
+      "id": "L-012",
+      "observation": "GitHub自動観測（comment、原因未分類）",
+      "evidence": {
+        "description": "2026-10-11 recommended=1; source timestamp=2026-10-11T07:12:30+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/124#issuecomment-6106558498"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-11"
+      ]
+    },
+    {
+      "id": "L-013",
+      "observation": "GitHub自動観測（ci、原因未分類）",
+      "evidence": {
+        "description": "2026-10-12 CI conclusion=failure; run_id=38316631318; run_attempt=1; final job completed_at; source timestamp=2026-10-12T22:26:33+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/actions/runs/38316631318/attempts/1"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-12"
+      ]
+    },
+    {
+      "id": "L-014",
+      "observation": "GitHub自動観測（comment、原因未分類）",
+      "evidence": {
+        "description": "2026-10-12 recommended=4; source timestamp=2026-10-12T07:56:34+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/149#issuecomment-6120122568"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-12"
+      ]
     }
   ]
 }

@@ -21,6 +21,8 @@ Codexクラウドで以下を実施しました。
 
 操作記録: [PR #165への環境確認コメント](https://github.com/s977043/dynamic-agent-topology/pull/165#issuecomment-6150512620)。selftestやdaemon情報の追加実測は今回の作業セッションで確認したもので、EXP-001実Runの証跡ではありません。生ログ原本の公開や再実験は行っていません。
 
+追加観測の採取日は2026-10-14 JST、環境IDは `ccarenv_b64_Y2NhcmVudl85MWMzNTlkNmNlMDA4MTkxODc1MDJiYmUyYzRiNzUwOA` です。対象mainは上記SHAで、`bash experiments/EXP-001-t0-vs-t1/pilot/run-kit-g/selftest.sh python` は `PASS: selftest` を出力しました。`docker info --format '{{json .}}'` の非秘密フィールドから、ServerVersion=28.4.0、KernelVersion=6.18.44、OperatingSystem=Debian GNU/Linux 13 (trixie) (containerized)、Architecture=x86_64、OSType=linuxを採取しました。これらは作業セッションの観測記録であり、独立再現や外部保存済みの原本ログは未確認です。
+
 複数Agentは実験比較可能性、開発運用、権限・証跡の3視点で検討しました。結論は「クラウドは開発・機械検証・レビュー材料整理に使用し、EXP-001残りRunは承認済みOperator環境で完了する」という提案です。親contextとファイルシステムを共有する助言を正式独立Reviewerの承認へ転用しません。
 
 ## 環境一覧

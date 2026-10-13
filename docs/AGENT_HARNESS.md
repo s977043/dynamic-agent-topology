@@ -77,6 +77,8 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 
 ## Learning ledger
 
+共有するプロジェクト知識はrepo、端末固有の観測は環境memoryに記録します。[知識とメモリの分担](KNOWLEDGE_OWNERSHIP.md)に保存先・再確認・引き継ぎをまとめています。既存の独立レビュー・Human承認・実験Freezeの境界は維持します。
+
 正本は `knowledge/learning-ledger.json` です。以下の表は `python scripts/learning_ledger.py --write` で生成し、CI が schema・ID 重複・日付の Evidence 原文への明記・日付と回数の整合・表の同期を検証します。追記・訂正は JSON に行い、表を再生成します。状態変更や Guard の採用は既存の Human 承認境界に従います。
 
 `observedDates` は Evidence に明記された観測日のみです。不明なら空配列とし、PR 作成日から推測しません。回数は旧台帳の集計を保持し、日付の件数は全発生回数を表しません。Evidence の原文と確認可能な GitHub リンクを保存し、local 観測に公開リンクがない場合は `urls: []` を保持します。

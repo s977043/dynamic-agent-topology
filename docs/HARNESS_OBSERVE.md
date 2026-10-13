@@ -2,6 +2,10 @@
 
 Issue #159 施策③の実装です。`harness-observe.yml` は週次（月曜06:53 UTC）または手動で、default branch のスクリプトだけを実行します。EXP-001の実行条件、Guard、自律境界、promotionは変更しません。
 
+初回運用やworkflow変更の反映を確認するため、自身のworkflowファイルがmainで変更されたpushでも起動します。jobは非fork repositoryのdefault branch refだけで実行します。forkにrunが作られないことまでは保証せず、jobを停止します。default branchがmain以外ならmain pushのjobはskipします。ledger・生成表・起案文書・他branchのpushはこの起動条件に入りません。push時はevent SHAのコードをcheckoutし、週次/手動時はdefault branchをcheckoutします。
+
+path条件は変更ファイルのいずれかが一致すれば成立します。workflowとledger/docを同時変更したpushも対象で、ledger/docだけの変更は対象外です。両harness workflowを同時変更したmain pushでは、各workflowが一回ずつ実行対象になります。他branch/path非一致のrun非起動と、fork/default変更のjob skipを区別します。
+
 ## 採取と提案
 
 直近7日の完了CI失敗と、PR review/commentの確定レビューサマリーを候補として収集します。CIはrun IDとattemptを区別し、最終jobの`completed_at`を用います。reviewは`submitted_at`、commentは`created_at`を用い、更新日時を発生日と解釈しません。日時欠測は採用しません。観測日付はUTCです。
@@ -21,6 +25,8 @@ GH_TOKEN=... python scripts/observe_learning.py --repo owner/repository
 専用branchは`automation/harness-observe-<内容digest>`です。既存open提案・既存ref・main移動では上書きせず停止します。API失敗でpartial収集を投稿しません。publish途中の失敗で作成済みrefが残る場合も上書きや削除はせず、Operatorが状態を確認します。
 
 RepositoryのActions設定でGitHub ActionsによるPR作成が許可されている必要があります。無効ならpublishは失敗します。**GITHUB_TOKENで作成したPRは通常のpull_request CIを起動しません。** Humanによるclose/reopenまたは別の承認済み認証でCIを起動し、最新headの必須CIと独立レビューを確認してから既存境界に従ってmergeします。自動mergeや自動承認は実装しません。
+
+実運用の証跡はevent/run head、ログのcheckout SHA、起案commitのparent（publisher base）を別々に確認します。run SUCCESSだけで起案成功とせず、`DRAFT_PR_N`とGitHubの`draft=true`、対象差分を照合します。NO_NEW/OPEN_PROPOSAL等はno-opであり初回起案の成功証明ではありません。失敗時はref/PRの有無を読み取り確認し、残存refを自動削除・再利用しません。
 
 ## 検証と制約
 

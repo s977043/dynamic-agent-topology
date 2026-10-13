@@ -2,6 +2,7 @@
 """Deterministic migration, schema, semantic and generated-view regression tests."""
 import copy
 import json
+import tempfile
 from pathlib import Path
 
 from jsonschema import ValidationError
@@ -39,6 +40,16 @@ rejects(lambda d: d['entries'][0]['evidence'].update(description=''))
 rejects(lambda d: d['entries'][0]['evidence'].update(urls=['https://example.com/pull/1']))
 rejects(lambda d: d['entries'][0].update(observation='broken | table'))
 rejects(lambda d: d['entries'][0].update(unexpected='x'))
+rejects(lambda d: d['entries'][0]['evidence'].update(description='   '))
+with tempfile.TemporaryDirectory() as tmp:
+    path = Path(tmp) / 'duplicate.json'
+    path.write_text('{"schemaVersion":1,"schemaVersion":1,"entries":[]}')
+    try:
+        load(path)
+    except ValueError as error:
+        assert 'duplicate JSON key' in str(error)
+    else:
+        raise AssertionError('duplicate JSON keys accepted')
 for text in (DOCUMENT.read_text().replace('Agent guidance', 'Changed guidance'), render(entries) + render(entries)):
     try:
         check_document(text, entries)

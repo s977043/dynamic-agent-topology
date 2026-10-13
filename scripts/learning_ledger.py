@@ -24,6 +24,9 @@ def validate(data: dict) -> list[dict]:
     if len(ids) != len(set(ids)):
         raise ValueError('duplicate learning ledger ID')
     for entry in entries:
+        for value in (entry['observation'], entry['countermeasure'], entry['evidence']['description']):
+            if not value.strip():
+                raise ValueError(f"{entry['id']}: blank ledger text")
         dates = entry['observedDates']
         if dates != sorted(dates):
             raise ValueError(f"{entry['id']}: observedDates must be sorted")
@@ -32,8 +35,17 @@ def validate(data: dict) -> list[dict]:
     return entries
 
 
+def unique_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def load(path: Path = LEDGER) -> list[dict]:
-    return validate(json.loads(path.read_text(encoding='utf-8')))
+    return validate(json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_keys))
 
 
 def legacy_rows(entries: list[dict]) -> list[dict[str, str]]:

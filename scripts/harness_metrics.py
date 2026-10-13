@@ -315,13 +315,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         since = until - timedelta(days=args.days)
 
+    ledger_entries = (legacy_rows(load_learning_ledger(args.ledger)) if args.ledger.suffix == ".json"
+                      else parse_ledger(args.ledger.read_text(encoding="utf-8")))
     report = {
         "repo": args.repo,
         "since": since.isoformat(timespec="seconds"),
         "until": until.isoformat(timespec="seconds"),
         **collect_pr_metrics(github_fetcher(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")), args.repo, since),
-        "ledger": summarize_ledger(legacy_rows(load_learning_ledger(args.ledger)) if args.ledger.suffix == ".json"
-                                   else parse_ledger(args.ledger.read_text(encoding="utf-8"))),
+        "ledger": summarize_ledger(ledger_entries),
     }
     report_json = json.dumps(report, ensure_ascii=False, indent=2)
     if args.json:

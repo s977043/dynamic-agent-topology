@@ -77,12 +77,17 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 
 ## Learning ledger
 
-| ID    | 観測                                                                                                           | Evidence                      | 回数 | 状態      | 対策                         |
-| ----- | -------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---- | --------- | ---------------------------- |
-| L-001 | Agent guidanceの記述がRepositoryの実態とずれる（fixturesの説明、schema適用範囲、freeze範囲、permissionの効果） | PR #84 / #85 のレビューループ | 4    | promoted  | `validate_agent_guidance.py` |
+正本は `knowledge/learning-ledger.json` です。以下の表は `python scripts/learning_ledger.py --write` で生成し、CI が schema・ID 重複・日付の Evidence 原文への明記・日付と回数の整合・表の同期を検証します。追記・訂正は JSON に行い、表を再生成します。状態変更や Guard の採用は既存の Human 承認境界に従います。
+
+`observedDates` は Evidence に明記された観測日のみです。不明なら空配列とし、PR 作成日から推測しません。回数は旧台帳の集計を保持し、日付の件数は全発生回数を表しません。Evidence の原文と確認可能な GitHub リンクを保存し、local 観測に公開リンクがない場合は `urls: []` を保持します。
+
+<!-- learning-ledger:generated:start -->
+| ID | 観測 | Evidence | 回数 | 状態 | 対策 |
+| --- | --- | --- | --- | --- | --- |
+| L-001 | Agent guidanceの記述がRepositoryの実態とずれる（fixturesの説明、schema適用範囲、freeze範囲、permissionの効果） | PR #84 / #85 のレビューループ | 4 | promoted | `validate_agent_guidance.py` |
 | L-002 | ask ruleがBash経由の書き込みを検出しない | PR #85 review | 1 | promoted | `.claude/hooks/guard_frozen_bash.py` |
 | L-003 | 複数のAgentや操作者が同じbranch・worktree・PRを並行して変更する | PR #85 commit `792102d`、worktree内のhook編集、PR #86 が確認前に別の操作者によりmerge | 3 | promoted | 本書の1 branch 1 Agent rule、`AGENTS.md` のpush手順 |
-| L-004 | Frozen fixtureでtest実行時に `__pycache__` が生成される                                                        | PR #85 作業時のlocal観測      | 1    | promoted  | `PYTHONDONTWRITEBYTECODE=1`  |
+| L-004 | Frozen fixtureでtest実行時に `__pycache__` が生成される | PR #85 作業時のlocal観測 | 1 | promoted | `PYTHONDONTWRITEBYTECODE=1` |
 | L-005 | branch切替の失敗後も `;` で連結したcommit/pushが続き、別PRのbranchへpushされた | PR #85 / #87（commit `9ba8208`） | 1 | candidate | git書き込みは `&&` で連結し、push元branchを確認 |
 | L-006 | CIと異なるlocalのPythonでのみ検証し、CI（Python 3.12）で `validate` が失敗した | PR #85 CI run 37541615338 | 1 | promoted | `AGENTS.md` の Python 3.12 検証ルール |
 | L-007 | push/API の権限エラーを回避するため、ワーカーが `gh auth switch` で active アカウントを変更した。active アカウントは同一マシンの全セッションで共有されるため、並行セッションの書き込み先が変わり得る | PR #110 作業時（2026-10-08） | 1 | candidate | アカウント切替はせず、コマンド単位で認証トークンを渡す。委託プロンプトの境界に明記 |
@@ -90,6 +95,7 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | L-009 | 独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO-GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効） | PR #130 の Run acceptance レビュー（Issue #15 comment 6106366753 に至る 4 回） | 3 | candidate | 判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする |
 | L-010 | 『指摘ゼロ』を完了の定義にした机上レビューの往復が収束せず（15 回以上）、Run が進まなかった | PR #110・#116・#121・#122 のレビュー往復、本番スクリプトの NO-GO 3 回 | 2 | candidate | 必須を安全・秘密値・プロトコル違反・回収不能の 4 分類に絞り、推奨は事後改善に回す。同箇所の指摘が続く場合はドライランやリハーサルで実際に動かして確かめる |
 | L-011 | Judgment の適用範囲（scenario・rep）が引き継ぎや依頼文で略記（「r01」）されてセッション間に伝わり、範囲が広がって読まれた（対象は train/normalize-name の r01 ペアだけなのに、全 r01 を除外する集計案になりかけた） | Issue #15 comment 6072534007（T1 r01 retry の環境判断。当時の r01 は train/normalize-name だけ）、環境 Judgment 6107822908（条件 4「集計時の開示」の充足は判断していないと明記）、2026-10-12 の #15 本文「現在地」の訂正 | 1 | candidate | Judgment の条件を引き継ぐときは、scenario・rep・条件を一次ソースの文言どおりに書き、comment ID を添える |
+<!-- learning-ledger:generated:end -->
 
 状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004、L-006。L-006 は検証結果の報告が実態とずれたEvidence完全性の問題）。昇格には原則2回以上の観測が必要で、これらはその例外です。
 
@@ -101,12 +107,12 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | --- | --- | --- |
 | CI 初回 pass 率 | merged PR の commits と、その commit の check run `validate` | PR 作成時刻以前に commit された最後の commit を最初の head commit とみなし（committer date からの推定。作成後の rebase / force push で別の commit を選ぶことがある）、その `validate` の完了 run のうち最も早いものの conclusion を見る。`success` の件数 ÷ 判定できた件数。run が無い、または `cancelled`・`skipped`・`neutral`・`stale` だけの PR は判定不能として分母から外し、件数を別に出す |
 | レビューループ数 | merged PR の review（submitted_at）、review comment、commits | 時刻順に並べ、review / review comment の後に commit が来るたびに 1 ループと数える（連続する指摘は 1 回）。PR ごとの値から中央値と p90 を出す。GitHub に review / review comment として残らないレビュー（口頭・チャット・ローカル指摘）は数えない |
-| Learning ledger | 本書の「Learning ledger」表 | 状態別（`candidate` / `promoted` / `rejected`）の件数、回数 2 以上の `candidate`（昇格の検討対象）、Evidence 欠落の ID |
+| Learning ledger | `knowledge/learning-ledger.json`（本書の表は生成表示） | 状態別（`candidate` / `promoted` / `rejected`）の件数、回数 2 以上の `candidate`（昇格の検討対象）、Evidence 欠落の ID |
 
 取れない指標:
 
 - **permission prompt 数** — GitHub にも Repository にも記録が残らないため集計しない
-- **再発率** — ledger に日付列が無いため直接は出せない。週次棚卸しで前週の集計と比べた「回数」の増分で代替する
+- **再発率** — 過去の ledger は日付不明が多く、全発生を日付別に記録していないため直接は出せない。週次棚卸しで前週の集計と比べた「回数」の増分で代替する
 
 ## 週次棚卸し
 
@@ -121,5 +127,5 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 
 1. **P1** — guidance drift validator、本書、Learning ledger（本PR）
 2. **P2** — PreToolUse hookでBash経由のFrozen file書き込みを検出（実装済み）
-3. **P3** — 指標の定期集計と週次棚卸し（実装済み。集計スクリプトのテスト `scripts/test_harness_metrics.py` は CI で実行。週次 workflow `harness-metrics.yml`（Job Summary と artifact に出力）。手順は「Measure」「週次棚卸し」。未決: 再発率を直接出すための ledger への日付列追加は、`harness_metrics.py` の解析と合わせて別途検討）
+3. **P3** — 指標の定期集計と週次棚卸し（実装済み。集計スクリプトのテスト `scripts/test_harness_metrics.py` は CI で実行。週次 workflow `harness-metrics.yml`（Job Summary と artifact に出力）。手順は「Measure」「週次棚卸し」。機械可読 ledger と既知の観測日は記録する。未決: 全発生の日時・観測期間を揃えた再発率の定義）
 4. **P4（post-EXP-001）** — このハーネス自体をDATの実験として評価する（#21、#59 と関連）

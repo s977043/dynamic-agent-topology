@@ -14,6 +14,8 @@ GITHUB_TOKENが作成したPRは通常PR CIを自動起動しません。schema/
 
 ## 停止・回収
 
+初回の実測結果、403停止時の確認順序、受理条件は[初回運用検証と復旧](HARNESS_LIVE_OPERATIONS.md)を参照してください。
+
 `MAIN_MOVED_RETRY`は次回mainで再検討します。`PROPOSAL_REF_EXISTS`は同名refの由来を確認し、上書きしません。`PROPOSAL_HISTORY_EXISTS`は過去起案を確認します。API失敗後はdraft/ref/commitの有無を確認し、残存refを自動削除しません。workflowを無効化する場合もHumanがGitHub設定で実施します。tokenやrawログを公開しません。
 
 ## 検証

@@ -30,6 +30,8 @@ RepositoryのActions設定でGitHub ActionsによるPR作成が許可されて�
 
 ## 検証と制約
 
+初回の実測結果、403停止時の確認順序、受理条件は[初回運用検証と復旧](HARNESS_LIVE_OPERATIONS.md)を参照してください。
+
 `python scripts/test_observe_learning.py`はネットワーク・書込みなしで、attempt/日時、本文非転載、候補の冪等性、既存状態保持、main移動、既存draft/ref保護、外部API拒否、paginationを検証します。通常CIにも追加しています。
 
 各endpointは100ページ・1ページ100件、responseは8MB、request timeoutは20秒、job timeoutは15分に制限します。履歴増大やrate limitで全取得できないと提案を出しません。古いrunの再試行が直近で完了する場合を落とさないため、run作成日だけで早期打切りをしません。この制約下で取得成功した範囲の観測であり、GitHub外の失敗や自由形式レビューは対象外です。

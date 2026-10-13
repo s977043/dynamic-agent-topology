@@ -40,6 +40,8 @@
 1. [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) — Git外にあるGitHub設定の意図と監査方針
 2. [RELEASE_READINESS.md](RELEASE_READINESS.md) — release candidateの選定からtag / GitHub Release公開までのゲート
 3. [AGENT_HARNESS.md](AGENT_HARNESS.md) — このRepositoryを開発するAgentの学習ループ、自律境界、Guard
+4. [ENVIRONMENT_USAGE.md](ENVIRONMENT_USAGE.md) — クラウド・Mac・ThinkPadの環境差分、用途別の利点と制約、検証順序（非規範的な検討記録）
+5. [KNOWLEDGE_OWNERSHIP.md](KNOWLEDGE_OWNERSHIP.md) — 共有するプロジェクト知識と環境メモリの保存先、再確認と引き継ぎ
 
 ## Document roles
 
@@ -58,6 +60,8 @@
 | `METRICS.md` | 評価指標の意味 | 評価ガイド |
 | `EXP-001_*` | EXP-001の実行・記録補助 | ナビゲーション / 運用ガイド |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
+| `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |
+| `KNOWLEDGE_OWNERSHIP.md` | repo知識と環境memoryの分担、引き継ぎ | 運用ガイド（権限・実験条件を変更しない） |
 | `RELEASE_READINESS.md` | Release candidateのEvidence / metadata / publication gate | Release運用チェックリスト |
 
 ## Writing conventions

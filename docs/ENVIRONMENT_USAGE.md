@@ -15,7 +15,8 @@ Codexクラウドで以下を実施しました。
 | PR #165 single-run / Freeze検証 | PASS | head `e8cb223950729974a2f74d050b07cb5e8e4ce39f`。正式ACCEPTではない |
 | PR #168 review package tests | PASS | head `cd64d6ceef269c18f4c1a597ef8a046d0003b133`。独立レビューではない |
 | run-kit-g selftest | PASS | main上のテンプレート・Gate等の非modelテスト。sandbox実測やmodel起動ではない |
-| Git fetch / main SHA照合 | 成功 | Git pushはこの環境調査では未検証 |
+| Git fetch / main SHA照合 | 成功 | 上記mainとの一致を確認 |
+| Git push | 成功 | 後続のPR #169作成・修正時に同クラウドからbranchへpush。main更新やAPI認証とは別 |
 | クラウドのgh api | Forbidden | api.github.comがHTTP許可先に含まれていない |
 | GitHubコネクターのコメント投稿 | 成功 | クラウドCLIの認証・通信成功を意味しない |
 
@@ -39,7 +40,7 @@ Codexクラウドで以下を実施しました。
 | Docker server / context | 28.4.0 / default | 未確認 | 未確認 | 未確認 | 29.7.2 / desktop-linux |
 | HTTP policy | restricted / enforced、api.github.comなし | 未確認 | 未確認 | 未確認 | 今回未再実測 |
 | CLI認証 | 環境statusのsecret / outbound identity設定は空。認証ready未確認 | 未確認 | 未確認 | 未確認 | 毎Run、隔離・negative checkを確認 |
-| GitHub操作経路 | Git fetch成功、gh api Forbidden、コネクター投稿成功 | 未確認 | 未確認 | 未確認 | ghでJudgment / ACCEPT照合 |
+| GitHub操作経路 | Git fetch / branch push成功、gh api Forbidden、コネクター投稿成功 | 未確認 | 未確認 | 未確認 | ghでJudgment / ACCEPT照合 |
 | sandbox / 権限 | 作業sessionはdanger-full-access。実験sandboxとは別 | 未確認 | 未確認 | 未確認 | 固定config / Bubblewrap等をGate実測 |
 | #165原本証跡 | Operator側status.log / evidence.tar未取得 | 未確認 | 未確認 | 未確認 | Operator側で保存・回収 |
 

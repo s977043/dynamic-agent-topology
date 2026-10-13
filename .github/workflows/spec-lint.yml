@@ -179,6 +179,12 @@ jobs:
       - name: Test frozen Bash guard hook
         run: python scripts/test_guard_frozen_bash.py
 
+      - name: Validate learning ledger and generated table
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/learning_ledger.py
+
+      - name: Test learning ledger
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_learning_ledger.py
+
       - name: Test harness metrics collector
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_harness_metrics.py
 

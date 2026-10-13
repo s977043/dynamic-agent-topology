@@ -16,9 +16,11 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from learning_ledger import legacy_rows, load as load_learning_ledger
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = "s977043/dynamic-agent-topology"
-DEFAULT_LEDGER = ROOT / "docs" / "AGENT_HARNESS.md"
+DEFAULT_LEDGER = ROOT / "knowledge" / "learning-ledger.json"
 API_ROOT = "https://api.github.com"
 API_HOST = "api.github.com"
 REPO_PATTERN = re.compile(r"[\w.-]+/[\w.-]+", re.ASCII)
@@ -318,7 +320,8 @@ def main(argv: list[str] | None = None) -> int:
         "since": since.isoformat(timespec="seconds"),
         "until": until.isoformat(timespec="seconds"),
         **collect_pr_metrics(github_fetcher(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")), args.repo, since),
-        "ledger": summarize_ledger(parse_ledger(args.ledger.read_text(encoding="utf-8"))),
+        "ledger": summarize_ledger(legacy_rows(load_learning_ledger(args.ledger)) if args.ledger.suffix == ".json"
+                                   else parse_ledger(args.ledger.read_text(encoding="utf-8"))),
     }
     report_json = json.dumps(report, ensure_ascii=False, indent=2)
     if args.json:

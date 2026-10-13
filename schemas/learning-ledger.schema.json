@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Development harness learning ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "entries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "observation",
+          "evidence",
+          "count",
+          "state",
+          "countermeasure",
+          "observedDates"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^L-[0-9]{3,}$"
+          },
+          "observation": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\r\\n|]+$"
+          },
+          "countermeasure": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\r\\n|]+$"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "enum": [
+              "candidate",
+              "promoted",
+              "rejected"
+            ]
+          },
+          "observedDates": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "description",
+              "urls"
+            ],
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\r\\n|]+$"
+              },
+              "urls": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://github\\.com/[^/]+/[^/]+/(pull|issues|commit|actions)/[^\\s]+$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -69,13 +69,15 @@ Codex CLIの版を合わせるだけではCPU・kernel・Docker・sandboxの一�
 
 ## 次の検証順序
 
+最優先は#165の正式ACCEPTとEXP-001の完了です。以下の環境採取・開発検証は並行して進められます。他の3環境の採取完了を、#165のレビューや既存Operator環境での次Run開始の新しい前提にはしません。各実験Runの進行可否はIssue #15と既存手順で判断します。
+
 1. Claude Codeクラウド、Mac、ThinkPadで、確認日時・環境ID・repo SHA・実行階層を付けて同じ項目を採取する。未確認値を推測で埋めない。
 2. 各開発環境でPython 3.12とrequirements-ci.txtを使用し、[spec-lint.yml](../.github/workflows/spec-lint.yml)の関連検証を再現する。PYTHONDONTWRITEBYTECODE=1でFrozen fixtureの生成物を防ぐ。
 3. #165の原本証跡を独立Reviewerへ提供し、正式ACCEPT・merge後、承認済みOperator環境でregression r03 T0 → T1を進める。各Runで前RunのGateを守る。
 4. クラウドのレビュー材料取得と保存を整える。標準review_package.py buildはgh pr view / gh apiに依存するため、コネクター利用だけでは動かない。当面は原文材料をコネクターで取得して取得元と不足を記録する。継続使用するなら正式な環境設定手順でAPI宛先・認証を構成し、通信と認証を別々に検証する。
 5. 18/18受理・集計再現・独立レビュー・最終Judgment・Freeze解除後、クラウド用実験を別系列で検討する。環境ごとにT0/T1完全ペアと順序反転を確保し、予算・CPU割当・実効model/effort・image/CLI hash・計測境界を事前定義する。
 
-原本証跡の保管と公開用派生資料は分けます。秘密値・認証ファイル内容・未加工traceを公開せず、原本との照合に必要なhashや編集範囲を残します。クラウドの保存・破棄仕様は未確認なのでworkspaceを唯一の証跡保管先にしません。環境移設でhome依存のattempt台帳が失われると重複実行を防げないため、Issue #15と過去attemptを照合する必要があります。
+原本証跡の保管と公開用派生資料は分けます。秘密値・認証ファイル内容・未加工traceを公開せず、原本との照合に必要なhashや編集範囲を残します。クラウドの保存・破棄仕様は未確認なのでworkspaceを唯一の証跡保管先にしません。環境移設でhome依存のattempt台帳が失われると重複実行を防げないため、Issue #15と過去attemptを照合する必要があります。台帳の照合だけで既存runIdの再prepareや再実行を許可しません。既存attemptを進める場合は、run-kit-gが要求するレビュー済みslot disposition等の手順に従います。
 
 独立レビューには作者と別のfresh sessionへhead固定の実ファイル・差分・Issue/PR原文・基準文書・必要な証跡を渡し、runtime/model/session IDと根拠リンクを記録します。共有contextの複数Agentによる検討、CI成功、権限表示はそれぞれ独立判断や実操作成功の代替ではありません。
 

@@ -190,6 +190,14 @@ check(parsed == {"verdict": "不明", "required": "不明", "recommended": "0"}
       "conflicting summary lines are recorded as unknown")
 check(parse_review("Verdict: MERGE_OK\nVerdict: MERGE_OK\n必須: 0 件\n推奨: 0 件")[0]["verdict"] == "不明",
       "duplicated summary lines are recorded as unknown even when they agree")
+parsed, notes = parse_review("Verdict: MERGE_OK\n必須: 2 件\n推奨: 0 件")
+check(parsed == {"verdict": "不明", "required": "2", "recommended": "0"}
+      and any("MERGE_OK" in note for note in notes),
+      "a MERGE_OK with blocking findings cannot be recorded as an approval")
+parsed, notes = parse_review("Verdict: MERGE_OK\n推奨: 0 件")
+check(parsed["verdict"] == "不明" and parsed["required"] == "不明",
+      "MERGE_OK cannot be trusted without a single zero-required-findings line")
+
 
 HOME = str(Path.home())
 LOCAL_PKG = {"checkout": "/private/tmp/s/pkg/checkout", "materials": "/private/tmp/s/pkg/materials"}

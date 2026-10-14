@@ -1,41 +1,39 @@
 # 残タスクの実行計画
 
-2026-10-14 UTCのチェックポイント。最新状態は各Issueを正本とし、実行前に更新・受理コメント・main SHA・CIを読み直します。確認時mainは `f39a3a50aa0c0bb0ee5ad1fc39f54bbcbac572d3`、Open Issue14件・Open PR0件、mainのspec-lint/CodeQL/ScorecardはSUCCESSでした。
+> Current checkpoint: 2026-10-14 JST。これは実行時点のスナップショット。**各Issue・PR・main HEAD・CI・Human承認記録を作業直前に再取得する**。過去の16/18や次Run指示は現行計画ではない。
 
-## 進展と判断材料
+## 現在地（一次ソースと承認境界）
 
-[#165](https://github.com/s977043/dynamic-agent-topology/pull/165) は統合済みです。[Codex受理6157691664](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6157691664) と [Antigravity受理6157693082](https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6157693082) が対象RunのACCEPTを記録しています。受理対象head `e8cb223` と統合前head `e5d04e2` のRun Artifact不変は [6157742024](https://github.com/s977043/dynamic-agent-topology/pull/165#issuecomment-6157742024) に記録されています。これは既存Reviewer判断の状態確認であり、このクラウドによる原本再監査ではありません。
+- `main` 確認時SHA: `55c47011116cf3e792df808135039ce21e05fd34`（PR #182反映後）。
+- Open Issues: 14 / Open PRs: 1（確認時）。PR一覧・Issue一覧は都度再確認。
+- [EXP-001 Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15): **18/18 empirical Runs ACCEPT、9/9 paired blocks**。18/16件版の集計再現と独立結果レビュー後、[DECISION.md](../experiments/EXP-001-t0-vs-t1/DECISION.md) は **PILOT COMPLETE — Keep T0**（PR #181 / #182 はmerge済み）。
+- [Feature Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md): **ACTIVE revision 3**。解除提案は[Draft PR #183](https://github.com/s977043/dynamic-agent-topology/pull/183)。最終head `11db1df588b7664b801a8693409ff62fdf2b0d52` のCI SUCCESSは確認記録があるが、**別セッション独立レビューとHuman明示承認・Human mergeは未達**。この計画を承認の代わりに使わない。
+- EXP-001の観測範囲はCodex / gpt-6.1-sol / high、3 ScenarioのPilot。T0/T1両側成功率100%、T1の平均Token量はT0の2.206倍。難しいTaskや他Runtimeへの一般化は禁止。
+- `docs/AGENT_HARNESS.md` に基づき、Feature Freeze改訂・Frozen artifact変更・release/tag・force push・削除・secretはHuman専権。通常PRも必須CI・作成者と別セッションの独立レビュー・自律境界を満たしてからmerge。
 
-EXP-001は16/18・8/9ペア。残りはregression safe-divide r03 T0→T1です。Feature FreezeはACTIVE/revision3。先行env-check STOP原本の未確認など、受理コメントの制約は最終分析でも保持します。train/normalize-name r01ペアの環境交絡を全r01へ拡張しません。
+## 優先順位・残条件
 
-## 順序・担当・完了条件
+| 順序 | Issue / PR | 次の実行可能な最小作業 | 完了条件 |
+| --- | --- | --- | --- |
+| 0 | [#183](https://github.com/s977043/dynamic-agent-topology/pull/183) / [#15](https://github.com/s977043/dynamic-agent-topology/issues/15) | 最新headで別セッション独立レビューとCIを照合し、**Humanが明示承認してHuman自身がmerge**。Agentは自己承認・mergeしない | `main` でfreeze status / 33 frozen blobs / 18 Run / DECISION / CIを再確認し、#15へ監査結果を記録 |
+| 1 | [#57](https://github.com/s977043/dynamic-agent-topology/issues/57) | 既存のattestation ↔ trace ↔ evaluation間のprovenance不整合を負側fixtureで再現し、独立auditの最小案を比較 | 不明をUNKNOWNに保持し、観測外の違反ゼロを推定しない。旧Experimentの評価意味論は書換えない |
+| 2 | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) / [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) | T0をBaselineに、selectorのshadow判断とtreatmentのpaired効果を分離して設計 | 宣言済み母集団・安全な副作用隔離・独立Outcome・追加Costを満たす |
+| 並行 | [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | Actionsからの自動draft PR作成が403で止まる理由を**管理者が設定とpolicyで確認** | 正規GITHUB_TOKEN経路でdraft成功、Observe/Promoteのno-op、必須CIの起動を実測。設定変更・権限拡張はここで行わない |
+| 並行 | [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | Repository設定・保護ルール・Release readinessの未確認値を権限ある担当が取得 | 現在値の根拠を照合。Release/tagはHuman判断 |
+| 後続 | #21 / #42 / #59 / #63 / #82 / #150 / #162 / #166 | 個別研究の仮説・反証条件・最小実測を比較 | EXP-001解除を確認し、各Issueの個別GateでGO / NO-GO / INCONCLUSIVEを記録 |
 
-| 優先 | 対象 | 次の対応 | 担当・依存 | 完了条件 |
-|---|---|---|---|---|
-| 1 | #15 状態同期 | 冒頭の16/18・次slot・履歴識別への更新を確認済み。以後も実行前に再読 | Agent、他セッション更新を保持 | 現状と履歴を明示。今回の同期は既存更新で達成 |
-| 2 | #15 r03 T0 | 既存OPERATOR/run-kit-g手順でfresh環境・sessionの実測 | Operator、直前ACCEPT6157691664・既存Gate | 実7Artifact、必須CI、独立Run ACCEPT、merge |
-| 3 | #15 r03 T1 | T0受理・merge後、既存counterbalanced matrixに従い実測 | Operator、r03 T0の受理 | 同上、18/18・9/9ペア |
-| 4 | #15 完了分析 | completeness検証、再現集計、全18件と交絡ペア除外16件の比較、制約開示、DECISION.md | Agentが材料・分析PR、18/18受理が前提 | 独立レビュー・結果PR統合後、既存Freeze解除手続き |
-| 並行 | #159 初回運用 | ActionsのPR作成許可と適用policyを確認し正規経路を検証 | 管理者の設定アクセスが必要 | GITHUB_TOKEN draft成功、Observe no-op、生成PRのCI起動経路を実測 |
-| 並行 | #31 公開整備 | 未確認security設定の取得と照合、Release readinessを確認 | 設定アクセス、Release/tagはHuman判断 | 設定証跡・監査結果、Release可否の記録 |
-| 後続 | post-freeze研究 | 下記Issueを仮説・対照・指標・必要環境で比較し採用候補を絞る | EXP-001完了・既存解除手続き | 各Issueの受理条件とDAT-side Evidenceを満たして判断 |
+上記の優先度は実行提案であり、実験着手・Policy適用・権限変更の許可ではない。特に#57以降の実装変更はFreeze解除の正本を確認するまで開始しない。
 
-post-freeze対象は #21・#42・#57・#59・#63・#82・#88・#93・#150・#162・#166。文献追加や実験計画だけで実証完了・採用済み・Issue完了にしません。詳細の受理条件は各Issueを参照します。
+## 検討 → レビュー → 対応 → レビュー（繰り返し）
 
-## 開発ハーネスの残条件
+1. **Inspect**: 最新のIssue・PR・branch head・変更対象契約とHuman-owned境界を再取得。過去チェックポイント・セッションmemoryを最新事実と誤認しない。
+2. **Plan & challenge**: 最小のreversibleな修正、期待する観測、負側テスト、rollback、交絡要因を確認。Agile Coach / Scrum Masterは必要時のみ相談し、独立Reviewerに代えない。
+3. **Change & verify**: 小さなbranch/PRを作り、対象テスト・Freeze監査・必要CIを実測。失敗と未観測をPASSに置換しない。
+4. **Independent review & disposition**: 作成者とは別セッションのReviewerがhead固定で差分とEvidenceを検査。必須指摘を修正し、CI・差分・headが変われば再レビュー。
+5. **Merge or block**: Human専権変更はHuman自身による承認・merge待ち。その他のPRでも既存の自律境界を満たす場合だけmergeする。未達はIssueに証跡・阻害要因・解除条件を残す。
 
-#159の①〜⑤は統合済み。初回Observe/PromoteはPR作成で403停止し、別作業の手動診断draft #175/#176をレビュー後に統合しました。Promote attempt2は `PROPOSAL_UNCHANGED`・SUCCESSで、同入力no-opのみ実測済みです。[初回運用検証と復旧](HARNESS_LIVE_OPERATIONS.md) に失敗/成功と認可経路を分けて記録しています。
+## 過去状態と再確認
 
-403の具体的設定・policy原因は未確定。現在のcloud APIアクセス制限とconnectorの設定endpoint非対応により管理設定の取得・変更は未実施です。残存ref/過去PRを削除・再利用して初回成功を作りません。Observeの再実行は新しいCI失敗等を採取し得るため、Promoteのno-op結果を転用せず入力と書込み経路を別途レビューします。
-
-Mac・ThinkPad・Claude Code cloudの直接接続とmemory移行も未実測です。[環境比較](ENVIRONMENT_USAGE.md) の値は観測時点のものとして扱います。クラウド環境を承認済み実験環境の代わりに使いません。
-
-## 計画更新と3ループ
-
-調査中にIssue #15が他セッションから更新されたため、古い本文を使った変更案は破棄しました。更新直前に原文を再取得し、変更があれば計画を再レビューします。並行更新を上書きする全本文置換は行いません。
-
-1. 検討→計画レビュー→対応→再レビュー：最新Issue・受理コメント・main/CIを確認し、依存・担当・完了条件を決める。矛盾があれば原文と履歴を保って状態を同期する。
-2. 検討→レビュー→対応→再レビュー：実行可能な変更と検証を行い、別セッションが一次材料を照合する。失敗・未確認・アクセス不足を結果として残し、計画の依存を更新する。
-3. 検討→レビュー→対応→再レビュー：最終head・最新mainとの差分・必須CI・独立指摘の解消を確認する。ユーザーのレビューOK後merge指示と既存自律境界に従い統合し、Issueと計画を更新する。
-
-通常Runの起動・既存runIdの再prepareはAgentが代行しません。18/18以前の最終判断、Frozen条件変更、Freeze解除・Release/tagの権限をこの計画から推定しません。接続不足の項目は担当と解除条件を残してopenを維持し、未実測の成果を作りません。
+- **16/18 Run**、safe-divide r03を次に実行、#165待ち、`DECISION NOT RUN`などは過去のチェックポイントであり、**再実行指示ではない**。履歴は[#15](https://github.com/s977043/dynamic-agent-topology/issues/15)と過去commitを参照。
+- #159のObserve/Promoteの自動PR作成403は未解決。手動作成した診断PRのmergeやPromote no-op成功を、正規自動draft成功と混同しない。[Live operations](HARNESS_LIVE_OPERATIONS.md)を参照。
+- Mac / ThinkPad / Claude Code cloudの接続・環境値は未実測が残る。[Environment usage](ENVIRONMENT_USAGE.md)の履歴値を承認済みRun条件に転用しない。

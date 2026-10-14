@@ -8,7 +8,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## 0.3.0 — release candidate (unpublished)
 
-Content candidate: `5c310945fcfef96004db8662bd9796e7d7243a22`.
+Content candidate: `3b760ffc56bd724d6378abaff1a46e7036365fab`.
 
 Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
 
@@ -17,6 +17,8 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - EXP-001 (T0 vs T1 pilot) completed 18 / 18 runs with recorded Run Artifacts; `DECISION.md` records **Keep T0**. This is a pilot-scope experiment conclusion, not a change to project adoption status and not evidence that T1, a Verifier, or any other Topology/Capability is effective or ineffective in general.
 
 ### Added
+
+- Independent, read-only provenance audit with PASS / FAIL / UNKNOWN reports and negative tests; historical Run acceptance remains unchanged. Operational evaluation records fixture coverage, local execution cost, and unmeasured manual-review limits.
 
 - EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
 - EXP-001 18-run aggregation, `DECISION.md`, completed-snapshot audit, and documented one-time retry / recovery procedures.
@@ -40,7 +42,8 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - EXP-001 preparation provenance is separated from runtime execution attestation.
 - Security reporting and coordinated-disclosure expectations are explicit.
 - GitHub Actions use least-privilege permissions and immutable action SHAs.
-- Current README/CITATION metadata no longer advertises an unpublished version; version metadata is added only with an immutable tag and GitHub Release.
+- Release preparation distinguishes an unpublished version proposal from a published tag/Release; publication date is left unset until Human confirmation.
+- Execution planning and Learning ledger record completed Freeze/EXP-001 status and release-candidate drift; unsupported failure attribution remains unknown.
 - Brownfield adoption now documents an evidence-based complexity-promotion rule instead of treating additional agents, loops, or graph structure as default progress.
 - Human-facing supervision is clarified as a coordination cost: experiments should control or disclose materially different human-facing concurrency, while `human_interventions` remains a count rather than a cognitive-load metric.
 - Agent operation follows a Human-on-the-loop (HOTL) autonomy boundary documented in `docs/AGENT_HARNESS.md`.

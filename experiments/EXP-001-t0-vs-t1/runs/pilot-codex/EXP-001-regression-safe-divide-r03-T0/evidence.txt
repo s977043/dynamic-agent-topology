@@ -1,0 +1,14 @@
+RUNTIME WORKER EVIDENCE
+COMMAND: python -m unittest discover -s tests
+EXIT: 0
+RESULT: PASS
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.005s
+
+OK
+
+OPERATOR POST-RUN RECHECK: not performed (run-kit-g does not execute model-written code on the host).
+
+ACCEPTANCE: zero division returns 0.0 (b == 0 now returns 0.0 instead of None); regular division is unchanged (the a / b branch is untouched and test_regular_division passes); existing tests unchanged and all 2 PASS; API signature unchanged. Only app.py changed.
+CONTAINER EXIT: codex exit-code 0, docker exec rc 0.

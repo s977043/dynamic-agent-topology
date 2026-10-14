@@ -9,6 +9,7 @@ import yaml
 from audit_exp001_completed_snapshot import (
     MANIFEST,
     ORIGINAL_BLOBS,
+    ROOT,
     audit_snapshot,
 )
 
@@ -62,7 +63,7 @@ changed["spec"]["files"][0]["gitBlobSha"] = "0" * 40
 must_fail(
     "manifest and file changed together",
     changed,
-    forged_sha=lambda path: "0" * 40 if str(path).endswith(target) else ORIGINAL_BLOBS[path.as_posix().split("/dynamic-agent-topology/")[-1]],
+    forged_sha=lambda path: "0" * 40 if str(path).endswith(target) else ORIGINAL_BLOBS[path.relative_to(ROOT).as_posix()],
 )
 
 if failures:

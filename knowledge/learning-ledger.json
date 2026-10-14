@@ -217,6 +217,57 @@
       "observedDates": [
         "2026-10-12"
       ]
+    },
+    {
+      "id": "L-015",
+      "observation": "release PR が open の間に別の PR を merge し、release PR を update-branch した。CHANGELOG と record に固定した content candidate（`24fa06b`）と head の内容が合わなくなり、独立レビューで major 指摘を受けて再レビューが 1 周増えた",
+      "evidence": {
+        "description": "2026-10-14 PR #186（candidate `24fa06b`）の open 中に #187（`5c31094`）を merge し、merge commit `23ee816` で main を取り込んだ。PR #186 comment 6166299468（2 回目レビュー REQUEST_CHANGES）、`604723c` で candidate を更新し comment 6166648419 で ACCEPT",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/186#issuecomment-6166299468",
+          "https://github.com/s977043/dynamic-agent-topology/pull/186#issuecomment-6166648419",
+          "https://github.com/s977043/dynamic-agent-topology/pull/187"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "release PR が open の間は他の PR を merge しない。merge するときは、candidate の更新と CHANGELOG への追記まで同じ作業で行う",
+      "observedDates": [
+        "2026-10-14"
+      ]
+    },
+    {
+      "id": "L-016",
+      "observation": "Human しか決められない `CITATION.cff` の `date-released` に根拠のない仮の値を入れ、独立レビューで major 指摘を受けた",
+      "evidence": {
+        "description": "2026-10-14 PR #186 の 1 回目レビュー（head `254f2c6`、REQUEST_CHANGES、major: `date-released` の根拠がない）。comment 6166299468 の表に記録",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/186#issuecomment-6166299468"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "Human しか決められない値は仮の値で埋めず、PR 本文に Human の確定項目として書く",
+      "observedDates": [
+        "2026-10-14"
+      ]
+    },
+    {
+      "id": "L-017",
+      "observation": "委託先ワーカーが spec-lint の一部の step だけで検証して push し、CI で `validate_project.py` が失敗した（`examples/brownfield` の `dat.lock.yaml` の版数 0.2.1 が DAT の 0.3.0 と不一致）",
+      "evidence": {
+        "description": "2026-10-14 PR #186 初回 push `273f888` の spec-lint run 38538541183 が failure（Validate external project adoption）。`254f2c6` で修正し run 38538844027 は success",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/actions/runs/38538541183",
+          "https://github.com/s977043/dynamic-agent-topology/commit/254f2c66f9c5fb3b1c917541ba7bfdc2792d3c45"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "委託では、push 前に `.github/workflows/spec-lint.yml` の全 step を Python 3.12 で実行して exit 0 を確かめることを完了の条件にする",
+      "observedDates": [
+        "2026-10-14"
+      ]
     }
   ]
 }

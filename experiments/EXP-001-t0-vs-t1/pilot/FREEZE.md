@@ -1,11 +1,13 @@
 # EXP-001 Feature Freeze
 
-**Status: ACTIVE**  
+**Status: COMPLETED**  
 **Revision: 3**  
 **Execution issue: #15**  
 **Freeze issue: #16**
 
-EXP-001は設計フェーズを終了し、一次データ取得フェーズへ移行しています。
+**Completion evidence (2026-10-14):** EXP-001 18/18 Run artifacts and 9/9 paired blocks accepted and merged ([Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15)); completeness validation and reproducible 18/16-case summary verified; independently reviewed decision [PR #181](https://github.com/s977043/dynamic-agent-topology/pull/181) merged with **Keep T0**; README status aligned in [PR #182](https://github.com/s977043/dynamic-agent-topology/pull/182); main required CI passed. Revision 3 and all 33 frozen blob identities are retained as the experiment snapshot. This completion record is a lifecycle status change, not permission to rewrite experiment evidence.
+
+EXP-001のPilot一次データ取得・独立結果レビューは完了しました。以下は実測期間中に適用したFeature Freezeの規則を記録したものです。
 
 この期間の原則は次です。
 
@@ -102,6 +104,12 @@ EXP-001について結果記事・Benchmark claimを出すのは、次の後で�
 
 最初の結果は一般化されたBenchmarkではなく、**Pilot observation** として扱います。
 
+
+## Completed snapshot audit
+
+Freeze解除を提案するPRでは、`freeze.yaml` 内の `gitBlobSha` と現在の作業ツリーが一致するだけでは**元の承認済みsnapshotを保証しない**ことに注意します。`scripts/audit_exp001_completed_snapshot.py` は、変更可能なmanifestから独立して、レビュー済み `main` commit `55c47011116cf3e792df808135039ce21e05fd34` にあったrevision 3の**固定33件のpath/blob SHA**と、現在のmanifest・実ファイルの両方を比較します。manifestとファイルを同時変更した負側テストも含みます。
+
+この追加CIは偶発的なドリフトを検出する補助策であり、悪意のあるmaintainerによるCIスクリプトごとの改変から完全に守るSecurity Boundaryではありません。変更者と独立Reviewerによる差分監査、Human-owned Freeze変更の明示承認を引き続き必要とします。
 
 ## Unfreeze
 

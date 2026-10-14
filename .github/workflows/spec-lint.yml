@@ -158,8 +158,38 @@ jobs:
       - name: Test T1 r01 static retry audit
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_exp001_t1_retry.py
 
-      - name: Audit reviewed T1 r01 static retry evidence
-        run: PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_t1_retry.py
+      - name: Audit reviewed T1 r01 static retry evidence (active freeze only)
+        run: |
+          STATUS=$(python -c 'from pathlib import Path; import yaml; print(yaml.safe_load(Path("experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml").read_text())["metadata"]["status"])')
+          case "$STATUS" in
+            active)
+              PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_t1_retry.py
+              ;;
+            completed)
+              echo "SKIP: one-time T1 r01 preflight applies only to active freeze"
+              ;;
+            *)
+              echo "Unsupported EXP-001 freeze status: $STATUS" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Audit original EXP-001 frozen snapshot after completion
+        run: |
+          STATUS=$(python -c 'from pathlib import Path; import yaml; print(yaml.safe_load(Path("experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml").read_text())["metadata"]["status"])')
+          case "$STATUS" in
+            completed)
+              PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_completed_snapshot.py
+              PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_exp001_completed_snapshot.py
+              ;;
+            active)
+              echo "SKIP: completed snapshot audit applies after Human-owned unfreeze"
+              ;;
+            *)
+              echo "Unsupported EXP-001 freeze status: $STATUS" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Test T1 r01 candidate G bind-source audit
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_exp001_g_bind_sources.py

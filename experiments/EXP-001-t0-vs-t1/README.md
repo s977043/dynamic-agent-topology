@@ -61,7 +61,7 @@ Pilot Artifactが18 Run揃うまで `DECISION.md` は `NOT RUN` のまま維持�
 
 ## Feature Freeze
 
-EXP-001は実測フェーズに入ったため、18 Run完了まで実験条件を凍結します。
+EXP-001の18 Runと独立した結果レビューは完了しました。実験中はrevision 3の条件を凍結し、完了後もfreeze manifestを実験時点のスナップショットとして保持します。
 
 - Freeze policy: [pilot/FREEZE.md](pilot/FREEZE.md)
 - Freeze manifest: [pilot/freeze.yaml](pilot/freeze.yaml)

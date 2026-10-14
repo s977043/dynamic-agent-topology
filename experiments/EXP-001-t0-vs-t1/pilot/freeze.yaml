@@ -3,7 +3,7 @@ kind: ExperimentFreeze
 metadata:
   name: EXP-001-feature-freeze
   experiment: EXP-001-t0-vs-t1
-  status: active
+  status: completed
   revision: 3
 spec:
   baselineCommit: f172eb1e273af736ec1ecbd72f8b4c8874739808

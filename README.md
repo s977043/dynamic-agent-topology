@@ -169,13 +169,13 @@ Topology全体だけでなく、Role / Skill / Verifierなど**内部Capability�
 
 ## Current Focus
 
-現在の最優先は **EXP-001の一次データ取得**です。
+EXP-001のPilot一次データ取得と結果レビューは完了しました。次の研究・実装は、検証済みEvidenceと承認済みの変更境界に基づいて個別に判断します。
 
 - Execution tracking: Issue #15
-- Empirical runs: **live progress is tracked in Issue #15**
-- Feature Freeze: **ACTIVE**
+- Empirical runs: **18 / 18 ACCEPT; 9 / 9 paired blocks** ([Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15))
+- Feature Freeze: **COMPLETED**（revision 3 の実験スナップショットは保持）
 - `DECISION.md`: **PILOT COMPLETE — Keep T0**（18 / 18 Run、[DECISION.md](experiments/EXP-001-t0-vs-t1/DECISION.md)）
-- 新Topology / Routing拡張 / Research・Production Profile設計: **EXP-001完了まで延期**
+- 新Topology / Routing拡張 / Research・Production Profile設計: **post-freeze研究候補として個別検証**（未採用）
 
 Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)
 

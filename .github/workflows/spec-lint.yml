@@ -174,26 +174,22 @@ jobs:
               ;;
           esac
 
-      - name: Audit preserved frozen snapshot after EXP-001 completion
+      - name: Audit original EXP-001 frozen snapshot after completion
         run: |
-          PYTHONDONTWRITEBYTECODE=1 python - <<'PY'
-          from pathlib import Path
-          import yaml
-          from scripts.validate_experiment_freeze import git_blob_sha
-
-          manifest = yaml.safe_load(Path("experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml").read_text(encoding="utf-8"))
-          if manifest["metadata"]["status"] == "completed":
-              files = manifest["spec"]["files"]
-              if len(files) != 33 or len({item["path"] for item in files}) != 33:
-                  raise SystemExit("EXP-001 snapshot must retain 33 unique frozen paths")
-              for item in files:
-                  path = Path(item["path"])
-                  if path.is_absolute() or ".." in path.parts or path.is_symlink() or not path.is_file():
-                      raise SystemExit(f"Invalid EXP-001 snapshot path: {path}")
-                  if git_blob_sha(path) != item["gitBlobSha"]:
-                      raise SystemExit(f"EXP-001 frozen snapshot changed: {path}")
-              print("EXP-001 completed snapshot: all 33 frozen blobs intact")
-          PY
+          STATUS=$(python -c 'from pathlib import Path; import yaml; print(yaml.safe_load(Path("experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml").read_text())["metadata"]["status"])')
+          case "$STATUS" in
+            completed)
+              PYTHONDONTWRITEBYTECODE=1 python scripts/audit_exp001_completed_snapshot.py
+              PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_exp001_completed_snapshot.py
+              ;;
+            active)
+              echo "SKIP: completed snapshot audit applies after Human-owned unfreeze"
+              ;;
+            *)
+              echo "Unsupported EXP-001 freeze status: $STATUS" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Test T1 r01 candidate G bind-source audit
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_exp001_g_bind_sources.py

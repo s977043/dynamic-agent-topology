@@ -153,7 +153,7 @@ The highest priority is now **collecting empirical evidence for EXP-001**.
 - Execution tracking: Issue #15
 - Empirical runs: **live progress is tracked in Issue #15**
 - Feature Freeze: **ACTIVE**
-- `DECISION.md`: **NOT RUN**
+- `DECISION.md`: **PILOT COMPLETE — Keep T0** (18 / 18 runs, [DECISION.md](experiments/EXP-001-t0-vs-t1/DECISION.md))
 - New topologies, routing extensions, and Research/Production profile design: **deferred until EXP-001 completes**
 
 Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)

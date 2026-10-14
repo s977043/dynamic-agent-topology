@@ -174,7 +174,7 @@ Topology全体だけでなく、Role / Skill / Verifierなど**内部Capability�
 - Execution tracking: Issue #15
 - Empirical runs: **live progress is tracked in Issue #15**
 - Feature Freeze: **ACTIVE**
-- `DECISION.md`: **NOT RUN**
+- `DECISION.md`: **PILOT COMPLETE — Keep T0**（18 / 18 Run、[DECISION.md](experiments/EXP-001-t0-vs-t1/DECISION.md)）
 - 新Topology / Routing拡張 / Research・Production Profile設計: **EXP-001完了まで延期**
 
 Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)

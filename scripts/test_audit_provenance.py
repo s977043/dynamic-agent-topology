@@ -76,6 +76,6 @@ for name, expected_status, expected_exit in (
         cwd=ROOT, capture_output=True, text=True,
     )
     assert result.returncode == expected_exit, result.stdout + result.stderr
-    assert f"{name}: {expected_status}" in result.stdout, result.stdout
+    assert f"{run_dir.name}: {expected_status}" in result.stdout, f"{name}: {result.stdout}"
 
 print("Provenance audit tests: 9 fixtures, missing/duplicate/time controls, 18 historical runs, CLI PASS.")

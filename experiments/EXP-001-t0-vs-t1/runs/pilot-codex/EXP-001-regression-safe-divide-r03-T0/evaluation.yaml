@@ -1,0 +1,48 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-regression-safe-divide-r03-T0
+  experiment: EXP-001-t0-vs-t1
+  scenario: regression-safe-divide
+  condition: T0
+  blockId: EXP-001-regression-safe-divide-r03
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  inputTokens: 74468
+  outputTokens: 314
+  wallClockMs: 82000
+verdict: pass
+notes: Regression-split matrix Run r03-T0 (executionOrder 1, first Run of block r03), executed with
+  run-kit-g (candidate G; Issue 15 environment Judgment 6107822908 checked by the kit) with the same
+  environment.conf, config.toml and launch line as regression-safe-divide r02-T0. An earlier launch
+  of this slot stopped at the kit selftest (host venv missing the yaml module) before any attempt
+  was reserved, before the RD was created and before the model started; this Run is attempt 1.
+  Single rollout, no spawn_agent, wait_agent or other collaboration tool calls, no subagent session;
+  the developer items have the same SHA-256 as in r02-T0. One Worker made the only FileChange
+  (app.py, the b == 0 branch returns 0.0 instead of None) and ran the deterministic command; besides
+  that it ran pwd with rg --files and cat app.py tests/test_app.py, both read-only. Deterministic
+  unittest 2/2 PASS. For regression, test_regular_division (the existing regular-division behavior)
+  passes, the a / b branch is unchanged, tests unchanged and API unchanged, so no regression was
+  detected. patch.diff is byte-identical to r02-T0. No host-side rerun (run-kit-g does not execute
+  model-written code on the host). Tokens are the session's final total_token_usage. wallClockMs
+  spans (g) stdout date to separate container date (second precision). No hidden reasoning copied.

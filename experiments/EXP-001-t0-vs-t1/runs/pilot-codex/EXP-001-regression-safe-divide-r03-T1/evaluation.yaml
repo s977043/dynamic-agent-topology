@@ -1,0 +1,64 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-regression-safe-divide-r03-T1
+  experiment: EXP-001-t0-vs-t1
+  scenario: regression-safe-divide
+  condition: T1
+  blockId: EXP-001-regression-safe-divide-r03
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 3
+  acceptanceCriteriaTotal: 3
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: false
+efficiency:
+  agentInvocations: 2
+  coordinationTransitions: 2
+  inputTokens: 130896
+  outputTokens: 1054
+  wallClockMs: 59000
+verdict: pass
+notes: Regression-split matrix Run r03-T1 (executionOrder 2, second Run of block r03, after r03-T0),
+  executed with run-kit-g (candidate G; Issue 15 environment Judgment 6107822908 checked by the kit)
+  with the same environment.conf, config.toml and launch line as regression-safe-divide r02-T1.
+  Worker session spawned one Verifier subagent (same model/effort per turn_context) with fork_turns
+  none, unlike r01-T1 and r02-T1 (all). The Verifier rollout has no forked_from_id and no
+  subagent_history_start_ordinal (thread_source subagent, multi_agent_version v2); it holds no
+  inherited Worker history and no plaintext Run prompt user item. Its only user item is the
+  environment context (633 chars, identical to the Worker's); the task arrived as the handoff
+  agent_message, whose payload is encrypted and not readable. The Verifier's first developer item
+  has four text parts (24086, 707, 920 and 566 chars); the 707 and 920 parts equal the Worker's
+  first developer item parts, the 24086 and 566 parts do not. It is followed by a 2482-char
+  developer item (same SHA-256 as the r02-T1 Verifier's) and a 271-char developer item equal to the
+  Worker's. This differs from r01-T1 and r02-T1 (own-turn developer item with two parts, 22228 and
+  271 chars) and from clamp-boundaries r03-T1 (one 271-char part); no scenario markers were found
+  before the Verifier's first tool call. Verifier ran sed -n on app.py and tests/test_app.py and the
+  deterministic command in one exec call, made no file edits (apply_patch 0, FileChange 0), and
+  returned PASS with no findings. The Worker called wait_agent once with timeout 10 s; it returned
+  timed_out true at 01:59:09.897Z while the Verifier was still working (Verifier task_complete
+  01:59:11.293Z). The Worker did not call wait_agent again; the Verifier result reached the Worker
+  as an agent message at 01:59:11.931Z, before the Worker's final answer (01:59:17.712Z), which
+  reports the Verifier PASS. Deterministic unittest 2/2 PASS (Worker and Verifier). For regression,
+  test_regular_division (the existing regular-division behavior) passes in both sessions, the a / b
+  branch is unchanged, tests unchanged and API unchanged, so no regression was detected. Only
+  app.py changed (the b == 0 branch returns 0.0 instead of None). run-kit-g summary is HANDLING
+  quarantine because the in-container secret scan of collect-evidence matched pattern 2 in one
+  session file (opaque encrypted reasoning data, judged not a credential); evidence is not attached
+  to the Issue, the host-side 5-pattern scan found 0 files, and the run result stays COMPLETED. No
+  host-side rerun (run-kit-g does not execute model-written code on the host). Tokens are the sum
+  of both sessions' final total_token_usage. wallClockMs spans (g) stdout date to separate container
+  date (second precision). No hidden reasoning copied.

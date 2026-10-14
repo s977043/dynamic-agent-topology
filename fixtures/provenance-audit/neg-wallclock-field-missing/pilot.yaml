@@ -23,7 +23,7 @@ spec:
     split: test
   - id: regression-safe-divide
     split: regression
-  artifactRoot: fixtures/provenance-audit/neg-summary-field-missing/runs
+  artifactRoot: fixtures/provenance-audit/neg-wallclock-field-missing/runs
   matrixPath: experiments/EXP-001-t0-vs-t1/pilot/run-matrix.yaml
   notes: 'SYNTHETIC FIXTURE for Issue #57: artifactRoot only differs from EXP-001
     pilot.yaml.'

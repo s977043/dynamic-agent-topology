@@ -30,7 +30,7 @@ efficiency:
   coordinationTransitions: 0
   inputTokens: 1000
   outputTokens: 100
-  wallClockMs: 1
+  wallClockMs: 60000
 verdict: pass
 notes: 'SYNTHETIC FIXTURE for Issue #57. Not a real run; must never be counted as
   EXP-001 evidence.'

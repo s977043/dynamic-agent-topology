@@ -37,10 +37,11 @@ Run Artifact単位で、次の関係を検査しています。
 | `neg-fresh-session-mismatch` | 0 | 穴 |
 | `neg-timestamp-mismatch` | 0 | 穴 |
 | `neg-token-mismatch` | 0 | 穴 |
-| `neg-summary-field-missing` | 0 | 穴（観測できない値がPASSに化ける） |
+| `neg-token-field-missing` | 0 | 穴（観測できない値がPASSに化ける） |
+| `neg-wallclock-field-missing` | 0 | 穴（観測できない値がPASSに化ける） |
 | `neg-trace-session-unknown` | 0 | 穴（観測できない値がPASSに化ける） |
 
-6件の負側ケースがすべて現行のvalidatorを通過しました。これが #57 の再現です。
+7件の負側ケースがすべて現行のvalidatorを通過しました。各ケースは `baseline-consistent` との差分で1つの関係だけを壊しています（差分の要旨はfixtureのREADME）。これが #57 の再現です。
 
 ### 1.3 既存18 Runに対する読み取り専用の照合（参考）
 
@@ -77,19 +78,19 @@ Run全体の判定は、FAILが1つでもあればFAIL、なければUNKNOWNが1
 | 観点 | 案A: canonical validatorを拡張 | 案B: 独立した読み取り専用audit | 案C: Schemaで必須化・制約追加 |
 |---|---|---|---|
 | 内容 | `validate_pilot.py` に4関係の比較を足す | `scripts/audit_provenance.py`（仮）を新設し、関係ごとにPASS / FAIL / UNKNOWNを出す。fixtureのテストをspec-lintに組み込む | Trace start eventの `details` やsummaryのtoken fieldを必須にする |
-| 1.2の6件を検出できるか | FAILの4件は検出できる。UNKNOWNの2件は、2値のvalidatorではFAILかPASSのどちらかに倒すしかない | 6件すべてを区別できる | 欠落の2件だけ。ファイル間の不一致は表現できない |
-| UNKNOWNの保持 | 難しい（exit codeが2値） | できる | できない（欠落はschema error） |
+| 関係ごとの判定値（1.2の7件） | 報告にPASS / FAIL / UNKNOWNを出すように拡張すれば、7件とも区別できる | 7件とも区別できる | 欠落の3件だけ（schema errorとして）。ファイル間の不一致は表現できない |
+| process の exit code | 既存の受理ゲート（0 = 受理可）と共用になる。UNKNOWNをexit 0と1のどちらにするかを決めた時点で、EXP-001の受理に使ったゲートの意味が変わる | 受理ゲートとは別に決められる（例: FAILで1、UNKNOWNは報告のみで0）。旧Runへの適用では受理に影響しない | schema errorで1。UNKNOWNとFAILの区別はない |
 | 旧Experimentの意味論 | `validate_pilot.py` はEXP-001の受理に使った検査なので、変えると過去の受理基準を事後に変えることになる | 変えない（別のscriptで、旧Runには報告のみ） | 既存Artifactがschema違反になりうる。versioningが要る |
 | 変更の大きさ | 小 | 中（script、テスト、spec-lint） | 中（schema、既存Artifactの扱い） |
 | Plane境界 | Evaluation Planeの受理検査にaudit責務が混ざる | Observed Execution ↔ Evaluationの照合を独立した層に置ける | Schemaは単一ファイルの形の契約で、ファイル間の関係は扱えない |
 
-推奨は**案B**です。理由は、UNKNOWNを保持できる唯一の案であること、EXP-001の受理に使った検査を変えないこと、の2点です（判断基準: 要件適合性 → 安全性 → 保守性）。案Cの一部（新しいExperimentでのtoken fieldの必須化）は、案Bの観測結果を見てから別に提案します。
+推奨は**案B**です。判定値の表現力だけなら案Aでも同じことができます。案Bを選ぶ理由は、`validate_pilot.py` の受理の意味（exit codeを含む）を変えずに、関係ごとの判定を別の層で報告できることです（判断基準: 要件適合性 → 安全性 → 保守性）。案Cの一部（新しいExperimentでのtoken fieldの必須化）は、案Bの観測結果を見てから別に提案します。
 
 案Bでは新しいArtifact kindを作りません。出力はstdoutの報告だけにします。結果をファイルとして保存する必要が出たら、そのときにschemaとsemantic checkを足します（AGENTS.md の新Artifact kindのルール）。
 
 ## 4. 反証可能な仮説と検証計画（案Bを実装する場合）
 
-**仮説:** 案Bのauditは、`fixtures/provenance-audit/` の負側6件のうちFAILの4件をFAIL、欠落の2件をUNKNOWNと判定し、対照（`baseline-consistent`）と既存18 Runをいずれも誤ってFAILにしない。
+**仮説:** 案Bのauditは、`fixtures/provenance-audit/` の負側7件のうち不一致の4件をFAIL、欠落の3件（`neg-token-field-missing` / `neg-wallclock-field-missing` / `neg-trace-session-unknown`）をUNKNOWNと判定し、対照（`baseline-consistent`）と既存18 Runをいずれも誤ってFAILにしない。
 
 **反証条件（どれか1つで仮説を棄却）:**
 
@@ -97,7 +98,7 @@ Run全体の判定は、FAILが1つでもあればFAIL、なければUNKNOWNが1
 - 欠落ケースがPASSまたはFAILになる（UNKNOWNにならない）
 - `baseline-consistent` または既存18 Runのどれかが、表記の違い（UTC offsetなど）だけでFAILになる
 
-**期待する観測:** 負側4件がFAIL、欠落2件がUNKNOWN、対照がPASS。既存18 Runは1.3の結果から4関係ともPASSと予想しますが、実装後に実測して確かめます。
+**期待する観測:** 負側4件がFAIL、欠落3件がUNKNOWN、対照がPASS。既存18 Runは1.3の結果から4関係ともPASSと予想しますが、実装後に実測して確かめます。
 
 **負のテスト:** 1.2の6ケースをテストの入力にし、期待判定をテスト側に持つ。加えて、start eventが複数あるケース（UNKNOWN）と、時刻が解釈できないケース（UNKNOWN）を追加する。
 

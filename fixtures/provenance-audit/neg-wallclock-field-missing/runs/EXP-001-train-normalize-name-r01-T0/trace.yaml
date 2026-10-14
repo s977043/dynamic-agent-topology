@@ -34,4 +34,5 @@ summary:
   agentInvocations: 1
   coordinationTransitions: 0
   humanInterventions: 0
+  inputTokens: 1000
   outputTokens: 100

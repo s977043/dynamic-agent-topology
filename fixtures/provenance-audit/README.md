@@ -2,7 +2,7 @@
 
 Issue #57 の設計用に作った**合成 fixture**です。実 Run ではなく、EXP-001 の Evidence として数えてはいけません。凍結済みの `fixtures/exp-001/` と EXP-001 の Run Artifact は使っていません。
 
-各ケースは `pilot.yaml`（EXP-001 の `pilot.yaml` から `artifactRoot` と `notes` だけを変えたもの）と、`runs/EXP-001-train-normalize-name-r01-T0/` の 7 ファイルで構成されます。ケースごとに Attestation / Trace / Evaluation の関係を 1 つだけ壊しています。
+各ケースは `pilot.yaml`（EXP-001 の `pilot.yaml` から `artifactRoot` と `notes` だけを変えたもの）と、`runs/EXP-001-train-normalize-name-r01-T0/` の 7 ファイルで構成されます。ケースごとに Attestation / Trace / Evaluation の関係を 1 つだけ壊しています。`baseline-consistent` との差分は、上の 7 ファイルのうち 1 ファイルの、その関係に属する field だけです（`run-meta.yaml` の `workspaceId` と `pilot.yaml` の `artifactRoot` はケース名に合わせて変わります）。
 
 ## 再現コマンド
 
@@ -25,7 +25,8 @@ python scripts/validate_pilot.py \
 | `neg-fresh-session-mismatch` | Trace start `freshSession: false` / `crossRunFeedbackUsed: true`、Attestation は true / false | 0 | FAIL |
 | `neg-timestamp-mismatch` | Trace start / finish の時刻が Attestation の `startedAt` / `finishedAt` と 1 時間以上ずれる | 0 | FAIL |
 | `neg-token-mismatch` | Evaluation `efficiency.inputTokens` / `outputTokens` ≠ Trace `summary` | 0 | FAIL |
-| `neg-summary-field-missing` | Trace `summary` に `wallClockMs` / `inputTokens` がなく、Evaluation 側だけに値がある | 0 | UNKNOWN |
+| `neg-token-field-missing` | Trace `summary` から `inputTokens` / `outputTokens` だけを削除。Evaluation 側は baseline の値のまま | 0 | UNKNOWN |
+| `neg-wallclock-field-missing` | Trace `summary` から `wallClockMs` だけを削除。Evaluation 側は baseline の値のまま | 0 | UNKNOWN |
 | `neg-trace-session-unknown` | Trace start の `details` が空で、session 情報を観測できない | 0 | UNKNOWN |
 
 exit 0 の負側ケース（`neg-*`）が、現行の検査の穴です。判定の意味と監査案の比較は [docs/PROVENANCE_AUDIT_DESIGN.md](../../docs/PROVENANCE_AUDIT_DESIGN.md) を参照してください。

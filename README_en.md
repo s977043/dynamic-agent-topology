@@ -148,13 +148,13 @@ See the [Repository Guide (Japanese)](docs/REPOSITORY_GUIDE.md) for repository s
 
 ## Current focus
 
-The highest priority is now **collecting empirical evidence for EXP-001**.
+EXP-001 empirical collection and independent result review are complete. Follow-on research and implementation require separate evidence-based decisions and the existing approval boundaries.
 
 - Execution tracking: Issue #15
-- Empirical runs: **live progress is tracked in Issue #15**
-- Feature Freeze: **ACTIVE**
+- Empirical runs: **18 / 18 accepted; 9 / 9 paired blocks** ([Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15))
+- Feature Freeze: **COMPLETED** (revision 3 frozen artifact identities retained)
 - `DECISION.md`: **PILOT COMPLETE — Keep T0** (18 / 18 runs, [DECISION.md](experiments/EXP-001-t0-vs-t1/DECISION.md))
-- New topologies, routing extensions, and Research/Production profile design: **deferred until EXP-001 completes**
+- New topologies, routing extensions, and Research/Production profile design: **post-freeze research candidates, not adopted configurations**
 
 Freeze policy: [EXP-001 Feature Freeze](experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md)
 

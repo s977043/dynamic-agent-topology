@@ -1,9 +1,11 @@
 # EXP-001 Feature Freeze
 
-**Status: ACTIVE**  
+**Status: COMPLETED**  
 **Revision: 3**  
 **Execution issue: #15**  
 **Freeze issue: #16**
+
+**Completion evidence (2026-10-14):** EXP-001 18/18 Run artifacts and 9/9 paired blocks accepted and merged ([Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15)); completeness validation and reproducible 18/16-case summary verified; independently reviewed decision [PR #181](https://github.com/s977043/dynamic-agent-topology/pull/181) merged with **Keep T0**; README status aligned in [PR #182](https://github.com/s977043/dynamic-agent-topology/pull/182); main required CI passed. Revision 3 and all 33 frozen blob identities are retained as the experiment snapshot. This completion record is a lifecycle status change, not permission to rewrite experiment evidence.
 
 EXP-001は設計フェーズを終了し、一次データ取得フェーズへ移行しています。
 

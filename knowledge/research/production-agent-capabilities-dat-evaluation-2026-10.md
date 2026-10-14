@@ -49,7 +49,7 @@ Priority **A** = direct DAT evaluation/control-plane relevance; **B** = experime
 | 11 | Cost kill switch | A | Assess budget compliance, bounded retry/stop and actual total cost; enforcement belongs to runtime | [#42](https://github.com/s977043/dynamic-agent-topology/issues/42), [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) |
 | 12 | Shadow routing | A | Compare candidate selection with independent matched counterfactual outcome, no external effects | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93), [#21](https://github.com/s977043/dynamic-agent-topology/issues/21) |
 | 13 | Computer-use fallback | C | Only adapter/permission tests for approved capability; HTTP 404 must not trigger implicit UI permission | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) (adjacent) |
-| 14 | PII masking / proxy | B | Safe fixture/redacted published evidence with reversible mapping and reidentification review; do not build proxy | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59), [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) (publication) |
+| 14 | PII masking / proxy | B | Prefer synthetic/non-PII fixtures and minimal redacted evidence; require explicit access boundaries, mapping-key protection and reidentification review if reversible tokenization is unavoidable; do not build proxy | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59), [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) (publication) |
 | 15 | Architecture / ADR publication | A | Record source claim → hypothesis → evidence → judgment → revision, and counterexamples; no fixed article count | [#21](https://github.com/s977043/dynamic-agent-topology/issues/21), [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) |
 
 A/B/C denotes contribution to DAT, **not** the importance of these topics for other production systems. In particular, durable execution and access control are essential in some applications, but implementing those runtime systems would change DAT's North Star.
@@ -105,8 +105,8 @@ Compare in **two distinct estimands**:
 
 Keep model migration/revalidation [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) distinct from failure-triggered model escalation [#88](https://github.com/s977043/dynamic-agent-topology/issues/88). Capturing `token counts` alone is **not** enough for monetary cost: collect provider price/version, cache-read/write treatment, retries, verification, human time and latency windows where known; unavailable cost stays UNKNOWN.
 
-Candidate comparison:
-`cost_per_verified_success = (cost_all_attempts + cost_routing + cost_verification + cost_recovery + cost_attributed_human_time) / verified_successes`, only where denominator > 0 and units/cost provenance are comparable. Maintain **separate non-compensatory safety constraints**; low cost never offsets violations.
+Candidate comparison (mutually exclusive cost buckets; avoid counting routing, verification or recovery twice if already included in the all-attempt total):
+`cost_per_verified_success = total_attributable_cost_of_all_attempts_and_overhead / verified_successes`, only where denominator > 0 and units/cost provenance are comparable. Split the numerator into inference, selector, verification, retry/recovery, and attributable Human cost before aggregation; count every failed/aborted attempt when its cost is known. Maintain **separate non-compensatory safety constraints**; low cost never offsets violations.
 
 **Reject:** statistically/operationally uninformative runs, regression beyond predeclared bound, or no benefit after full coordination and assessment cost.
 

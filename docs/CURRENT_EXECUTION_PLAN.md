@@ -5,7 +5,7 @@
 ## 現在地（一次ソースと承認境界）
 
 - `main` 確認時SHA: `5c310945fcfef96004db8662bd9796e7d7243a22`（PR #187反映後。作業前に再取得）。
-- Open Issues: 14（確認時）。Open PR: [#186 Release candidate（Draft）](https://github.com/s977043/dynamic-agent-topology/pull/186) 、[#188 Provenance audit案A](https://github.com/s977043/dynamic-agent-topology/pull/188)、[#189 Provenance audit案B](https://github.com/s977043/dynamic-agent-topology/pull/189)（#188/#189は同一責務の**競合実装**。両方マージしない）。件数・最新headは都度再取得。
+- Open Issues: 14（確認時）。Open PR: [#186 Release candidate（Draft）](https://github.com/s977043/dynamic-agent-topology/pull/186) 、[#188 Provenance audit候補1](https://github.com/s977043/dynamic-agent-topology/pull/188)、[#189 Provenance audit候補2](https://github.com/s977043/dynamic-agent-topology/pull/189)（#188/#189は同一責務の**競合実装**。両方マージしない）。件数・最新headは都度再取得。
 - [EXP-001 Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15): **18/18 empirical Runs ACCEPT、9/9 paired blocks**。18/16件版の集計再現と独立結果レビュー後、[DECISION.md](../experiments/EXP-001-t0-vs-t1/DECISION.md) は **PILOT COMPLETE — Keep T0**（PR #181 / #182 はmerge済み）。
 - [Feature Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md): **COMPLETED revision 3**。[PR #183](https://github.com/s977043/dynamic-agent-topology/pull/183) はHuman承認・merge済み。mainで固定33 blobの原本監査、18/18 completeness、CIを再検証した記録は[#15](https://github.com/s977043/dynamic-agent-topology/issues/15)を参照。**COMPLETEDは旧RunやFrozen dataの改変許可ではない**。
 - EXP-001の観測範囲はCodex / gpt-6.1-sol / high、3 ScenarioのPilot。T0/T1両側成功率100%、T1の平均Token量はT0の2.206倍。難しいTaskや他Runtimeへの一般化は禁止。

@@ -1,6 +1,6 @@
 # EXP-001 Decision
 
-**Status: PILOT COMPLETE — Keep T0（起案。独立 Reviewer の結果レビュー前）**
+**Status: PILOT COMPLETE — Keep T0（独立 Reviewer 2 名〔Codex・Antigravity〕の結果レビューで ACCEPT）**
 
 このファイルはEXP-001の最終判断記録です。
 

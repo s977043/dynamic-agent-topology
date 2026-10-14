@@ -21,7 +21,7 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
 - EXP-001 18-run aggregation, `DECISION.md`, completed-snapshot audit, and documented one-time retry / recovery procedures.
 - Pilot preparation and execution-attestation schemas and tooling.
-- Deferred research notes for Raven / evidence-gated executable-configuration evolution, Claude Code Mods runtime guardrails, evidence-backed compiled-knowledge integrity, adversarial judgment gates, evidence-driven model escalation with compact handoff, and HydraFusion adaptive execution strategy.
+- Deferred research notes for Raven / evidence-gated executable-configuration evolution, Claude Code Mods runtime guardrails, evidence-backed compiled-knowledge integrity, adversarial judgment gates, evidence-driven model escalation with compact handoff, HydraFusion adaptive execution strategy, agent population ecological safety, an eight-repository agent tooling survey, workflow revalidation after model switches, Claude Code Advisor / read-only Haiku Researcher comparison, production-agent capability mapping to DAT experiments, Grok Bot team operations, hunk-level commit organization, and recoverable coding-loop OSS references. These remain deferred candidates, not adopted contracts.
 - Knowledge Base navigation that separates source claims, deferred research candidates, and adopted design principles, plus an indexed Research Note intake/tracking surface.
 - Dogfooding and EXP-001 execution/measurement guidance.
 - Public contribution, support, research-proposal, and security-reporting paths.

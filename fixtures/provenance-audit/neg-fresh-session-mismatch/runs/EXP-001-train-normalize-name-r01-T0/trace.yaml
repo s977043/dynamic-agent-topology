@@ -1,0 +1,39 @@
+apiVersion: dat/v1alpha1
+kind: ExecutionTrace
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T0
+  blockId: EXP-001-train-normalize-name-r01
+  scenario: train-normalize-name
+  condition: T0
+  experiment: EXP-001-t0-vs-t1
+executionSubject:
+  kind: AgentTopology
+  name: T0-single-agent
+runtime:
+  name: codex
+model:
+  id: gpt-6.1-sol
+  effort: high
+events:
+- sequence: 0
+  type: start
+  actor: worker
+  timestamp: '2026-01-01T00:00:00+00:00'
+  details:
+    sessionId: 00000000-0000-4000-8000-00000000f157
+    freshSession: false
+    crossRunFeedbackUsed: true
+- sequence: 1
+  type: finish
+  actor: worker
+  timestamp: '2026-01-01T00:01:00+00:00'
+  details:
+    cliExitCode: 0
+    taskEvidenceExitCode: 0
+summary:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  humanInterventions: 0
+  inputTokens: 1000
+  outputTokens: 100
+  wallClockMs: 60000

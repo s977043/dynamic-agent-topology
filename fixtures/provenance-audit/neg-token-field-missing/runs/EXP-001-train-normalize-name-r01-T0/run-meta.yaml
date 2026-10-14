@@ -1,0 +1,13 @@
+apiVersion: dat/v1alpha1
+kind: PilotRunMetadata
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T0
+  blockId: EXP-001-train-normalize-name-r01
+  scenario: train-normalize-name
+  condition: T0
+spec:
+  repetition: 1
+  executionOrder: 1
+  workspaceId: synthetic-issue57-neg-token-field-missing
+  freshWorkspace: true
+  promptSha256: 18a85e2717e087cc45061514c37fb44c8313ded0b87ea2ac8f2427b2704e2403

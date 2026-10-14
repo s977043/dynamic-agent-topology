@@ -8,7 +8,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## 0.3.0 — release candidate (unpublished)
 
-Content candidate: `24fa06b1f7580205be56d7d1adc4634f8545d385`.
+Content candidate: `5c310945fcfef96004db8662bd9796e7d7243a22`.
 
 Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
 
@@ -31,6 +31,7 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - Git-tracked public repository policy and release discipline.
 - Engineering Layer Diagnostics for Prompt / Context / Harness / Loop / Graph / Evaluation failure localization.
 - Documentation navigation and document-role guidance under `docs/README.md`.
+- Non-normative provenance-audit design proposal (`docs/PROVENANCE_AUDIT_DESIGN.md`, not adopted) with synthetic negative fixtures under `fixtures/provenance-audit/` that reproduce cross-artifact inconsistencies; no validator, schema, or EXP-001 evaluation-semantic change.
 - Development harness: agent guidance validation, a schema-validated Learning ledger (`schemas/learning-ledger.schema.json`), read-only harness metrics, scheduled Observe/Promote draft-PR workflows, and independent-review package tooling.
 - Optional A0 Workflow Brief adoption guide, Fast Feedback workflow, practice-evolution policy, and environment / knowledge-ownership guidance.
 

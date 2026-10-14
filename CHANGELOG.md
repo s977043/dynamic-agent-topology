@@ -6,9 +6,20 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.3.0 — release candidate (unpublished)
+
+Content candidate: `24fa06b1f7580205be56d7d1adc4634f8545d385`.
+
+Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
+
+### Experiment status
+
+- EXP-001 (T0 vs T1 pilot) completed 18 / 18 runs with recorded Run Artifacts; `DECISION.md` records **Keep T0**. This is a pilot-scope experiment conclusion, not a change to project adoption status and not evidence that T1, a Verifier, or any other Topology/Capability is effective or ineffective in general.
+
 ### Added
 
 - EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
+- EXP-001 18-run aggregation, `DECISION.md`, completed-snapshot audit, and documented one-time retry / recovery procedures.
 - Pilot preparation and execution-attestation schemas and tooling.
 - Deferred research notes for Raven / evidence-gated executable-configuration evolution, Claude Code Mods runtime guardrails, evidence-backed compiled-knowledge integrity, adversarial judgment gates, evidence-driven model escalation with compact handoff, and HydraFusion adaptive execution strategy.
 - Knowledge Base navigation that separates source claims, deferred research candidates, and adopted design principles, plus an indexed Research Note intake/tracking surface.
@@ -20,6 +31,8 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Git-tracked public repository policy and release discipline.
 - Engineering Layer Diagnostics for Prompt / Context / Harness / Loop / Graph / Evaluation failure localization.
 - Documentation navigation and document-role guidance under `docs/README.md`.
+- Development harness: agent guidance validation, a schema-validated Learning ledger (`schemas/learning-ledger.schema.json`), read-only harness metrics, scheduled Observe/Promote draft-PR workflows, and independent-review package tooling.
+- Optional A0 Workflow Brief adoption guide, Fast Feedback workflow, practice-evolution policy, and environment / knowledge-ownership guidance.
 
 ### Changed
 
@@ -29,6 +42,8 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Current README/CITATION metadata no longer advertises an unpublished version; version metadata is added only with an immutable tag and GitHub Release.
 - Brownfield adoption now documents an evidence-based complexity-promotion rule instead of treating additional agents, loops, or graph structure as default progress.
 - Human-facing supervision is clarified as a coordination cost: experiments should control or disclose materially different human-facing concurrency, while `human_interventions` remains a count rather than a cognitive-load metric.
+- Agent operation follows a Human-on-the-loop (HOTL) autonomy boundary documented in `docs/AGENT_HARNESS.md`.
+- The repository-settings target key `requiredApprovingReviewCount` is deprecated (still accepted) in favor of `requiredApprovingReviewCountExact`.
 - Documentation terminology, source-of-truth boundaries, evidence claims, experiment semantics, and release-boundary wording were reviewed and hardened.
 
 ### Security

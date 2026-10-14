@@ -4,9 +4,9 @@
 
 関連: [Issue #57](https://github.com/s977043/dynamic-agent-topology/issues/57)、[CURRENT_EXECUTION_PLAN.md](CURRENT_EXECUTION_PLAN.md) 優先順1、研究候補 H1（[production-agent-capabilities-dat-evaluation-2026-10.md](../knowledge/research/production-agent-capabilities-dat-evaluation-2026-10.md)。採用済みの契約ではない）。
 
-## 実装候補（PR #188、受理ゲートから独立）
+## 実装の統合状況（PR #188、受理ゲートから独立）
 
-[PR #188](https://github.com/s977043/dynamic-agent-topology/pull/188) は、案Bの非規範的な読み取り専用監査を提案しています。**PRのmerge、独立ReviewerによるACCEPT、採用済み規範を意味しません。**
+[PR #188](https://github.com/s977043/dynamic-agent-topology/pull/188) は、独立レビューと必須CI成功後に `2e1d9e6` でmerge済みです。案Bの非規範的な読み取り専用監査であり、採用済み規範や原本独立性を意味しません。[運用評価](PROVENANCE_AUDIT_OPERATIONS.md)に検出範囲・実行コスト・残条件を記録しています。以下の設計時の「別PR」「実装する場合」は実装前の履歴です。
 
 - `python scripts/audit_provenance.py --run-dir fixtures/provenance-audit/baseline-consistent/runs/EXP-001-train-normalize-name-r01-T0`
 - `python scripts/audit_provenance.py --runs-root experiments/EXP-001-t0-vs-t1/runs/pilot-codex`

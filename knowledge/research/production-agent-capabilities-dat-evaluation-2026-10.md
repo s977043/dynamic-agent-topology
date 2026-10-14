@@ -84,7 +84,7 @@ Compare in **two distinct estimands**:
 1. **Selector quality**: Which condition was recommended for every case, including unnecessary escalation and missed beneficial escalation? Do not score only triggered or successful cases.
 2. **Treatment effect**: For the same case under matched controls, how do T0/T1 and any later treatment actually differ? Prefer paired counterfactual runs where authorized.
 
-**Safety:** A shadow candidate cannot call live mutating tools. A fake response, read-only simulation or isolated disposable environment is **proven insufficient** for safety unless its runtime permission and external effects are tested. No production traffic/personal data reuse without authority.
+**Safety:** A shadow candidate cannot call live mutating tools. A fake response or an isolated disposable environment **does not by itself prove** external-effect isolation; verify effective runtime permissions, tool adapters and actual side effects before a shadow run. No production traffic/personal data reuse without authority.
 
 **Outcome:** pre-registered success/regression/safety; verifier false accept; missing evidence; retries; latency; coordination and Human attention; budget and real monetary cost when attributable. Compute quality per full workload as well as eligible subgroup. A fixed 95:5 selection ratio is not a goal.
 
@@ -106,7 +106,7 @@ Compare in **two distinct estimands**:
 Keep model migration/revalidation [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) distinct from failure-triggered model escalation [#88](https://github.com/s977043/dynamic-agent-topology/issues/88). Capturing `token counts` alone is **not** enough for monetary cost: collect provider price/version, cache-read/write treatment, retries, verification, human time and latency windows where known; unavailable cost stays UNKNOWN.
 
 Candidate comparison:
-`cost_per_verified_success = (all_attempts + routing + verification + recovery + attributed human costs) / verified_successes`, only where denominator > 0 and units/cost provenance are comparable. Maintain **separate non-compensatory safety constraints**; low cost never offsets violations.
+`cost_per_verified_success = (cost_all_attempts + cost_routing + cost_verification + cost_recovery + cost_attributed_human_time) / verified_successes`, only where denominator > 0 and units/cost provenance are comparable. Maintain **separate non-compensatory safety constraints**; low cost never offsets violations.
 
 **Reject:** statistically/operationally uninformative runs, regression beyond predeclared bound, or no benefit after full coordination and assessment cost.
 

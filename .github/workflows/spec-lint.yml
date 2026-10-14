@@ -152,6 +152,9 @@ jobs:
       - name: Test experiment pilot validator
         run: python scripts/test_validate_pilot.py
 
+      - name: Test read-only provenance audit (observational, not an acceptance gate)
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_provenance.py
+
       - name: Test experiment operator kit
         run: python scripts/test_operator_kit.py
 

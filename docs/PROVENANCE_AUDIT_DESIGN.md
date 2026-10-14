@@ -4,6 +4,18 @@
 
 関連: [Issue #57](https://github.com/s977043/dynamic-agent-topology/issues/57)、[CURRENT_EXECUTION_PLAN.md](CURRENT_EXECUTION_PLAN.md) 優先順1、研究候補 H1（[production-agent-capabilities-dat-evaluation-2026-10.md](../knowledge/research/production-agent-capabilities-dat-evaluation-2026-10.md)。採用済みの契約ではない）。
 
+## 実装の統合状況（PR #188、受理ゲートから独立）
+
+[PR #188](https://github.com/s977043/dynamic-agent-topology/pull/188) は、独立レビューと必須CI成功後に `2e1d9e6` でmerge済みです。案Bの非規範的な読み取り専用監査であり、採用済み規範や原本独立性を意味しません。[運用評価](PROVENANCE_AUDIT_OPERATIONS.md)に検出範囲・実行コスト・残条件を記録しています。以下の設計時の「別PR」「実装する場合」は実装前の履歴です。
+
+- `python scripts/audit_provenance.py --run-dir fixtures/provenance-audit/baseline-consistent/runs/EXP-001-train-normalize-name-r01-T0`
+- `python scripts/audit_provenance.py --runs-root experiments/EXP-001-t0-vs-t1/runs/pilot-codex`
+- `python scripts/test_audit_provenance.py`（合成Fixture、観測欠落、過去18 Runのread-only照合）
+
+標準出力には**関係単位**の PASS / FAIL / UNKNOWN と**Run単位**の総合判定を出します。FAILが1件以上ならprocess exit 1、UNKNOWNだけならexit 0ですがUNKNOWNは明示表示し、成功・Attestation保証と数えません。このコマンドは `validate_pilot.py` の受理ルールを変更せず、古いRunへの照合は報告用途のみです。元の18 Runの再実行・Run Artifactの変更は行いません。
+
+監査項目は metadata、runtime/model/effort、session/fresh/cross-run、start/finish時刻（タイムゾーン表記を正規化）、input/output tokens、wallclockです。一致は**記録値同士の整合**に過ぎず、真正なRuntimeログ・Permission Enforcerの独立証明ではありません。Attestation原本の偽造、観測されない副作用、許可違反をこの監査で発見できるとは主張しません。
+
 ## 1. 観測した事実
 
 ### 1.1 現行の検査範囲（`scripts/validate_pilot.py`、main 24fa06b）

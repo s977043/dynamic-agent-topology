@@ -59,6 +59,7 @@
 | `EXPERIMENTS.md` | 実験設計原則 | 実験ガイド |
 | `METRICS.md` | 評価指標の意味 | 評価ガイド |
 | `EXP-001_*` | EXP-001の実行・記録補助 | ナビゲーション / 運用ガイド |
+| `PROVENANCE_AUDIT_DESIGN.md` | Attestation / Trace / Evaluation間provenance監査の再現と設計案（#57） | 非規範的な設計案（未採用） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
 | `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |
 | `KNOWLEDGE_OWNERSHIP.md` | repo知識と環境memoryの分担、引き継ぎ | 運用ガイド（権限・実験条件を変更しない） |

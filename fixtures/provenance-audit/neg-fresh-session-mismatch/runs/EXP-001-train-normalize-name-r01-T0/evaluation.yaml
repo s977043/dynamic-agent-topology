@@ -1,0 +1,36 @@
+apiVersion: dat/v1alpha1
+kind: RunEvaluation
+metadata:
+  runId: EXP-001-train-normalize-name-r01-T0
+  blockId: EXP-001-train-normalize-name-r01
+  scenario: train-normalize-name
+  condition: T0
+  experiment: EXP-001-t0-vs-t1
+executionContext:
+  runtime: codex
+  model: gpt-6.1-sol
+  effort: high
+outcome:
+  taskSuccess: true
+  regressionDetected: false
+  acceptanceCriteriaPassed: 1
+  acceptanceCriteriaTotal: 1
+collaboration:
+  topologyAdherence: 1.0
+  boundaryViolations: 0
+  handoffFailures: 0
+  humanInterventions: 0
+evidence:
+  requiredGates: 1
+  passedGates: 1
+  completeness: 1.0
+  verifierFalseAccept: null
+efficiency:
+  agentInvocations: 1
+  coordinationTransitions: 0
+  inputTokens: 1000
+  outputTokens: 100
+  wallClockMs: 60000
+verdict: pass
+notes: 'SYNTHETIC FIXTURE for Issue #57. Not a real run; must never be counted as
+  EXP-001 evidence.'

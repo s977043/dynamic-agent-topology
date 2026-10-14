@@ -254,7 +254,7 @@
     },
     {
       "id": "L-017",
-      "observation": "委託先ワーカーが spec-lint の一部の step だけで検証して push し、CI で `validate_project.py` が失敗した（`examples/brownfield` の `dat.lock.yaml` の版数 0.2.1 が DAT の 0.3.0 と不一致）",
+      "observation": "release PRの初回CIで `validate_project.py` が失敗した（`examples/brownfield` の `dat.lock.yaml` の版数0.2.1がDATの0.3.0と不一致）。ローカル検証の実施範囲は公開Evidenceから確認できない",
       "evidence": {
         "description": "2026-10-14 PR #186 初回 push `273f888` の spec-lint run 38538541183 が failure（Validate external project adoption）。`254f2c6` で修正し run 38538844027 は success",
         "urls": [
@@ -264,7 +264,7 @@
       },
       "count": 1,
       "state": "candidate",
-      "countermeasure": "委託では、push 前に `.github/workflows/spec-lint.yml` の全 step を Python 3.12 で実行して exit 0 を確かめることを完了の条件にする",
+      "countermeasure": "版数を変更するPRではCITATION・lock・文書例の整合と対象validatorを確認し、実施した検証コマンド・head・結果を記録する。必須CIの失敗は修正後のheadで再確認する",
       "observedDates": [
         "2026-10-14"
       ]

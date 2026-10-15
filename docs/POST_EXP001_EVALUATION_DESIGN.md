@@ -139,7 +139,7 @@
 
 目的: 本実験の収集が成立するかだけを確かめる。**結果は Evidence として採用判断に使わない**。repo に Run Artifact を残さない（scratch / 外部 workspace のみ）。
 
-1. **副作用隔離の negative test**: 使い捨て workspace で、Agent が workspace 外・remote・secret に書けないことを実測（書き込み試行が失敗することを確認）。自然言語の「読み取り専用」指定や静的設定だけを attestation とみなさない。
+1. **副作用隔離の negative test**: 使い捨て workspace で、Agent が workspace 外・remote・secret に書けないことを実測（書き込み試行が失敗することを確認）。試行先は使い捨ての canary パス・mock remote・ダミー secret に限り、実在の外部リソースや本物の credential は使わない。自然言語の「読み取り専用」指定や静的設定だけを attestation とみなさない。
 2. **model binding の activation 確認**: F 相当の設定で、実際に使われた model/effort を trace / usage から取得できるか。取得できなければ F は unavailable 扱い。
 3. **cost 取得の完全性**: leg 別 usage（cached 含む）と wall clock を 1 Run ずつ取得し、再計算できるか。
 4. **shadow gate の凍結手順**: T0 Run の観測から gate 判断を記録し、F 実行前に hash 付きで固定できるか（手順のドライラン）。
@@ -154,7 +154,7 @@ Stage 0 の Go 条件: 1〜4 がすべて機械的に確認できる。いずれ
 - Runtime Permission の拡張、新しい credential、管理者設定の変更は行わない。
 - 新しい schema・semantic check・Policy の追加は独立レビューと通常 PR 手順を経る。Freeze 改訂・release/tag・削除は Human 専権（AGENTS.md / AGENT_HARNESS.md）。
 - EXP-001 の Frozen artifact（fixtures、T0/T1 topology、schemas 等）は変更しない。参照のみ。
-- 本実験の model 起動は Operator 手順に準じ、Agent が代行する場合は AGENT_HARNESS.md の HOTL 条件を満たすことを開始前に確認する（EXP-001 の retry 例外は適用されない）。
+- 本実験（Stage 0 を含む）の model 起動は Operator が行う。Agent は代行しない（AGENTS.md / AGENT_HARNESS.md の Agent 起動例外は EXP-001 の一回限りの retry に限られ、本実験には適用されない）。Agent 起動が必要になった場合は、Human 承認による自律境界の変更として別 PR で扱う。
 - 研究ノート（hydrafusion / escalation / advisor）は候補であり、本設計の採用は `knowledge/sources.yaml` の adopted を変えない。
 
 ## 9. 将来の artifact 案（パスのみ。YAML は書かない）

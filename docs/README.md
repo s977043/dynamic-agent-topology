@@ -62,6 +62,8 @@
 | `PROVENANCE_AUDIT_DESIGN.md` | Attestation / Trace / Evaluation間provenance監査の再現と設計案（#57） | 非規範的な設計案（未採用） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
 | `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |
+| [CLOUD_VERIFICATION_PLAN.md](CLOUD_VERIFICATION_PLAN.md) | Cloudで実行する知識整合性probeの事前計画とoracle | 非規範的な検証計画（#63） |
+| [KNOWLEDGE_INTEGRITY_CLOUD_RESULTS.md](KNOWLEDGE_INTEGRITY_CLOUD_RESULTS.md) | 実PDF抽出・故障注入・鮮度/接続を分けたCloud実測と再現手順 | 合成corpusの限定検証（未採用） |
 | `KNOWLEDGE_OWNERSHIP.md` | repo知識と環境memoryの分担、引き継ぎ | 運用ガイド（権限・実験条件を変更しない） |
 | `RELEASE_READINESS.md` | Release candidateのEvidence / metadata / publication gate | Release運用チェックリスト |
 

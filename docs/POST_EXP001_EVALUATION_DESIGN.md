@@ -1,6 +1,6 @@
 # post-EXP-001 評価の設計案（#93 / #88）
 
-状態: **非規範的な設計案（未採用・独立レビュー前）**。[CURRENT_EXECUTION_PLAN.md](CURRENT_EXECUTION_PLAN.md) 順序 2 の設計案です。実験開始・Policy 適用・experiment Artifact 追加の許可ではありません。`experiments/`、`schemas/`、EXP-001 の Frozen file は変更しません。EXP-001 の受理判断と [DECISION.md](../experiments/EXP-001-t0-vs-t1/DECISION.md) は、この文書によって変わりません。
+状態: **非規範的な設計案（未採用。独立レビューは #194 のレビュー記録を参照）**。[CURRENT_EXECUTION_PLAN.md](CURRENT_EXECUTION_PLAN.md) 順序 2 の設計案です。実験開始・Policy 適用・experiment Artifact 追加の許可ではありません。`experiments/`、`schemas/`、EXP-001 の Frozen file は変更しません。EXP-001 の受理判断と [DECISION.md](../experiments/EXP-001-t0-vs-t1/DECISION.md) は、この文書によって変わりません。
 
 - 起案日: 2026-10-15 / 基準: origin/main `3b760ff`
 - 関連: [Issue #93](https://github.com/s977043/dynamic-agent-topology/issues/93)、[Issue #88](https://github.com/s977043/dynamic-agent-topology/issues/88)

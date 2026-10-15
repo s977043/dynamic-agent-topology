@@ -44,7 +44,7 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - EXP-001 preparation provenance is separated from runtime execution attestation.
 - Security reporting and coordinated-disclosure expectations are explicit.
 - GitHub Actions use least-privilege permissions and immutable action SHAs.
-- Release preparation distinguishes an unpublished version proposal from a published tag/Release; publication date is left unset until Human confirmation.
+- Release preparation distinguishes an unpublished version proposal from a published tag/Release; the draft publication date is provisional and must match the actual Human-approved publication date.
 - Execution planning and Learning ledger record completed Freeze/EXP-001 status and release-candidate drift; unsupported failure attribution remains unknown.
 - Brownfield adoption now documents an evidence-based complexity-promotion rule instead of treating additional agents, loops, or graph structure as default progress.
 - Human-facing supervision is clarified as a coordination cost: experiments should control or disclose materially different human-facing concurrency, while `human_interventions` remains a count rather than a cognitive-load metric.

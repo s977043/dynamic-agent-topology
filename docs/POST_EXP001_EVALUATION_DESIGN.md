@@ -7,13 +7,13 @@
 - 一次ソース: Issue #93 / #88 本文とコメント、[CURRENT_EXECUTION_PLAN.md](CURRENT_EXECUTION_PLAN.md)、[EXPERIMENTS.md](EXPERIMENTS.md)（Capability-level ablation 節）、[EXP-001 DECISION.md](../experiments/EXP-001-t0-vs-t1/DECISION.md)、[experiment.schema.json](../schemas/experiment.schema.json)
 - 研究ノート（候補であり採用済みの契約ではない。参照のみ）: [hydrafusion-adaptive-execution-strategy.md](../knowledge/research/hydrafusion-adaptive-execution-strategy.md)、[evidence-driven-model-escalation-handoff.md](../knowledge/research/evidence-driven-model-escalation-handoff.md)、[claude-code-advisor-readonly-researcher-2026-10.md](../knowledge/research/claude-code-advisor-readonly-researcher-2026-10.md)
 
-## 0. Evidence・解釈・決定の区別
+## 0. Evidence・解釈・推奨の区別
 
 | 区分 | 内容 |
 |---|---|
 | 観測済み Evidence | EXP-001 の 18 Run は全成功で、T0 が失敗した Run はない（DECISION.md）。#88 には再現可能な baseline 失敗が 1 件も登録されていない（#88 2026-10-15 判定）。`experiment.schema.json` の condition は `executionRef` のみで、condition ごとの model binding を表現する field はない |
 | DAT 側の解釈 | EXP-001 の結果は難度の床効果（Limitation 13）の下での観測であり、stronger model や escalation の効果について何も示さない。本設計はその結論を一般化しない |
-| 決定済み | U1: model binding は `adapters/` 側に置き、experiment から参照する（§10）。schema は拡張しない |
+| 推奨案（未採用） | U1: model binding は `adapters/` 側に置き、experiment から参照する（§10）。schema は拡張しない |
 | 未確定（本文の提案） | §1 以降の推奨案・仮説・指標・U2〜U8。開始前に Human と独立 Reviewer が宣言する |
 
 ## 1. 結論（推奨案）
@@ -167,15 +167,15 @@ Stage 0 の Go 条件: 1〜4 がすべて機械的に確認できる。いずれ
 - `experiments/EXP-003-escalation-recovery-compact-handoff/handoff-template.md`（候補。canonical 化しない）
 - 必要なら `fixtures/exp-002/...`（EXP-001 の `fixtures/exp-001/` とは別ディレクトリ）
 
-## 10. 決定事項と未確定事項
+## 10. 推奨案と未確定事項
 
-### 決定: U1 condition ごとの model binding
+### 推奨案: U1 condition ごとの model binding
 
 - 背景（Evidence）: `experiment.schema.json` の condition は `executionRef`（AgentTopology / ExecutionBaseline）のみで、condition ごとの model binding を表現できない。`controls.sameModel: false` は書けるが、どの arm がどの model かは machine-readable にならない。
 - 比較した案: (a) model binding を `adapters/<runtime>/` 側の Runtime Mapping に書き、experiment から参照する。(b) schema を拡張する（新 artifact kind 扱いなら semantic check と spec-lint 配線が必要）。
-- **決定: (a) を推奨案とする。schema の拡張はしない。**
+- **推奨: (a)。schema の拡張はしない。**
 - 理由: ARCHITECTURE.md の Plane 分離（Topology ≠ Model、Runtime ≠ Model Provider）を保つため。T0 と F は同じ topology で model binding だけが異なるので、binding を Runtime Mapping に置けば topology / experiment に model 固有の記述を持ち込まずに済む。(b) は schema・semantic check・spec-lint の追加を伴い、境界を experiment 側へ寄せる。
-- 範囲: これは表現場所の決定であり、具体的な Runtime・model・effort（U4）や adapter ファイルの作成は含まない。参照の具体的な書式は experiment Artifact を起案する PR で独立レビューを経て決める。
+- 範囲: これは表現場所の推奨であり、具体的な Runtime・model・effort（U4）や adapter ファイルの作成は含まない。参照の具体的な書式は experiment Artifact を起案する PR で独立レビューを経て決める。
 
 ### 未確定事項（開始前に Human と独立 Reviewer が宣言する）
 

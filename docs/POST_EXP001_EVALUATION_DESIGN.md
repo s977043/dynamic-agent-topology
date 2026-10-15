@@ -36,6 +36,7 @@
 
 - **要件適合性**: 順序 2 の完了条件「selector の shadow 判断と treatment の paired 効果を分離」を、EXP-002 の 1 本の収集で両方満たせる。matched counterfactual が全 task にあるので、nonselected task の扱いを推定で埋めずに済む（#93 H2 の INCONCLUSIVE 条件を回避）。
 - **母集団の問題を先に解く**: #88 は「再現可能な baseline 失敗」が 1 件も登録されておらず、単独では開始できない（#88 2026-10-15 判定）。EXP-001 の 18 Run は全成功で転用不可。EXP-002 の T0 Run が eligible 候補の発見手段を兼ねる。
+- **Issue 計画との順序の違い**: #93 は selector study を eligibility-conditioned treatment evaluation の後に置き、#88 は baseline 失敗の登録と小さい介入の診断を次の作業としている。本案はこの順序を意図的に入れ替える提案である。理由は、eligible failure が 0 件のままでは treatment 評価を始められず、EXP-002 の T0 Run がその登録作業を兼ねるため。EXP-002 の selector 品質は matched outcome に基づく shadow 評価に限り、eligibility-conditioned な recovery 効果の結論は EXP-003 まで出さない。#88 の「失敗候補の登録と小さい介入の診断」は EXP-003 の開始条件として残す。採否は両 Issue で Human と独立 Reviewer が判断する。
 - **交絡の分離**: #88 の treatment は「失敗後の fresh session + handoff + model」、#93 Cascade は「gate + model 昇格」。1 本にまとめると handoff payload と gate と model の効果が同じ contrast に混ざる。#93 本文・#88 コメントとも「比較 arm を混同しない」と明記している。
 - **安全性・保守性**: 各実験の arm 数を 2 にとどめ、Decision 3 値（PASS/FAIL/INCONCLUSIVE）を素直に適用できる。
 - **コスト**: F を全 task で回すのは高いが、selector 評価に必要な matched outcome の最小コストでもある。G（cascade 実行）を別途回さず、G のコストは「T0 + gate + F（選択 task のみ）」として**合成値**で示す（観測値ではないと明記）。
@@ -44,7 +45,7 @@
 
 | 案 | 内容 | 長所 | 短所 | 判定 |
 |---|---|---|---|---|
-| **R（推奨）** | EXP-002 = T0 vs F 混合母集団 + shadow gate → EXP-003 = #88 C vs D | selector と treatment を 1 収集で分離。#88 の母集団を供給 | F 全件実行のコスト。G は合成値 | 採用 |
+| **R（推奨）** | EXP-002 = T0 vs F 混合母集団 + shadow gate → EXP-003 = #88 C vs D | selector と treatment を 1 収集で分離。#88 の母集団を供給 | F 全件実行のコスト。G は合成値 | 推奨（未採用） |
 | X1 | #93 と #88 を 1 本に統合（E/F/G + A–E を同一 task で） | 収集の重複が少ない | arm 数 8 前後、handoff / gate / model の交絡、eligible 条件と混合母集団が同居して結論の射程が曖昧 | 不採用 |
 | X2 | #88 を先行（A–E recovery） | Issue の手順に沿う | eligible failure が 0 件で開始不能。selector 分離の条件を満たさない | 不採用（順序 2 の条件不足） |
 | X3 | #93 Critique A/B/C/D を先行 | HydraFusion の主張に直接対応 | isolated critic の隔離 attestation が未確立。arm 4 つ。selector 評価にならない | 後回し |

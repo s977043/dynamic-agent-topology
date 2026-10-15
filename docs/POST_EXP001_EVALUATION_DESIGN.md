@@ -22,7 +22,7 @@
 
 1. **EXP-002（先行）: #93 Cascade 系の最小版 = 混合母集団上の T0 vs always-stronger（F）paired 比較 + shadow gate 記録**
    - 全 task で T0（= #93 の E）と F（最初から強い capability、fresh session）を paired で実行する。
-   - gate（selector）は T0 の Run 終了時点の観測（Verification 結果など）だけを入力に **shadow で判断を記録**し、F の Outcome を見る前に凍結・記録する。gate は「どの比較 evidence を集めるか」を決めない（全 task で両 arm を実行）。
+   - gate（selector）は T0 の Run 終了時点の観測（Verification 結果など）だけを入力に **shadow で判断を記録**し、F の Outcome を見る前に凍結・記録する。F-first blockではFのOutcome・usage・診断をgate担当から隔離して封印し、gate判断のhash固定後に開示する。gate は「どの比較 evidence を集めるか」を決めない（全 task で両 arm を実行）。
    - これで 1 回の収集から次の 2 つを分離して得る:
      - treatment 効果: F − T0 の paired delta（全体、および T0 失敗層／成功層の層別）
      - selector 品質: shadow 判断 × matched outcome から作る benefit label の 4 分類（correctly selected / missed beneficial / unnecessary / correctly avoided）
@@ -39,7 +39,7 @@
 - **Issue 計画との順序の違い**: #93 は selector study を eligibility-conditioned treatment evaluation の後に置き、#88 は baseline 失敗の登録と小さい介入の診断を次の作業としている。本案はこの順序を意図的に入れ替える提案である。理由は、eligible failure が 0 件のままでは treatment 評価を始められず、EXP-002 の T0 Run がその登録作業を兼ねるため。EXP-002 の selector 品質は matched outcome に基づく shadow 評価に限り、eligibility-conditioned な recovery 効果の結論は EXP-003 まで出さない。#88 の「失敗候補の登録と小さい介入の診断」は EXP-003 の開始条件として残す。採否は両 Issue で Human と独立 Reviewer が判断する。
 - **交絡の分離**: #88 の treatment は「失敗後の fresh session + handoff + model」、#93 Cascade は「gate + model 昇格」。1 本にまとめると handoff payload と gate と model の効果が同じ contrast に混ざる。#93 本文・#88 コメントとも「比較 arm を混同しない」と明記している。
 - **安全性・保守性**: 各実験の arm 数を 2 にとどめ、Decision 3 値（PASS/FAIL/INCONCLUSIVE）を素直に適用できる。
-- **コスト**: F を全 task で回すのは高いが、selector 評価に必要な matched outcome の最小コストでもある。G（cascade 実行）を別途回さず、G のコストは「T0 + gate + F（選択 task のみ）」として**合成値**で示す（観測値ではないと明記）。
+- **コスト**: F を全 task で回すのは高いが、全taskでmatched outcomeを取得するための費用を伴う。G（cascade 実行）を別途回さず、G のコストは「T0 + gate + F（選択 task のみ）」として**合成値**で示す。これはcold-restart方策のoffline simulationであり、実際のGの効果・経済性は未実行としてINCONCLUSIVEに残す。合成時はFを同一repo初期状態・同一入力で起動し、T0のpatch/診断/handoffを渡さず、選択時はFだけ、非選択時はT0だけを最終出力とする。timeout/cancel/fallbackと成功判定、全破棄leg/再検証費を開始前に固定する。この同一性または必要な費用を確認できないtaskは合成評価もINCONCLUSIVEとする。
 
 ## 2. 比較した代替案
 
@@ -49,7 +49,7 @@
 | X1 | #93 と #88 を 1 本に統合（E/F/G + A–E を同一 task で） | 収集の重複が少ない | arm 数 8 前後、handoff / gate / model の交絡、eligible 条件と混合母集団が同居して結論の射程が曖昧 | 不採用 |
 | X2 | #88 を先行（A–E recovery） | Issue の手順に沿う | eligible failure が 0 件で開始不能。selector 分離の条件を満たさない | 不採用（順序 2 の条件不足） |
 | X3 | #93 Critique A/B/C/D を先行 | HydraFusion の主張に直接対応 | isolated critic の隔離 attestation が未確立。arm 4 つ。selector 評価にならない | 後回し |
-| X4 | Cascade E/F/G を実際に 3 arm 実行 | G の観測コストが得られる | G は gate が evidence 収集を左右し、shadow 設計と両立しにくい。arm 追加 | EXP-002 の結果が PASS 方向なら後続で検討 |
+| X4 | Cascade E/F/G を実際に 3 arm 実行 | G の観測コストが得られる | 独立fresh stateで全taskのE/F/Gを収集しshadow判断をoutcome開示前に固定すれば両立できるが、arm追加の費用と状態隔離が必要 | EXP-002 の結果が PASS 方向なら後続で検討 |
 | X5 | shadow なしで T0 失敗 task のみ収集 | 安い | eligibility-conditioned になり selector 品質を測れない（EXPERIMENTS.md 禁止事項） | 不採用 |
 
 ## 3. 仮説と反証条件
@@ -58,8 +58,8 @@
 
 - **H-T（treatment）**: 宣言済み混合母集団において、F は T0 に対し verified success を事前宣言した最小実務改善幅以上に改善する。ただし改善は T0 失敗層に集中し、T0 成功層では品質同値・コストのみ増加する。
   - 反証: T0 失敗層でも F の success 改善が最小幅未満、または regression が F 側で増える → FAIL。T0 失敗層が事前宣言の最小件数に満たない → INCONCLUSIVE。
-- **H-S（selector）**: T0 Run の観測だけを入力にした凍結 gate の shadow 判断は、always-T0 と always-F の両 policy に対し、事前定義の「verified success あたり総コスト（gate コスト含む）」で優る。
-  - 反証: missed beneficial または unnecessary の件数が事前宣言の上限を超える、または合成 policy コストが always-T0 / always-F のどちらかに劣る → FAIL。benefit label が付かない task（片側欠損）が事前宣言の割合を超える → INCONCLUSIVE。
+- **H-S（selectorのoffline simulation限定）**: T0 Run の観測だけを入力にした凍結 gate の shadow 判断の合成結果は、always-T0 と always-F の両 policy に対し、事前定義の「verified success あたり総コスト（gate コスト含む）」で優る。
+  - 反証: missed beneficial または unnecessary の件数が事前宣言の上限を超える、または合成 policy コストが always-T0 / always-F のどちらかに劣る → FAIL。benefit label が付かない task（片側欠損）が事前宣言の割合を超える → INCONCLUSIVE。PASS/FAILは宣言したoffline simulationだけの判断とし、実Gのオンライン効果・latency・経済性の優越はINCONCLUSIVE。実policyの主張には独立したG armの実測が必要。
 - **前提（activation）**: F が実際に強い capability で実行されたことを trace で確認できない Run は効果解釈に使わない。
 
 ### EXP-003
@@ -128,10 +128,10 @@
 | 交絡 | 制御 |
 |---|---|
 | cross-arm contamination | 各 arm を同じ repo revision・同じ初期入力・fresh workspace / session から開始。前 arm の patch・診断を持ち越さない（EXP-003 の handoff は treatment として明示） |
-| 実行順序 | block（task × rep）ごとに T0/F の順序を counterbalance し、順序を記録 |
+| 実行順序 | block（task × rep）ごとに T0/F の順序を counterbalance し、順序を記録。F-firstはOutcome/usage/診断をgate担当から封印し、T0観測によるgateのhash固定後に開示。隔離できないblockはselector解析から除外し欠測として計上 |
 | Runtime / Effort 差 | 同一 block で Runtime・Effort・tool 版を固定。model binding だけを変える |
 | prompt 差 | T0/F で同一 prompt。model 固有の prompt 調整は禁止（必要なら別 arm） |
-| gate の後知恵 | gate 入力・閾値・決定規則・fallback を F の Outcome 取得前に凍結し、判断を先に記録 |
+| gate の後知恵 | gate 入力・閾値・決定規則・fallback を gate担当へのFのOutcome/usage/診断開示前に凍結し、判断を先に記録 |
 | 環境混在（EXP-001 Limitation 1/2 の再発） | Run kit と環境を開始前に固定し、block 内で環境が異なる Run は descriptive-only |
 | 難度の床効果（EXP-001 Limitation 13） | 母集団に T0 が失敗し得る層を含めることを開始条件にする |
 | 評価の自己参照 | Outcome 判定は生成 Agent と別の Evaluator。非決定的な判定は不一致を保持 |
@@ -143,7 +143,7 @@
 1. **副作用隔離の negative test**: 使い捨て workspace で、Agent が workspace 外・remote・secret に書けないことを実測（書き込み試行が失敗することを確認）。試行先は使い捨ての canary パス・mock remote・ダミー secret に限り、実在の外部リソースや本物の credential は使わない。自然言語の「読み取り専用」指定や静的設定だけを attestation とみなさない。
 2. **model binding の activation 確認**: F 相当の設定で、実際に使われた model/effort を trace / usage から取得できるか。取得できなければ F は unavailable 扱い。
 3. **cost 取得の完全性**: leg 別 usage（cached 含む）と wall clock を 1 Run ずつ取得し、再計算できるか。
-4. **shadow gate の凍結手順**: T0 Run の観測から gate 判断を記録し、F 実行前に hash 付きで固定できるか（手順のドライラン）。
+4. **shadow gate の凍結手順**: T0 Run の観測から gate 判断を記録し、FのOutcome/usage/診断の開示前にhash付きで固定できるか。T0-firstとF-first双方をドライランし、F-firstでは別保存先/別担当による封印と開示時刻を記録する。単なる「見なかった」という自己申告は隔離証跡にしない。
 5. **難しい層の候補探索**: 候補 task を 2〜3 件、T0 で 1 回ずつ実行して失敗が再現しそうかを見る（探索であり母集団の採否判断には使わない旨を記録）。
 6. EXP-003 用: compact handoff を 1 件生成し、C/D で同一 bytes を渡せるかを確認。
 
@@ -185,5 +185,5 @@ Stage 0 の Go 条件: 1〜4 がすべて機械的に確認できる。いずれ
 - **U4 Runtime / model の組**: baseline と stronger の具体的な Runtime・model・effort、および同一 Runtime 内で両方を呼べるかは未確認。EXP-001 の Codex / gpt-6.1-sol / high は baseline 候補の 1 つにすぎず、結論は一般化しない。
 - **U5 gate の入力**: T0 の Verification 失敗以外（自己申告、turn 数など）を入力に含めるか。固定 turn 数は仮説扱い（#88）。
 - **U6 予算**: F 全件実行の費用見積もりと承認者。
-- **U7 G の合成値の妥当性**: G を実行せず合成コストで示すことを Reviewer が許容するか。許容されなければ X4 に切り替え。
+- **U7 G の合成値の妥当性**: cold-restart offline simulationの同一初期状態・入力・非引継ぎ・fallback・成功判定・費用範囲を事前宣言し検証できるか。Reviewerの許容だけでは同一性を証明しない。未達なら合成評価はINCONCLUSIVE、実policyの主張にはX4のG実測へ切り替える。
 - **U8 Critique / Advisor の順番**: EXP-003 の後か、並行か。現案では EXP-002 の結果を見て決める。

@@ -8,7 +8,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## 0.3.0 — release candidate (unpublished)
 
-Content candidate: `5bbccc6bc5476137ef4f0ecca2daf7d09b27e99a`.
+Content candidate: `35b1c943c68f58880c857c5e52d61c6fbd8fa860`.
 
 Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
 
@@ -17,6 +17,8 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - EXP-001 (T0 vs T1 pilot) completed 18 / 18 runs with recorded Run Artifacts; `DECISION.md` records **Keep T0**. This is a pilot-scope experiment conclusion, not a change to project adoption status and not evidence that T1, a Verifier, or any other Topology/Capability is effective or ineffective in general.
 
 ### Added
+
+- Current Cloud execution plan with per-issue prerequisites and human-owned boundaries, refreshed reviewer-material failure observations, and explicit executor checks in review requests.
 
 - Optional Cloud knowledge-integrity probe, preregistered PDF/pipeline/context cases, and independently reviewed synthetic-corpus observations; actual extraction, injected corruption, and operational holds remain distinct, with general efficacy unproven.
 

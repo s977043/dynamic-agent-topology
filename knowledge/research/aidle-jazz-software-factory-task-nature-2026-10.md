@@ -12,7 +12,7 @@ DAT hypothesis: **task nature might help predict when to spend coordination cost
 
 ## Falsifiable hypotheses
 
-- H1: On predeclared exploratory tasks, bounded discovery / independent verification improves verified outcomes sufficiently to justify its additional cost versus T0.
+- H1: On predeclared exploratory tasks, a bounded-discovery or independent-verifier treatment improves independently checked outcomes enough to justify its added total cost versus T0. Test these as separate interventions where feasible.
 - H2: On pattern replication or well-specified tasks, T0 or deterministic P0 remains competitive on quality and cheaper on coordination cost; specialized teams may be unnecessary.
 - H3: A task-nature-informed selector improves whole-workload **verified quality at acceptable total cost**, compared with a fixed minimal topology and a fixed stronger topology. Treatment effect and selector accuracy are evaluated separately.
 
@@ -22,7 +22,7 @@ Counterexamples: the labels fail inter-rater reproducibility; the selector misse
 
 1. **Pre-register** a mixed workload with all three task types, a held-out evaluation subset, reproducible AC / expected outcome, a fixed repository revision, and at least some examples where stronger treatment should *not* be needed. Do not select only prior failures.
 2. Human annotators label task type based on source evidence **without reading model outcomes**; record disagreement, unclear cases, and inter-rater reliability. Treat `unknown` as a decision to gather evidence, not an automatic escalation permission.
-3. Run matched, fresh-state blocks for **baseline T0/P0** vs bounded candidate topology where technically feasible; fix runtime/model/effort/verification budget and record control deviations. Use DAT's existing `docs/EXPERIMENTS.md` rules; do not modify schemas.
+3. Run matched, fresh-state blocks for **baseline T0/P0** vs bounded candidate topology where technically feasible; fix runtime/model/effort and use the **same independent outcome evaluation** for all arms. Account for candidate-only discovery/reviewer/verification work as treatment cost, not as a free shared evaluator. Record control deviations. Use DAT's existing `docs/EXPERIMENTS.md` rules; do not modify schemas.
 4. Evaluate **treatment** conditional on eligibility (task success/regression, false accept, interventions, tokens, latency, coordination transitions), then **shadow selector quality** across the complete mixed population, including unnecessary and missed escalations. Include routing, failed legs, review and verification cost.
 5. Use independent outcome evaluation; no post-hoc threshold tuning. Missing counterfactuals, evaluator leakage, failure to activate or unpaired conditions yield `INCONCLUSIVE`.
 

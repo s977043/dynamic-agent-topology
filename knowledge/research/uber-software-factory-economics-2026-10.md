@@ -20,6 +20,18 @@
 5. コンテキスト圧縮、Medium effort、prompt cache、CLIによる動的ツール解決、code-mode、グラフによる文脈接地などを最適化候補として挙げる。**400K tokenの圧縮閾値、cache TTL、モデル既定値をDATへ一律転用しない。**
 6. SQLクエリ5例のcode-mode比較およびContext Graph利用有無による38秒対20分9秒の比較は、**対象限定の事例**。一般的な削減率・品質改善率としてDATに流用しない。
 
+## Portfolio cost decomposition vs verified outcome economics
+
+Uberが示す総支出の分解（同一観測窓・明示した集計対象）:
+
+`spend = users × sessions/user × turns/session × requests/turn × tokens/request × price/token`
+
+- この式は**利用量・支出変動の説明用**であり、`verified task`の質や成功率を直接表さない。入力/出力/キャッシュtokenの異なる課金単価は単一平均に潰さず、必要に応じてcomponent別に分解する。
+- Portfolio (`total attributed cost`) → per-tool unit economics (`cost / 1,000 requests`, `cost / session`, cache hit) → outcome (`cost / merged PR`, `cost / review`, `cost / alert`)の**異なる集計レベル**を分離する。モデルを固定したリクエスト単価改善と事業成果の改善を同義としない。
+- `requests/user`や`tokens/request`が減っても、失敗Run増・人手再作業・品質劣化があれば採用不可。逆に計測対象やモデル変更で比率が変わった可能性は、`source claim`とDATの検証結果を混同せず明記する。
+- 観測窓内の利用者やセッションが増減した場合は、トラフィックmix変化と個別Agentの改善を分離。従量費・サブスクリプション配賦・未計測Human時間の異なる単位は**一つの確定実測額として足さない**。
+- DATの最小実験では追加のグラフ/MCP Gateway/自動Routerを再現するのでなく、既存traceで観測できる`tokens`, `wallClockMs`, `agentInvocations`, `taskSuccess`をまずpaired比較し、品質調整済み費用は欠測が解消してから評価する。
+
 ## DAT interpretation (unverified)
 
 - **成果を分母にする**: 「生成したPR数」だけでは価値を示さない。事前合意の品質基準を満たした **verified task**、判定済みreview、重大エラー検出などを評価単位の候補にする。

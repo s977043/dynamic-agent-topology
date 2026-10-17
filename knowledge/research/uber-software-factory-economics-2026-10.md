@@ -40,6 +40,21 @@
 | Skill / session utilization | [ai-agent-template #127](https://github.com/s977043/ai-agent-template/issues/127) | トークン観測と検証済み成果を混同しない |
 | Provider / cache cost | [hermes-agent-ops #225](https://github.com/s977043/hermes-agent-ops/issues/225) | Provider固有TTLやcache localityを実測する |
 
+## Read-only contract audit (2026-10-17 / main `35b1c943`)
+
+現行実装をread-onlyで確認した結果（計測結果ではなく、**取得可能なフィールドの監査**）:
+
+| 現行artifact | 取得できる値 | まだ取得・集計できない値 |
+|---|---|---|
+| `schemas/evaluation.schema.json` | `taskSuccess`, `regressionDetected`, Acceptance Criteria件数、`humanInterventions`、`agentInvocations`、`coordinationTransitions`、`wallClockMs`、任意の`inputTokens/outputTokens`、`verifierFalseAccept` | Provider請求額、cache read/write token、retry費、Human実作業時間、評価者によるsemantic ground truth |
+| `schemas/execution-trace.schema.json` | `runId`, `blockId`、Runtime/Model/Effort、Event、起動・遷移・介入・token・経過時間のsummary | 費用明細、料金条件、cache TTL、credential pool、failed attemptの独立課金区分 |
+| `scripts/summarize_experiment.py` | 同一Runtime/Model/Effort内で条件ごとの成功・回帰・平均tokens・平均wall clock・介入回数などを集計 | 成果単位の通貨コスト、retryを含む分母・分子、モデル間cross-context比較、Human時間と品質調整済み費用 |
+
+- evaluation/traceの主要オブジェクトには `additionalProperties: false` がある。**既存YAMLへコストやcacheのフィールドを勝手に追加するとSchema互換性を壊す**。観測の不足はまず別の分析メモとして保持し、必要性が実証されるまでSchemaを変更しない。
+- 現行`summarize_experiment.py`は、同一Experiment内に複数Runtime/Model/Effortが混在した入力を拒否する。モデル間比較は現行summarizerに投入せず、既存のpaired実験契約に従って別に比較する。
+- `humanInterventions`は回数であり、人時ではない。`taskSuccess`や`passedGates`は独立したHuman確認済みsemantic correctnessを自動的に意味しない。
+- 生のprovider/請求/実行ログは取得していない。**現時点で実測cost/verified taskは算出不能**。
+
 ## Falsifiable hypotheses
 
 - **H1**: 匿名化した代表的workflowのpaired comparisonでは、token単価で最安の構成が「品質条件を満たすverified taskあたり総コスト」では最安でないケースが少なくとも1つ存在する可能性がある。見つからなければその範囲で棄却する。

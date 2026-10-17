@@ -216,3 +216,10 @@ sources:
     url: "https://www.scrum.org/resources/blog/switch-or-not-switch-ai-model"
     published_at: "2026-10-11"
     adopted: []
+
+  - id: uber-software-factory-economics-2026
+    type: engineering-report
+    title: "Running a Software Factory Efficiently at Uber Scale"
+    url: "https://www.uber.com/us/en/blog/efficient-software-factory/"
+    published_at: "2026-08-27"
+    adopted: []

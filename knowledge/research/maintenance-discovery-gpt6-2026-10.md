@@ -40,7 +40,7 @@ A maintenance candidate's **discovery** and its **verified safe disposition** ar
 
 - If an observation concerns protected workflow files or approval-token guard tests, use it as a **read-only or negative example**, not an Agent-editable remediation task. Explicit Human and HO procedures remain authoritative.
 - The source's observed 1,000-run sample must not be treated as 1,000 independently validated candidate findings. Record denominators, source windows and the separate quality oracle.
-- Existing [Flaky E2E #1556](https://github.com/s977043/PlanGate/issues/1556) and other live work stay with their owners; a research note neither closes these issues nor reclassifies them as new tasks.
+- [Flaky E2E #1556](https://github.com/s977043/PlanGate/issues/1556) is **closed/completed as of 2026-10-17** after corrective PR #1569 and ten observed successful job executions (one PR + nine main, with zero failures). Treat it as a **historical verified correction example**, not an open remediation task or a zero-population-flake-rate claim. Newly observed failures would require fresh dated evidence and Owner triage; other open work remains with its existing owners.
 - Any pilot case selected after approval must preserve separate `observedAtSha`, `evaluatedAtSha`, and review/decision timestamps. Missing values remain UNKNOWN, including human time and operational savings.
 
 ### Cross-PR integration note

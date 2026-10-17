@@ -30,7 +30,7 @@ Do not bypass the existing [#194 design PR](https://github.com/s977043/dynamic-a
 
 Hypothesis: for the same task/fixture and runtime settings, a verified compact handoff reduces **total billable tokens or elapsed time** without increasing unsuccessful continuations, unverifiable claims, or reviewer effort.
 
-- Baseline: current DAT T0-style continuation without the candidate context treatment, evaluated only in a **new** experiment.
+- Baseline / comparison arms: follow the pre-registered **#194 design PR** contrasts for continuing vs fresh contexts and compact vs full handoff. Comparing current-session continuation only against a fresh compact continuation would confound the effects of context reset and payload reduction. Any additional treatment needs a separately reviewed design; EXP-001's T0 label is not a measured baseline for this intervention.
 - Treatment: canonical state + evidence pointers; never raw hidden reasoning or the agent's passing self-report as completion.
 - Probe: one clean resume, then stale checkpoint, conflicting revision, missing evidence pointer and duplicate resume requests. Fail closed before work on invalid context.
 - Rejection: any unauthorized execution or increased outcome failures; insufficient paired data remains INCONCLUSIVE.

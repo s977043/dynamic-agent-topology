@@ -67,13 +67,14 @@
 2. **Case selection**: 匿名化済みの成功例・失敗例・clean negativeを含む最小5件を候補にする。Ownerが品質下限、critical失敗、評価者、費用上限、停止条件を **実行前** に決める。5件の合格は本番品質を保証しない。
 3. **Paired replay**: 同一workflow、case、固定code snapshot・prompt/skills、tool permissions、budget条件で単一の変数を変更。交互順序とfresh sessionを採用し、評価者とGround Truthを事前に独立確定する。実行には別途Operatorの許可が必要。
 4. **Record evidence**: `case_id`, `run_id`, `block_id`, baseline/candidate、version/effort/runtime、quality verdict、critical regression、tokens/input/output/cache、retries、human active correction time、validation費、料金前提・通貨・timestamp、missing理由を記録。未計測・N/A・0を分ける。
-5. **Decision**: 品質下限を満たしたrunの中だけで、task単位の総コスト・latency・Human介入を比較。失敗/abort/timeoutの扱い、分母、sample sizeを明示。測定不足なら `INCONCLUSIVE` とし、Ownerのみが採用・rollbackを判断する。
+5. **Decision**: 全試行を対象に成功率・critical regression・semantic correctnessなどの品質制約を先に判定。制約を満たす候補間でのみ、**失敗・abort・timeout・retryを含めて発生した全費用**を分子に入れ、verified accepted task件数を分母にして総コストを比較する。失敗・abort・timeoutの内訳、分母、sample sizeを明示。測定不足なら `INCONCLUSIVE` とし、Ownerのみが採用・rollbackを判断する。
 
 ### Proposed outcome metric (not implemented)
 
 `cost_per_verified_task = attributable_observed_total_cost / count(verified_accepted_tasks)`
 
 - 分母が0または未観測、分子の必要な費用要素が欠測なら **undefined / INCONCLUSIVE**。Infinityや0で埋めない。
+- **生存者バイアスを避ける**: 分子は同じ観測窓の全試行（不成功のAttempt、失敗retry、abort、timeout、検証と修正）で発生した帰属費用を含める。分母だけを品質確認済みの受理タスクに限定し、失敗コストを除外して成功単価を過小評価しない。リトライは同一TaskのAttemptとして重複した成功件数にしない。
 - `merged PR`、`posted review`、`verified task` は異なる成果単位であり、同一の分母として集計しない。
 - API従量課金、定額契約の配賦、人間労力は同一の「実測金額」とみなさず、測定種別・配賦仮定を付記する。
 - workflow当たりの費用比較では、移行/再検証の一時費用とランニング費用を分け、観測期間も固定する。

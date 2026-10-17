@@ -24,6 +24,8 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 | [Production-agent capabilities: 15-item DAT applicability](production-agent-capabilities-dat-evaluation-2026-10.md) | User-provided 15-project synthesis (secondary input; primary vendor claims not independently verified) | [#57](https://github.com/s977043/dynamic-agent-topology/issues/57) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) / [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) (research-only; no new ownership) |
 | [AI model switch workflow revalidation](model-switch-workflow-revalidation-2026-10.md) | Scrum.org — Stefan Wolpers (2026-10-11) | [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) |
 
+| [Uber Software Factory: outcome-denominated cost & quality](uber-software-factory-economics-2026-10.md) | Uber Engineering — Uday Kiran Medisetty (2026-08-27) | [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) |
+
 Tracking Issues are the live status source of truth; this index intentionally does not duplicate blocked/open/progress state. The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).
 
 ## Expected structure

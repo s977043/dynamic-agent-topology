@@ -34,6 +34,19 @@ A maintenance candidate's **discovery** and its **verified safe disposition** ar
 5. Escalate to T1/independent review only on predeclared risk classes or measured T0 limitations. Use matched pairs with the same acceptance oracle. Capture regression and harmful false-positive cases.
 6. Decide **KEEP T0 / EXPAND / REJECT / INCONCLUSIVE** after independent outcome evaluation and authority review. Keep unchanged schemas, canonical topologies, runtime adapters and EXP-001 artifacts unless separately approved.
 
+## Available external pilot candidates (not DAT measurements)
+
+[PlanGate #1586](https://github.com/s977043/PlanGate/issues/1586) records repository-specific maintenance cost observations at base SHA `5fcdb2e3`, including CI workflow duration, E2E flakiness and maintenance surfaces. This is **external local-repository evidence**, not a completed DAT experiment. The current target main SHA, status and safety classification must be rechecked before constructing a fixture. The associated [PlanGate #1585](https://github.com/s977043/PlanGate/issues/1585) owns the integration proposal, not model or topology adoption.
+
+- If an observation concerns protected workflow files or approval-token guard tests, use it as a **read-only or negative example**, not an Agent-editable remediation task. Explicit Human and HO procedures remain authoritative.
+- The source's observed 1,000-run sample must not be treated as 1,000 independently validated candidate findings. Record denominators, source windows and the separate quality oracle.
+- Existing [Flaky E2E #1556](https://github.com/s977043/PlanGate/issues/1556) and other live work stay with their owners; a research note neither closes these issues nor reclassifies them as new tasks.
+- Any pilot case selected after approval must preserve separate `observedAtSha`, `evaluatedAtSha`, and review/decision timestamps. Missing values remain UNKNOWN, including human time and operational savings.
+
+### Cross-PR integration note
+
+[Research PR #203](https://github.com/s977043/dynamic-agent-topology/pull/203) independently edits `knowledge/research/README.md` and `knowledge/sources.yaml`. Integrators must reconcile both new rows/entries after the first PR merges; do not resolve by silently discarding either source. This is a merge-order warning, **not** a request to promote or merge either PR without its required independent review.
+
 ## Minimum success and stop conditions
 
 - Zero observed critical dangerous false accepts **in the pilot sample**; this does not prove a zero population rate.

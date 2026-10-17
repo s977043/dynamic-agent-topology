@@ -62,4 +62,11 @@ Hypothesis: source-bound extraction and revision checks improve repeated query c
 4. Interpret a positive result only inside the measured population. Do not promote a candidate into `topologies/`, `roles/`, `adapters/`, `policies/`, `experiments/`, or `knowledge/sources.yaml adopted` without a subsequent separately reviewed adoption change.
 5. Never start Operator-only model runs, mutate EXP-001 artifacts, merge release changes, or infer authority from a source README.
 
+## Decision rubric / non-adoption reasons
+
+- **ACCEPT as a future experiment candidate** only when the parent Issue records a distinct falsifiable hypothesis, runnable baseline, owner, safe fixture, negative cases and budget. This is *not* technology adoption.
+- **REJECT** if the design adds new authority, weakens verifier independence, requires importing external execution code, or needs changing EXP-001 evidence to make the result look favorable.
+- **HOLD / UNKNOWN** when required platform access, billed token breakdown, independent grader or safe test isolation is unavailable. Do not substitute a README demonstration for a passing result.
+- **Attribution guard**: EXP-001's T0/T1 outcomes are not observations of screenshot pruning, cache policy, knowledge compilation or resumption. New causal claims need separate paired trials.
+
 **Current decision:** retain as post-EXP-001 research candidates. No feature enablement and no claims of savings, reliability gains or security assurance.

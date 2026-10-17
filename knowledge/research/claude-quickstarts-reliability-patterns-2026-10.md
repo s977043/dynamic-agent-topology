@@ -55,7 +55,7 @@ Hypothesis: source-bound extraction and revision checks improve repeated query c
 - Fixture: explicit contradictory documents, missing fact, stale revision, forged citation and updated source. Use a separately prepared ground-truth oracle; do not derive it from candidate outputs.
 - Measure correct answer, correct abstention, exact source/revision link, contradictory claim detection, build amortization and incremental refresh cost.
 - Keep provenance metadata separate from a **verified** truth claim. A valid hash only proves byte identity under its verification procedure.
-- Rejection: unsupported citation accepted, stale facts promoted, or quality loss; no preview-only Dreaming feature required for the first local pilot.
+- Rejection: unsupported citation accepted, stale facts promoted, or quality loss; no preview-only Dreaming feature required for an incremental, independently scoped follow-up probe. The completed #63 probe is not rerun or rewritten.
 
 ## Smallest useful verification and boundaries
 

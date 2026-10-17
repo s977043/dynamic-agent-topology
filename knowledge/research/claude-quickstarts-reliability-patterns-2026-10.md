@@ -26,6 +26,8 @@
 
 ### H1: Checkpoint + compact handoff (existing #88)
 
+Do not bypass the existing [#194 design PR](https://github.com/s977043/dynamic-agent-topology/pull/194) hold and its registered multi-arm contrasts or pre-run evaluation gates. This note adds source-specific failure hypotheses, not a replacement trial plan.
+
 Hypothesis: for the same task/fixture and runtime settings, a verified compact handoff reduces **total billable tokens or elapsed time** without increasing unsuccessful continuations, unverifiable claims, or reviewer effort.
 
 - Baseline: current DAT T0-style continuation without the candidate context treatment, evaluated only in a **new** experiment.
@@ -35,6 +37,8 @@ Hypothesis: for the same task/fixture and runtime settings, a verified compact h
 
 ### H2: Screenshot/context cost policy (existing #93; cost crossover #88)
 
+The planned #93 compound-execution trials and #88 recovery/model-escalation contrasts have separate populations and outcome definitions. The cache/context policy below must not be silently mixed into either treatment without a new independent preregistration.
+
 Hypothesis: cache-aware pruning/compaction and batching reduce quality-adjusted total cost with no significant loss of task accuracy.
 
 - Pair on identical workload and environment; freeze model, effort, browser fixture, tool rights, verifier and attempt cap.
@@ -43,6 +47,8 @@ Hypothesis: cache-aware pruning/compaction and batching reduce quality-adjusted 
 - Rejection: degraded success/security or cost transfer to retries/verification, even if prompt tokens decrease.
 
 ### H3: Evidence-backed compiled knowledge (existing #63)
+
+**Already observed, not a new baseline:** [Issue #63](https://github.com/s977043/dynamic-agent-topology/issues/63) records a 2026-10-16 synthetic/injected-corruption and selected real-document probe (23 cases: 12 real extraction, 8 injected, 3 stale-text cases). The existing candidate gate rejected the six injected corruption/missing cases that the simple process/link checks accepted, but the sample and oracle are bounded and do not establish general extraction quality or real-world effectiveness. Preserve the original [results](../../docs/KNOWLEDGE_INTEGRITY_CLOUD_RESULTS.md). The following is an **extension candidate** for a held-out corpus and new document revisions, not a claim that initial knowledge-integrity testing has not happened.
 
 Hypothesis: source-bound extraction and revision checks improve repeated query cost **without lowering attribution correctness** relative to raw source lookup.
 

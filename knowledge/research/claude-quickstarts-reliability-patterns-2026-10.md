@@ -27,11 +27,11 @@
 
 ### H1: Checkpoint + compact handoff (existing #88)
 
-Do not bypass the existing [#194 design PR](https://github.com/s977043/dynamic-agent-topology/pull/194) hold and its registered multi-arm contrasts or pre-run evaluation gates. This note adds source-specific failure hypotheses, not a replacement trial plan.
+[#194 design PR](https://github.com/s977043/dynamic-agent-topology/pull/194) is still **Draft**, with a release-gated merge hold tied to [#186](https://github.com/s977043/dynamic-agent-topology/pull/186). Its multi-arm contrasts are **proposals**, not approved or preregistered experiment arms. This note adds source-specific failure hypotheses and does not authorize model runs or replace an independently reviewed, frozen pre-run plan.
 
 Hypothesis: for the same task/fixture and runtime settings, a verified compact handoff reduces **total billable tokens or elapsed time** without increasing unsuccessful continuations, unverifiable claims, or reviewer effort.
 
-- Baseline / comparison arms: follow the pre-registered **#194 design PR** contrasts for continuing vs fresh contexts and compact vs full handoff. Comparing current-session continuation only against a fresh compact continuation would confound the effects of context reset and payload reduction. Any additional treatment needs a separately reviewed design; EXP-001's T0 label is not a measured baseline for this intervention.
+- Baseline / comparison arms: use the **proposed** #194 design contrasts (continuing vs fresh contexts; compact vs full handoff) only as input to a future preregistration and independent review. Comparing current-session continuation only against a fresh compact continuation would confound the effects of context reset and payload reduction. Freeze eligible tasks, controls and arms **before** execution; EXP-001's T0 label is not a measured baseline for this intervention.
 - Treatment: canonical state + evidence pointers; never raw hidden reasoning or the agent's passing self-report as completion.
 - Probe: one clean resume, then stale checkpoint, conflicting revision, missing evidence pointer and duplicate resume requests. Fail closed before work on invalid context.
 - Rejection: any unauthorized execution or increased outcome failures; insufficient paired data remains INCONCLUSIVE.

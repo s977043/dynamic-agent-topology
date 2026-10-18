@@ -216,3 +216,15 @@ sources:
     url: "https://www.scrum.org/resources/blog/switch-or-not-switch-ai-model"
     published_at: "2026-10-11"
     adopted: []
+
+  - id: anthropic-claude-code-model-configuration-2026
+    type: product-documentation
+    title: "Claude Code: Model configuration"
+    url: "https://code.claude.com/docs/en/model-config"
+    adopted: []
+
+  - id: anthropic-claude-code-settings-2026
+    type: product-documentation
+    title: "Claude Code: Settings files and precedence"
+    url: "https://code.claude.com/docs/en/settings"
+    adopted: []

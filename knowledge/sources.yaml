@@ -48,6 +48,12 @@ sources:
     published_at: "2026-10-08"
     adopted: []
 
+  - id: ruvnet-ruflo-2026
+    type: repository
+    title: "Ruflo meta-harness (ruvnet/ruflo)"
+    url: "https://github.com/ruvnet/ruflo"
+    adopted: []
+
   - id: claude-code-mods-2026
     type: engineering-report
     title: "Customize Claude Code with mods"

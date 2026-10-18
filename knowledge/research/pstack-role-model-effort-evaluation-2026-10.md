@@ -18,7 +18,7 @@
 - pstackはCursor向けPluginで、`/poteto-mode`がタスクからplaybookを選び、`/setup-pstack`がrole別モデルとreasoning budgetを設定する。複数モデルによる`arena`、`interrogate`、`swarm`などのワークフローを説明している。
 - upstream READMEには**Claude CodeでのPlugin導入**と、Cursor固有機能をskipするadapterの説明がある。つまり「Cursor専用で他には一切対応しない」とは言えない。
 - このupstreamで**OpenAI Codexへのネイティブ移植・feature parity・提示モデル設定の動作保証**は確認していない。投稿で示された具体的なAstra/Sol推論段階は、DAT標準値でもupstreamの普遍的defaultでもない。
-- adapterは別の実行環境へmodel指定を写像し、対応できないprovider slugのモデル指定を省略する。静的なRole指定だけでは**選んだモデルの実行・最小権限・独立性**を証明しない。
+- Claude Code adapterは別の実行環境へmodel指定を写像し、対応できないprovider slugのモデル指定を省略する。**宣言されたmodelと実効modelが一致しないfallback**を考慮し、実験ではeffective model/effortと実行contextを観測する。静的なRole指定だけでは**選んだモデルの実行・最小権限・独立性**を証明しない。
 - upstreamの技法と開発者の目的は、DATでの比較実験の参考であって、task success・cost改善・defect reductionのDAT測定値ではない。
 
 ## 既存DATとの重複 / 差分
@@ -43,10 +43,10 @@
 
 1. **先に#194の未確定U2〜U8**（母集団、gate、予算、runtime/model、判定基準）をレビューし、同じ実験を別PRで作らない。モデル・effort変更は、使用可能性/モデル識別子/実効的な適用をTraceで確認する。
 2. 正/負の小さな匿名化タスクを混在させ、独立ACと再現fixtureを用意する。既存EXP-001の簡単な3シナリオだけから品質向上を主張しない。
-3. Paired blocks、fresh context、順序counterbalance、repeated runs、一定のpermission boundary / runtime/tool version / hard resource ceilingを宣言。モデル単価、cache read/write、review fan-out、retry、abortを含む**全legの実測cost**を記録する。
+3. Paired blocks、fresh context、順序counterbalance、repeated runs、一定のpermission boundary / runtime/tool version / hard resource ceilingを宣言。各legのtoken・wall-clock・cache read/write・fan-out・retry・abortを**実測**し、観測usage × 適用時点の料金表による**推定費用**と取得可能な実請求額を区別する。未計測legを無料とみなさない。
 4. policy選択のshadow結果は、未実行treatmentのOutcomeを知った後で変更できないよう事前commit/hashし、selectorの精度・treatmentの有効性・runtime enforcementを別々に評価する。単純な後知恵でのroute最適化を成功としない。
 5. Outcomeはindependent AC、regressions、critical defect、false accept、human interventions、token、wall-clock、handoffs、aborts/missingness、boundary violationsで判断する。Reviewer modelを変えた場合はcontext/objective/予算差も記録する。
-6. 小標本のfeasibilityとpolicy優越性を分離。必要条件を満たさない、未activate、scope外副作用、独立確認不足なら`INCONCLUSIVE`。品質下限違反・境界違反は`FAIL`。効果があってもHuman-owned judgmentなしに既定化しない。
+6. 小標本のfeasibilityとpolicy優越性を分離。success=0のarmではcost / verified successをゼロや有限値に補完せず、成功率と総費用を別々に報告する。必要条件を満たさない、未activate、scope外副作用、独立確認不足なら`INCONCLUSIVE`。品質下限違反・境界違反は`FAIL`。効果があってもHuman-owned judgmentなしに既定化しない。
 
 ## Decision / 非採用境界
 

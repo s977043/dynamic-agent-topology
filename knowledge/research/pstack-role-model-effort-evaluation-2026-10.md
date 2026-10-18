@@ -6,7 +6,7 @@
 
 - 対象の正本: [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)（選択的multi-model orchestration）、[#88](https://github.com/s977043/dynamic-agent-topology/issues/88)（model escalation / handoff）、[#82](https://github.com/s977043/dynamic-agent-topology/issues/82)（独立した反証的判断）。
 - 現在の設計作業: [Draft PR #194](https://github.com/s977043/dynamic-agent-topology/pull/194)。同PRのCascade/Critique設計を複製せず、その前提・評価に不足する論点をIssue側へ返す。
-- Release hold: [Draft #186](https://github.com/s977043/dynamic-agent-topology/pull/186)のversion/date/publication判断はHuman-owned。#186の公開完了までは本研究PRもDraftで保持し、別PRをmergeしない。
+- Release hold（2026-10-18再確認）: [PR #186](https://github.com/s977043/dynamic-agent-topology/pull/186)は**merge済み**だが、0.3.0のimmutable tag / GitHub Releaseは**未公開**。`CITATION.cff`の`date-released: 2026-10-16`は実公開日を裏付けない。version / actual publication date / tag / Releaseの判断はHuman-owned。release gate完了まで本研究PRはDraftのままmergeしない。
 - EXP-001は18/18 Run、9/9ペアのPilotで**Keep T0**。この結果は別モデル・別タスク・pstackへの効果証明ではない。Frozen 33 blobsおよび既存Decisionを変更しない。
 
 ## Provenance / 確認した事実

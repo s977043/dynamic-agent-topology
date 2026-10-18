@@ -43,13 +43,14 @@ Reviewerを「壊す」指示にしても、欠陥の存在を自動証明しな
 
 | Arm | Treatment (constant unless specified) | Contrast |
 | --- | --- | --- |
-| A | Sonnet T0（Advisor off）、既存Verifier/CI | baseline |
+| A | Sonnet T0（Advisor off）、通常の既存外部レビュー/Verifier/CI経路は固定 | baseline |
 | B | A + Haiku Scout（only Read/Grep/Glob） | B−A: delegation package |
-| C | B + same-model Reviewerに反証的objectiveを与える（optional gate） | C−B: adversarial review package |
-| D | CのReviewerをOpusへ変更（同じobjective、入力、権限、budget） | D−C: model-strength increment |
-| E | Dで `opusplan` を使用し、Plan Mode発火を観測（それ以外を可能な限り固定） | E−D: plan/execution model split package |
+| C | B + **既存Reviewerへの反証的objective追加**（新Agentなし、同じ判断Gate） | C−B: adversarial instruction effect |
+| D | Cのobjective / 入力 / model / effortを維持し**別のread-only Critic context**へ分離 | D−C: independent role/context effect |
+| E | DのCriticのみOpusへ変更（同じobjective、入力、権限、budget） | E−D: model-strength increment |
+| F | Eで `opusplan` を使用し、Plan Mode発火を観測（それ以外を可能な限り固定） | F−E: plan/execution model split package |
 
-比較は**順次実施する候補**であり、一斉5-arm実験の事前承認ではない。大きいArmへ進む条件を先に定義する。Advisorは既存の[4-arm研究](claude-code-advisor-readonly-researcher-2026-10.md)で別Treatmentとし、必要になるまでEへ同時追加しない。正確な因果帰属が難しい場合は交絡と記録する。
+この比較は**逐次的な候補**であり、必須の一斉6-arm実験ではない。Aの「既存外部レビュー」はPR承認を省略しないための一定条件であり、T0の中に新Agentを追加する意味ではない。Cで変更するのは既存Reviewerのobjective、Dで変更するのは独立Role/Context、Eで変更するのはモデルのみ。各差分の前提となる対応する負例・観測とquality floorが無ければ次のArmへ進まない。Advisorは既存の[4-arm研究](claude-code-advisor-readonly-researcher-2026-10.md)で別Treatmentとし、必要になるまでFへ同時追加しない。正確な因果帰属が難しい場合は交絡と記録する。
 
 ### Preregister and measure
 

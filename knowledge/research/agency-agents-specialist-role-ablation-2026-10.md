@@ -50,13 +50,13 @@ Agent数を増やす研究ではなく、**T0のまま短い専門的判断基�
 
 **Stage 0 (no model run):** 判断基準候補を出典依存しない形で別Artifactに設計し、既存Roleとの重複・Prompt token量・権限関係・独立評価契約・漏洩リスクを査読する。次段へ進む前に予算上限と実施許可を確認する。
 
-**Stage 1 (post-freeze pilot candidate):** 非本番の独立Fixtureで、2種類のTask × 2 Arm × 2反復 = **最大8 Runの探索枠**を仮置き。必要Runs、事前停止基準、予算の上限はOperatorと事前確定。各Armは同じRepository revision、同一Task/AC、fresh workspace/sessionを用い、実行順を交互にする。前Armの修正や学習情報を他Armに持ち越さない。実験が成立しなければ`INCONCLUSIVE`とする。
+**Stage 1 (post-freeze pilot candidate):** EXP-001の凍結Prompt/Fixture/Run artifactを流用・更新せず、別の非本番Fixtureとbaseline snapshotを新規に定義する。2種類のTask（専門的な判断が必要なTask／専門化が不要な単純Task）× 2 Arm × 2反復 = **最大8 Runの探索枠**を仮置き。必要Runs、事前停止基準、許容Regression、minimum practical improvement、実験コスト上限を**最初のRun前に**Operatorと確定する。各Armは同じRepository revision、同一Task/AC、fresh workspace/sessionを用い、実行順をcounterbalanceする。前Armの修正や学習情報を他Armに持ち越さない。実験が成立しなければ`INCONCLUSIVE`とする。
 
 **Measure:** independent/deterministic Task Success、Regression、scope deviation、Human Intervention、total input/output/cached tokens（guidance overhead含む）、wall clock、boundary violation、必要時のhandoff、実際のguidance適用痕跡。Promptが読まれたことは効果の証拠ではない。Costは実測できる範囲だけ記録し、subscriptionの金額を推定しない。
 
-**Evaluation:** 各Arm共通のAC/検証コマンドを使い、可能ならArmを伏せた独立Evaluatorを使用。観測から後出しで閾値を変更しない。Agentの自己報告はGround Truthではない。実行失敗とタスク失敗を区別し、欠測を0にしない。
+**Evaluation:** Stage 1は探索的Pilotであり、8 Runだけでは一般的な有効性を主張しない。専門知識の意味的効果とPrompt長の効果が区別できない場合は、次の実験でtoken長を合わせた対照Armを追加する（Stage 1の途中でArmを増やさない）。各Arm共通のAC/検証コマンドを使い、可能ならArmを伏せた独立Evaluatorを使用。観測から後出しで閾値を変更しない。Agentの自己報告はGround Truthではない。実行失敗とタスク失敗を区別し、欠測を0にしない。
 
-**Stop / reject:** frozen artifact変更、Secrets露出、権限逸脱、非独立評価、fresh-state破綻、予算超過、品質の重大な劣化があれば停止。優位性が再現できない場合は`DEFER`または`REJECT`し、Role増加は行わない。
+**Stop / reject:** 独立Judgment不在・Protocolに合わないRunは採用判断へ進めず保留する。frozen artifact変更、Secrets露出、権限逸脱、非独立評価、fresh-state破綻、予算超過、品質の重大な劣化があれば停止。優位性が再現できない場合は`DEFER`または`REJECT`し、Role増加は行わない。
 
 **一般化の制限:** EXP-001はCodex・GPT-6.1 Sol・high・限定3 TaskのPilotで、T0/T1を比較したもの。そこでのT1のToken増加を、本比較A/Bの予測値やAgency Agentsの効果と混同しない。
 

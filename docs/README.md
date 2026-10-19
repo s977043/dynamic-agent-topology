@@ -42,6 +42,7 @@
 3. [AGENT_HARNESS.md](AGENT_HARNESS.md) — このRepositoryを開発するAgentの学習ループ、自律境界、Guard
 4. [ENVIRONMENT_USAGE.md](ENVIRONMENT_USAGE.md) — クラウド・Mac・ThinkPadの環境差分、用途別の利点と制約、検証順序（非規範的な検討記録）
 5. [KNOWLEDGE_OWNERSHIP.md](KNOWLEDGE_OWNERSHIP.md) — 共有するプロジェクト知識と環境メモリの保存先、再確認と引き継ぎ
+6. [MAINTENANCE_COST_REVIEW.md](MAINTENANCE_COST_REVIEW.md) — 保守コスト削減候補、Evidenceの限界、実行順序とHuman境界（非規範的）
 
 ## Document roles
 

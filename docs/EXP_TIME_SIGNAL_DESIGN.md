@@ -73,6 +73,8 @@
 | C | `elapsed <seconds>s / <preregistered_budget>s` | 必須 |
 | B | `elapsed <seconds>s` | 後続（A/C で効果方向が見えた場合） |
 
+A の形（シグナルなし / 固定中立行）は U5 で未確定だが、事前登録の確定時にどちらか一方へ固定し、予備検証の trace で A と C のメッセージ差分がシグナル行だけであることを確認してから本実行に進む。
+
 - **助言 budget**: task ごとに事前固定。算出方法の候補は「Operator が実施する予備 A run の wall clock の固定倍率」。予備 run は効果推定に使わない。
 - **hard timeout**: 全 arm 同一値で助言 budget より十分大きく（例: budget の固定倍率）、Harness が強制する。超過は timeout として記録し成功扱いしない。
 - **token / spend 上限・permission boundary**: 全 arm 同一の強制条件。

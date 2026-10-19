@@ -6,12 +6,13 @@
 
 ## L-009
 
-- 観測: 独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO&#45;GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効）
-- 回数: 3
-- Evidence: PR &#35;130 の Run acceptance レビュー（Issue &#35;15 comment 6106366753 に至る 4 回）
+- 観測: 独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO&#45;GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効、パッケージに存在する &#96;materials/pr&#46;md&#96; を「ない」として CHANGES&#95;REQUIRED）
+- 回数: 4
+- Evidence: PR &#35;130 の Run acceptance レビュー（Issue &#35;15 comment 6106366753 に至る 4 回）。PR &#35;194 の 5 回目レビュー（2026&#45;10&#45;15、必須 0 件で材料欠落のみを理由に CHANGES&#95;REQUIRED、同一材料の新規セッション再実行で MERGE&#95;OK。PR &#35;194 comment 6203136254）
 - <https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106366753>
 - <https://github.com/s977043/dynamic-agent-topology/pull/130>
-- 対策検討候補: 判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする
+- <https://github.com/s977043/dynamic-agent-topology/pull/194#issuecomment-6203136254>
+- 対策検討候補: 判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする。材料欠落だけを理由とする判定は、材料の実在を確認し、実在すれば同一材料の新規セッションで再実行して両結果を記録する
 
 - [ ] 既存対策と再発Evidenceを照合
 - [ ] 必要性・反証可能な仮説・変更先を確定

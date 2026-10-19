@@ -123,7 +123,7 @@ Task の AC: 各 task の Verification command が exit 0 かつ独立 Evaluator
 
 ## 9. 予備検証（disposable、Operator 実施）
 
-結果は Evidence として採用判断に使わず、repo に Run Artifact を残さない。
+結果は Evidence として採用判断に使わず、repo に Run Artifact を残さない。後から追えるよう、実施日時・Runtime / Model / Effort・下記 1〜4 の確認結果（PASS / FAIL）だけを #201 のコメントに記録する（trace 本文や秘密値は載せない）。
 
 1. Harness が単調時計の elapsed を signal 行として付与し、Trace に残せるか（activation 計測の成立）。
 2. A/C の prompt 差分が signal 行だけであることを機械的に確認できるか。

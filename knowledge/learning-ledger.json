@@ -135,7 +135,9 @@
       "count": 4,
       "state": "candidate",
       "countermeasure": "判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする。材料欠落だけを理由とする判定は、材料の実在を確認し、実在すれば同一材料の新規セッションで再実行して両結果を記録する",
-      "observedDates": ["2026-10-15"]
+      "observedDates": [
+        "2026-10-15"
+      ]
     },
     {
       "id": "L-010",
@@ -268,6 +270,70 @@
       "countermeasure": "版数を変更するPRではCITATION・lock・文書例の整合と対象validatorを確認し、実施した検証コマンド・head・結果を記録する。必須CIの失敗は修正後のheadで再確認する",
       "observedDates": [
         "2026-10-14"
+      ]
+    },
+    {
+      "id": "L-018",
+      "observation": "GitHub自動観測（ci、原因未分類）",
+      "evidence": {
+        "description": "2026-10-14 CI conclusion=failure; run_id=38517336501; run_attempt=1; final job completed_at; source timestamp=2026-10-14T05:34:41+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/actions/runs/38517336501/attempts/1"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-14"
+      ]
+    },
+    {
+      "id": "L-019",
+      "observation": "GitHub自動観測（ci、原因未分類）",
+      "evidence": {
+        "description": "2026-10-14 CI conclusion=failure; run_id=38538541183; run_attempt=1; final job completed_at; source timestamp=2026-10-14T08:55:28+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/actions/runs/38538541183/attempts/1"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-14"
+      ]
+    },
+    {
+      "id": "L-020",
+      "observation": "GitHub自動観測（ci、原因未分類）",
+      "evidence": {
+        "description": "2026-10-14 CI conclusion=failure; run_id=38567401825; run_attempt=1; final job completed_at; source timestamp=2026-10-14T12:54:36+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/actions/runs/38567401825/attempts/1"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-14"
+      ]
+    },
+    {
+      "id": "L-021",
+      "observation": "GitHub自動観測（comment、原因未分類）",
+      "evidence": {
+        "description": "2026-10-17 Verdict=CHANGES_REQUIRED; required=1; source timestamp=2026-10-17T03:17:05+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/200#issuecomment-6228943274"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-17"
       ]
     }
   ]

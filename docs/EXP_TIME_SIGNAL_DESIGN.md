@@ -18,11 +18,11 @@
 
 ## 1. 結論（推奨案）
 
-**2 arm（A: シグナルなし / C: `elapsed Ns / budget Ns`）の paired 比較から始め、B（elapsed のみ）は A/C で効果方向が見えた場合の後続 ablation に回す。** 同一 Topology・Worker 数・Runtime・Model・Effort の下で、Harness がメッセージ末尾に付ける 1 行だけを変える。
+**2 arm（A: シグナルなし / C: `elapsed Ns / budget Ns`）の paired 比較から始め、B（elapsed のみ）は後続 ablation に回す（実施の判断基準は U6）。** 同一 Topology・Worker 数・Runtime・Model・Effort の下で、Harness がメッセージ末尾に付ける 1 行だけを変える。
 
 ### 2 arm に絞る根拠（判断基準: 要件適合性 → 安全性 → 保守性 → コスト → 拡張性）
 
-- **要件適合性**: 最初に答えるべき問いは「何らかの time signal に効果があるか」。C は情報量が最大の treatment で、A との差が出なければ B で差が出る見込みは低い（B は C の部分情報）。C で差が出た場合にだけ「budget 情報が要るか」を B で分解する。
+- **要件適合性**: 最初に答えるべき問いは「何らかの time signal に効果があるか」。C は情報量が最大の treatment なので、最初の比較に置く。ただし budget 情報が elapsed 単独の効果を弱める可能性もあり、A/C で差が出なくても B に効果がないとは言えない。B を実施するかは A/C の結果だけで決めず、U6 の判断材料として扱う。
 - **コスト**: 3 arm は同じ paired block 数で Run 数が 1.5 倍。小標本の feasibility 段階では arm を増やすと 1 arm あたり件数が減り INCONCLUSIVE になりやすい。
 - **安全性**: C は「予算」を見せるため、検証を省略して早く終える方向に働く危険が最も高い。最初に C を検証対象にすると、この危険（§6 H-S）を早期に検出できる。
 - **限界**: A/C 差が出ても「elapsed 単独で十分か」は答えられない。この結論は B を実施するまで出さない。
@@ -71,7 +71,7 @@
 |---|---|---|
 | A | なし（または K1 の固定中立行） | 必須 |
 | C | `elapsed <seconds>s / <preregistered_budget>s` | 必須 |
-| B | `elapsed <seconds>s` | 後続（A/C で効果方向が見えた場合） |
+| B | `elapsed <seconds>s` | 後続（実施の判断基準は U6） |
 
 A の形（シグナルなし / 固定中立行）は U5 で未確定だが、事前登録の確定時にどちらか一方へ固定し、予備検証の trace で A と C のメッセージ差分がシグナル行だけであることを確認してから本実行に進む。
 

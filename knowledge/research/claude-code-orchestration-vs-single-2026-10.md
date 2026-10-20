@@ -117,6 +117,12 @@
 - Success: 独立Validatorの出力と整合し、両Work Unitの検査範囲が欠けず、禁止writeがない。Validator自体の正負テスト（重複ID、存在しない相対pathなど）をDisposable fixtureで確認する。成功の基準はAgent自身の自己申告ではない。
 - Feasibility exit: A/B各**1〜2個のsmall probe**だけを上限として検討し、両者の実起動/受理と計測が成立しない場合はCを始めない。この回数は効果の統計的検証数ではなく、正式な評価用sample sizeは別に事前登録する。
 
+### P0を含むFast Feedback（第3検証ループ）
+
+W1/W2は決定論的に解けるため、DAT第一級Baselineの**P0（Agentを使わないスクリプト/静的監査）を先に評価**する。P0が両Work UnitのACを安価・十分に満たすなら、Agent数を増やすことの費用対効果が不明であると記録し、S1を「Agent並列化が有効だった」証拠へ昇格させない。A/B/Cへの進行には、静的検査のみでは解けない**実際の情報収集・要約・判断など**Agentを必要とするtaskの適格性も事前審査する。比較のためだけに意味のないAgent実行を増やさない。
+
+**実リポジトリでのread-only予備監査（2026-10-21、PRブランチ commit `11be995f2651f4778a158aa0005a0a0e6debedae`）**: GitHub APIでそのcommitのtree、`knowledge/sources.yaml`、研究索引を取得してローカルの構文ベースの照合を実施。出典ID **41件・重複0**、研究索引から抽出したMarkdownリンク **51件・存在しない相対リンク0**。負側probeとして重複した模擬IDと存在しない模擬pathを検出可能であることも確認した。これは**軽量な構文/参照チェック**であり、全YAML意味論・モデル成果・実行runtime permissionを検証したものではない。正規のschema/semantic CIは別途最新HEADで確認する。
+
 ### 実測記録と比較可能性の事前検査（研究用、Schemaではない）
 
 各探索/評価Runの**候補となる収集項目**: `blockId`、`scenarioRevision`、`arm`、`taskClass`、`workUnitDigest`、`runtimeVersion/provider/model/effort`（親・子ごとの実効値）、`permissionPolicyDigest`、`agentSpawnAttempted/Observed`、`runStart/runEnd`、`verifiedDeliveryStart/End`、`oracleOutcome`、`regression`、`tokenBreakdown`、`timeout/abort/retry`、`boundaryDenials`、`humanWait/review`、`missingEvidence`。既存`ExecutionTrace` / `RunEvaluation`と矛盾しないよう**既存項目を優先**し、書式追加は後続の事前登録・別PRで判断する。実測値・実行時刻・費用を未実施の段階で埋めない。

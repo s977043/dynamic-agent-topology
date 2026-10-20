@@ -30,13 +30,14 @@
 
 | Arm | 変更対象 | 統制・注意 |
 | --- | --- | --- |
+| P0: deterministic audit（feasibility-only） | スクリプト/既存ValidatorでW1/W2の受理oracleを先行確認 | Agentを使う必要性の否定対照。Model実験の効果推定には混ぜない |
 | A: T0 | Single Agent、既存の外部CI/独立Review経路を固定 | 基準値。途中で新しいCoordinatorを追加しない |
 | B: serial delegation（候補、**T0ではない**） | 親Agentが固定した複数Work Unitを、同数のSubagentへ**逐次**委任 | Aとの差分は委任+context+agent countを含む**package effect**。AとBを「並列化効果」と呼ばない |
 | C: parallel delegation（候補、**T0ではない**） | Bと同じWork Unitを同数・同モデル・同ツールのSubagentへ可能な範囲で並列委任 | Bとの差分は**scheduling policy**を原則唯一の操作因子とし、実際の実行重複時間と合流時間も測定 |
 | D: Agent teams | teammate間の直接通信/共有タスクを許す | Cとの差分は協調方式の**package**。interactive制約・spawn挙動が揃わない場合は因果比較しない |
 | E: Dynamic workflows | Claude Code workflowによる制御 | Cとの差分はprogrammatic orchestrationの**package**。workflow生成・修正・起動時間も含める |
 
-**一括5-armを先に要求しない。** A→B（委任・Context分離を含むpackage）→C（同一Work Unitのschedule差）を最小の前向きpaired comparison候補とし、独立依存関係のあるTaskだけD/Eを次段階として検討。A以外をT0のままと呼ばず、BとCでWorker数や分割結果が異なればC−Bを並列化単独の因果効果とは主張しない。OpusPlan/Model Routing・Critic・Advisorは別の因子で、ここに同時追加しない。Agent teamsが非対話で使えない環境ではDを無理に実行しない。
+**P0はモデル不要のFeasibility確認であり、A/B/Cのモデル実行比較の一条件とは数えない。** **一括5-armを先に要求しない。** A→B（委任・Context分離を含むpackage）→C（同一Work Unitのschedule差）を最小の前向きpaired comparison候補とし、独立依存関係のあるTaskだけD/Eを次段階として検討。A以外をT0のままと呼ばず、BとCでWorker数や分割結果が異なればC−Bを並列化単独の因果効果とは主張しない。OpusPlan/Model Routing・Critic・Advisorは別の因子で、ここに同時追加しない。Agent teamsが非対話で使えない環境ではDを無理に実行しない。
 
 ### 事前登録する統制・観測
 

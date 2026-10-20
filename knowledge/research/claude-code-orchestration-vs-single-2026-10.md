@@ -47,6 +47,14 @@
 5. wall-clockはキュー待ち・workflow生成/起動・並列join・retries・独立Review/CI・Human待ちを区分し、ユーザー視点の**verified delivery elapsed**を主指標、Agentの処理時間を副指標とする。cached/uncached tokens、費用、Human interventions/concurrency、cross-session引継ぎも計測。
 6. quality floor・最大支出・Human-owned actionの停止条件を事前固定。成功例だけを選ばない。pilotの小標本で一般化せず、効果が不明なら**INCONCLUSIVE/DEFER**、費用増や安全性悪化なら**Keep T0 / REJECT**。
 
+### 第3レビューで具体化した負側・観測確認
+
+- **依存が強いTask**: 同じファイルを順序依存で編集させ、C/D/Eで競合・やり直し・quality regressionが増えるかを評価。並列数のみを増やして「高速」と判定しない。
+- **実効権限の負側**: ダミー秘密値と書込禁止fixtureを持つ隔離workspaceで、委任先とWorkflowが禁止されたWrite/外部送信を実際に拒否されるか確認する。**本番秘密値・実API credentialは使わない**。構成ファイルにread-onlyと書いただけならFAIL/UNKNOWN。
+- **発火の負側**: Agent teamsを無効にした環境、非対話`-p`、Workflow permission未付与で「意図どおりspawn/実行されない」ケースを記録し、無実行を成功扱いしない。
+- **時間の計測境界**: 同期した開始/終了イベントを持つ時計で、最初の人間依頼から検証済み成果物までを測る。Agent自身の処理だけを集計した短い値を、Human待機・CI・Reviewを含むdelivery elapsedへ読み替えない。
+- **停止と権限**: Experimentの起動/費用/Runtime permissionは別承認。Reviewerは新しいセッションでexact headと独立oracleを閲覧し、作成者の自己レビューを置き換えない。
+
 ## 5. Cheapest useful verification と採用ゲート
 
 - **Step 0（今回）**: 文献と比較設計の記録のみ。実モデル/Workflow起動、Runtime設定変更、Agent team有効化、権限変更なし。

@@ -76,3 +76,35 @@
 
 - 本ノートは#93に結び付ける。並行Draft #194/#206/#208などが同じ`knowledge/research/README.md` / `knowledge/sources.yaml`を変更するため、他PRのブランチを上書きせず、先行merge後に差分・重複source ID・latest-head CIを再検証する。
 - 既存のrelease publication hold、独立した別セッションReview、Human-only release / guard / permission変更、GitHub Rulesetを尊重する。本セッションのレビューは独立承認の代替にはならない。
+
+## 7. 実行計画 — 実測前の作業分割と判定ゲート
+
+> この表は**提案中の作業計画**であり、承認済みexperiment.yaml・実Runtime Run・実測結果ではない。実行開始には[#93](https://github.com/s977043/dynamic-agent-topology/issues/93)側のHuman/Operator判断が必要。既存の[#194](https://github.com/s977043/dynamic-agent-topology/pull/194)のCascade/Recovery計画と並列に新しい実験契約を作らない。
+
+| Gate / 担当 | 最小成果物 | 検証コマンド・観測 | Pass / Block |
+| --- | --- | --- | --- |
+| G0 Source & scope / Researcher（read-only候補） | 一次出典4件の実機能・実行面制約、原実験不明事項、#93/#194/#206との差分表 | 公開公式ページの照合、DAT原則と原文のリンク追跡 | ソースの主張とDATの観測を区別できる。SNSの速度主張の実測化禁止 |
+| G1 Experimental design / Experiment Planner（提案のみ） | Task classと固定Work Unit DAG、A/B/Cの入力/出力・oracle、negative cases、予算/回数/停止条件の**事前登録案** | `docs/EXPERIMENTS.md` / `docs/METRICS.md`、EXP-001 Keep T0との整合チェック | 変更要因と評価基準が曖昧ならBLOCK。既存実験/Schemaへ遡及変更しない |
+| G2 Runtime & permission preflight / Operator + Human許可 | Disposable secret-free checkout、CLI/provider/model IDs、Subagentの実際のspawn / tool denyの証跡 | **将来の許可後**にversion確認と禁止Write・外部通信のnegative probeを実施 | Permission/Model/効果値が未観測ならUNKNOWN。人間の権限判断がない状態で起動しない |
+| G3 Feasibility / Operator +独立Evaluator | A/Bの小規模探索Run、失敗/中止を含むTrace、決定論的AC | fixed input、fresh workspace、activation・Run wall clock・Token・受入oracle | 取得できたら次の実験を検討。探索Runだけでは採用不可 |
+| G4 Preregistered evaluation / Human承認後 | held-outのcounterbalanced paired blocks、B/Cのschedule差、独立Judgment | 成否と回帰・費用・人間介入・境界違反をRunごとに追跡 | 実測に品質の非劣化と実務上の利益がなければKeep T0 |
+| G5 PR merge / Independent Reviewer | exact headに結び付いた別セッションの判断と全required CI | CI check runs、差分、指摘0、release hold、Human-only filesを再確認 | 条件が1つでも未達ならDraft/HOLD。研究PRのmergeは実験開始許可ではない |
+
+### 実験を成立させる最小fixture案
+
+- **S1 正例（独立可能）**: 同一入力リビジョンのread-only検査を2〜3個の独立Work Unitへ事前分割し、固定した成果物のhash・項目数・検出内容を独立oracleで照合する。BとCのWorker数、処理対象、情報量を固定し、単に検証を省略して速くなったRunを成功にしない。
+- **S2 負例（依存が直列）**: 次のWork Unitが前の出力を参照するDAGを固定。Cの並列化によるhandoff failures、idle、rework、競合がないか確認。分割の同一性が保てなければB/Cを別物としてINCONCLUSIVE。
+- **S3 セキュリティ負例**: 偽のsecret・禁止パスを持つ使い捨てfixtureだけを利用。想定外のWrite/Bash/MCP/外部送信が**実効的に拒否**されたかEventを確認し、権限宣言だけでは合格にしない。
+- S1〜S3は**まだ作成・実行していない候補**。既存EXP-001 fixtureを改変しない。実行条件確定前に高コストな5-arm全比較や固定Topology追加を行わない。
+
+### Reviewerへ委託する場合の引き渡し契約
+
+- Writerから独立した新規Session/Modelに**PR head SHA、full diff、AGENTS/Harness規則、#93/#194/#206、一次資料、実施したCI run ID**を直接渡す。Writerの「結論だけの要約」は唯一の入力にしない。
+- 承認はread-onlyレビューの結果・観測出典・重大度（必須/推奨）・session IDを記録し、必須指摘が出たら修正後の**新しいHEAD**へ再レビューを要求する。Botのquota exceededやCOMMENTED、同一セッション自己検査、助言Agentの返答は独立APPROVEDではない。
+- Reviewerが起動できなければ**BLOCKED (not reviewed)**。未実行を成功として閉じない。G0/G1はread-only助言を委託可能だが、G2/G4の実行許可、G5のHuman-only release/tag/guard判断は委任できない。
+
+### 今回の実行結果と残差
+
+- 文書/出典の検証と最小作業計画のみ。現時点では実CLI、サブエージェント本体、実験Runは**実行していない**。
+- 停止条件: 出典の矛盾、Work Unit/モデル/permissionが固定できない、独立Reviewが無い、Human Gate未解消、品質床・費用上限未合意。
+- 次の受け渡し: #93でG1のAC・budget・適格Taskを定め、G2以降は許可された実行環境・独立Reviewerが揃った時のみ実施する。

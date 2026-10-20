@@ -112,6 +112,16 @@
 - 承認はread-onlyレビューの結果・観測出典・重大度（必須/推奨）・session IDを記録し、必須指摘が出たら修正後の**新しいHEAD**へ再レビューを要求する。Botのquota exceededやCOMMENTED、同一セッション自己検査、助言Agentの返答は独立APPROVEDではない。
 - Reviewerが起動できなければ**BLOCKED (not reviewed)**。未実行を成功として閉じない。G0/G1はread-only助言を委託可能だが、G2/G4の実行許可、G5のHuman-only release/tag/guard判断は委任できない。
 
+### 第3ループ: Runtime固有の安全前提（2026-10-21公式資料照合）
+
+- [Model configuration](https://code.claude.com/docs/en/model-config): `opusplan`は**Plan Mode時のみ**Opus→実行時Sonnet。provider/CLIによるalias解決とfallback、親からモデルを継承するsubagentの実効値を必ず採取する。分担の実装とは独立した変更因子。
+- [Subagents](https://code.claude.com/docs/en/sub-agents): `permissionMode`は親の`bypassPermissions`/`acceptEdits`/`auto`などで指定どおりにならない場合がある。read-onlyの役割説明をセキュリティ境界とみなさず、隔離fixtureで実効tool denyを検証。
+- [Agent teams](https://code.claude.com/docs/en/agent-teams): experimental・既定無効。`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`により**通常の名前付きSubagentもteammateとして起動する可能性**がある。非対話`-p`ではteammateがspawnされない。D armは専用のinterative環境/強制境界確認が必要で、Cとの単純な時間比較は不可。
+- [Dynamic workflows](https://code.claude.com/docs/en/workflows): `ultracode`キーワードはユーザーの対話入力に限られ`claude -p`のpromptでは発火しない。一方Workflow機能自体は非対話でも使用可能。`/effort ultracode`の常時設定は追加Token/Latencyだけでなく、auto modeで最初のWorkflow実行承認を省略し、通常の同時subagent上限やlarge-workflow警告にも影響する。**許可前は有効化しない**。既存のRuntime permission / Human権限境界をこのモードで迂回しない。
+- 以上は**2026-10-21時点の公開仕様**。実CLI/version/providerでの有効性はまだ測っていない。実行開始時には改めて公式文書とeffective configurationを照合する。
+
+研究PR自体の静的な品質確認: 最新HEADで`spec-lint`（validate）、`CodeQL`（Analyze Python）の必須CIに加え、差分が`knowledge/`の3ファイルのみ、出典ID重複なし、`adopted: []`、凍結33 blob変更なしを再取得して判定する。CI合格は実モデル実験の成功を証明しない。
+
 ### 今回の実行結果と残差
 
 - 文書/出典の検証と最小作業計画のみ。現時点では実CLI、サブエージェント本体、実験Runは**実行していない**。

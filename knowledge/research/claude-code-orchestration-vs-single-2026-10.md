@@ -97,6 +97,15 @@
 - **S3 セキュリティ負例**: 偽のsecret・禁止パスを持つ使い捨てfixtureだけを利用。想定外のWrite/Bash/MCP/外部送信が**実効的に拒否**されたかEventを確認し、権限宣言だけでは合格にしない。
 - S1〜S3は**まだ作成・実行していない候補**。既存EXP-001 fixtureを改変しない。実行条件確定前に高コストな5-arm全比較や固定Topology追加を行わない。
 
+### 実測記録と比較可能性の事前検査（研究用、Schemaではない）
+
+各探索/評価Runの**候補となる収集項目**: `blockId`、`scenarioRevision`、`arm`、`taskClass`、`workUnitDigest`、`runtimeVersion/provider/model/effort`（親・子ごとの実効値）、`permissionPolicyDigest`、`agentSpawnAttempted/Observed`、`runStart/runEnd`、`verifiedDeliveryStart/End`、`oracleOutcome`、`regression`、`tokenBreakdown`、`timeout/abort/retry`、`boundaryDenials`、`humanWait/review`、`missingEvidence`。既存`ExecutionTrace` / `RunEvaluation`と矛盾しないよう**既存項目を優先**し、書式追加は後続の事前登録・別PRで判断する。実測値・実行時刻・費用を未実施の段階で埋めない。
+
+- **Primary causal view**: 事前割当した全Runを含めるintention-to-treat比較を基本とし、spawn失敗・中止・timeout・品質床不達を記録する。実際にspawnした成功Runだけを選別した効果は一般化しない。
+- **Activation diagnostic**: 宣言されたA/B/Cと実際の委任・並列overlapの一致率を独立に報告。未発火なら「候補が実行されなかった」のであって、成功率100%またはcost=0ではない。
+- **Decision**: `verified success`がない条件で`cost per verified success`を0/有限と算出しない。主張する短縮率は、定義済みの同じ時間区間・固定条件・検証済み成果のpaired分布でのみ計算し、CI/人間待ち込みのend-to-end時間は別に並記する。
+- **Source Claim ≠ DAT Evidence ≠ Independent Judgment**。公式仕様は機能の説明であり、SNSの2%/2分は裏付けなし。実測・独立判断がない限り研究結果は`INCONCLUSIVE`。
+
 ### Reviewerへ委託する場合の引き渡し契約
 
 - Writerから独立した新規Session/Modelに**PR head SHA、full diff、AGENTS/Harness規則、#93/#194/#206、一次資料、実施したCI run ID**を直接渡す。Writerの「結論だけの要約」は唯一の入力にしない。

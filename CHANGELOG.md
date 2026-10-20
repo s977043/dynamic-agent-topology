@@ -6,9 +6,9 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
-## 0.3.0 — release candidate (unpublished)
+## 0.3.0 — 2026-10-20
 
-Content candidate: `35b1c943c68f58880c857c5e52d61c6fbd8fa860`.
+Content candidate: `d66cbdfea8fde66db0c77d01079757005893a8f8`.
 
 Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
 
@@ -40,6 +40,8 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 - Non-normative provenance-audit design proposal (`docs/PROVENANCE_AUDIT_DESIGN.md`, not adopted) with synthetic negative fixtures under `fixtures/provenance-audit/` that reproduce cross-artifact inconsistencies; no validator, schema, or EXP-001 evaluation-semantic change.
 - Development harness: agent guidance validation, a schema-validated Learning ledger (`schemas/learning-ledger.schema.json`), read-only harness metrics, scheduled Observe/Promote draft-PR workflows, and independent-review package tooling.
 - Optional A0 Workflow Brief adoption guide, Fast Feedback workflow, practice-evolution policy, and environment / knowledge-ownership guidance.
+- Deferred research note on Uber Software Factory outcome-unit cost and quality evaluation; the source is registered but not adopted.
+- Maintenance cost review recording the Observe workflow's safe stop after a rejected draft PR, with a regression test.
 
 ### Changed
 
@@ -58,6 +60,7 @@ Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac
 
 - Added CodeQL scanning and OpenSSF Scorecard reporting.
 - Hardened workflow credentials and dependency pinning.
+- Updated pinned CodeQL (4.39.0) and OpenSSF Scorecard (2.5.0) actions.
 - Clarified that prompts and role names are not permission-enforcement boundaries.
 
 ## 0.2.1 — historical content point (unpublished)

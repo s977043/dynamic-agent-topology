@@ -31,16 +31,16 @@
 | Arm | 変更対象 | 統制・注意 |
 | --- | --- | --- |
 | A: T0 | Single Agent、既存の外部CI/独立Review経路を固定 | 基準値。途中で新しいCoordinatorを追加しない |
-| B: T0 + explicit delegation | 親Agentから**非並列**Subagentへの委任 | Aとの差分は委任・context/handoff package。Subagent内model/effortを同一にする |
-| C: T0 + parallel subagents | Bの委任対象を可能な範囲で並列化 | Bとの差分をparallel schedulingに絞り、同じworker数・同じTask分割を維持 |
+| B: serial delegation（候補、**T0ではない**） | 親Agentが固定した複数Work Unitを、同数のSubagentへ**逐次**委任 | Aとの差分は委任+context+agent countを含む**package effect**。AとBを「並列化効果」と呼ばない |
+| C: parallel delegation（候補、**T0ではない**） | Bと同じWork Unitを同数・同モデル・同ツールのSubagentへ可能な範囲で並列委任 | Bとの差分は**scheduling policy**を原則唯一の操作因子とし、実際の実行重複時間と合流時間も測定 |
 | D: Agent teams | teammate間の直接通信/共有タスクを許す | Cとの差分は協調方式の**package**。interactive制約・spawn挙動が揃わない場合は因果比較しない |
 | E: Dynamic workflows | Claude Code workflowによる制御 | Cとの差分はprogrammatic orchestrationの**package**。workflow生成・修正・起動時間も含める |
 
-**一括5-armを先に要求しない。** A→B（委任の必要性）→C（真の並列化）を最小の前向きpaired comparison候補とし、独立依存関係のあるTaskだけD/Eを次段階として検討。OpusPlan/Model Routing・Critic・Advisorは別の因子で、ここに同時追加しない。Agent teamsが非対話で使えない環境ではDを無理に実行しない。
+**一括5-armを先に要求しない。** A→B（委任・Context分離を含むpackage）→C（同一Work Unitのschedule差）を最小の前向きpaired comparison候補とし、独立依存関係のあるTaskだけD/Eを次段階として検討。A以外をT0のままと呼ばず、BとCでWorker数や分割結果が異なればC−Bを並列化単独の因果効果とは主張しない。OpusPlan/Model Routing・Critic・Advisorは別の因子で、ここに同時追加しない。Agent teamsが非対話で使えない環境ではDを無理に実行しない。
 
 ### 事前登録する統制・観測
 
-1. task class（小規模逐次 / 独立分割可能 / 共有変更の競合 / 安全境界を含む）、同じcommitのsecret-free fixture、同じAC、deterministic test / negative oracle、held-out評価。各classの適格/不適格を先に決める。
+1. task class（小規模逐次 / 独立分割可能 / 共有変更の競合 / 安全境界を含む）、同じcommitのsecret-free fixture、同じAC、deterministic test / negative oracle、held-out評価。各classの適格/不適格と**B/Cで利用する固定Work Unit分割・同一の引き継ぎ情報量・依存DAG**を開始前に決める。
 2. 実Runtime版、provider、解決済model ID、effort、context、tool権限、cache、外部依存、workspace、run budget、並列数上限、timeout、retry policyを記録。同blockで可変なのは比較対象のexecution policyだけ。fresh session/workspace、順序counterbalance、paired block IDで比較。
 3. 実際のAgent spawn / delegation / task partition / overlap、workflowの発火、計画生成時間、tool呼び出し、承認/拒否、自己中断、最終成果をTraceで観測。**Declared topology != observed execution**。未観測を0にしない。
 4. `taskSuccess`・回帰・境界逸脱・False Acceptを独立oracleで評価。探索の`進捗%`やAgentの「完了」申告は成功根拠にしない。

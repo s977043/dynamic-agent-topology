@@ -59,13 +59,15 @@
 - **依存が強いTask**: 同じファイルを順序依存で編集させ、C/D/Eで競合・やり直し・quality regressionが増えるかを評価。並列数のみを増やして「高速」と判定しない。
 - **実効権限の負側**: ダミー秘密値と書込禁止fixtureを持つ隔離workspaceで、委任先とWorkflowが禁止されたWrite/外部送信を実際に拒否されるか確認する。**本番秘密値・実API credentialは使わない**。構成ファイルにread-onlyと書いただけならFAIL/UNKNOWN。
 - **発火の負側**: Agent teamsを無効にした環境、非対話`-p`、Workflow permission未付与で「意図どおりspawn/実行されない」ケースを記録し、無実行を成功扱いしない。
+- **失敗するparallelism**: Workerが同じファイル/不可分の共有状態を更新する、Task DAGが線形である、subagent起動に実効tool禁止が適用される各ケースではC/D/Eの短縮を前提にしない。禁止操作の拒否を「Task成功」、spawnの非発火を「0コスト」としない。
+- **比較不能の宣言**: 対話限定のAgent teams（D）と`-p`のSubagent（C）で外部条件が一致しない場合、`D−C`の因果的な高速化を主張せず、異なるRuntime policyの観察記録としてのみ残す。
 - **時間の計測境界**: 同期した開始/終了イベントを持つ時計で、最初の人間依頼から検証済み成果物までを測る。Agent自身の処理だけを集計した短い値を、Human待機・CI・Reviewを含むdelivery elapsedへ読み替えない。
 - **停止と権限**: Experimentの起動/費用/Runtime permissionは別承認。Reviewerは新しいセッションでexact headと独立oracleを閲覧し、作成者の自己レビューを置き換えない。
 
 ## 5. Cheapest useful verification と採用ゲート
 
 - **Step 0（今回）**: 文献と比較設計の記録のみ。実モデル/Workflow起動、Runtime設定変更、Agent team有効化、権限変更なし。
-- **Step 1（別判断）**: まずsecret-freeな小規模fixtureでA/Bとhard negativeを実行。実効model/permission/agent spawnのログを確保。もし委任が起きなければBは「委任なし」と記録し、Aとの成功比較には混ぜない。
+- **Step 1（別判断）**: まずsecret-freeな小規模fixtureでA/Bとhard negativeを**少数の探索Run**で確認。実効model/permission/agent spawnとTask/成功oracleのログを確保する。委任未発火ならBは「委任なし」と記録し、Aとの比較から成果を断定しない。探索Runを固定した評価用held-out setの代用にせず、正式なpaired実験の開始には事前登録とHuman/Operator gateを必須とする。
 - **Step 2**: 有意義なボトルネックが確認でき、予算・権限・独立Evaluator・Reviewerが準備できたときにCを追加。D/Eは具体的な仮説が残った場合に限る。
 - **NO_GO**: 未承認の書込み/外部送信、秘密へのアクセス、原則的なHumanレビュー迂回、Gateの自己承認、required evidence欠落、偽陽性の成功、品質床違反。
 - **Merge ≠ adoption**: 研究PRの統合を実装・自動適用・ベンチマーク結果の採用とはみなさない。既存EXP-001凍結33 blobsは不変更。新しいOperator Runやモデル支出、publish/tag等は各Human gateを別途通す。

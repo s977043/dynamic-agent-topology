@@ -123,18 +123,19 @@
     },
     {
       "id": "L-009",
-      "observation": "独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO-GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効）",
+      "observation": "独立 Reviewer の判断が判断材料不足で誤判定・無効化した（基準文書の取得がネットワークで失敗したまま ACCEPT を出した、Issue コメント未提供で前提を確認できず NO-GO、指定外参照の禁止と Reviewer 起動時の作業ディレクトリ確認が衝突して判定無効、パッケージに存在する `materials/pr.md` を「ない」として CHANGES_REQUIRED）",
       "evidence": {
-        "description": "PR #130 の Run acceptance レビュー（Issue #15 comment 6106366753 に至る 4 回）",
+        "description": "PR #130 の Run acceptance レビュー（Issue #15 comment 6106366753 に至る 4 回）。PR #194 の 5 回目レビュー（2026-10-15、必須 0 件で材料欠落のみを理由に CHANGES_REQUIRED、同一材料の新規セッション再実行で MERGE_OK。PR #194 comment 6203136254）",
         "urls": [
           "https://github.com/s977043/dynamic-agent-topology/pull/130",
-          "https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106366753"
+          "https://github.com/s977043/dynamic-agent-topology/issues/15#issuecomment-6106366753",
+          "https://github.com/s977043/dynamic-agent-topology/pull/194#issuecomment-6203136254"
         ]
       },
-      "count": 3,
+      "count": 4,
       "state": "candidate",
-      "countermeasure": "判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする",
-      "observedDates": []
+      "countermeasure": "判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする。材料欠落だけを理由とする判定は、材料の実在を確認し、実在すれば同一材料の新規セッションで再実行して両結果を記録する",
+      "observedDates": ["2026-10-15"]
     },
     {
       "id": "L-010",

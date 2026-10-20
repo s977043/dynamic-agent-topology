@@ -193,7 +193,7 @@ Sourceの参照・採用状態は [knowledge/sources.yaml](knowledge/sources.yam
 
 ## 現在の状態
 
-**Manual adoption-ready（現在の `main` は未Release）**
+**Manual adoption-ready（公開済みversionはGit tagとGitHub Releaseで確認してください）**
 
 現在は、以下の土台を整備しています。
 

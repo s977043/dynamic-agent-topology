@@ -42,6 +42,7 @@
 3. [AGENT_HARNESS.md](AGENT_HARNESS.md) — このRepositoryを開発するAgentの学習ループ、自律境界、Guard
 4. [ENVIRONMENT_USAGE.md](ENVIRONMENT_USAGE.md) — クラウド・Mac・ThinkPadの環境差分、用途別の利点と制約、検証順序（非規範的な検討記録）
 5. [KNOWLEDGE_OWNERSHIP.md](KNOWLEDGE_OWNERSHIP.md) — 共有するプロジェクト知識と環境メモリの保存先、再確認と引き継ぎ
+6. [MAINTENANCE_COST_REVIEW.md](MAINTENANCE_COST_REVIEW.md) — 保守コスト削減候補、Evidenceの限界、実行順序とHuman境界（非規範的）
 
 ## Document roles
 
@@ -62,6 +63,8 @@
 | `PROVENANCE_AUDIT_DESIGN.md` | Attestation / Trace / Evaluation間provenance監査の再現と設計案（#57） | 非規範的な設計案（未採用） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
 | `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |
+| [CLOUD_VERIFICATION_PLAN.md](CLOUD_VERIFICATION_PLAN.md) | Cloudで実行する知識整合性probeの事前計画とoracle | 非規範的な検証計画（#63） |
+| [KNOWLEDGE_INTEGRITY_CLOUD_RESULTS.md](KNOWLEDGE_INTEGRITY_CLOUD_RESULTS.md) | 実PDF抽出・故障注入・鮮度/接続を分けたCloud実測と再現手順 | 合成corpusの限定検証（未採用） |
 | `KNOWLEDGE_OWNERSHIP.md` | repo知識と環境memoryの分担、引き継ぎ | 運用ガイド（権限・実験条件を変更しない） |
 | `RELEASE_READINESS.md` | Release candidateのEvidence / metadata / publication gate | Release運用チェックリスト |
 

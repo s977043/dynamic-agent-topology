@@ -6,11 +6,28 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.3.0 — 2026-10-20
+
+Content candidate: `d66cbdfea8fde66db0c77d01079757005893a8f8`.
+
+Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
+
+### Experiment status
+
+- EXP-001 (T0 vs T1 pilot) completed 18 / 18 runs with recorded Run Artifacts; `DECISION.md` records **Keep T0**. This is a pilot-scope experiment conclusion, not a change to project adoption status and not evidence that T1, a Verifier, or any other Topology/Capability is effective or ineffective in general.
+
 ### Added
 
+- Current Cloud execution plan with per-issue prerequisites and human-owned boundaries, refreshed reviewer-material failure observations, and explicit executor checks in review requests.
+
+- Optional Cloud knowledge-integrity probe, preregistered PDF/pipeline/context cases, and independently reviewed synthetic-corpus observations; actual extraction, injected corruption, and operational holds remain distinct, with general efficacy unproven.
+
+- Independent, read-only provenance audit with PASS / FAIL / UNKNOWN reports and negative tests; historical Run acceptance remains unchanged. Operational evaluation records fixture coverage, local execution cost, and unmeasured manual-review limits.
+
 - EXP-001 pilot execution, artifact-capture, freeze, and operator guidance.
+- EXP-001 18-run aggregation, `DECISION.md`, completed-snapshot audit, and documented one-time retry / recovery procedures.
 - Pilot preparation and execution-attestation schemas and tooling.
-- Deferred research notes for Raven / evidence-gated executable-configuration evolution, Claude Code Mods runtime guardrails, evidence-backed compiled-knowledge integrity, adversarial judgment gates, evidence-driven model escalation with compact handoff, and HydraFusion adaptive execution strategy.
+- Deferred research notes for Raven / evidence-gated executable-configuration evolution, Claude Code Mods runtime guardrails, evidence-backed compiled-knowledge integrity, adversarial judgment gates, evidence-driven model escalation with compact handoff, HydraFusion adaptive execution strategy, agent population ecological safety, an eight-repository agent tooling survey, workflow revalidation after model switches, Claude Code Advisor / read-only Haiku Researcher comparison, production-agent capability mapping to DAT experiments, Grok Bot team operations, hunk-level commit organization, and recoverable coding-loop OSS references. These remain deferred candidates, not adopted contracts.
 - Knowledge Base navigation that separates source claims, deferred research candidates, and adopted design principles, plus an indexed Research Note intake/tracking surface.
 - Dogfooding and EXP-001 execution/measurement guidance.
 - Public contribution, support, research-proposal, and security-reporting paths.
@@ -20,21 +37,30 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Git-tracked public repository policy and release discipline.
 - Engineering Layer Diagnostics for Prompt / Context / Harness / Loop / Graph / Evaluation failure localization.
 - Documentation navigation and document-role guidance under `docs/README.md`.
+- Non-normative provenance-audit design proposal (`docs/PROVENANCE_AUDIT_DESIGN.md`, not adopted) with synthetic negative fixtures under `fixtures/provenance-audit/` that reproduce cross-artifact inconsistencies; no validator, schema, or EXP-001 evaluation-semantic change.
+- Development harness: agent guidance validation, a schema-validated Learning ledger (`schemas/learning-ledger.schema.json`), read-only harness metrics, scheduled Observe/Promote draft-PR workflows, and independent-review package tooling.
+- Optional A0 Workflow Brief adoption guide, Fast Feedback workflow, practice-evolution policy, and environment / knowledge-ownership guidance.
+- Deferred research note on Uber Software Factory outcome-unit cost and quality evaluation; the source is registered but not adopted.
+- Maintenance cost review recording the Observe workflow's safe stop after a rejected draft PR, with a regression test.
 
 ### Changed
 
 - EXP-001 preparation provenance is separated from runtime execution attestation.
 - Security reporting and coordinated-disclosure expectations are explicit.
 - GitHub Actions use least-privilege permissions and immutable action SHAs.
-- Current README/CITATION metadata no longer advertises an unpublished version; version metadata is added only with an immutable tag and GitHub Release.
+- Release preparation distinguishes an unpublished version proposal from a published tag/Release; the draft publication date is provisional and must match the actual Human-approved publication date.
+- Execution planning and Learning ledger record completed Freeze/EXP-001 status and release-candidate drift; unsupported failure attribution remains unknown.
 - Brownfield adoption now documents an evidence-based complexity-promotion rule instead of treating additional agents, loops, or graph structure as default progress.
 - Human-facing supervision is clarified as a coordination cost: experiments should control or disclose materially different human-facing concurrency, while `human_interventions` remains a count rather than a cognitive-load metric.
+- Agent operation follows a Human-on-the-loop (HOTL) autonomy boundary documented in `docs/AGENT_HARNESS.md`.
+- The repository-settings target key `requiredApprovingReviewCount` is deprecated (still accepted) in favor of `requiredApprovingReviewCountExact`.
 - Documentation terminology, source-of-truth boundaries, evidence claims, experiment semantics, and release-boundary wording were reviewed and hardened.
 
 ### Security
 
 - Added CodeQL scanning and OpenSSF Scorecard reporting.
 - Hardened workflow credentials and dependency pinning.
+- Updated pinned CodeQL (4.39.0) and OpenSSF Scorecard (2.5.0) actions.
 - Clarified that prompts and role names are not permission-enforcement boundaries.
 
 ## 0.2.1 — historical content point (unpublished)

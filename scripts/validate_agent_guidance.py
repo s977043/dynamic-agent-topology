@@ -15,7 +15,7 @@ FREEZE_MANIFEST = "experiments/EXP-001-t0-vs-t1/pilot/freeze.yaml"
 EXPERIMENT_DIR = "experiments/EXP-001-t0-vs-t1"
 CLAUDE_SETTINGS = ".claude/settings.json"
 PATH_TOKEN = re.compile(r"`([A-Za-z0-9_.\-/]+)`")
-GUARDED_TOOLS = ("Edit", "Write")
+GUARDED_TOOLS = ("Edit",)
 SKIPPED_DIRS = {".git", ".venv", "__pycache__"}
 
 

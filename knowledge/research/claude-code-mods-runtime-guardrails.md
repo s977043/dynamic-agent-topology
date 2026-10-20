@@ -6,7 +6,7 @@
 
 This note does not change EXP-001, its frozen artifacts, DAT schemas, canonical topologies, routing policies, Runtime Adapter behavior, or evaluation semantics.
 
-DAT is currently in the EXP-001 evidence-acquisition phase. Any runtime behavior change derived from Claude Code Mods is deferred until the EXP-001 Feature Freeze is completed.
+**Current checkpoint (2026-10-18):** EXP-001 completed 18/18 Runs and 9/9 pairs with a pilot-limited Keep T0 decision; its Feature Freeze is completed revision 3. This note was originally written during the freeze and its historical statements below remain contextual. Completion does **not** authorize Mods adoption or runtime execution: [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) still requires a concrete native-control gap, isolated negative tests, explicit operator/budget approval and independent review. See also the [Ruflo meta-harness research](ruflo-meta-harness-authority-boundary-2026-10.md) for third-party Mods implementation caveats.
 
 Tracking: [Issue #59](https://github.com/s977043/dynamic-agent-topology/issues/59)
 

@@ -48,6 +48,12 @@ sources:
     published_at: "2026-10-08"
     adopted: []
 
+  - id: ruvnet-ruflo-2026
+    type: repository
+    title: "Ruflo meta-harness (ruvnet/ruflo)"
+    url: "https://github.com/ruvnet/ruflo"
+    adopted: []
+
   - id: claude-code-mods-2026
     type: engineering-report
     title: "Customize Claude Code with mods"
@@ -222,6 +228,17 @@ sources:
     title: "Running a Software Factory Efficiently at Uber Scale"
     url: "https://www.uber.com/us/en/blog/efficient-software-factory/"
     published_at: "2026-08-27"
+    adopted: []
+  - id: msitarzewski-agency-agents-2026
+    type: repository
+    title: "msitarzewski/agency-agents: specialist role prompt catalog"
+    url: "https://github.com/msitarzewski/agency-agents"
+    adopted: []
+
+  - id: anthropic-claude-quickstarts-2026
+    type: repository
+    title: "Anthropic claude-quickstarts (source snapshot 9ec32b9)"
+    url: "https://github.com/anthropics/claude-quickstarts/commit/9ec32b91df50b0d4906cae64b13c6298055ff40d"
     adopted: []
 
   - id: cursor-pstack-2026

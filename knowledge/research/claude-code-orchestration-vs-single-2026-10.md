@@ -47,6 +47,13 @@
 5. wall-clockはキュー待ち・workflow生成/起動・並列join・retries・独立Review/CI・Human待ちを区分し、ユーザー視点の**verified delivery elapsed**を主指標、Agentの処理時間を副指標とする。cached/uncached tokens、費用、Human interventions/concurrency、cross-session引継ぎも計測。
 6. quality floor・最大支出・Human-owned actionの停止条件を事前固定。成功例だけを選ばない。pilotの小標本で一般化せず、効果が不明なら**INCONCLUSIVE/DEFER**、費用増や安全性悪化なら**Keep T0 / REJECT**。
 
+### DATの計測契約との整合（第2ループ）
+
+- 現行`RunEvaluation.efficiency.wallClockMs`と`docs/METRICS.md`の`wall_clock_ms`は**実行Run全体**の実測値。提案する`verified delivery elapsed`はHuman依頼〜外部Review/CI受理までの**別の観測指標候補**であり、既存fieldを意味変更・再計算しない。新Schema fieldもこの研究PRでは追加しない。
+- `verified delivery elapsed`にはReviewer待機・人間の対応遅延・キュー待ちが混入する。開始イベント、必要なGate、外れ値、計測できなかった時間帯、運用由来の待機を事前登録し、因果比較には**run wall-clock**と**end-to-end delivery elapsed**を別々に報告する。同期できない時計や未観測イベントは`unknown`としてINCONCLUSIVE扱い。
+- `human_interventions`は回数のみ。作業者の集中時間や認知負荷は直接測れないため、`human review minutes`を取る場合は別途計時し、その測定品質と中断/同時監督の交絡を開示する。
+- `Model/Effort`は親と子を含めた**有効解決値**をRunごとに固定・観測し、`Cache`は温まり方を一致または交絡として記録する。A/B/Cの総Tokenや費用は追加Session分も合算する。部分的な成功・失敗・中止のRunを分母から恣意的に除かない。
+
 ### 第3レビューで具体化した負側・観測確認
 
 - **依存が強いTask**: 同じファイルを順序依存で編集させ、C/D/Eで競合・やり直し・quality regressionが増えるかを評価。並列数のみを増やして「高速」と判定しない。

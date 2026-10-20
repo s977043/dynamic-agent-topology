@@ -77,6 +77,17 @@
 - 本ノートは#93に結び付ける。並行Draft #194/#206/#208などが同じ`knowledge/research/README.md` / `knowledge/sources.yaml`を変更するため、他PRのブランチを上書きせず、先行merge後に差分・重複source ID・latest-head CIを再検証する。
 - 既存のrelease publication hold、独立した別セッションReview、Human-only release / guard / permission変更、GitHub Rulesetを尊重する。本セッションのレビューは独立承認の代替にはならない。
 
+### 実Runtimeの適格性マトリクス（第1検証ループ）
+
+| 候補 | 公式に確認できる起動面 | 評価前に必要な実測 | 判定 |
+| --- | --- | --- | --- |
+| A 単一Agent | 単一CLI Session / Agent SDK | 実model ID、tool権限、Run開始/終了、AC | 現行DATの比較基準、実Claude Runは未実施 |
+| B/C Subagents | CLI/SDKのSubagent委任と並列 | spawn数、受渡し、実並列overlap、child側effective model/permission | 委任と並列の`package`または`schedule`比較候補 |
+| D Agent teams | **対話Sessionのみteammateがspawn**。非対話`-p`/Agent SDKでは普通のSubagentにfallback | 実teammate IDs、共有Task、独立セッション間の通信 | A〜Cと同一Runtime条件にできない場合は探索的観察のみ |
+| E Dynamic workflows | 対話/非対話の両方でWorkflow Tool自体は利用可能。`-p`への`ultracode`文字列は起動トリガーではない | Workflow Toolの起動許可、Script、spawn、合流、拒否、実費 | workflow本体の許可とその子Agentの許可を分ける |
+
+「機能がドキュメントにある」ことは、このDAT実行環境で使える・安全・有効である証拠ではない。最初の比較はA/Bだけを選び、G2の実起動記録を得るまでD/Eを実験の実施対象にしない。
+
 ## 7. 実行計画 — 実測前の作業分割と判定ゲート
 
 > この表は**提案中の作業計画**であり、承認済みexperiment.yaml・実Runtime Run・実測結果ではない。実行開始には[#93](https://github.com/s977043/dynamic-agent-topology/issues/93)側のHuman/Operator判断が必要。既存の[#194](https://github.com/s977043/dynamic-agent-topology/pull/194)のCascade/Recovery計画と並列に新しい実験契約を作らない。

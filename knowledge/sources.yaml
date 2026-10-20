@@ -234,3 +234,9 @@ sources:
     title: "msitarzewski/agency-agents: specialist role prompt catalog"
     url: "https://github.com/msitarzewski/agency-agents"
     adopted: []
+
+  - id: anthropic-claude-quickstarts-2026
+    type: repository
+    title: "Anthropic claude-quickstarts (source snapshot 9ec32b9)"
+    url: "https://github.com/anthropics/claude-quickstarts/commit/9ec32b91df50b0d4906cae64b13c6298055ff40d"
+    adopted: []

@@ -1,117 +1,42 @@
 # 残タスクの実行計画
 
-> Current checkpoint: 2026-10-16 JST（#195統合後）。これは実行時点のスナップショット。**各Issue・PR・main HEAD・CI・Human承認記録を作業直前に再取得する**。
+> **As-of checkpoint: 2026-10-20 JST（read-only GitHub再確認）。** この文書は意思決定・実験起動・Merge承認そのものではありません。毎回main HEAD / Open Issue / PR / exact-head checks / 独立Reviewer / Human-owned判断を再取得してください。2026-10-16以前の状態はGit履歴を参照し、現在のGateへ転用しません。
 
-## 目的と確認範囲
+## 正本と観測値
 
-対象は s977043/dynamic-agent-topology。River Review / PlanGate自体のIssue棚卸しは本計画の対象外。
-GitHub APIでopen issues/pulls、main、最新Actions、#186/#193/#194/#196/#197のexact-head check-runs、Releasesを取得し、origin/mainの既存計画と照合。Issueコメント全履歴・管理者設定・外部端末は今回未再監査。過去レビュー記録と今回のCI確認を分ける。
+- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)
+- main = `0dd236ee1bc5e69b5620af151e93537e32a987dc`（Humanが[#218](https://github.com/s977043/dynamic-agent-topology/pull/218)をmerge）。直前の[#216](https://github.com/s977043/dynamic-agent-topology/pull/216) = `d66cbdfea8fde66db0c77d01079757005893a8f8` は保守調査とObserve拒否後のoffline回帰testを統合済み。確認時点のOpen Issues **13**（#31/#59/#63/#82/#88/#93/#150/#159/#162/#166/#199/#201/#211）、Open PR **14**（#193/#194/#200/#202/#204/#205/#206/#207/#208/#209/#212/#213/#214/#215）。PRをIssue件数へ混ぜない。件数はこの時点のスナップショットで、作業ごとに再照合します。
+- Release文書は#218でcandidateを `d66cbdfea8fde66db0c77d01079757005893a8f8`、予定公開日を2026-10-20へ更新。文書更新後main `0dd236ee1bc5e69b5620af151e93537e32a987dc` とcandidateは別SHA。main `0dd236ee1bc5e69b5620af151e93537e32a987dc`の[validate](https://github.com/s977043/dynamic-agent-topology/actions/runs/39408854487) / [Analyze Python](https://github.com/s977043/dynamic-agent-topology/actions/runs/39408854424) / [Scorecard analysis](https://github.com/s977043/dynamic-agent-topology/actions/runs/39408854558)はSUCCESS。Humanがtagを付けるrelease commitは#218のmerge SHA `0dd236ee1bc5e69b5620af151e93537e32a987dc`。candidate `d66cbdfea8fde66db0c77d01079757005893a8f8`や、その後の計画・研究PRを含むmainへ自動的に付け替えない。そのexact SHAの`validate` / `Analyze Python` / `Scorecard analysis`と独立Reviewを確認する。旧headのCI SUCCESSを新mainの証拠へ転用しない。
+- **0.3.0はpublication pending:** 確認時点で`v0.3.0` tag/Releaseはともに未存在。`CITATION.cff`の`date-released: 2026-10-20`はHumanが確定した日付だが、tag/Release公開を証明しない。日英READMEは特定の公開versionを宣言せずGit tags / GitHub Releasesの確認へ案内し、CHANGELOGには`0.3.0 — 2026-10-20`のdated sectionがある。これらの文書表記だけでは公開済みと判定しない。実公開日が10月20日から変わる場合は、Human-ownedのrelease修正PRでCITATIONとCHANGELOGの日付を実公開日に揃え、新しいrelease commitを確定する。そのexact SHAで必須CI/独立Reviewを確認してからtagを作成する。[Draft PR #213](https://github.com/s977043/dynamic-agent-topology/pull/213)は旧10月16日を除去する案で、#218により前提が失効した。**古い差分をそのまま適用しない**。Humanへsupersededとしてcloseする判断を依頼する。
+- [EXP-001 #15](https://github.com/s977043/dynamic-agent-topology/issues/15)はcompleted/closed、18/18 Runs・9/9 paired blocks・pilot-only **Keep T0**。[Feature Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) completed revision 3、33 original blobsは保全。新たなRun・Frozen改変・Topology採用の許可を意味しません。[#57](https://github.com/s977043/dynamic-agent-topology/issues/57)はread-only provenance auditの設計・実装終了でclosed。UNKNOWNをPASSとみなさない。
+- [Harness rules](AGENT_HARNESS.md): 通常PRのAgent mergeには必要な独立別セッションReview＋最新HEAD必須CI＋未解決指摘0が必要。Harness/Permission/Guard、Frozen data、release/tag、force push、削除等のHuman専権を維持。自己承認・branch横取り・Ruleset bypassは禁止。
 
-- main: `5bbccc6bc5476137ef4f0ecca2daf7d09b27e99a`（#195統合済み）。mainのspec-lint/codeql/Scorecard workflowはSUCCESS。
-- Open Issue 10件（PRを除外）、Open PR 5件。GitHub Releases 0件。
-- [EXP-001 #15](https://github.com/s977043/dynamic-agent-topology/issues/15): closed（completed）、18/18 empirical Runs ACCEPT、9/9 paired blocks、[PILOT COMPLETE — Keep T0](../experiments/EXP-001-t0-vs-t1/DECISION.md)。[Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) completed revision 3（#183統合済み）。旧33 blobを保全し、過去Runを再実行・改変しない。観測はCodex / gpt-6.1-sol / high・3 ScenarioのPilot限定。両側成功率100%、T1平均Token量はT0の2.206倍であり、難しいTaskや他Runtimeへ一般化しない。
-- 未公開版0.3.0は候補。公開予定日2026-10-16は公開完了の証拠ではない。
+## 優先実行ボード
 
-## PR棚卸し
+| 順位 | 対象 | 現在状態 / 次の小さな仕事 | 完了と権限境界 |
+| --- | --- | --- | --- |
+| P0 | [#31](https://github.com/s977043/dynamic-agent-topology/issues/31), merged [#218](https://github.com/s977043/dynamic-agent-topology/pull/218), old Draft [#213](https://github.com/s977043/dynamic-agent-topology/pull/213) | candidate `d66cbdfea8fde66db0c77d01079757005893a8f8`、main `0dd236ee1bc5e69b5620af151e93537e32a987dc`。Human確定日10月20日、タグ・Release未公開。#213の旧日付除去案はsuperseded | Humanが#218のrelease commit `0dd236ee1bc5e69b5620af151e93537e32a987dc`の必須CI/独立Reviewと文書整合を確認して、このSHAへimmutable tag/Releaseを公開。日付変更時だけHuman-owned release修正PRで新release commitを確定し、そのexact SHAを再検証する。後続の計画・研究mergeで公開SHAを自動更新しない。#213のcloseもHuman判断。セキュリティ6設定の未観測は残す |
+| P0 | [#193](https://github.com/s977043/dynamic-agent-topology/pull/193) | 不一致のWrite ask rulesを消す設定修正。既存Edit対応、CI SUCCESSの履歴。現在のmainからbehind、Human-owned Harness変更 | 作成者branchを更新 → 実効権限・負側テスト検証 → 最新HEAD CI/独立Review → **Human自身がmerge**。強制が有効と静的設定だけで断定しない |
+| P1 | [#194](https://github.com/s977043/dynamic-agent-topology/pull/194), [#93](https://github.com/s977043/dynamic-agent-topology/issues/93), [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) | Cascade/Recovery/shadow gateの**Draft設計**。release**公開**までmerge hold。EXP-001の3 scenarioは全成功、#88のeligible failure母集団に流用しない | 公開後に最新mainへ同期・独立再Review・CI。U2〜U8（母集団、閾値、model/runtime、予算、権限、独立評価）を別途確定。設計mergeと実験開始を分離。公開hold解除前にmain同期だけでready/mergeしない |
+| P1 | [#200](https://github.com/s977043/dynamic-agent-topology/pull/200), [#199](https://github.com/s977043/dynamic-agent-topology/issues/199) | Harnessのdeclared config/activation/実効拒否/Outcomeを分ける**Draft文書**。本文は#186 merge後の差分確認を許すが、[後続comment 6250255673](https://github.com/s977043/dynamic-agent-topology/pull/200#issuecomment-6250255673)が明示的なpublication holdを追加。本文だけで保留解除しない | 公開完了までDraft/ready化・merge禁止を保持。read-only技術レビューは実行許可ではない。公開後に最新baseのCI/独立Reviewerを再実行。#59固有のRuntime変更・権限を自動承認しない |
+| P1 | [#202](https://github.com/s977043/dynamic-agent-topology/pull/202), [#204](https://github.com/s977043/dynamic-agent-topology/pull/204), [#205](https://github.com/s977043/dynamic-agent-topology/pull/205), [#206](https://github.com/s977043/dynamic-agent-topology/pull/206), [#207](https://github.com/s977043/dynamic-agent-topology/pull/207), [#208](https://github.com/s977043/dynamic-agent-topology/pull/208) | 複数の未採用研究PR。shared `knowledge/research/README.md` / `knowledge/sources.yaml` に同時変更あり。#207は旧HEADの別セッション技術レビュー記録があるが、GitHubのstrict Rulesetが古いbase/checkを405で拒否。#208はpublication holdのあるDraft | Cloudで各PRのsource claim / DAT解釈 / 未採用`adopted: []`・ライセンス・引用をread-only reviewする。各branchの所有者が新mainへ追従し、先行merge済みの出典行・`adopted: []`を保持。**変更後HEADでCI/別セッションReview**をやり直し、被依存Release holdは守る。外部OSSを取り込まない |
+| P1 | [#211](https://github.com/s977043/dynamic-agent-topology/issues/211), [#212](https://github.com/s977043/dynamic-agent-topology/pull/212) | Agency Agentsの専門Role知識をT0 ablationで評価する新規research候補。外部OSS取り込みはしない。#212は未採用研究PRで、merged 0.3.0 candidateと別の後続候補 | 既存T0 vs Role Knowledge-onlyに限定、配布条件・ライセンス・未実証効果とレビューを確認。実験起動は別Operator/Human承認・予算・negative case後のみ |
+| P1 | [#209](https://github.com/s977043/dynamic-agent-topology/pull/209), [#214](https://github.com/s977043/dynamic-agent-topology/pull/214) | #209はこの単一実行計画の既存Draft。#214は#201経過時間シグナルの未採用設計案。本文に0.3.0公開完了までDraft holdあり。U1〜U6・事前登録は未確定 | Cloud reviewerへ各exact headのread-only reviewを渡す。#209はCI/独立Review/未解決指摘0を満たせばreadyに進め、根拠のないpublication holdを増やさない。#214の公開holdを守り、公開後に設計の独立Review/最新CIを取得する。実験開始は別判断。共有source ledgerは先行mergeを保持し、1 branch=1 ownerで直列統合 |
+| P1 | [#215](https://github.com/s977043/dynamic-agent-topology/pull/215), merged [#216](https://github.com/s977043/dynamic-agent-topology/pull/216) | #215はFreeze completed後のguidance 2行修正案。旧head `7f0df07a4cccb8c8d73fcfb796e18f104bf94509` の独立Reviewとvalidate / Analyze Python / CodeQL PASSを確認済み。更新時は新headへ転用しない。#216の[保守調査](MAINTENANCE_COST_REVIEW.md)は統合済み | #215は最新mainとの差分・33 blob保全を再確認し、独立Review/最新CI後にHuman merge。C2はloopの追加検出/費用を記録、C3はCIのGET計測・shadow分類案まで。CI最適化・test削除・権限変更を実装しない |
+| P1 | [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | Observe/Promote正規GITHUB_TOKENのDraft PR作成が403。原因と管理者Actions policyは未実証。最新Observe [39214997427](https://github.com/s977043/dynamic-agent-topology/actions/runs/39214997427) / Promote [39217402283](https://github.com/s977043/dynamic-agent-topology/actions/runs/39217402283)も`3504a78`で`API_HTTP_403`。#216のoffline test PASSはlive解消の証拠ではない。既存の手動診断PR/no-opを成功と誤認しない | 管理者がPR作成許可と上位policyを確認→Humanが権限変更可否判断→安全な新規入力で正規Draft/Observe+Promote no-op/CI/独立Reviewを実測 |
+| P2 | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59), [#63](https://github.com/s977043/dynamic-agent-topology/issues/63), [#82](https://github.com/s977043/dynamic-agent-topology/issues/82), [#150](https://github.com/s977043/dynamic-agent-topology/issues/150), [#162](https://github.com/s977043/dynamic-agent-topology/issues/162), [#166](https://github.com/s977043/dynamic-agent-topology/issues/166), [#201](https://github.com/s977043/dynamic-agent-topology/issues/201) | 未採用の仮説・残課題。Synthetic fixtureのPASSと本番効果を分離。Native controlで解決できる場合は増設しない | 代表性、再現失敗、Independent Ground Truth、paired treatment、全費用、Human budget/permissionを事前登録。未成立ならINCONCLUSIVE / DEFERを正当に記録 |
 
-| PR | exact head | CI | 次の行動・境界 |
-|---|---|---|---|
-| #186 Release Draft | 6a884787bff98601ef3b0f37745bc3b64587612c | validate/Analyze Python/CodeQL SUCCESS | 本文のCI待ち記載を同期。既実施の固定head独立レビュー記録を反映。Humanが最終版数・実公開日・merge/tag/Releaseを判断・実行 |
-| #193 Claude設定修正 | 2ee6f3fc18618fe3ed34758df709b2c2b20a312e | 同3チェックSUCCESS | Python3.12検証/独立レビュー記録を本文と照合。Claude実環境の権限拒否・警告消失は未実測として残す。AGENTSのHuman merge対象 |
-| #194 post-EXP001設計Draft | 915c47084df8c6db46347bf77762736994e4d0cb | 同3チェックSUCCESS | 独立レビュー後修正済みの記載と先頭の未レビュー表現を同期。#186公開までmerge hold。公開後にbase差分・CI・再レビューし通常merge条件を判定 |
-| #196 学習L-009 | `78867dddc1b60cad764cd4c516496624335ea9bd` | 同3チェックSUCCESS | 独立3パス指摘0。candidate学習記録の事実追記で通常PR対象。統合後はRelease候補を再固定 |
-| #197 review request executor matching | `6b311cb95d1acb678c1109b6ca9c34aa9ce4983b` | 同3チェックSUCCESS | 独立3パス指摘0。既存protocol観点の具体化で通常PR対象。統合後はRelease候補を再固定 |
+## 反復の単位（検討 → レビュー → 対応 → レビュー）
 
-[Open PR一覧](https://github.com/s977043/dynamic-agent-topology/pulls)
+1. **Inspect:** 最新main・対象PR head/base・Issue・必須check-runs・Ruleset・Human承認記録を取得。旧headに付いた緑のCIや作者のCOMMENTは再利用しない。
+2. **Challenge:** 変更の最小単位、負側ケース、fail-open、予算、モデル/effort/Topology等の交絡、rollbackを明記。設計助言AgentとIndependent Reviewerの役割は別。
+3. **Change:** 1 branch=1 Agent。変更は自分のbranchへ、他Agent作業は横取りせずOwnerへ差分・必要作業を伝える。Frozen 33 files・accepted 18 Runsは改変しない。
+4. **Verify:** deterministic positive/negative tests、最新headの`validate`/`Analyze Python`、適用対象ならScorecard、実行Evidenceを取得。失敗・UNKNOWN・観測限界を残す。
+5. **Independent judgment:** 作成者と別セッションのread-only reviewerが**exact head**を検査（`scripts/review_package.py`を利用）。指摘修正時はCIとreviewを取り直す。GitHub Copilot quota exceededはACCEPTではない。
+6. **Merge or hold:** 通常PRだけを保護Rulesetどおりmerge。Human-owned対象はOwner判断・Human操作待ち。strict up-to-date checkが拒否したらbypassせずbranch追従・新headのCIを再実行。各Issueに未達条件を残す。
 
-## 実行順と成果物
+## 終了基準・意図的な保留
 
-### P0 — 状態同期（Cloudで着手可能）
-
-1. 作業直前にmain/head/Issue本文を再取得し競合を検知する。
-2. docs/CURRENT_EXECUTION_PLAN.mdの古いmain、13Issue、#188進行中、#21/#42継続中を現行状態へ更新する案を作成。
-3. #31の古いcandidate3b760ff/公開予定日15日を、現在のcandidate5bbccc6/head6a884787/予定日16日へ同期。過去記録は履歴として保持。
-4. #59/#82/#162/#166はFreeze ACTIVE/#183未mergeという先頭状態が古い。一次ソース#183/Issue15/freeze.yamlを再取得後、completedと個別未達Gateを分けて追補。
-5. #63の既達成チェックと未実証を整理。合成corpus通過を一般効果・研究完了へ読み替えない。
-6. PR186/194のCI待ち・レビュー待ちをexact-headの証拠に合わせる。
-
-成果物: 状態同期の小さなdocs PR、Issue/PR追補、証拠リンク一覧。
-完了条件: 全10Issueと5PRが一覧に存在し、閉じた#21/#42/#57を再実行対象にしない。Freeze/版数/日付/headに矛盾がない。通常PRは独立レビュー・必須CI後のみ統合。
-依存: ユーザーの通常PR統合指示に従い、#196/#197と計画同期PRは独立レビュー・CI後に統合する。main更新後、#186のcandidate/CHANGELOG/CI/独立レビューを一度に更新する。旧headの判断を新headへ流用しない。#194の明示的な公開待ちholdは維持する。
-
-### P1 — Releaseの具体的な完了手順（#31/#186、Human所有）
-
-1. Agentが現candidateと差分、固定headレビュー、CI証拠、未確認設定を一つの公開チェックリストへ整理。
-2. Humanが最終版数と実公開日を確定。日付変更・内容変更時はmetadataとレビュー/CIを更新。
-3. Humanが#186をmergeし、生成されたrelease commitのSHAを記録。
-4. そのSHAのvalidate/Analyze Python/Scorecardを確認。失敗時は公開を止めて通常修正PRへ。
-5. Humanが同じcommitを指すimmutable tagとGitHub Releaseを作成。タグを移動しない。
-6. Agentがtag/Release/metadata/README日英/Quickstartを照合し、公開後文書の通常PRを作成。
-
-完了条件: 実release SHA、必須CI、immutable tag、Release URL、metadataの整合。公開判断待ちだけを理由に#31のsecurity確認まで完了扱いしない。
-
-### P2 — Release後の既存PR処理
-
-- #196 / #197と計画同期はP0で通常merge条件を判定し、Release候補の再固定へ反映する。CI成功だけで独立レビュー済みとしない。
-- #193: Human merge。直前のmainとの差分/CIを再確認し、Claude環境が利用可能なら禁止編集のnegative caseと起動警告を検証。CloudにClaude CLIがなければ未実測を残す。
-- #194: 公開実績を確認してhold解除を判断。fresh contextの独立Reviewerが最新headを確認し、必須CI・未解決指摘0なら通常merge可。設計mergeは実験起動許可ではない。
-
-### P3 — Harness自動化の運用受理（#159、管理者条件とCloud作業）
-
-1. 管理者がActionsのPR作成許可と上位policyの現在値を確認。403の原因は未確定のまま扱う。
-2. 権限変更の要否・許可範囲を判断。異なる認証で迂回しない。
-3. 正規GITHUB_TOKENと正当な新規入力でObserve/Promoteを実測。生成済みbranchを削除・書換えしない。
-4. draft=true、actor、base/head、生成差分を照合。Observe/Promoteの同入力no-opをそれぞれ実測。
-5. tokenイベントのCI制約を確認し、正規イベントでexact-head CIを起動・独立レビュー。
-
-完了条件: 新規自動Draft成功、双方no-op、CI、独立判断。手動診断PRや既存Promote no-opだけでは受理しない。
-
-### P4 — 研究の開始条件を整える（モデル起動は別判定）
-
-| Issue | 現在の残条件 | 最小作業 / Evidence | 終了判断 |
-|---|---|---|---|
-| #63 知識整合性 | #195で23行合成評価済み。自然発生incorrect母数0、OCR/人時/一般効果未測定 | 実際に発生した失敗事例と独立oracleを登録。代表性・誤拒否・人時の追加計画を事前レビュー | 限定報告維持 / 追加評価 / DEFER。常用gateへ直結しない |
-| #93 compound | #194設計あり、混合母集団・閾値・モデル・予算未確定 | task候補revision/AC/観測欠陥/副作用隔離を登録。U2〜U8を確定しT0/F pairedとshadowを分離 | 実行可否判断。オンラインG効果は独立armなしで主張しない |
-| #88 recovery | eligibleな再現可能baseline失敗0件 | 実失敗原文・runtime/model/effort・AC・verificationを1件登録。小さいPrompt/Harness修正で解消する例を分離 | 候補がなければDEFER。EXP-001成功18件を失敗層に転用しない |
-| #150 hunk | 10fixture試行済み、実CLI/model利益は未実証 | T0b owner-only patchに対する必要性・代表case・最小有用効果をレビュー | 比較が必要な時のみ隔離CLI評価。未必要ならDEFER |
-| #82 adversary | 既存Reviewerが見落とす再現欠陥と追加効用が未確保 | 欠陥原文と小さい既存review介入を比較する案 | 新Roleを先に追加しない |
-| #59 Mods | Claude runtimeの実効拒否/監査のgap未確定 | native設定baseline、負側case、trust modelを設計 | Claude接続後に実効検証。Plugin登録をenforcement証明としない |
-| #162 model移行 | intakeのみ、paired実測/owner判断なし | 匿名化正負fixture5件を開始案とし品質下限、修正人時、移行費を定義 | owner/モデル/予算/独立評価が揃ってからpaired実行 |
-| #166 population | intakeのみ、population閾値未実証 | secret-free隔離設計、Worker1/2/4、協調有無・予算固定を分離 | 隔離と予算の事前審査後のみpilot。自己増殖・外部資源取得は行わない |
-| #31 repository | security実設定未確認、Release未公開 | 管理権限で6項目とActions設定を確認し、read-only baseline再監査 | 未知項目をPASSにしない。外部貢献後再監査はイベント依存 |
-| #159 Harness | 自動Draft経路未受理 | P3の正規運用証拠 | 全受入条件までopen |
-
-優先案: 状態同期・通常PR統合 → Release候補再固定・公開 → 残る既存PR → #159管理者条件解消後の運用検証。待機中は#63/#93/#88の候補整理を並行。その他研究は必要性の比較を先に行い、全研究を一度に実行しない。
-
-### P5 — Plugin・環境の適用
-
-River Review1.129.0/PlanGate8.24.0は当CloudのCLIでinstalled/enabled。River Reviewは#186文書差分で使用済み。PlanGate doctorは登録YESだが7FAIL、workflow/rules/hook未統合。新セッションの自動選択・Mac/ThinkPad/Claude Cloudは未検証。
-
-- 実行計画: プラグインread-only利用 → 新セッション検出確認 → 既存DAT運用とのgap比較 → 必要なら専用統合PR。
-- PlanGate承認記録を代理発行しない。settings/AGENTS等はHuman merge境界を守る。
-- 実環境のOS/arch/runtime/version/network/permission/model/計測/データ搬送を各端末で採取。Cloudのx86と既存EXP環境の同一性を推定しない。
-
-## 各作業の3ループ（実施計画、未実施を完了扱いしない）
-
-1. 検討→計画レビュー→開始条件/負側case修正→計画再レビュー。
-2. 対応→検証→固定head独立レビュー→指摘修正。採用しない指摘にも根拠を残す。
-3. 修正後検証→別セッション最終レビュー→exact-head CI/未解決0/承認範囲の照合→通常mergeまたはBLOCKED記録。
-
-最終レビューに渡す材料: fresh main/head、diff、plan、実行command/raw出力、失敗・除外・未測定、対象AC。作成者の要約のみで承認しない。head変更時は判断対象を更新する。
-
-## 本計画のセルフレビューと更新規則
-
-- APIのissues一覧はPRを含むため除外して10件と数えた。
-- CI成功とHuman許可を分離。Releases0から未公開と判断し、tag存在までは今回断定しない。
-- 古いFreeze待ちを現在のblocked理由に使わない。Freeze完了も実験起動の包括許可にしない。
-- PlanGate doctor7FAILをPlugin導入失敗・DAT欠陥7件と数えない。
-- 全残タスク0は外部環境/管理者/予算に依存する。条件未充足時はowner・証拠・解除条件を記録し保留する。研究は反証/DEFERも正当な終了候補だが、独立判断前に勝手にcloseしない。
-- 各PR/管理設定/モデル条件変更の直後に本計画を再評価する。本計画の同期は追加実験・PR mergeの包括許可ではない。
-
-## 完了・終了済み項目と過去状態
-
-- #21 / #42 はclosed（not planned）。新しい根拠と明示的な再計画なしに研究対象へ戻さない。
-- #57 はclosed（completed）。#187と選定した#188は統合済み、#189は重複としてclosed/unmerged。監査の完了をhistorical acceptanceの変更や旧18 Runの再実行許可にしない。
-- #190 / #191 は現在のopen PR一覧ではない。古い13 Issue、16/18 Run、safe-divide r03を次に実行、#165待ち、DECISION NOT RUN、Freeze ACTIVEは過去状態。履歴は[#15](https://github.com/s977043/dynamic-agent-topology/issues/15)と過去commitを参照する。
-- 通常PRのmergeには必須CI・作成者と別セッションの独立レビュー・未解決必須指摘0と現行HOTL条件が必要。[AGENT_HARNESS.md](AGENT_HARNESS.md)に従い、guidance変更・Freeze改訂・release/tag・force push・削除などのHuman-owned境界を保持する。
-- #159の手動診断PRやPromote no-op成功は正規自動Draft成功ではない。[Live operations](HARNESS_LIVE_OPERATIONS.md)を参照する。端末情報の過去値は[Environment usage](ENVIRONMENT_USAGE.md)にあり、承認済みRun条件へ転用しない。
+- Issueを単に0件にすることは目標ではありません。測定前の効果・許可を捏造せず、価値がない仮説はEvidenceを記録して**DEFER / REJECT / INCONCLUSIVE**と判断できます。Human-owned判断や実験開始のPermissionをAIが自己生成しません。
+- Human確定日だけで公開済みとせず、README/CHANGELOG/CITATIONと実際のRelease/tagを照合するまで**published 0.3.0**とは宣言しない。GitHub PR #186のmergeはtag作成ではありません。
+- 記録の自動同期は観測であって承認ではない。GitHub保護Rulesetを通る通常マージ成功で初めて採用済みmainとの差分が確定します。

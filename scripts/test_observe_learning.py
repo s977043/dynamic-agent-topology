@@ -81,6 +81,45 @@ def main():
     assert {item['path'] for item in tree['tree']} == set(files)
     assert pub.writes[-1][1]['draft'] is True
     assert not any(path.endswith('/merge') for path, _ in pub.writes)
+    # A denied PR leaves the created ref intact. Retrying identical input must
+    # stop before creating any further Git objects or attempting another PR.
+    class DeniedPublisher(Publisher):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+            self.created_ref = None
+        def items(self, path, key=None):
+            self.calls.append((path, 'GET'))
+            if path.startswith(base + '/git/matching-refs/heads/'):
+                branch = path.split('/git/matching-refs/heads/', 1)[1]
+                return [{'ref': self.created_ref}] if self.created_ref == 'refs/heads/' + branch else []
+            assert path == base + '/pulls?state=open&per_page=100'
+            return []
+        def call(self, path, method='GET', data=None):
+            self.calls.append((path, method))
+            if path == base + '/pulls' and method == 'POST':
+                assert self.created_ref == 'refs/heads/' + data['head']
+                self.writes.append((path, data))
+                raise observe.SafeFailure('API_HTTP_403')
+            if path == base + '/git/refs' and method == 'POST':
+                assert self.created_ref is None
+                self.created_ref = data['ref']
+            return super().call(path, method, data)
+    denied = DeniedPublisher()
+    for expected_error in ('API_HTTP_403', 'PROPOSAL_REF_EXISTS'):
+        call_count, write_count = len(denied.calls), len(denied.writes)
+        try:
+            observe.publish(denied, 'o/r', 'main', 'head', files, since, until)
+            raise AssertionError('denied or orphaned proposal accepted')
+        except observe.SafeFailure as error:
+            assert str(error) == expected_error
+        assert denied.created_ref is not None
+        if expected_error == 'PROPOSAL_REF_EXISTS':
+            assert len(denied.writes) == write_count
+            assert all(method == 'GET' for _, method in denied.calls[call_count:])
+    assert [path for path, _ in denied.writes] == [
+        base + '/git/blobs', base + '/git/blobs', base + '/git/trees',
+        base + '/git/commits', base + '/git/refs', base + '/pulls']
     # Even after one collected event, an API failure cannot enter publisher.
     broken = FakeAPI({base + '/pulls?state=open&per_page=100': []})
     import base64

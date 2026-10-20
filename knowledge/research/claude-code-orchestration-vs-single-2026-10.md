@@ -1,0 +1,61 @@
+# 司令官型オーケストレーション vs 単一Agent: Claude Code公式機能に基づく比較候補
+
+> Status: **RESEARCH ONLY / NOT ADOPTED**（2026-10-20 JST）。Owner: [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)（選択的multi-agent/compound execution）。関連: [#88](https://github.com/s977043/dynamic-agent-topology/issues/88)（model escalation）、[#82](https://github.com/s977043/dynamic-agent-topology/issues/82)（独立Judgment）、[#201](https://github.com/s977043/dynamic-agent-topology/issues/201)（elapsed-time signal）。
+> この文書は**比較設計の候補**。新規実験の事前登録、Operatorの実行許可、採用、Release承認ではない。EXP-001のFreeze・18 Run・Keep T0は不変。
+
+## 1. 入力・一次ソース・証拠の強さ
+
+- 二次入力: [X投稿](https://x.com/drake5112/status/2112302773488455732)について利用者が転記した「単独Opus 5.5は進捗2%、司令官型は2分で全工程完了」という説明。**元実験のタスク、進捗2%の定義、計測開始/終了、成功oracle、Runtime/Model/Effort、並列数、ログ、再試行、コスト、比較回数は未確認**。速度改善の実測結果・再現性のあるベンチマークとは扱わない。
+- 一次資料（2026-10-20確認）: [Model configuration](https://code.claude.com/docs/en/model-config) — `opusplan` は**Plan Mode中Opus / 実行中Sonnet**というmodel alias。常に複数Agentを起動する設定でも、全タスクでPlan Modeを必ず通る設定でもない。Provider・CLI版によって解決モデルが変わる。
+- [Subagents](https://code.claude.com/docs/en/sub-agents) — 独立contextの委任、tool/permission/modelの設定、結果を親へ返す実行方式。**Subagentの宣言≠呼び出し/実効制限**。
+- [Agent teams](https://code.claude.com/docs/en/agent-teams) — 独立セッション間の協調・共有タスク。既定では無効でexperimental flagが必要。非対話`-p`ではteammateをspawnしないため同じ実験条件として扱わない。単一セッションよりToken負荷が高い。
+- [Dynamic workflows](https://code.claude.com/docs/en/workflows) — workflowスクリプトでsubagentを制御。対話入力の`ultracode`キーワードと`/effort ultracode`は別の入口。キーワードは`-p`のpromptで発火しない。非対話でのWorkflow起動には明示のpermission/effective runtime確認が必要。`/effort ultracode`の常時化は費用・時間・警告挙動を変えるため**検証前に採用しない**。
+- 公式資料に「Opus単独2%、司令官で2分」の対照実験・一般化可能な優位性は**確認できていない**。SNSの「全社員に有効」「必ず時間が増える」は反証可能な仮説としてのみ扱う。
+
+## 2. DAT既存研究との差分（重複防止）
+
+- [#206](https://github.com/s977043/dynamic-agent-topology/pull/206) は**OpusPlan/Haiku Scout/Opus Critic**によるModel・Role・Judgeのablation候補（Draft）。本案は**Execution Control / topology / coordination cost**の差を扱い、Roleの強さやmodel切替を同時に変更しない。
+- [#194](https://github.com/s977043/dynamic-agent-topology/pull/194) はcompound・recovery・shadow gateの先行Draft。本案を別Runtime実装として並走させず、#93の試験計画で統合/棄却する。
+- [#208](https://github.com/s977043/dynamic-agent-topology/pull/208) はpstackのModel/Role/Effort研究。本案は外部PluginもSkillも取り込まない。
+- DAT原則はP0/T0を第一級Baselineとする。「司令官」という名称は新Roleの根拠ではなく、既存のPlanner / Worker / Reviewer / VerifierとControl Planeの配置を観測する**比較対象の説明**。
+
+## 3. Falsifiable hypothesis と負側ケース
+
+- **H1（並列化）**: 相互に独立し検証oracleがある中〜高複雑度Taskでは、同一Model/同一Effort/同一予算で、必要な品質床を維持した並列Subagentのwall-clockがT0より短くなることがある。
+- **H2（選択性）**: 依存が強い単純TaskではT0のほうが、multi-agent候補より検証済み成功1件あたりの総Token、作業時間、Human監督負荷が同等以下となる。
+- **H3（権限）**: 役割分担/生成workflowは宣言した制限だけでは実効権限・独立Judgmentを保証せず、runtime negative testと別セッション判断が必要。
+- **対抗仮説**: 完了時間差が起きても、モデル差、キャッシュ、tool/API待ち、retries、並列数の違い、低い成功基準、テスト漏れで説明できる可能性がある。
+
+## 4. 最小比較（実験は未開始）
+
+| Arm | 変更対象 | 統制・注意 |
+| --- | --- | --- |
+| A: T0 | Single Agent、既存の外部CI/独立Review経路を固定 | 基準値。途中で新しいCoordinatorを追加しない |
+| B: T0 + explicit delegation | 親Agentから**非並列**Subagentへの委任 | Aとの差分は委任・context/handoff package。Subagent内model/effortを同一にする |
+| C: T0 + parallel subagents | Bの委任対象を可能な範囲で並列化 | Bとの差分をparallel schedulingに絞り、同じworker数・同じTask分割を維持 |
+| D: Agent teams | teammate間の直接通信/共有タスクを許す | Cとの差分は協調方式の**package**。interactive制約・spawn挙動が揃わない場合は因果比較しない |
+| E: Dynamic workflows | Claude Code workflowによる制御 | Cとの差分はprogrammatic orchestrationの**package**。workflow生成・修正・起動時間も含める |
+
+**一括5-armを先に要求しない。** A→B（委任の必要性）→C（真の並列化）を最小の前向きpaired comparison候補とし、独立依存関係のあるTaskだけD/Eを次段階として検討。OpusPlan/Model Routing・Critic・Advisorは別の因子で、ここに同時追加しない。Agent teamsが非対話で使えない環境ではDを無理に実行しない。
+
+### 事前登録する統制・観測
+
+1. task class（小規模逐次 / 独立分割可能 / 共有変更の競合 / 安全境界を含む）、同じcommitのsecret-free fixture、同じAC、deterministic test / negative oracle、held-out評価。各classの適格/不適格を先に決める。
+2. 実Runtime版、provider、解決済model ID、effort、context、tool権限、cache、外部依存、workspace、run budget、並列数上限、timeout、retry policyを記録。同blockで可変なのは比較対象のexecution policyだけ。fresh session/workspace、順序counterbalance、paired block IDで比較。
+3. 実際のAgent spawn / delegation / task partition / overlap、workflowの発火、計画生成時間、tool呼び出し、承認/拒否、自己中断、最終成果をTraceで観測。**Declared topology != observed execution**。未観測を0にしない。
+4. `taskSuccess`・回帰・境界逸脱・False Acceptを独立oracleで評価。探索の`進捗%`やAgentの「完了」申告は成功根拠にしない。
+5. wall-clockはキュー待ち・workflow生成/起動・並列join・retries・独立Review/CI・Human待ちを区分し、ユーザー視点の**verified delivery elapsed**を主指標、Agentの処理時間を副指標とする。cached/uncached tokens、費用、Human interventions/concurrency、cross-session引継ぎも計測。
+6. quality floor・最大支出・Human-owned actionの停止条件を事前固定。成功例だけを選ばない。pilotの小標本で一般化せず、効果が不明なら**INCONCLUSIVE/DEFER**、費用増や安全性悪化なら**Keep T0 / REJECT**。
+
+## 5. Cheapest useful verification と採用ゲート
+
+- **Step 0（今回）**: 文献と比較設計の記録のみ。実モデル/Workflow起動、Runtime設定変更、Agent team有効化、権限変更なし。
+- **Step 1（別判断）**: まずsecret-freeな小規模fixtureでA/Bとhard negativeを実行。実効model/permission/agent spawnのログを確保。もし委任が起きなければBは「委任なし」と記録し、Aとの成功比較には混ぜない。
+- **Step 2**: 有意義なボトルネックが確認でき、予算・権限・独立Evaluator・Reviewerが準備できたときにCを追加。D/Eは具体的な仮説が残った場合に限る。
+- **NO_GO**: 未承認の書込み/外部送信、秘密へのアクセス、原則的なHumanレビュー迂回、Gateの自己承認、required evidence欠落、偽陽性の成功、品質床違反。
+- **Merge ≠ adoption**: 研究PRの統合を実装・自動適用・ベンチマーク結果の採用とはみなさない。既存EXP-001凍結33 blobsは不変更。新しいOperator Runやモデル支出、publish/tag等は各Human gateを別途通す。
+
+## 6. 検証・統合時の注意
+
+- 本ノートは#93に結び付ける。並行Draft #194/#206/#208などが同じ`knowledge/research/README.md` / `knowledge/sources.yaml`を変更するため、他PRのブランチを上書きせず、先行merge後に差分・重複source ID・latest-head CIを再検証する。
+- 既存のrelease publication hold、独立した別セッションReview、Human-only release / guard / permission変更、GitHub Rulesetを尊重する。本セッションのレビューは独立承認の代替にはならない。

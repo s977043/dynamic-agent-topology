@@ -92,6 +92,23 @@ paired delta
 - Routing Policyを差し替える
 - Verifierの旧版と新版を比較する
 
+### Harness enforcement の比較
+
+Harnessはプロンプト、規範文書、Runtime設定、実際に発火するガード、事後Validatorなどの複数要素を横断します（[Engineering Layer Diagnostics](ENGINEERING_LAYERS.md)）。**「ルールが書かれている」「設定が存在する」「実際に止めた」「Outcomeが改善した」は別の主張**です。実行時の安全境界は、ガイドラインへの追従や静的設定の存在だけで実証したことにしません。
+
+Harnessの追加・置換を評価する際は、既存のCapability-level ablationを次のように適用します。
+
+1. **対象と対照**: 事前に検出・阻止したいInvariantと、当該Runtimeの既存/native制御を記録する。原則として既存制御を保持したbaselineと、それに候補を追加したcandidateを比較する。比較のために本番の安全制御を無効化しない。
+2. **交絡を固定**: Scenario、Repository revision、Runtime/tool version、Model、Effort、初期workspace、budget、Verification commandを可能な範囲で揃える。Prompt/Role変更、追加Verifier、別Modelへの切替を同じtreatmentに混ぜない。固定できない差はconfounderとする。
+3. **実効性を先に確認**: 隔離した使い捨てfixtureのdummy path・mock操作で、禁止操作が実際に拒否されるnegative caseと、許可操作が誤って止まらないpositive caseを記録する。静的設定やhook発火ログはactivationのEvidenceであり、禁止操作の拒否や境界外経路の検出とは区別する。
+4. **効果とコストを分離**: boundary violation / false accept / false block、監査記録の取得可否・欠損、正規ワークフローの回帰、human intervention、追加Latency・実行Costを記録する。拒否の成功だけをTask successの改善とみなさず、独立したVerificationでOutcomeを判定する。
+5. **失敗時の意味を固定**: コマンド解釈不能、ガード未発火、Runtimeのロード順不明、証拠欠損、timeout時のfail-open/fail-closedを開始前に宣言する。観測できない事象を成功・違反ゼロとせず、事前のDecision Ruleに従ってFAILまたはINCONCLUSIVEとする。
+6. **最小介入を選ぶ**: native制御だけでInvariantを十分に守れるなら、外部guard・新規Runtime依存を足さない。独立ReviewとHuman-owned authorityはOutcome評価や追加制御によって移譲されない。
+
+禁止操作を試すnegative caseは、実リポジトリのFrozen artifact、secret、本番Credential、外部サービスへの変更を使用しません。補助的な「ガイドラインのみ」の再生・オフライン比較を行う場合も、それをRuntimeによる強制のEvidenceとして扱いません。
+
+この節は**post-freezeの実験設計ガイド**です。新しい必須Metric/Schema、Runtime hook、権限、EXP-001のFrozen artifact・既存Decision semanticsを変更せず、具体的な採否と実証範囲は対象ExperimentとIssueで決定します（例: [#59](https://github.com/s977043/dynamic-agent-topology/issues/59)）。
+
 ### 複数の変更要因を分解する
 
 新しいRole / Agent / Model / Permission Boundary / Routing ruleを同時に必要とするように見えるCandidateでも、より小さいablationが可能なら、それらを1つの不可分な介入として扱いません。

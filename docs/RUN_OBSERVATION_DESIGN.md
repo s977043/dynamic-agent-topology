@@ -164,13 +164,13 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 ## 6. 保存先と秘匿
 
-- **保存先（推奨）**: 導入先の `.dat/state/observations/` に 1 ウェーブ 1 ファイルで置く。`.dat/state/` は `examples/brownfield/.gitignore` で既に除外されている場所で、既定ではコミットしない
+- **保存先（既定）**: リポジトリの外のディレクトリ（`--store` か環境変数 `DAT_OBSERVATION_STORE`、例: `~/.dat/observations`）に 1 ウェーブ 1 ファイルで置く。CLI は git の作業ツリー内（保存先かその祖先に `.git` がある場所）を拒否し、記録がコミットされないようにする
 - 含めないもの: 秘密情報、private source、未サニタイズのプロンプト・会話本文、レビュー本文、個人環境の絶対パス。`humanInterventions` は種別と件数だけ、`outcomeReason` は 1 行の要約だけ
 - **秘匿規則は記録の全項目に適用する**。列挙した項目に限らない。対象は `metadata.*`、`runtime` / `model` の識別（名前・版・モデル ID・effort）、`reviews[].target`・`decision`、`artifacts[].ref`・`state`、`outcomeReason`、`topologyBasis`、`humanInterventions[].kind`、将来追加する項目を含む、すべての文字列値
 - 参考: `schemas/execution-trace.schema.json` でも `runtime.name`、`model.id`、`events[].actor`・`target`・`artifact` は制約のない自由文字列で、識別情報が入り得る。`RunObservation` の同形の項目も同じく自由文字列として扱う
 - 識別情報（PR URL・ブランチ名・private リポジトリ名・導入先名・個人名など）は、private な導入先では DAT 側へ転記するときに仮名（例: `project-a`、`pr-1`）へ置き換える
 - **サニタイズ済み**の定義: (1) 上の「含めないもの」を含まない、(2) 識別情報が公開済みのもの（public リポジトリ名・公開 PR 番号）か仮名だけである、(3) 段階 2 の validator を通る、の 3 つをすべて満たすこと
-- **保存前**（`.dat/state/observations/` への書き込み時）: 記録者が validator を実行し、通らない記録は保存しない
+- **保存前**（保存先への書き込み時）: 記録者が validator を実行し、通らない記録は保存しない
 - 保存と集計の CLI: `scripts/run_observation.py`（`save` / `sum`）。validator を通った記録だけを保存する。手順は各 adapter の `RUN_OBSERVATION.md`
 - **転記前**（集計値や DOGFOODING へ載せるとき）: 識別情報を仮名に置き換え、validator を再実行し、人が差分を確認してから載せる。転記するのは集計値と仮名化した記録だけ
 - **段階 2 の必須の負例**: 記録内のすべての文字列値（enum 以外）の長さ上限超過、絶対パス（`/Users/`・`/home/`・`C:\` 形式）、トークン形式の文字列（例: `ghp_`・`sk-` で始まる文字列、長い高エントロピー文字列）を含む記録を validator が拒否すること

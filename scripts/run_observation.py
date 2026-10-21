@@ -5,7 +5,8 @@
   python scripts/run_observation.py sum --store <dir>
 
 --store may be omitted when DAT_OBSERVATION_STORE is set. A store inside this
-repository is refused so that observation records are never committed to DAT.
+repository or any git working tree (a .git in the store or an ancestor) is
+refused so that observation records are never committed.
 Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
 project and observationId must be single safe file-name elements.
 
@@ -41,6 +42,8 @@ def resolve_store(value):
     store = Path(value).expanduser().resolve()
     if store == ROOT or ROOT in store.parents:
         raise ValueError(f"store must be outside the DAT repository: {store}")
+    if any((path / ".git").exists() for path in (store, *store.parents)):
+        raise ValueError(f"store must be outside any git working tree: {store}")
     return store
 
 

@@ -6,7 +6,7 @@
 
 ## Source claim (OpenAI's environment, NOT a DAT observation)
 
-OpenAI reports maintenance tasks involving unused code, stale experimentation state, flaky tests, CI and dependency reduction. Its report includes experiments comparing GPT-6 family models, effort and investigation cost. Reported counts and cost ratios are **case-specific**, not a general benchmark or a DAT adoption decision.
+OpenAI reports maintenance tasks involving unused code, stale experimentation state, flaky tests and CI improvement. Its report includes experiments comparing GPT-6 family models, effort and investigation cost. Reported counts and cost ratios are **case-specific**, not a general benchmark or a DAT adoption decision.
 
 ## DAT interpretation (hypothesis only)
 

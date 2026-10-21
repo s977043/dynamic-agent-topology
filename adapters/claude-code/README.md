@@ -6,6 +6,7 @@ v0.2.1では **Manual Adapter** を標準とします。
 - Runtime側設定: `CLAUDE.md`
 - Capability contract: `capabilities.yaml`
 - 自動compile/apply: 未実装
+- ウェーブ観察記録の手順: [RUN_OBSERVATION.md](RUN_OBSERVATION.md)
 
 導入時は `.dat/runtimes.yaml` の `configPath` でRuntime設定を明示し、DAT validatorでRuntime名とCapability manifestの参照整合を確認します。
 

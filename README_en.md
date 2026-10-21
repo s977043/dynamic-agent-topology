@@ -24,7 +24,9 @@ DAT is a runtime-agnostic specification and set of skills that lets an AI agent 
 
 ## Try it in 5 minutes
 
-There are only two skills: `dat-select` picks a structure before you start, and `dat-observe` records and summarizes when you finish.
+There are only two skills: `dat-select` picks a structure before you start, and `dat-observe` records and summarizes when you finish. The skills only propose and record a structure; they do not change runtime settings. The specification and manual adapters are described below.
+
+Prerequisites: `dat-select` needs no extra tools. Saving and summarizing with `dat-observe` requires Python 3 with `jsonschema` and `pyyaml` (without them, the record is only displayed, not saved).
 
 1. Install (Claude Code)
 
@@ -37,8 +39,8 @@ There are only two skills: `dat-select` picks a structure before you start, and 
    Codex: `codex plugin marketplace add s977043/dynamic-agent-topology`, then `codex plugin add dat@dat-marketplace`.
 2. Before starting, ask "use dat-select to pick a structure for this task". You get the structure and reasons in a few lines (no settings are changed).
 3. Work as usual.
-4. When done, ask "record this with dat-observe". The record is saved outside the repository (default `~/.dat/observations`). With Python, it is validated by `scripts/run_observation.py`; without it, the report says required fields and redaction were checked by eye only. "Summarize with dat-observe" prints count tables.
-5. Stop: run `/plugin uninstall dat@dat-marketplace` and `/plugin marketplace remove dat-marketplace`, then delete the record folder.
+4. When done, ask "record this with dat-observe". Only records validated by `scripts/run_observation.py` are saved, outside the repository (default `~/.dat/observations`, overridable with `DAT_OBSERVATION_STORE`). "Summarize with dat-observe" prints count tables.
+5. Stop: run `/plugin uninstall dat@dat-marketplace` and `/plugin marketplace remove dat-marketplace`, then delete the record folder (`~/.dat/observations` or `DAT_OBSERVATION_STORE`).
 
 Fields and redaction rules are in the [run observation design](docs/RUN_OBSERVATION_DESIGN.md) (Japanese). Records are observation counts, not evidence that one structure is better.
 

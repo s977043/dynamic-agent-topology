@@ -3,9 +3,14 @@
 
 - .claude-plugin/plugin.json, .claude-plugin/marketplace.json and
   .codex-plugin/plugin.json parse as JSON and share name and version
-- every skills/<name>/SKILL.md has frontmatter whose name equals <name> and a
-  non-empty description
-- relative links in SKILL.md resolve to existing files
+- the manifest version equals CITATION.cff version (the DAT spec version that
+  dat-observe records as metadata.datVersion)
+- the marketplace entry's source points to a plugin root holding
+  .claude-plugin/plugin.json, and its version (if any) matches the manifest
+- every skills/<name>/SKILL.md has YAML frontmatter whose name equals <name>
+  and a non-empty description
+- links written as `](relative/path)` in SKILL.md resolve to existing files;
+  other link syntaxes are not checked
 """
 
 from __future__ import annotations
@@ -36,6 +41,15 @@ def check_manifests(errors: list[str]) -> None:
     entries = [p for p in market.get("plugins", []) if p.get("name") == claude.get("name")]
     if not entries:
         errors.append("marketplace.json: no plugin entry named as .claude-plugin/plugin.json")
+    for entry in entries:
+        source = entry.get("source")
+        if not isinstance(source, str) or not (ROOT / source / ".claude-plugin/plugin.json").is_file():
+            errors.append(f"marketplace.json: source does not point to a plugin root: {source}")
+        if "version" in entry and entry["version"] != claude.get("version"):
+            errors.append("marketplace.json: entry version differs from .claude-plugin/plugin.json")
+    citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
+    if str(citation.get("version")) != claude.get("version"):
+        errors.append("plugin.json version differs from CITATION.cff version")
     for key in ("name", "version", "skills"):
         if claude.get(key) != codex.get(key):
             errors.append(f"plugin.json {key} differs between .claude-plugin and .codex-plugin")
@@ -55,7 +69,14 @@ def check_skills(errors: list[str]) -> None:
         if not text.startswith("---") or len(parts) < 3:
             errors.append(f"{rel}: missing frontmatter")
             continue
-        meta = yaml.safe_load(parts[1]) or {}
+        try:
+            meta = yaml.safe_load(parts[1]) or {}
+        except yaml.YAMLError as exc:
+            errors.append(f"{rel}: invalid frontmatter YAML: {exc}")
+            continue
+        if not isinstance(meta, dict):
+            errors.append(f"{rel}: frontmatter must be a mapping")
+            continue
         if meta.get("name") != path.parent.name:
             errors.append(f"{rel}: frontmatter name must be {path.parent.name}")
         if not str(meta.get("description") or "").strip():

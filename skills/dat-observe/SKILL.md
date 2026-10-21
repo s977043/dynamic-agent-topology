@@ -22,28 +22,26 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 2. **YAML を書く**: 記録例の形で、作業中のリポジトリの外（一時ディレクトリ）に書く。
    - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
    - `metadata.project` は設定がなければ作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名）。private なら仮名（例: `project-a`）
-   - `metadata.datVersion` はこのプラグインの版（`.claude-plugin/plugin.json` の `version`）
+   - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`。plugin manifest の `version` も同じ値に揃えてある
    - `topologyEquivalent` は設計 §5.2 の表を上から順に当てはめる。助言レビュー（`advisory`）と検証（`verifier`）を混ぜない
 3. **秘匿を確かめる**（全文字列値が対象）: 秘密情報・トークン、private source、プロンプトや会話の本文、レビュー本文、個人環境の絶対パスを含めない。private な PR・ブランチ・リポジトリ名・個人名は仮名にする。`outcomeReason` は改行なしの 1 行。
-4. **保存先を決める**: 既定はリポジトリの外（例: `~/.dat/observations`、または環境変数 `DAT_OBSERVATION_STORE`）。導入先の `.dat/state/observations/` に置くときは、`.gitignore` に `.dat/state/` があり、`git status --ignored --short .dat/state` が `!!` を示すことを確かめてから保存する。
-5. **検証して保存する**:
-   - Python 3 と `jsonschema`・`pyyaml` が使えるなら、DAT の CLI で検証と保存をする。`NG` なら直して再実行する。`OK` と一緒に出る `unknown` の項目に取れる値が残っていないか見直す
+4. **保存先**: リポジトリの外の 1 か所。`--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、指定がなければ `~/.dat/observations` を案内する。
+5. **検証して保存する**: 保存には Python 3・`jsonschema`・`pyyaml` と DAT の CLI が必須。validator を通った記録だけを保存する。`NG` なら直して再実行し、`OK` と一緒に出る `unknown` の項目に取れる値が残っていないか見直す。
 
-     ```bash
-     python <DAT のパス>/scripts/run_observation.py save <記録.yaml> --store <保存先>
-     ```
+   ```bash
+   python <DAT のパス>/scripts/run_observation.py save <記録.yaml> --store ~/.dat/observations
+   ```
 
-     `<DAT のパス>` はこの SKILL.md の 2 階層上（プラグインのルート）。
-   - 使えないときは、schema の必須項目・enum と手順 3 の秘匿を目で確かめ、`<保存先>/<project>/<observationId>.yaml` に保存する。報告に「機械検証していない」と書く。
-6. **報告**: 保存先のパス、`topologyEquivalent`、`unknown` の項目を短く示す。
+   `<DAT のパス>` はこの SKILL.md の 2 階層上（プラグインのルート）。Python や依存が使えないときは保存しない。記録 YAML を表示し、「未保存（validator 未実行）」と報告する。
+6. **報告**: 保存先のパス（または未保存）、`topologyEquivalent`、`unknown` の項目を短く示す。
 
 ## 集計（sum）
 
 ```bash
-python <DAT のパス>/scripts/run_observation.py sum --store <保存先>
+python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations
 ```
 
-出力の表をそのまま示す。Python が使えないときは、保存先の YAML を数えて `topologyEquivalent`・`outcome` ごとの件数を表にし、`unknown` は分母から除いて件数を併記する。
+出力の表をそのまま示す。Python が使えないときは集計できないと報告する。
 
 ## しないこと
 

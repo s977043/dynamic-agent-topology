@@ -24,7 +24,9 @@ AIエージェント（オーケストレーター）が、タスクに必要な
 
 ## 5 分で試す
 
-Skill は 2 つだけです。`dat-select` が着手前に構成を選び、`dat-observe` が完了時に記録・集計します。
+Skill は 2 つだけです。`dat-select` が着手前に構成を選び、`dat-observe` が完了時に記録・集計します。Skill は構成を提案・記録するだけで、ランタイムの設定は変更しません。仕様と手動 adapter は下記を参照してください。
+
+前提: `dat-select` は追加の道具なしで使えます。`dat-observe` の保存・集計には Python 3 と `jsonschema`・`pyyaml` が必要です（ない場合は記録を表示するだけで保存しません）。
 
 1. 入れる（Claude Code）
 
@@ -37,8 +39,8 @@ Skill は 2 つだけです。`dat-select` が着手前に構成を選び、`dat
    Codex: `codex plugin marketplace add s977043/dynamic-agent-topology` に続けて `codex plugin add dat@dat-marketplace`。
 2. 着手前に「dat-select でこのタスクの構成を選んで」と頼む。構成と理由が数行で返ります（設定は変えません）。
 3. いつもどおり作業する。
-4. 終わったら「dat-observe で記録して」と頼む。記録はリポジトリの外（既定 `~/.dat/observations`）に保存されます。Python があれば `scripts/run_observation.py` で検証し、なければ必須項目と秘匿規則を目視で確かめた旨が報告されます。「dat-observe で集計して」で件数の表が出ます。
-5. やめる: `/plugin uninstall dat@dat-marketplace` と `/plugin marketplace remove dat-marketplace` を実行し、記録フォルダを消します。
+4. 終わったら「dat-observe で記録して」と頼む。`scripts/run_observation.py` で検証した記録だけが、リポジトリの外（既定 `~/.dat/observations`、`DAT_OBSERVATION_STORE` で変更可）に保存されます。「dat-observe で集計して」で件数の表が出ます。
+5. やめる: `/plugin uninstall dat@dat-marketplace` と `/plugin marketplace remove dat-marketplace` を実行し、記録フォルダ（`~/.dat/observations` または `DAT_OBSERVATION_STORE`）を消します。
 
 記録の項目と秘匿規則は [ウェーブ観察記録の設計案](docs/RUN_OBSERVATION_DESIGN.md) にあります。記録は観察件数であり、構成の優劣の根拠ではありません。
 

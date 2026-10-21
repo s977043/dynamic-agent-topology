@@ -14,7 +14,7 @@
 
 ## 2. DAT既存研究との差分（重複防止）
 
-- [#206](https://github.com/s977043/dynamic-agent-topology/pull/206) は**OpusPlan/Haiku Scout/Opus Critic**によるModel・Role・Judgeのablation候補（Draft）。本案は**Execution Control / topology / coordination cost**の差を扱い、Roleの強さやmodel切替を同時に変更しない。
+- [#206](https://github.com/s977043/dynamic-agent-topology/pull/206) は**OpusPlan/Haiku Scout/Opus Critic**によるModel・Role・Judgeのablation候補（研究ノートはmerge済み、実験・採用は未実施）。本案は**Execution Control / topology / coordination cost**の差を扱い、Roleの強さやmodel切替を同時に変更しない。
 - [#194](https://github.com/s977043/dynamic-agent-topology/pull/194) はcompound・recovery・shadow gateの未採用設計としてmainへ統合済み。本案を別Runtime実装として並走させず、#93の試験計画で統合/棄却する。
 - [#208](https://github.com/s977043/dynamic-agent-topology/pull/208) はpstackのModel/Role/Effort研究としてmainへ統合済み。本案は外部PluginもSkillも取り込まない。
 - DAT原則はP0/T0を第一級Baselineとする。「司令官」という名称は新Roleの根拠ではなく、既存のPlanner / Worker / Reviewer / VerifierとControl Planeの配置を観測する**比較対象の説明**。

@@ -1,0 +1,41 @@
+# Codex でのウェーブ観察記録
+
+1 ウェーブの `RunObservation` を Codex で記録する手順です。項目・型・判定基準・秘匿規則の正本は [RUN_OBSERVATION_DESIGN.md](../../docs/RUN_OBSERVATION_DESIGN.md)、`schemas/run-observation.schema.json`、`scripts/validate_run_observation.py` で、この文書は値の取り方だけを書きます。項目や判定基準を追加・変更しません。
+
+この文書の「未確認」は、リポジトリ内に根拠となる記述がない Codex の機能です。未確認の情報源に頼る項目は `unknown` にします。
+
+## いつ記録するか
+
+ウェーブ完了時（完了・中断・失敗のいずれでも）、作業台帳や会話が消える前に 1 件書きます。着手時に書いた値は完了時に見直します。
+
+## 項目ごとの情報源
+
+| 項目 | 情報源 | 取れないとき |
+|---|---|---|
+| `metadata.project` / `datVersion` | 導入先の `.dat/project.yaml` の `metadata.name`、`.dat/dat.lock.yaml` | 必須文字列。分からなければ記録しない |
+| `startedAt` / `endedAt` / `wallClockMs` | 作業台帳・コミットや PR の時刻など、記録者が確認できる時刻。セッションから開始・終了時刻を取る機能は未確認 | `unknown`。`wallClockMs` は両時刻が分かるときだけ |
+| `goalRecorded` | ウェーブ開始前に目的を書いた記録（台帳・Issue）があるか | `unknown` |
+| `outcome` / `outcomeReason` | 完了時の状態。理由は 1 行の要約 | `unknown` |
+| `runtime` | Organizer と Worker が Codex なら `name: codex`。版の取得方法は未確認 | `version` を省略。全体が分からなければ `unknown` |
+| `model` | 役割ごとのモデル ID・effort。役割は `agents.<name>` と役割別の設定ファイルで宣言できる（`capabilities.yaml` の `custom_roles`）が、宣言値は実行時の値と一致するとは限らない。実行時の値を取る方法は未確認 | `unknown` |
+| `tasks` / `agentInvocations` | 台帳のタスク一覧と委託の記録。Codex には multi-agent のツールと `SubagentStart` / `SubagentStop` の lifecycle hook がある（`parallel_subagents`、`runtime_hooks`）が、それで起動回数を数える手順は DAT では定めず、記録者が委託・再委託を数える | `unknown` |
+| `artifacts` | 作成・merge した PR（仮名 `pr-1` など） | 状態が分からない要素だけ `state: unknown` |
+| `reviews` | 独立レビューの判定と指摘件数。`reviewerKind` と `role` を必ず書き、本文は書かない | 一部も追えないときは `unknown`。レビューなしは `[]` |
+| `rework.count` | 修正のための再委託・再レビューの回数 | `unknown`。なかったときは `0` |
+| `humanInterventions` | 承認・方針の回答など人の介入の種別ごとの件数 | `unknown` |
+| `topologyEquivalent` / `topologyBasis` | 上の記録から設計 §5.2 の順で判定する。サブエージェントのコンテキスト分離は未確認（`isolated_context: unknown`）なので、別セッションかどうかは実行形態から記録者が判断し、判断できなければ `unknown` | 設計の規則どおり `unknown` |
+
+## 保存先と手順
+
+1. 導入先の `.dat/state/observations/` に 1 ウェーブ 1 ファイルで書く（例: `<observationId>.yaml`）。`.dat/state/` はコミット対象外（`examples/brownfield/.gitignore`）
+2. 保存前に validator を実行し、通らない記録は保存しない
+
+   ```bash
+   python <DAT のパス>/scripts/validate_run_observation.py .dat/state/observations/<observationId>.yaml
+   ```
+
+3. 合成値の記録例: [examples/run-observation.yaml](examples/run-observation.yaml)
+
+## 秘匿
+
+設計 §6 をすべての文字列値に適用します。秘密情報、private source、プロンプト・会話本文、レビュー本文、個人環境の絶対パスを書きません。private な導入先の PR・ブランチ・リポジトリ名・個人名は仮名にします。validator の検査は簡易なもので、人の差分確認を置き換えません。

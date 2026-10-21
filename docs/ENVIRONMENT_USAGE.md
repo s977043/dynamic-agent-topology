@@ -106,7 +106,7 @@ Codex CLIの版を合わせるだけではCPU・kernel・Docker・sandboxの一�
 | `.codex/config.toml` | `approval_policy="on-request"`、`sandbox_mode="workspace-write"` | 現在のセッション権限は上位設定に依存。このファイルを実効値の証拠にしない |
 | 実行環境 | この確認環境では `command -v claude` でCLI未検出 | 契約内残量、利用可能モデル、追加課金の境界、Claude runtimeのpermission dialogはNOT_TESTED |
 
-[#193](https://github.com/s977043/dynamic-agent-topology/pull/193)は、EditルールがWriteを含むファイル編集に適用されるため重複Writeルールを削除した変更です。文字列としてEditのみであることから保護欠落や`CLAUDE.md`との不整合を推定しません。実際の設定読込・確認ダイアログ・拒否の有無は別のRuntime試験が必要です。
+[#193](https://github.com/s977043/dynamic-agent-topology/pull/193)は、EditルールがWriteを含むファイル編集に適用されるため重複Writeルールを削除した変更です。[公式permissions仕様](https://code.claude.com/docs/en/permissions)もEditルールを組込み編集ツールの照合に使うことを説明しています（2026-10-21照合）。文字列としてEditのみであることから保護欠落や`CLAUDE.md`との不整合を推定しません。実際の設定読込・確認ダイアログ・拒否の有無は別のRuntime試験が必要です。
 
 Claude公式仕様の通常モデル優先順は呼出し指定→frontmatter→環境変数→親で、`inherit`は親モデルを選ぶ。従って既定の環境変数だけで既存2 AgentがHaiku固定になるとは限らない。FORCE変数は別の制御で、ここでは導入しない。Cloudへのrepo設定適用範囲も利用形態に依存するため、Mac/ThinkPadの設定値をそのままClaude Cloudの実効値として扱わない。出典: [sub-agents](https://code.claude.com/docs/en/sub-agents)、[settings](https://code.claude.com/docs/en/settings)（2026-10-21照合）。
 

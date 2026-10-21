@@ -29,7 +29,7 @@
 
 ## 保存先と手順
 
-保存と集計には DAT の CLI `scripts/run_observation.py` を使います。保存先は `--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、DAT リポジトリの中は拒否されます。推奨はリポジトリ外のディレクトリです。導入先の `.dat/state/observations/` に置く場合は、導入先の `.gitignore` に `.dat/state/` を追加し（例: `examples/brownfield/.gitignore`）、`git status --ignored --short .dat/state` で `!!` と表示される（除外されている）ことを確認してから保存します。
+保存と集計には DAT の CLI `scripts/run_observation.py` を使います。保存先は `--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、DAT リポジトリの中は拒否されます。推奨はリポジトリ外のディレクトリです。導入先の `.dat/state/observations/` に置く場合は、導入先の `.gitignore` に `.dat/state/` を追加し（例: `examples/brownfield/.gitignore`）、`git status --ignored --short .dat/state` で `!!` と表示される（除外されている）ことを確認してから保存します。`save` は導入先リポジトリ内の保存先を検出・拒否しないため、除外は利用者の `.gitignore` 設定に依存します。
 
 1. 記録を一時ファイルに 1 ウェーブ 1 件で書く
 2. `save` で保存する。validator を通った記録だけが `<保存先>/<metadata.project>/<metadata.observationId>.yaml` にコピーされ、既存の ID は拒否される。`metadata.project` と `observationId` は英数字で始まり英数字・`.`・`_`・`-` だけからなる値にする（ファイル名に使うため）。保存先の外を指す値や symlink は拒否される。`OK` と一緒に値が `unknown` の項目が表示されるので、取れる値が残っていないか見直す。`NG` のときはエラーを直して再実行する

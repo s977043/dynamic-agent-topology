@@ -18,7 +18,6 @@ from pathlib import Path
 import argparse
 import os
 import re
-import shutil
 import sys
 
 import yaml
@@ -56,9 +55,28 @@ def unknown_fields(value, location=""):
             yield from unknown_fields(item, f"{location}[{index}]")
 
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    pass
+
+
+def construct_unique_mapping(loader, node, deep=False):
+    keys = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in keys:
+            raise yaml.constructor.ConstructorError(
+                None, None, f"duplicate key {key!r}", key_node.start_mark
+            )
+        keys.add(key)
+    return loader.construct_mapping(node, deep=deep)
+
+
+UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_unique_mapping)
+
+
 def load_record(path, validator):
     try:
-        record = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        record = yaml.load(Path(path).read_text(encoding="utf-8"), Loader=UniqueKeyLoader)
     except (OSError, yaml.YAMLError) as error:
         return None, [f"cannot read: {error}"]
     if not isinstance(record, dict):
@@ -88,7 +106,7 @@ def save(path, store):
         print(f"NG\n- observationId already recorded: {dest}")
         return 1
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(path, dest)
+    dest.write_text(yaml.safe_dump(record, sort_keys=False, allow_unicode=True), encoding="utf-8")
     unknowns = list(unknown_fields(record))
     print(f"OK {meta['observationId']} -> {dest}")
     print(f"unknown: {', '.join(unknowns) if unknowns else 'none'}")

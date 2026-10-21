@@ -83,6 +83,15 @@ with tempfile.TemporaryDirectory() as tmp:
         failures.append("symlinked project directory must not receive a record")
     (store / "linked").unlink()
 
+    duplicate = work / "duplicate.yaml"
+    duplicate.write_text(
+        first.read_text(encoding="utf-8") + "outcomeReason: ok\noutcomeReason: " + "gh" + "p_" + "EXAMPLE\n",
+        encoding="utf-8",
+    )
+    expect(run("save", str(duplicate), "--store", str(store)), 1, "duplicate key", "duplicate key")
+    if any("EXAMPLE" in p.read_text(encoding="utf-8") for p in store.glob("*/*.yaml")):
+        failures.append("duplicate key record must not be stored")
+
     broken = work / "broken.yaml"
     broken.write_text("metadata: [unclosed\n", encoding="utf-8")
     expect(run("save", str(broken), "--store", str(store)), 1, "cannot read", "malformed YAML")

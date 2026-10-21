@@ -6,12 +6,18 @@
 
 --store may be omitted when DAT_OBSERVATION_STORE is set. A store inside this
 repository is refused so that observation records are never committed to DAT.
-Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml.
+Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
+project and observationId must be single safe file-name elements.
+
+Exit codes: save returns 0 when stored and 1 when refused. sum returns 0 when
+every file was counted, 1 when tables were printed but invalid files were
+skipped, and 2 when the store does not exist. Both return 2 on a bad --store.
 """
 from collections import Counter
 from pathlib import Path
 import argparse
 import os
+import re
 import shutil
 import sys
 
@@ -22,6 +28,11 @@ import validate_run_observation as vro
 ROOT = vro.ROOT
 STORE_ENV = "DAT_OBSERVATION_STORE"
 NOTICE = "Observational counts only; not evidence that a topology is better."
+PATH_ELEMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def cell(value):
+    return " ".join(str(value).splitlines()).replace("|", "\\|")
 
 
 def resolve_store(value):
@@ -63,7 +74,16 @@ def save(path, store):
             print(f"- {error}")
         return 1
     meta = record["metadata"]
+    bad = [key for key in ("project", "observationId") if not PATH_ELEMENT.fullmatch(meta[key])]
+    if bad:
+        print("NG")
+        for key in bad:
+            print(f"- metadata.{key}: must match {PATH_ELEMENT.pattern} to be used as a file name")
+        return 1
     dest = store / meta["project"] / f"{meta['observationId']}.yaml"
+    if store not in dest.resolve().parents:
+        print(f"NG\n- destination resolves outside the store: {dest}")
+        return 1
     if dest.exists():
         print(f"NG\n- observationId already recorded: {dest}")
         return 1
@@ -76,12 +96,17 @@ def save(path, store):
 
 
 def summarize(store):
+    if not store.is_dir():
+        print(f"NG\n- store does not exist: {store}")
+        return 2
     validator = vro.load_validator()
     records = []
+    skipped = 0
     for path in sorted(store.glob("*/*.yaml")):
         record, errors = load_record(path, validator)
         if errors:
-            print(f"skipped invalid: {path.relative_to(store)}: {errors[0]}")
+            print(f"skipped invalid: {path.relative_to(store)}: {cell(errors[0])}")
+            skipped += 1
             continue
         records.append(record)
     print(f"observations: {len(records)}")
@@ -90,17 +115,17 @@ def summarize(store):
         by_outcome = Counter((r["topologyEquivalent"], r["outcome"]) for r in records)
         print("\n| project | topology | waves |\n|---|---|---|")
         for (project, topology), count in sorted(by_project.items()):
-            print(f"| {project} | {topology} | {count} |")
+            print(f"| {cell(project)} | {cell(topology)} | {count} |")
         print("\n| topology | outcome | waves |\n|---|---|---|")
         for (topology, outcome), count in sorted(by_outcome.items()):
-            print(f"| {topology} | {outcome} | {count} |")
+            print(f"| {cell(topology)} | {cell(outcome)} | {count} |")
         print("\n| topology | known rework / waves | rework total |\n|---|---|---|")
         for topology in sorted({r["topologyEquivalent"] for r in records}):
             group = [r for r in records if r["topologyEquivalent"] == topology]
             known = [r["rework"]["count"] for r in group if isinstance(r["rework"]["count"], int)]
-            print(f"| {topology} | {len(known)}/{len(group)} | {sum(known)} |")
+            print(f"| {cell(topology)} | {len(known)}/{len(group)} | {sum(known)} |")
     print(f"\n{NOTICE}")
-    return 0
+    return 1 if skipped else 0
 
 
 def main(argv):

@@ -15,13 +15,14 @@ FIXTURES = ROOT / "fixtures" / "run-observation"
 failures = []
 
 
-def run(*args, env=None):
+def run(*args, env=None, cwd=None):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env=env,
+        cwd=cwd,
     )
 
 
@@ -29,7 +30,7 @@ def variant(source, workdir, observation_id, project):
     record = yaml.safe_load((FIXTURES / "valid" / source).read_text(encoding="utf-8"))
     record["metadata"]["observationId"] = observation_id
     record["metadata"]["project"] = project
-    path = workdir / f"{observation_id}.yaml"
+    path = workdir / f"{len(list(workdir.iterdir()))}.yaml"
     path.write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")
     return path
 
@@ -67,6 +68,32 @@ with tempfile.TemporaryDirectory() as tmp:
     if (ROOT / "tmp-store").exists():
         failures.append("refused store must not be created")
 
+    for project, observation_id in (("../outside", "obs-0101"), ("a/b", "obs-0102"), ("project-a", "../obs-0103"), ("..", "obs-0104")):
+        escape = variant("t1-separate-session-verifier.yaml", work, observation_id, project)
+        expect(run("save", str(escape), "--store", str(store)), 1, "must match", f"path element {project}/{observation_id}")
+    if (tmp / "outside").exists() or (store / "a").exists():
+        failures.append("path escape must not create directories")
+
+    outside = tmp / "outside-link-target"
+    outside.mkdir()
+    (store / "linked").symlink_to(outside, target_is_directory=True)
+    linked = variant("t1-separate-session-verifier.yaml", work, "obs-0105", "linked")
+    expect(run("save", str(linked), "--store", str(store)), 1, "outside the store", "symlinked project directory")
+    if any(outside.iterdir()):
+        failures.append("symlinked project directory must not receive a record")
+    (store / "linked").unlink()
+
+    broken = work / "broken.yaml"
+    broken.write_text("metadata: [unclosed\n", encoding="utf-8")
+    expect(run("save", str(broken), "--store", str(store)), 1, "cannot read", "malformed YAML")
+
+    relative = variant("t1-separate-session-verifier.yaml", work, "obs-0106", "project-c")
+    expect(run("save", str(relative), "--store", "rel-store", cwd=tmp), 0, "OK obs-0106", "relative store")
+    if not (tmp / "rel-store" / "project-c" / "obs-0106.yaml").is_file():
+        failures.append("relative store must resolve against the working directory")
+
+    expect(run("sum", "--store", str(tmp / "missing")), 2, "store does not exist", "missing store directory")
+
     env = {k: v for k, v in os.environ.items() if k != "DAT_OBSERVATION_STORE"}
     expect(run("sum", env=env), 2, "DAT_OBSERVATION_STORE", "missing store")
 
@@ -75,19 +102,25 @@ with tempfile.TemporaryDirectory() as tmp:
     expect(run("save", str(other), env=env), 0, "OK obs-0003", "store from environment")
 
     shutil.copyfile(invalid, store / "project-a" / "obs-bad.yaml")
+    piped = store / "pipe" / "obs-0201.yaml"
+    piped.parent.mkdir()
+    piped.write_text(variant("t0-no-delegation-advisory-only.yaml", work, "obs-0201", "a|b").read_text(encoding="utf-8"), encoding="utf-8")
     result = run("sum", "--store", str(store))
     for text in (
-        "observations: 3",
+        "observations: 4",
+        "| a\\|b | T0 | 1 |",
         "skipped invalid: project-a/obs-bad.yaml",
         "| project-a | T1 | 2 |",
         "| project-b | T0 | 1 |",
         "| T1 | completed | 1 |",
         "| T1 | interrupted | 1 |",
         "| T1 | 1/2 | 0 |",
-        "| T0 | 1/1 | 0 |",
+        "| T0 | 2/2 | 0 |",
         "not evidence that a topology is better",
     ):
-        expect(result, 0, text, "sum output")
+        expect(result, 1, text, "sum output with a skipped file")
+    (store / "project-a" / "obs-bad.yaml").unlink()
+    expect(run("sum", "--store", str(store)), 0, "observations: 4", "sum without invalid files")
 
 if failures:
     print("RunObservation CLI tests failed:")

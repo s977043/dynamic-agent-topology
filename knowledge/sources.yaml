@@ -48,6 +48,12 @@ sources:
     published_at: "2026-10-08"
     adopted: []
 
+  - id: ruvnet-ruflo-2026
+    type: repository
+    title: "Ruflo meta-harness (ruvnet/ruflo)"
+    url: "https://github.com/ruvnet/ruflo"
+    adopted: []
+
   - id: claude-code-mods-2026
     type: engineering-report
     title: "Customize Claude Code with mods"
@@ -217,14 +223,31 @@ sources:
     published_at: "2026-10-11"
     adopted: []
 
-  - id: anthropic-claude-code-model-configuration-2026
-    type: product-documentation
-    title: "Claude Code: Model configuration"
-    url: "https://code.claude.com/docs/en/model-config"
+  - id: uber-software-factory-economics-2026
+    type: engineering-report
+    title: "Running a Software Factory Efficiently at Uber Scale"
+    url: "https://www.uber.com/us/en/blog/efficient-software-factory/"
+    published_at: "2026-08-27"
+    adopted: []
+  - id: msitarzewski-agency-agents-2026
+    type: repository
+    title: "msitarzewski/agency-agents: specialist role prompt catalog"
+    url: "https://github.com/msitarzewski/agency-agents"
     adopted: []
 
+  - id: anthropic-claude-quickstarts-2026
+    type: repository
+    title: "Anthropic claude-quickstarts (source snapshot 9ec32b9)"
+    url: "https://github.com/anthropics/claude-quickstarts/commit/9ec32b91df50b0d4906cae64b13c6298055ff40d"
+    adopted: []
+
+  - id: anthropic-claude-code-model-configuration-2026
+    type: product-documentation
+    title: 'Claude Code: Model configuration'
+    url: https://code.claude.com/docs/en/model-config
+    adopted: []
   - id: anthropic-claude-code-settings-2026
     type: product-documentation
-    title: "Claude Code: Settings files and precedence"
-    url: "https://code.claude.com/docs/en/settings"
+    title: 'Claude Code: Settings files and precedence'
+    url: https://code.claude.com/docs/en/settings
     adopted: []

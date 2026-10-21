@@ -1,6 +1,6 @@
 # Claude Code OpusPlan / Scout / Critic: 多モデル役割分担の検証候補
 
-> Status: **Research-only / NOT ADOPTED**。観測・整理日: 2026-10-18 JST。
+> Status: **Research-only / NOT ADOPTED**。観測・整理日: 2026-10-18 JST。公開後状態の再確認: 2026-10-21 JST。
 > Ownership: [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)（compound / routing）・[#82](https://github.com/s977043/dynamic-agent-topology/issues/82)（Critic / adversarial objective）・[#88](https://github.com/s977043/dynamic-agent-topology/issues/88)（escalation / handoff）。
 > 既存の [Advisor × read-only Researcher](claude-code-advisor-readonly-researcher-2026-10.md) の研究を置き換えない。実運用設定・新Role・新Topology・新Schemaの採用ではない。
 
@@ -20,7 +20,7 @@
 - DATは **Role ≠ Model ≠ Permission ≠ Runtime**、Review Judgment ≠ Verification Evidence、Trigger ≠ Permission を既に分離（[AGENTS.md](../../AGENTS.md)、[Experiment principles](../../docs/EXPERIMENTS.md)）。
 - EXP-001は18/18 ACCEPT、9/9 paired blocks、Pilot限定で **Keep T0**。Feature Freezeはcompleted revision 3。既存の凍結Artifact、評価条件、過去Evidenceは変更しない。
 - [#82](https://github.com/s977043/dynamic-agent-topology/issues/82) は独立Adversaryの必要性が未実証。[#93](https://github.com/s977043/dynamic-agent-topology/issues/93) のcompound treatment / selective routingと重複するため新Issue・新runtime機構は不要。
-- [#193](https://github.com/s977043/dynamic-agent-topology/pull/193) は既存の `.claude/settings.json` permissionルールを修正中。[#186](https://github.com/s977043/dynamic-agent-topology/pull/186) はHuman判断待ちRelease Draft。これらを巻き込んで設定を直接変更しない。
+- [#193](https://github.com/s977043/dynamic-agent-topology/pull/193) はHumanによりmerge済み。v0.3.0も公開済みだが、設定のmergeや公開は実効権限・本研究の効果の証明ではない。本変更で設定を直接変更しない。
 - このRepositoryの `.claude/agents/` は既存Agile Coach / Scrum Masterのみ。新しい `scout.md` / `critic.md` が実行された事実はない。
 
 ## Architecture and security review
@@ -64,10 +64,10 @@ Reviewerを「壊す」指示にしても、欠陥の存在を自動証明しな
 
 - Disposableでsecret-freeなfixture上で、実Claude Code版、provider、`/model`・`/tasks`、構成ファイルの読み込みを確認。
 - ScoutにRead/Grep/Globは可能、Write/Edit/Bash/MCP/ネットワーク経路は拒否、Criticに禁止されたwriteがないことを確認する（**現時点では未実測**）。
-- 既存PR #193の変更・Humanレビューを先に解決し、実効権限を再確認。設定の修正・CLI起動・実Experiment開始は別タスク/権限ゲートとする。
+- merge済みPR #193を含む最新設定で、実効権限を再確認。設定の修正・CLI起動・実Experiment開始は別タスク/権限ゲートとする。
 
 ## Decision and non-goals
 
 **Decision: research intake only; runtime adoption = NO_GO until observed advantage and enforcement tests.** 最新公式文書から「設定可能」と確認しただけで「効果がある」や「強制された」と結論しない。既存の#82/#88/#93で候補を追跡し、独立ReviewerとHuman-owned decisionを維持。
 
-本変更では `.claude/`、`CLAUDE.md`、`AGENTS.md`、Adapter、Schema、Topology、Routing、凍結Artifact、依存、CIを変更しない。Release #186のHuman判断、PR #193のHuman merge、既存Issueの未達taskも勝手に完了扱いしない。
+本変更では `.claude/`、`CLAUDE.md`、`AGENTS.md`、Adapter、Schema、Topology、Routing、凍結Artifact、依存、CIを変更しない。既に完了したRelease公開・PR #193のHuman mergeを、既存Issueの未達taskや実験実行の承認へ転用しない。

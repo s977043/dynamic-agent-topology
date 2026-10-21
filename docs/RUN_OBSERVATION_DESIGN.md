@@ -1,6 +1,6 @@
 # ウェーブ観察記録の設計案（#223）
 
-状態: **非規範的な設計案（未採用・独立レビュー前）**。採用には [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223) の段階 2 以降について Human の判断が必要です。本書は schema・validator・adapter の追加を許可しません。`schemas/`、`scripts/`、`adapters/`、`topologies/`、EXP-001 の Frozen file は変更しません。観察記録の有効性は **INCONCLUSIVE**（DAT 仕様としての実測 0 件）です。
+状態: **非規範的な設計案（未採用）**。採用には [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223) の段階 2 以降について Human の判断が必要です。本書は schema・validator・adapter の追加を許可しません。`schemas/`、`scripts/`、`adapters/`、`topologies/`、EXP-001 の Frozen file は変更しません。観察記録の有効性は **INCONCLUSIVE**（DAT 仕様としての実測 0 件）です。
 
 - 起案日: 2026-10-21 / 基準: origin/main `560e512`
 - 関連: [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223)
@@ -103,9 +103,23 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 各 `reviews[]` には `role`（`advisory`: 助言のみ / `verifier`: 受け入れ・merge の判断を持つ）を必須で持たせ、助言と検証を記録上で区別する。`role: verifier` のレビューは `verification`（と `verifierKind`）の根拠にだけ使い、`independentReview` には数えない。`role: advisory` は `independentReview` の根拠にだけ使い、`verification` には数えない。1 件のレビューが両方に数えられることはない（Reviewer ≠ Verifier）。
 
-**正とする記録**: Organizer 以外による検証と助言のレビューは `reviews[]` を正とし、`topologyBasis` の `verification`・`verifierKind`・`independentReview` はそこから導く値として扱う。Organizer 自身の照合はレビューではないので `reviews[]` に入れず、`verifierKind: organizer` だけで記録する。段階 2 の validator は次の食い違いを拒否する（必須の負例に含める）。
+**正とする記録**: Organizer 以外による検証と助言のレビューは `reviews[]` を正とし、`topologyBasis` の `verification`・`verifierKind`・`independentReview` はそこから導く値として扱う。Organizer 自身の照合はレビューではないので `reviews[]` に入れず、`verifierKind: organizer` だけで記録する。**検証の根拠となるレビューの特定**: `reviews[]` は実施順に並べる。`role: verifier` のレビューのうち、最終的に受け入れた（merge した）`artifacts[].ref` を `target` に持つ最後の 1 件を「根拠レビュー」とする。同じ種別のレビューが複数あっても、根拠になるのはこの 1 件だけで、それより前の `role: verifier` のレビュー（差し戻しなど）は記録として残すが `verifierKind` の導出には使わない。
 
-- `verifierKind` が `organizer` 以外なのに、同じ `reviewerKind` の `role: verifier` が `reviews[]` にない
+`verifierKind` は根拠レビューの `reviewerKind` から次の表で導く。
+
+| 根拠レビューの `reviewerKind` | `verifierKind` |
+|---|---|
+| （根拠レビューなし、Organizer が照合） | `organizer` |
+| `separate-session` | `separate-session` |
+| `separate-model` | `separate-model` |
+| `human` | `human` |
+| `same-session` | 導出しない（同一セッションは検証主体の分離にならないため、`role: verifier` と組み合わせた記録は拒否する） |
+
+段階 2 の validator は次の食い違いを拒否する（必須の負例に含める）。
+
+- `verifierKind` が上の表で根拠レビューから導いた値と一致しない（例: `verifierKind: separate-session` なのに、根拠レビューが `reviewerKind: human`）
+- `verifierKind` が `organizer` 以外なのに、根拠レビューがない（`role: verifier` のレビューがない、または受け入れた `artifacts[].ref` を `target` に持つものがない）
+- `reviewerKind: same-session` かつ `role: verifier` のレビューがある
 - `role: verifier` が `reviews[]` にあるのに `verification` が `yes` でない
 - `role: advisory` の有無と `independentReview` の `yes` / `no` が一致しない（`reviews` 自体が `unknown` のときだけ `independentReview: unknown` を許す）
 

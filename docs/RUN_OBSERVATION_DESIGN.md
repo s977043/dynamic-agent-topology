@@ -28,13 +28,20 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 **H1（取得率）**: ウェーブ完了時に `RunObservation` を 1 件書く手順にすると、試作の棚卸しで取得率が低かった項目（`outcome`、`endedAt`、`reviews` の指摘数、`rework`、`runtime`、`model`）の取得率が、既存台帳の値（11%・0%・25%・14〜22%・0%・0%）を上回り、各項目 80% 以上になる。
 
-- 判定対象: 段階 4 の dogfooding で、2 リポジトリ以上・合計 20 件以上の記録
+- 判定対象: 段階 4 の dogfooding で集めた記録
 - 「取得」の定義: 値が `unknown` でないこと。`0` や空配列 `[]` は明示値として取得に数える
-- **棄却条件**: 20 件以上集めても上記 6 項目のいずれかの取得率が 50% 未満なら H1 を棄却し、記録の時点・手順の設計を見直す。20 件に届かない場合は INCONCLUSIVE とし、採否の根拠にしない
+- 判定は次の順に適用し、結果は 1 つだけになる
+  1. **INCONCLUSIVE（前提不足）**: 記録が 20 件未満、または 2 リポジトリ未満。取得率は見ない
+  2. **棄却**: 6 項目のいずれかの取得率が 50% 未満。記録の時点・手順の設計を見直す
+  3. **支持**: 6 項目すべての取得率が 80% 以上
+  4. **INCONCLUSIVE（中間）**: 上のどれにも当たらない（いずれかが 50% 以上 80% 未満）
+- INCONCLUSIVE は採否の根拠にしない
 
 **H2（構成分類の再現性）**: §5.2 の判定基準を使えば、同じ記録から 2 つの独立セッションが付ける `topologyEquivalent` が一致する。
 
-- **棄却条件**: 20 件以上で一致率が 80% 未満なら、判定基準を見直すまで集計に `topologyEquivalent` を使わない
+- 対象の選び方: H1 の判定対象と同じ記録の全件を使う（抜き取りや選別をしない）。判定する 2 セッションは、記録を書いたセッションとは別にし、互いの判定を見ない
+- 一致率の分母: 全件。片方または両方が `unknown` の記録も分母に含め、両方 `unknown` は一致、片方だけ `unknown` は不一致として数える。`unknown` の件数も併記する
+- 判定（相互排他）: 20 件未満は INCONCLUSIVE、20 件以上で一致率 80% 以上は支持、80% 未満は棄却。棄却したら判定基準を見直すまで集計に `topologyEquivalent` を使わない
 - 限界: 一致は分類規則の明確さを示すだけで、構成の効果を示さない
 
 ## 3. 選択肢の比較
@@ -71,11 +78,11 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 | `outcomeReason` | 中断・失敗の理由（1 行、本文を含めない） | string | なし |
 | `runtime` / `model` | Organizer と Worker ごとのランタイム・モデル・effort | trace と同形の object の配列 | trace `runtime` / `model` |
 | `topologyEquivalent` | 観測された構成の相当 | `P0` / `T0` / `T1` / `T2` / `T3` / `other` / `unknown` | trace `executionSubject.name` の観測版 |
-| `topologyBasis` | 判定根拠（委託・独立レビュー・専門役割の有無） | object | なし |
+| `topologyBasis` | 判定根拠（§5.2 の 5 項目） | object | なし |
 | `tasks.total` / `tasks.delegated` | タスク数・委託したタスク数 | integer または `unknown` | なし |
 | `agentInvocations` | 委託・再委託を含む起動総数 | integer または `unknown` | trace `summary.agentInvocations` |
 | `artifacts` | 作成・merge した PR 等の参照 | `{ref, state}` の配列 | trace `events[].artifact` |
-| `reviews` | 独立レビューの記録 | `{target, reviewerKind, findings{blocking, nonBlocking}, decision}` の配列 | trace `events[type=review]` |
+| `reviews` | 独立レビューの記録 | `{target, reviewerKind, role, findings{blocking, nonBlocking}, decision}` の配列 | trace `events[type=review]` |
 | `rework.count` | 修正のための再委託・再レビューの回数 | integer または `unknown` | `handoffFailures` とは同義でない |
 | `humanInterventions` | 人の介入の種別ごとの件数 | `{kind, count}` の配列 | trace `summary.humanInterventions`（合計） |
 
@@ -85,17 +92,29 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 ウェーブに書かれた事実だけで判定する。計画にあるが実施の記録がない役割は数えない。
 
-| 判定 | 条件 |
-|---|---|
-| P0 | エージェントが関与せず、決定的な処理だけで完了した |
-| T0 | 委託も独立レビューもなく、1 主体が実装と検証を行った |
-| T1 | (a) 委託があり、Organizer が一次ソースで照合した（Organizer を Verifier とみなす）が、それ以外の独立レビューがない。または (b) 委託がなく、別セッション・別モデルの独立レビューが Verifier を担った（Organizer を Worker とみなす） |
-| T2 | 委託があり、Organizer の照合に加えて別主体の独立レビューの記録がある |
-| T3 | T2 に加え、Worker・Reviewer・Verifier 以外の専門役割が別タスクとして実施された。同じ役割の並列は T3 に数えない |
-| other | Worker がいない（例: 他者の PR のレビューだけ） |
-| unknown | 委託やレビューの有無が読み取れない |
+`topologyBasis` には次を記録する。各値は `yes` / `no` / `unknown`。
 
-**境界ケース「委託なし＋別モデルの独立レビュー」**: T1 (b) とする。根拠は、T1 の canonical 定義が「生成する主体と検証する主体の分離」であり、委託の有無ではないこと。ただし Reviewer ≠ Verifier（ARCHITECTURE）なので、そのレビューが merge 判断を担った場合だけ Verifier とみなし、助言だけなら T0 とする。どちらだったかを `topologyBasis.reviewGatedMerge`（boolean）に残し、集計時に再分類できるようにする。
+- `agentInvolved`: エージェントが実装または検証に関与したか
+- `delegated`: Worker への委託があったか
+- `verification`: 生成物を受け入れる前の検証の記録があるか。あれば `verifierKind`（`organizer` / `separate-session` / `separate-model` / `human`）も残す
+- `independentReview`: 実装者と別の主体による助言のレビュー（受け入れ判断を持たない）があったか
+- `specialistRole`: Worker・Reviewer・Verifier 以外の専門役割が別タスクで実施されたか
+
+各 `reviews[]` には `role`（`advisory`: 助言のみ / `verifier`: 受け入れ・merge の判断を持つ）を必須で持たせ、助言と検証を記録上で区別する。
+
+判定は上から順に適用し、最初に当たったものに決める（相互排他）。
+
+| 順 | 判定 | 条件 |
+|---|---|---|
+| 1 | unknown | `agentInvolved`・`delegated`・`verification` のいずれかが `unknown` |
+| 2 | P0 | `agentInvolved: no` で、決定的な処理だけで完了した |
+| 3 | other | `agentInvolved: no` で、人だけで実施・検証した。または Worker がいない（例: 他者の PR のレビューだけ） |
+| 4 | T0 | `verification: no`（検証の記録がない）。または委託がなく、検証が実装と同じ主体だけで行われた。助言のレビューだけがあっても T0 |
+| 5 | T3 | 委託があり、検証の記録があり、`independentReview: yes`、`specialistRole: yes`。同じ役割の並列は専門役割に数えない |
+| 6 | T2 | 委託があり、検証の記録があり、`independentReview: yes` |
+| 7 | T1 | (a) 委託があり、Organizer または別主体が検証した。または (b) 委託がなく、別セッション・別モデル・人が `role: verifier` として検証した（Organizer を Worker とみなす） |
+
+**境界ケース「委託なし＋別モデルの独立レビュー」**: そのレビューの `role` で決める。`verifier` なら T1 (b)、`advisory` だけなら T0。根拠は、T1 の canonical 定義が「生成する主体と検証する主体の分離」であり委託の有無ではないこと、かつ Reviewer ≠ Verifier（ARCHITECTURE）であること。`role` が記録されていなければ `verification: unknown` となり unknown に落ちる。
 
 ### 5.3 `unknown` と 0 の区別
 
@@ -107,9 +126,12 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 ## 6. 保存先と秘匿
 
 - **保存先（推奨）**: 導入先の `.dat/state/observations/` に 1 ウェーブ 1 ファイルで置く。`.dat/state/` は `examples/brownfield/.gitignore` で既に除外されている場所で、既定ではコミットしない
-- 集計や DOGFOODING への転記は、サニタイズ済みの集計値だけを人が選んで DAT 側に載せる
 - 含めないもの: 秘密情報、private source、未サニタイズのプロンプト・会話本文、レビュー本文、個人環境の絶対パス。`humanInterventions` は種別と件数だけ、`outcomeReason` は 1 行の要約だけ
-- validator（段階 2）で、自由記述欄の長さ上限と、絶対パス・トークン形式の文字列の検出を行うことを検討する
+- 識別情報も秘匿の対象にする: `metadata.project`、`artifacts.ref`（PR URL・ブランチ名・private リポジトリ名）、`outcomeReason`、`topologyBasis` の自由記述。private な導入先では、これらを DAT 側へ転記するときに仮名（例: `project-a`、`pr-1`）へ置き換える
+- **サニタイズ済み**の定義: (1) 上の「含めないもの」を含まない、(2) 識別情報が公開済みのもの（public リポジトリ名・公開 PR 番号）か仮名だけである、(3) 段階 2 の validator を通る、の 3 つをすべて満たすこと
+- **保存前**（`.dat/state/observations/` への書き込み時）: 記録者が validator を実行し、通らない記録は保存しない
+- **転記前**（集計値や DOGFOODING へ載せるとき）: 識別情報を仮名に置き換え、validator を再実行し、人が差分を確認してから載せる。転記するのは集計値と仮名化した記録だけ
+- **段階 2 の必須の負例**: 自由記述欄（`outcomeReason`、`artifacts.ref`、`metadata.project` を含む）の長さ上限超過、絶対パス（`/Users/`・`/home/`・`C:\` 形式）、トークン形式の文字列（例: `ghp_`・`sk-` で始まる文字列、長い高エントロピー文字列）を含む記録を validator が拒否すること
 
 ## 7. adapter の責務
 
@@ -142,4 +164,4 @@ adapter は値の取り方だけを持ち、項目や判定基準を追加・変
 
 - U1: `outcome` に `handed-off`（別ウェーブへ引き継ぎ）を独立値として持たせるか
 - U2: `.dat/state/` 以外に、集計用の共有先（例: サニタイズ済み JSONL）を DAT 側で定義するか
-- U3: T1 (b) の `reviewGatedMerge: false` を T0 とする規則で H2 の一致率が下がるかは、段階 4 で確認する
+- U3: 委託なしで `role: advisory` のレビューだけを T0 とする規則で H2 の一致率が下がるかは、段階 4 で確認する

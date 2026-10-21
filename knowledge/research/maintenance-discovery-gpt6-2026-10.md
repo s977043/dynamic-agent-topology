@@ -46,9 +46,11 @@ A maintenance candidate's **discovery** and its **verified safe disposition** ar
 - **Negative evidence-ordering example:** PlanGate [run 38330052668](https://github.com/s977043/PlanGate/actions/runs/38330052668) failed with `TemporaryDirectory.cleanup` / `ENOTEMPTY(pack)` on **2026-10-13**; the correcting [Issue #1578](https://github.com/s977043/PlanGate/issues/1578) was completed on **2026-10-15**. The original run cannot be called a *post-fix recurrence*. Current main's `test_ratchet.py` disables `gc.auto` and `maintenance.auto`. Future recurrence remains UNKNOWN without newer runs. Source: [PlanGate #1586](https://github.com/s977043/PlanGate/issues/1586) timeline correction.
 - Any pilot case selected after approval must preserve separate `observedAtSha`, `evaluatedAtSha`, and review/decision timestamps. Missing values remain UNKNOWN, including human time and operational savings.
 
-### Cross-PR integration note
+### Integration and source checkpoint (2026-10-21)
 
-[Research PR #203](https://github.com/s977043/dynamic-agent-topology/pull/203) independently edits `knowledge/research/README.md` and `knowledge/sources.yaml`. Integrators must reconcile both new rows/entries after the first PR merges; do not resolve by silently discarding either source. This is a merge-order warning, **not** a request to promote or merge either PR without its required independent review.
+The primary article was independently retrieved on 2026-10-21: OpenAI's engineering report is dated 2026-10-14 and authored by Rodrigo Roim. Its maintenance categories and model/effort comparison support the source summary above; these remain OpenAI-side observations, not DAT outcomes. Publication of DAT v0.3.0 does not authorize this proposed evaluation.
+
+Quickstarts, Ruflo, Uber, and Agency research records are already on main. Preserve all existing source/index entries while integrating this note and any pending research PRs; revalidate unique source IDs, `adopted: []`, and exact-head checks after each merge.
 
 ## Minimum success and stop conditions
 

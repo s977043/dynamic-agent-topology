@@ -172,7 +172,7 @@ Source references and adoption state are recorded in [knowledge/sources.yaml](kn
 
 ## Status
 
-**Manual adoption-ready (current `main` is unreleased)**
+**Manual adoption-ready (check Git tags and GitHub Releases for published versions)**
 
 The repository currently provides:
 

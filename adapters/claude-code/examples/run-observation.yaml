@@ -1,0 +1,45 @@
+apiVersion: dat/v1alpha1
+kind: RunObservation
+metadata:
+  observationId: obs-cc-0001
+  project: project-a
+  datVersion: 0.3.0
+startedAt: '2026-01-05T09:00:00Z'
+endedAt: '2026-01-05T10:30:00Z'
+wallClockMs: 5400000
+goalRecorded: true
+outcome: completed
+runtime:
+- role: organizer
+  name: claude-code
+- role: worker
+  name: claude-code
+model: unknown
+topologyEquivalent: T1
+topologyBasis:
+  agentInvolved: 'yes'
+  delegated: 'yes'
+  verification: 'yes'
+  verifierKind: separate-session
+  independentReview: 'no'
+  specialistRole: 'no'
+tasks:
+  total: 2
+  delegated: 2
+agentInvocations: 3
+artifacts:
+- ref: pr-1
+  state: merged
+reviews:
+- target: pr-1
+  reviewerKind: separate-session
+  role: verifier
+  findings:
+    blocking: 0
+    nonBlocking: 1
+  decision: approve
+rework:
+  count: 0
+humanInterventions:
+- kind: approval
+  count: 1

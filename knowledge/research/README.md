@@ -30,7 +30,6 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 | [Uber Software Factory: outcome-denominated cost & quality](uber-software-factory-economics-2026-10.md) | Uber Engineering — Uday Kiran Medisetty (2026-08-27) | [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) |
 | [Agency Agents: bounded specialist Role guidance ablation](agency-agents-specialist-role-ablation-2026-10.md) | msitarzewski/agency-agents (pinned 2026-10-15 commit) | [#211](https://github.com/s977043/dynamic-agent-topology/issues/211) |
 | [GPT-6 software maintenance discovery](maintenance-discovery-gpt6-2026-10.md) | OpenAI maintenance engineering report (2026-10-14) | [#162](https://github.com/s977043/dynamic-agent-topology/issues/162) / [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) (related research; no new experiment authorized) |
-
 | [AIDLE Jazz / Software Factory task-nature topology study](aidle-jazz-software-factory-task-nature-2026-10.md) | AIDLE Extended 2026 organizers' report (2026-10-15) | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) (research-only) |
 
 Tracking Issues are the live status source of truth; this index intentionally does not duplicate blocked/open/progress state. The live EXP-001 state is tracked in [Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15).

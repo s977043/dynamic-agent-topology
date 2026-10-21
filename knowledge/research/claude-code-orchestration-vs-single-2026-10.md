@@ -1,6 +1,6 @@
 # 司令官型オーケストレーション vs 単一Agent: Claude Code公式機能に基づく比較候補
 
-> Status: **RESEARCH ONLY / NOT ADOPTED**（2026-10-20 JST）。Owner: [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)（選択的multi-agent/compound execution）。関連: [#88](https://github.com/s977043/dynamic-agent-topology/issues/88)（model escalation）、[#82](https://github.com/s977043/dynamic-agent-topology/issues/82)（独立Judgment）、[#201](https://github.com/s977043/dynamic-agent-topology/issues/201)（elapsed-time signal）。
+> Status: **RESEARCH ONLY / NOT ADOPTED**（2026-10-21 JST公開後再確認）。Owner: [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)（選択的multi-agent/compound execution）。関連: [#88](https://github.com/s977043/dynamic-agent-topology/issues/88)（model escalation）、[#82](https://github.com/s977043/dynamic-agent-topology/issues/82)（独立Judgment）、[#201](https://github.com/s977043/dynamic-agent-topology/issues/201)（elapsed-time signal）。
 > この文書は**比較設計の候補**。新規実験の事前登録、Operatorの実行許可、採用、Release承認ではない。EXP-001のFreeze・18 Run・Keep T0は不変。
 
 ## 1. 入力・一次ソース・証拠の強さ
@@ -15,7 +15,7 @@
 ## 2. DAT既存研究との差分（重複防止）
 
 - [#206](https://github.com/s977043/dynamic-agent-topology/pull/206) は**OpusPlan/Haiku Scout/Opus Critic**によるModel・Role・Judgeのablation候補（Draft）。本案は**Execution Control / topology / coordination cost**の差を扱い、Roleの強さやmodel切替を同時に変更しない。
-- [#194](https://github.com/s977043/dynamic-agent-topology/pull/194) はcompound・recovery・shadow gateの先行Draft。本案を別Runtime実装として並走させず、#93の試験計画で統合/棄却する。
+- [#194](https://github.com/s977043/dynamic-agent-topology/pull/194) はcompound・recovery・shadow gateの未採用設計としてmainへ統合済み。本案を別Runtime実装として並走させず、#93の試験計画で統合/棄却する。
 - [#208](https://github.com/s977043/dynamic-agent-topology/pull/208) はpstackのModel/Role/Effort研究。本案は外部PluginもSkillも取り込まない。
 - DAT原則はP0/T0を第一級Baselineとする。「司令官」という名称は新Roleの根拠ではなく、既存のPlanner / Worker / Reviewer / VerifierとControl Planeの配置を観測する**比較対象の説明**。
 
@@ -75,8 +75,8 @@
 
 ## 6. 検証・統合時の注意
 
-- 本ノートは#93に結び付ける。並行Draft #194/#206/#208などが同じ`knowledge/research/README.md` / `knowledge/sources.yaml`を変更するため、他PRのブランチを上書きせず、先行merge後に差分・重複source ID・latest-head CIを再検証する。
-- 既存のrelease publication hold、独立した別セッションReview、Human-only release / guard / permission変更、GitHub Rulesetを尊重する。本セッションのレビューは独立承認の代替にはならない。
+- 本ノートは#93に結び付ける。#206/#208などの研究PRが同じ`knowledge/research/README.md` / `knowledge/sources.yaml`を変更するため、他PRのブランチを上書きせず、先行merge後に差分・重複source ID・latest-head CIを再検証する。
+- v0.3.0は2026-10-21T01:13:38Zに[公開済み](https://github.com/s977043/dynamic-agent-topology/releases/tag/v0.3.0)。publication holdの前提は解消したが、独立した別セッションReview、最新head CI、Human-only release / guard / permission変更、GitHub Rulesetは別に確認する。Writerの自己レビューは独立承認の代替にはならない。
 
 ### 実Runtimeの適格性マトリクス（第1検証ループ）
 
@@ -157,7 +157,7 @@ N1〜N5は**効果の性能測定とは別の安全性ゲート**。権限が不
 
 - [Model configuration](https://code.claude.com/docs/en/model-config): `opusplan`は**Plan Mode時のみ**Opus→実行時Sonnet。provider/CLIによるalias解決とfallback、親からモデルを継承するsubagentの実効値を必ず採取する。分担の実装とは独立した変更因子。
 - [Subagents](https://code.claude.com/docs/en/sub-agents): `permissionMode`は親の`bypassPermissions`/`acceptEdits`/`auto`などで指定どおりにならない場合がある。read-onlyの役割説明をセキュリティ境界とみなさず、隔離fixtureで実効tool denyを検証。
-- [Agent teams](https://code.claude.com/docs/en/agent-teams): experimental・既定無効。`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`により**通常の名前付きSubagentもteammateとして起動する可能性**がある。非対話`-p`ではteammateがspawnされない。D armは専用のinterative環境/強制境界確認が必要で、Cとの単純な時間比較は不可。
+- [Agent teams](https://code.claude.com/docs/en/agent-teams): experimental・既定無効。`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`により**通常の名前付きSubagentもteammateとして起動する可能性**がある。非対話`-p`ではteammateがspawnされない。D armは専用のinteractive環境/強制境界確認が必要で、Cとの単純な時間比較は不可。
 - [Dynamic workflows](https://code.claude.com/docs/en/workflows): `ultracode`キーワードはユーザーの対話入力に限られ`claude -p`のpromptでは発火しない。一方Workflow機能自体は非対話でも使用可能。`/effort ultracode`の常時設定は追加Token/Latencyだけでなく、auto modeで最初のWorkflow実行承認を省略し、通常の同時subagent上限やlarge-workflow警告にも影響する。**許可前は有効化しない**。既存のRuntime permission / Human権限境界をこのモードで迂回しない。
 - 以上は**2026-10-21時点の公開仕様**。実CLI/version/providerでの有効性はまだ測っていない。実行開始時には改めて公式文書とeffective configurationを照合する。
 
@@ -165,6 +165,6 @@ N1〜N5は**効果の性能測定とは別の安全性ゲート**。権限が不
 
 ### 今回の実行結果と残差
 
-- 文書/出典の検証と最小作業計画のみ。現時点では実CLI、サブエージェント本体、実験Runは**実行していない**。
+- 文書/出典の検証と最小作業計画のみ。本研究の比較対象となる実Claude CLI、Subagent/Team/Workflow、実験Runは**実行していない**。開発作業に用いるCodexのレビュー用サブエージェントとは区別する。
 - 停止条件: 出典の矛盾、Work Unit/モデル/permissionが固定できない、独立Reviewが無い、Human Gate未解消、品質床・費用上限未合意。
 - 次の受け渡し: #93でG1のAC・budget・適格Taskを定め、G2以降は許可された実行環境・独立Reviewerが揃った時のみ実施する。

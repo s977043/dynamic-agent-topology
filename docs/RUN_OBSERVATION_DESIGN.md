@@ -103,6 +103,12 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 各 `reviews[]` には `role`（`advisory`: 助言のみ / `verifier`: 受け入れ・merge の判断を持つ）を必須で持たせ、助言と検証を記録上で区別する。`role: verifier` のレビューは `verification`（と `verifierKind`）の根拠にだけ使い、`independentReview` には数えない。`role: advisory` は `independentReview` の根拠にだけ使い、`verification` には数えない。1 件のレビューが両方に数えられることはない（Reviewer ≠ Verifier）。
 
+**正とする記録**: Organizer 以外による検証と助言のレビューは `reviews[]` を正とし、`topologyBasis` の `verification`・`verifierKind`・`independentReview` はそこから導く値として扱う。Organizer 自身の照合はレビューではないので `reviews[]` に入れず、`verifierKind: organizer` だけで記録する。段階 2 の validator は次の食い違いを拒否する（必須の負例に含める）。
+
+- `verifierKind` が `organizer` 以外なのに、同じ `reviewerKind` の `role: verifier` が `reviews[]` にない
+- `role: verifier` が `reviews[]` にあるのに `verification` が `yes` でない
+- `role: advisory` の有無と `independentReview` の `yes` / `no` が一致しない（`reviews` 自体が `unknown` のときだけ `independentReview: unknown` を許す）
+
 判定は上から順に適用し、最初に当たったものに決める（相互排他）。
 
 | 順 | 判定 | 条件 |
@@ -111,10 +117,11 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 | 2 | P0 | `agentInvolved: no` で、決定的な処理だけで完了した |
 | 3 | other | `agentInvolved: no` で、人だけで実施・検証した。または Worker がいない（例: 他者の PR のレビューだけ） |
 | 4 | T0 | `verification: no`（検証の記録がない）。または委託がなく、検証が実装と同じ主体だけで行われた。助言のレビューだけがあっても T0 |
-| 5 | T3 | 委託があり、検証の記録があり、`independentReview: yes`、`specialistRole: yes`。同じ役割の並列は専門役割に数えない |
-| 6 | T2 | 委託があり、検証の記録があり、`independentReview: yes` |
-| 7 | T1 | (a) 委託があり、検証の記録がある（`verifierKind` を問わない）。または (b) 委託がなく、別セッション・別モデル・人が `role: verifier` として検証した（Organizer を Worker とみなす） |
-| 8 | unknown | 1〜7 のどれにも当たらない（全件が必ずどれか 1 つに分類される。該当した記録は判定基準の見直し候補として件数を併記する） |
+| 5 | unknown | 委託があり、検証の記録があり、上位の構成を区別できない: `independentReview: unknown`（T2/T3 の可能性が残る）、または `independentReview: yes` かつ `specialistRole: unknown`（T3 の可能性が残る） |
+| 6 | T3 | 委託があり、検証の記録があり、`independentReview: yes`、`specialistRole: yes`。同じ役割の並列は専門役割に数えない |
+| 7 | T2 | 委託があり、検証の記録があり、`independentReview: yes`、`specialistRole: no` |
+| 8 | T1 | (a) 委託があり、検証の記録がある（`verifierKind` を問わない）。または (b) 委託がなく、別セッション・別モデル・人が `role: verifier` として検証した（Organizer を Worker とみなす） |
+| 9 | unknown | 1〜8 のどれにも当たらない（全件が必ずどれか 1 つに分類される。該当した記録は判定基準の見直し候補として件数を併記する） |
 
 **境界ケース「委託なし＋別モデルの独立レビュー」**: そのレビューの `role` で決める。`verifier` なら T1 (b)、`advisory` だけなら T0。根拠は、T1 の canonical 定義が「生成する主体と検証する主体の分離」であり委託の有無ではないこと、かつ Reviewer ≠ Verifier（ARCHITECTURE）であること。`role` が記録されていなければ `verification: unknown` となり unknown に落ちる。
 

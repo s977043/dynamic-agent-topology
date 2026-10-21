@@ -102,11 +102,11 @@ Codex CLIの版を合わせるだけではCPU・kernel・Docker・sandboxの一�
 | 確認対象 | 現物で確認した宣言 | 未検証・限界 |
 |---|---|---|
 | `.claude/agents/agile-coach.md` / `scrum-master.md` | 2件とも `model: inherit`、`tools: Read, Grep, Glob`。助言専用で独立ReviewerやHuman判断を代替しない | Sonnet/Haiku/Opus固定割当なし。実効モデル・tool拒否は未計測 |
-| `.claude/settings.json` | 検証用Bash allow、Frozen対象へのEdit ask、Bash PreToolUse guard、bytecode無効化 | Write askも宣言されていると読み替えない。設定の読込・強制・追加課金制限は未実測 |
+| `.claude/settings.json` | 検証用Bash allow、Frozen対象へのEdit ask、Bash PreToolUse guard、bytecode無効化 | EditルールでWriteを含む編集を対象にする意図（#193）。設定の読込・強制・追加課金制限は未実測 |
 | `.codex/config.toml` | `approval_policy="on-request"`、`sandbox_mode="workspace-write"` | 現在のセッション権限は上位設定に依存。このファイルを実効値の証拠にしない |
 | 実行環境 | この確認環境では `command -v claude` でCLI未検出 | 契約内残量、利用可能モデル、追加課金の境界、Claude runtimeのpermission dialogはNOT_TESTED |
 
-`CLAUDE.md`はEdit/Writeの両方にaskすると説明しますが、この時点のsettingsのaskはEditのみであり、宣言間に不整合があります。この文書は不整合を記録するだけで、Human-ownedのCLAUDE.mdや設定は変更しません。実効拒否の有無は別のRuntime試験が必要です。
+[#193](https://github.com/s977043/dynamic-agent-topology/pull/193)は、EditルールがWriteを含むファイル編集に適用されるため重複Writeルールを削除した変更です。文字列としてEditのみであることから保護欠落や`CLAUDE.md`との不整合を推定しません。実際の設定読込・確認ダイアログ・拒否の有無は別のRuntime試験が必要です。
 
 Claude公式仕様の通常モデル優先順は呼出し指定→frontmatter→環境変数→親で、`inherit`は親モデルを選ぶ。従って既定の環境変数だけで既存2 AgentがHaiku固定になるとは限らない。FORCE変数は別の制御で、ここでは導入しない。Cloudへのrepo設定適用範囲も利用形態に依存するため、Mac/ThinkPadの設定値をそのままClaude Cloudの実効値として扱わない。出典: [sub-agents](https://code.claude.com/docs/en/sub-agents)、[settings](https://code.claude.com/docs/en/settings)（2026-10-21照合）。
 

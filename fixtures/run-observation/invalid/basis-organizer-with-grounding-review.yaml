@@ -21,14 +21,14 @@ model:
   id: model-x
   effort: high
 - role: worker
-  id: sk-NOT-A-REAL-KEY
+  id: model-y
   effort: medium
 topologyEquivalent: T1
 topologyBasis:
   agentInvolved: 'yes'
   delegated: 'yes'
   verification: 'yes'
-  verifierKind: separate-session
+  verifierKind: organizer
   independentReview: 'no'
   specialistRole: 'no'
 tasks:

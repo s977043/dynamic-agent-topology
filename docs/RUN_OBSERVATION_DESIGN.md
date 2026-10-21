@@ -156,6 +156,9 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - **`topologyEquivalent` の照合**: `topologyBasis` だけでは「決定的な処理だけ（P0）」と「人だけ（other）」、委託なしのときの「Worker がいない（other）」を区別できないため、`agentInvolved: no` では `P0` と `other`、`delegated: no` では表の判定値に加えて `other` を許す
 - **`runtime` / `model` の形**: trace の `runtime`・`model` の項目に `role`（`organizer` / `worker`）を足した object の配列、または `unknown`
 - **`artifacts[].state`**: `open` / `merged` / `closed` / `unknown`。受け入れは `merged` で判定する
+- **`verifierKind: organizer`**: 根拠レビューがあるときは拒否する（§5.2 の表のとおり、`organizer` は根拠レビューがないときだけ）
+- **閉じた enum の拡張**: `outcome`・`reviewerKind`・`artifacts[].state` などの enum に値を足すときは、`apiVersion` を上げ（例: `dat/v1alpha1` → `dat/v1alpha2`）、schema は旧版の値も受け付けて既存記録を書き換えない。値の削除や意味の変更は、旧版の記録を集計から分けて扱う
+- **トークン形式の負例**: 接頭辞の検査は、テストの実行時に接頭辞と `EXAMPLE` を連結して確かめる。リポジトリにトークン風の文字列を残さないため、fixture には置かない
 - **件数の整合**: `wallClockMs` は `startedAt`・`endedAt` が両方分かるときだけ数値を許し、両方分かるときは差との誤差 60 秒以内とする。`tasks.delegated` は `tasks.total` 以下
 - **秘匿の検査値**: 文字列値の長さ上限は 200 文字、`outcomeReason` は改行を含めない。トークン形式は `ghp_`・`gho_`・`ghu_`・`ghs_`・`ghr_`・`github_pat_`・`sk-` の接頭辞と、英大文字・小文字・数字を含む 32 文字以上でエントロピー 4.0 bit/文字以上の連続文字列。いずれも誤検知・見逃しがあり得る簡易検査で、人の差分確認（§6）を置き換えない
 

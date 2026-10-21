@@ -131,6 +131,8 @@ def check_basis(record):
         return errors
 
     root = root_review(reviews, record["artifacts"])
+    if verifier_kind == "organizer" and root is not None:
+        errors.append("topologyBasis.verifierKind: 'organizer' is allowed only without a grounding review")
     if verifier_kind not in (None, "organizer"):
         if root is None:
             errors.append("topologyBasis.verifierKind: no grounding role: verifier review")

@@ -29,10 +29,12 @@ EXPECTED_ERRORS = {
     "redaction-absolute-path-users": "absolute path",
     "redaction-absolute-path-home": "absolute path",
     "redaction-absolute-path-windows": "absolute path",
-    "redaction-token-ghp-prefix": "token-like prefix",
-    "redaction-token-sk-prefix": "token-like prefix",
     "redaction-high-entropy-string": "high-entropy string",
+    "basis-organizer-with-grounding-review": "'organizer' is allowed only without a grounding review",
 }
+
+# Token-like values are assembled at run time so the repository holds no token-shaped string.
+TOKEN_PREFIXES = ("gh" + "p_", "gh" + "o_", "gh" + "u_", "gh" + "s_", "gh" + "r_", "github" + "_pat_", "s" + "k-")
 
 failures = []
 validator = vro.load_validator()
@@ -54,6 +56,11 @@ for name, expected in EXPECTED_ERRORS.items():
     errors = vro.validate_file(invalid[name], validator)
     if not any(expected in error for error in errors):
         failures.append(f"{name} must fail with {expected!r}, got {errors}")
+
+for prefix in TOKEN_PREFIXES:
+    errors = vro.check_redaction({"value": prefix + "EXAMPLE"})
+    if not any("token-like prefix" in error for error in errors):
+        failures.append(f"token prefix {prefix!r} must be rejected, got {errors}")
 
 for text in ("2026-01-05T09:00:00Z", "separate-session-verifier-merge-ok", "0.3.0"):
     if vro.check_redaction({"value": text}):

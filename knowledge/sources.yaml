@@ -273,3 +273,10 @@ sources:
     title: 'Claude Code: Orchestrate subagents at scale with dynamic workflows'
     url: https://code.claude.com/docs/en/workflows
     adopted: []
+
+  - id: openai-gpt6-software-maintenance-2026
+    type: engineering-report
+    title: Maintaining software with the GPT-6 family
+    url: https://developers.openai.com/blog/maintaining-software-with-the-gpt-6-family
+    published_at: '2026-10-14'
+    adopted: []

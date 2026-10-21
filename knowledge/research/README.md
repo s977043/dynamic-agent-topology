@@ -77,3 +77,4 @@ Candidate implementation != evidence of improvement
 When a candidate is later adopted, update the relevant canonical artifact(s), documentation, applicable validation, and `../sources.yaml` together so the adoption state remains auditable.
 
 During the active EXP-001 Feature Freeze, research notes may preserve hypotheses and post-freeze evaluation candidates, but they must not silently change frozen experiment semantics or runtime behavior.
+| [Claude Code single vs delegated/parallel/team/workflow orchestration (research-only)](claude-code-orchestration-vs-single-2026-10.md) | Anthropic Claude Code model configuration / subagents / agent teams / workflows; user-provided X transcription (unverified) | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) / [#201](https://github.com/s977043/dynamic-agent-topology/issues/201) |

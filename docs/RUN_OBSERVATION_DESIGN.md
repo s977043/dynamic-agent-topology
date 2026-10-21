@@ -171,6 +171,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - 識別情報（PR URL・ブランチ名・private リポジトリ名・導入先名・個人名など）は、private な導入先では DAT 側へ転記するときに仮名（例: `project-a`、`pr-1`）へ置き換える
 - **サニタイズ済み**の定義: (1) 上の「含めないもの」を含まない、(2) 識別情報が公開済みのもの（public リポジトリ名・公開 PR 番号）か仮名だけである、(3) 段階 2 の validator を通る、の 3 つをすべて満たすこと
 - **保存前**（`.dat/state/observations/` への書き込み時）: 記録者が validator を実行し、通らない記録は保存しない
+- 保存と集計の CLI: `scripts/run_observation.py`（`save` / `sum`）。validator を通った記録だけを保存する。手順は各 adapter の `RUN_OBSERVATION.md`
 - **転記前**（集計値や DOGFOODING へ載せるとき）: 識別情報を仮名に置き換え、validator を再実行し、人が差分を確認してから載せる。転記するのは集計値と仮名化した記録だけ
 - **段階 2 の必須の負例**: 記録内のすべての文字列値（enum 以外）の長さ上限超過、絶対パス（`/Users/`・`/home/`・`C:\` 形式）、トークン形式の文字列（例: `ghp_`・`sk-` で始まる文字列、長い高エントロピー文字列）を含む記録を validator が拒否すること
 

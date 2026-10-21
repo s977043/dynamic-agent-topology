@@ -246,3 +246,14 @@ sources:
     title: "cursor/plugins: pstack role-based models, reasoning budgets and engineering playbooks"
     url: "https://github.com/cursor/plugins/tree/0b8e952052d482ee6de06deebf14d590d77b1b34/pstack"
     adopted: []
+
+  - id: anthropic-claude-code-model-configuration-2026
+    type: product-documentation
+    title: 'Claude Code: Model configuration'
+    url: https://code.claude.com/docs/en/model-config
+    adopted: []
+  - id: anthropic-claude-code-settings-2026
+    type: product-documentation
+    title: 'Claude Code: Settings files and precedence'
+    url: https://code.claude.com/docs/en/settings
+    adopted: []

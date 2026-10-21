@@ -22,11 +22,11 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 2. **YAML を書く**: 記録例の形で、作業中のリポジトリの外（一時ディレクトリ）に書く。
    - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
-   - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version` も同じ値に揃えてある
+   - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない
    - `topologyEquivalent` は設計 §5.2 の表を上から順に当てはめる。助言レビュー（`advisory`）と検証（`verifier`）を混ぜない
-3. **秘匿を確かめる**（全文字列値が対象）: 秘密情報・トークン、private source、プロンプトや会話の本文、レビュー本文、個人環境の絶対パスを含めない。private な PR・ブランチ・リポジトリ名・個人名は仮名にする。`outcomeReason` は改行なしの 1 行。
+3. **秘匿を確かめる**（保存前の必須条件。全文字列値が対象）: エージェント自身が全文字列値を読み、次を含まないことを確かめる。CLI の `OK` はこの確認の代わりにならない（validator が見るのは長さ・絶対パス・既知のトークン形式だけ）。秘密情報・トークン、private source、プロンプトや会話の本文、レビュー本文、個人環境の絶対パスを含めない。private な PR・ブランチ・リポジトリ名・個人名は仮名にする。`outcomeReason` は改行なしの 1 行。
 4. **保存先**: リポジトリの外の 1 か所。`--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、指定がなければ `~/.dat/observations` を案内する。
-5. **検証して保存する**: 保存には Python 3・`jsonschema`・`pyyaml` と DAT の CLI が必須。validator を通った記録だけを保存する。`NG` なら直して再実行し、`OK` と一緒に出る `unknown` の項目に取れる値が残っていないか見直す。
+5. **検証して保存する**: 保存には Python 3・`jsonschema`・`pyyaml` と DAT の CLI が必須で、ファイル書き込みとコマンド実行の許可が要る。手順 3 の確認を終えてから実行する。validator を通った記録だけを保存する。`NG` なら直して再実行し、`OK` と一緒に出る `unknown` の項目に取れる値が残っていないか見直す。
 
    ```bash
    python <DAT のパス>/scripts/run_observation.py save <記録.yaml> --store ~/.dat/observations

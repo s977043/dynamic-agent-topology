@@ -3,12 +3,11 @@
 
 - .claude-plugin/plugin.json, .claude-plugin/marketplace.json and
   .codex-plugin/plugin.json are JSON objects and share name, version and skills
-- the manifest version equals CITATION.cff version (the DAT spec version that
-  dat-observe records as metadata.datVersion)
-- the marketplace entry's source points to a plugin root holding
-  .claude-plugin/plugin.json, and its version (if any) matches the manifest
-- every <skills>/<name>/SKILL.md, with <skills> taken from the manifest, has
-  YAML frontmatter whose name equals <name> and a non-empty description
+- the marketplace has exactly one entry with the plugin name; its source points
+  to this repository root, and its version (if any) matches the manifest
+- every subdirectory of <skills> (taken from the manifest) has a SKILL.md with
+  YAML frontmatter whose name equals the directory name and a non-empty
+  description
 - links written as `](relative/path)` in SKILL.md resolve to existing files;
   other link syntaxes are not checked
 Malformed inputs are reported as NG lines, never as a traceback.
@@ -40,18 +39,6 @@ def load_json(path: Path, errors: list[str]) -> dict:
     return data
 
 
-def citation_version(errors: list[str]) -> str | None:
-    try:
-        data = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
-        errors.append(f"CITATION.cff: {exc}")
-        return None
-    if not isinstance(data, dict) or "version" not in data:
-        errors.append("CITATION.cff: version is missing")
-        return None
-    return str(data["version"])
-
-
 def check_manifests(errors: list[str]) -> dict:
     claude = load_json(ROOT / ".claude-plugin/plugin.json", errors)
     codex = load_json(ROOT / ".codex-plugin/plugin.json", errors)
@@ -61,17 +48,14 @@ def check_manifests(errors: list[str]) -> dict:
         errors.append("marketplace.json: plugins must be an array of objects")
         plugins = []
     entries = [p for p in plugins if p.get("name") == claude.get("name")]
-    if not entries:
-        errors.append("marketplace.json: no plugin entry named as .claude-plugin/plugin.json")
+    if len(entries) != 1:
+        errors.append(f"marketplace.json: expected one entry named as .claude-plugin/plugin.json, found {len(entries)}")
     for entry in entries:
         source = entry.get("source")
-        if not isinstance(source, str) or not (ROOT / source / ".claude-plugin/plugin.json").is_file():
-            errors.append(f"marketplace.json: source does not point to a plugin root: {source}")
+        if not isinstance(source, str) or (ROOT / source).resolve() != ROOT:
+            errors.append(f"marketplace.json: source must point to the plugin root: {source}")
         if "version" in entry and entry["version"] != claude.get("version"):
             errors.append("marketplace.json: entry version differs from .claude-plugin/plugin.json")
-    version = citation_version(errors)
-    if version is not None and version != claude.get("version"):
-        errors.append("plugin.json version differs from CITATION.cff version")
     for key in ("name", "version", "skills"):
         if claude.get(key) != codex.get(key):
             errors.append(f"plugin.json {key} differs between .claude-plugin and .codex-plugin")
@@ -84,10 +68,14 @@ def check_skills(manifest: dict, errors: list[str]) -> None:
     if skills_dir is None or not skills_dir.is_dir():
         errors.append(f"plugin.json skills does not point to a directory: {value}")
         return
-    skill_files = sorted(skills_dir.glob("*/SKILL.md"))
-    if not skill_files:
-        errors.append(f"{value}: no SKILL.md found")
-    for path in skill_files:
+    skill_dirs = sorted(p for p in skills_dir.iterdir() if p.is_dir())
+    if not skill_dirs:
+        errors.append(f"{value}: no skill directory found")
+    for skill_dir in skill_dirs:
+        path = skill_dir / "SKILL.md"
+        if not path.is_file():
+            errors.append(f"{skill_dir.relative_to(ROOT)}: SKILL.md is missing")
+            continue
         rel = path.relative_to(ROOT)
         try:
             text = path.read_text(encoding="utf-8")

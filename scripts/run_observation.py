@@ -63,6 +63,12 @@ def construct_unique_mapping(loader, node, deep=False):
     keys = set()
     for key_node, _ in node.value:
         key = loader.construct_object(key_node, deep=deep)
+        try:
+            hash(key)
+        except TypeError:
+            raise yaml.constructor.ConstructorError(
+                None, None, "mapping key must be a scalar", key_node.start_mark
+            ) from None
         if key in keys:
             raise yaml.constructor.ConstructorError(
                 None, None, f"duplicate key {key!r}", key_node.start_mark
@@ -102,11 +108,13 @@ def save(path, store):
     if store not in dest.resolve().parents:
         print(f"NG\n- destination resolves outside the store: {dest}")
         return 1
-    if dest.exists():
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(dest, "x", encoding="utf-8") as handle:
+            handle.write(yaml.safe_dump(record, sort_keys=False, allow_unicode=True))
+    except FileExistsError:
         print(f"NG\n- observationId already recorded: {dest}")
         return 1
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(yaml.safe_dump(record, sort_keys=False, allow_unicode=True), encoding="utf-8")
     unknowns = list(unknown_fields(record))
     print(f"OK {meta['observationId']} -> {dest}")
     print(f"unknown: {', '.join(unknowns) if unknowns else 'none'}")

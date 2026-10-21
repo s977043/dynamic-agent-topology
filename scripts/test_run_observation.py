@@ -92,6 +92,10 @@ with tempfile.TemporaryDirectory() as tmp:
     if any("EXAMPLE" in p.read_text(encoding="utf-8") for p in store.glob("*/*.yaml")):
         failures.append("duplicate key record must not be stored")
 
+    complex_key = work / "complex-key.yaml"
+    complex_key.write_text(first.read_text(encoding="utf-8") + "? [a, b]\n: value\n", encoding="utf-8")
+    expect(run("save", str(complex_key), "--store", str(store)), 1, "mapping key must be a scalar", "non-scalar key")
+
     broken = work / "broken.yaml"
     broken.write_text("metadata: [unclosed\n", encoding="utf-8")
     expect(run("save", str(broken), "--store", str(store)), 1, "cannot read", "malformed YAML")
@@ -111,6 +115,7 @@ with tempfile.TemporaryDirectory() as tmp:
     expect(run("save", str(other), env=env), 0, "OK obs-0003", "store from environment")
 
     shutil.copyfile(invalid, store / "project-a" / "obs-bad.yaml")
+    shutil.copyfile(complex_key, store / "project-a" / "obs-complex.yaml")
     piped = store / "pipe" / "obs-0201.yaml"
     piped.parent.mkdir()
     piped.write_text(variant("t0-no-delegation-advisory-only.yaml", work, "obs-0201", "a|b").read_text(encoding="utf-8"), encoding="utf-8")
@@ -119,6 +124,7 @@ with tempfile.TemporaryDirectory() as tmp:
         "observations: 4",
         "| a\\|b | T0 | 1 |",
         "skipped invalid: project-a/obs-bad.yaml",
+        "skipped invalid: project-a/obs-complex.yaml",
         "| project-a | T1 | 2 |",
         "| project-b | T0 | 1 |",
         "| T1 | completed | 1 |",
@@ -129,6 +135,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ):
         expect(result, 1, text, "sum output with a skipped file")
     (store / "project-a" / "obs-bad.yaml").unlink()
+    (store / "project-a" / "obs-complex.yaml").unlink()
     expect(run("sum", "--store", str(store)), 0, "observations: 4", "sum without invalid files")
 
 if failures:

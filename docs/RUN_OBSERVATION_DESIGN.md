@@ -1,6 +1,6 @@
 # ウェーブ観察記録の設計案（#223）
 
-状態: **非規範的な設計案（未採用）**。採用には [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223) の段階 2 以降について Human の判断が必要です。本書は schema・validator・adapter の追加を許可しません。`schemas/`、`scripts/`、`adapters/`、`topologies/`、EXP-001 の Frozen file は変更しません。観察記録の有効性は **INCONCLUSIVE**（DAT 仕様としての実測 0 件）です。
+状態: **非規範的な設計案（段階 2 実装中）**。段階 2 の schema（`schemas/run-observation.schema.json`）・validator（`scripts/validate_run_observation.py`）・fixture（`fixtures/run-observation/`）を [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223) の段階 2 として追加しました。採否と新 artifact kind の追加は Human の判断です。adapter・`topologies/`・EXP-001 の Frozen file は変更しません。観察記録の有効性は **INCONCLUSIVE**（DAT 仕様としての実測 0 件）です。
 
 - 起案日: 2026-10-21 / 基準: origin/main `560e512`
 - 関連: [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223)
@@ -145,6 +145,22 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - レビューをしなかったときは `reviews: []`、手戻りがなかったときは `rework.count: 0` を明記する。これが H1 の「取得」に数えられる
 - 時刻が分単位以上で両方分かるときだけ `wallClockMs` を出す
 - 集計は `unknown` を分母から除き、除いた件数を併記する
+
+### 5.4 段階 2 の実装で決めたこと
+
+本書に明記がなく、段階 2 の実装で決めた規則。採否は段階 2 の Human 判断に含める。
+
+- **merge しなかった回の根拠レビュー**: `artifacts[]` に `state: merged` が 1 件もないとき（中断・失敗など）は、`role: verifier` のレビューのうち最後の 1 件を根拠レビューとする。merge した artifact があるのに、それを `target` に持つ `role: verifier` のレビューがないときは、§5.2 のとおり拒否する
+- **`verifierKind` の有無**: `verification: yes` のときは必須、それ以外のときは書かない
+- **`reviews: unknown` のとき**: 根拠レビューを特定できないので `verifierKind` は `organizer` か省略だけを許し、`independentReview` は `unknown` とする
+- **`topologyEquivalent` の照合**: `topologyBasis` だけでは「決定的な処理だけ（P0）」と「人だけ（other）」、委託なしのときの「Worker がいない（other）」を区別できないため、`agentInvolved: no` では `P0` と `other`、`delegated: no` では表の判定値に加えて `other` を許す
+- **`runtime` / `model` の形**: trace の `runtime`・`model` の項目に `role`（`organizer` / `worker`）を足した object の配列、または `unknown`
+- **`artifacts[].state`**: `open` / `merged` / `closed` / `unknown`。受け入れは `merged` で判定する
+- **`verifierKind: organizer`**: 根拠レビューがあるときは拒否する（§5.2 の表のとおり、`organizer` は根拠レビューがないときだけ）
+- **閉じた enum の拡張**: `outcome`・`reviewerKind`・`artifacts[].state` などの enum に値を足すときは、`apiVersion` を上げ（例: `dat/v1alpha1` → `dat/v1alpha2`）、schema は旧版の値も受け付けて既存記録を書き換えない。値の削除や意味の変更は、旧版の記録を集計から分けて扱う
+- **トークン形式の負例**: 接頭辞の検査は、テストの実行時に接頭辞と `EXAMPLE` を連結して確かめる。リポジトリにトークン風の文字列を残さないため、fixture には置かない
+- **件数の整合**: `wallClockMs` は `startedAt`・`endedAt` が両方分かるときだけ数値を許し、両方分かるときは差との誤差 60 秒以内とする。`tasks.delegated` は `tasks.total` 以下
+- **秘匿の検査値**: 文字列値の長さ上限は 200 文字、`outcomeReason` は改行を含めない。トークン形式は `ghp_`・`gho_`・`ghu_`・`ghs_`・`ghr_`・`github_pat_`・`sk-` の接頭辞と、英大文字・小文字・数字を含む 32 文字以上でエントロピー 4.0 bit/文字以上の連続文字列。いずれも誤検知・見逃しがあり得る簡易検査で、人の差分確認（§6）を置き換えない
 
 ## 6. 保存先と秘匿
 

@@ -18,7 +18,7 @@ DAT hypothesis: **task nature might help predict when to spend coordination cost
 
 Counterexamples: the labels fail inter-rater reproducibility; the selector misses safety-critical work; outcomes do not improve after controlling task difficulty; total cost or Human Attention increases without compensating verified quality.
 
-## Cheapest useful verification (after current release/approval gates)
+## Cheapest useful verification (after experiment approval gates)
 
 1. **Pre-register** a mixed workload with all three task types, a held-out evaluation subset, reproducible AC / expected outcome, a fixed repository revision, and at least some examples where stronger treatment should *not* be needed. Do not select only prior failures.
 2. Human annotators label task type based on source evidence **without reading model outcomes**; record disagreement, unclear cases, and inter-rater reliability. Treat `unknown` as a decision to gather evidence, not an automatic escalation permission.
@@ -30,7 +30,7 @@ Counterexamples: the labels fail inter-rater reproducibility; the selector misse
 ## Boundaries / adoption gate
 
 - EXP-001 findings remain pilot-scoped. Keep T0 was the recorded pilot decision, not a universal claim.
-- Respect [#186](https://github.com/s977043/dynamic-agent-topology/pull/186) release / Human finalization and current post-EXP-001 gates. No new experiment starts and no frozen files, runtime, configs, canonical policies or schemas change in this PR.
+- Publication checkpoint (2026-10-21): [v0.3.0](https://github.com/s977043/dynamic-agent-topology/releases/tag/v0.3.0) is published. Publication does not authorize this research, adoption, or merge: independent C-2 review, current-head CI and the explicit Human C-4/merge judgment still apply. No new experiment starts and no frozen files, runtime, configs, canonical policies or schemas change in this PR.
 - Outcome evidence is not the author/reviewer/selector's assertion. Source claims are not DAT results.
 - Promote nothing until a separate preregistered experiment, independent review, acceptance criteria, and Human adoption decision. This note is not approval to run agents or merge.
 - PlanGate owns execution approvals ([#911](https://github.com/s977043/PlanGate/issues/911)); River Review owns review recommendation ([#2034](https://github.com/s977043/river-review/issues/2034)); DAT owns comparative evidence.

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "dat-marketplace",
+  "owner": {
+    "name": "dynamic-agent-topology maintainers",
+    "url": "https://github.com/s977043/dynamic-agent-topology"
+  },
+  "description": "Marketplace distributing Dynamic Agent Topology (DAT): two skills to choose the simplest sufficient agent team structure and to record what actually ran.",
+  "plugins": [
+    {
+      "name": "dat",
+      "source": "./",
+      "description": "Pick the simplest sufficient agent team structure before a task (dat-select) and record a RunObservation after it (dat-observe).",
+      "author": {
+        "name": "dynamic-agent-topology maintainers",
+        "url": "https://github.com/s977043/dynamic-agent-topology"
+      },
+      "homepage": "https://github.com/s977043/dynamic-agent-topology",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["agent-topology", "multi-agent", "observation"]
+    }
+  ]
+}

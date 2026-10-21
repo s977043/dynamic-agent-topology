@@ -20,6 +20,28 @@ DAT starts from one rule:
 
 Coordination cost includes not only tokens and latency, but also increased human supervision, interruptions, and concurrent decisions.
 
+DAT is a runtime-agnostic specification and set of skills that lets an AI agent (orchestrator) choose the simplest team structure a task needs, with reasons, and then record and review what actually ran. It does not execute topologies for you.
+
+## Try it in 5 minutes
+
+There are only two skills: `dat-select` picks a structure before you start, and `dat-observe` records and summarizes when you finish.
+
+1. Install (Claude Code)
+
+   ```text
+   /plugin marketplace add s977043/dynamic-agent-topology
+   /plugin install dat@dat-marketplace
+   /reload-plugins
+   ```
+
+   Codex: `codex plugin marketplace add s977043/dynamic-agent-topology`, then `codex plugin add dat@dat-marketplace`.
+2. Before starting, ask "use dat-select to pick a structure for this task". You get the structure and reasons in a few lines (no settings are changed).
+3. Work as usual.
+4. When done, ask "record this with dat-observe". The record is saved outside the repository (default `~/.dat/observations`). With Python, it is validated by `scripts/run_observation.py`; without it, the report says required fields and redaction were checked by eye only. "Summarize with dat-observe" prints count tables.
+5. Stop: run `/plugin uninstall dat@dat-marketplace` and `/plugin marketplace remove dat-marketplace`, then delete the record folder.
+
+Fields and redaction rules are in the [run observation design](docs/RUN_OBSERVATION_DESIGN.md) (Japanese). Records are observation counts, not evidence that one structure is better.
+
 ## What DAT is trying to do
 
 DAT is not only about arranging multiple agents.

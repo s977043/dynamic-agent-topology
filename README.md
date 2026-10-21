@@ -20,6 +20,28 @@ DATは、次の原則から始めます。
 
 ここでいう協調コストには、TokenやLatencyだけでなく、人間の監督・割り込み・同時判断の増加も含みます。
 
+AIエージェント（オーケストレーター）が、タスクに必要な最も単純なチーム構成を根拠付きで選び、実行を記録して振り返るための、ランタイム非依存の仕様とSkillです。構成を自動実行するものではありません。
+
+## 5 分で試す
+
+Skill は 2 つだけです。`dat-select` が着手前に構成を選び、`dat-observe` が完了時に記録・集計します。
+
+1. 入れる（Claude Code）
+
+   ```text
+   /plugin marketplace add s977043/dynamic-agent-topology
+   /plugin install dat@dat-marketplace
+   /reload-plugins
+   ```
+
+   Codex: `codex plugin marketplace add s977043/dynamic-agent-topology` に続けて `codex plugin add dat@dat-marketplace`。
+2. 着手前に「dat-select でこのタスクの構成を選んで」と頼む。構成と理由が数行で返ります（設定は変えません）。
+3. いつもどおり作業する。
+4. 終わったら「dat-observe で記録して」と頼む。記録はリポジトリの外（既定 `~/.dat/observations`）に保存されます。Python があれば `scripts/run_observation.py` で検証し、なければ必須項目と秘匿規則を目視で確かめた旨が報告されます。「dat-observe で集計して」で件数の表が出ます。
+5. やめる: `/plugin uninstall dat@dat-marketplace` と `/plugin marketplace remove dat-marketplace` を実行し、記録フォルダを消します。
+
+記録の項目と秘匿規則は [ウェーブ観察記録の設計案](docs/RUN_OBSERVATION_DESIGN.md) にあります。記録は観察件数であり、構成の優劣の根拠ではありません。
+
 ## DATが目指すもの
 
 DATは、単に「複数Agentをどう並べるか」を定義するものではありません。

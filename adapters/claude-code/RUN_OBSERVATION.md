@@ -29,14 +29,22 @@
 
 ## 保存先と手順
 
-1. 導入先の `.dat/state/observations/` に 1 ウェーブ 1 ファイルで書く（例: `<observationId>.yaml`）。`.dat/state/` はコミット対象外（`examples/brownfield/.gitignore`）
-2. 保存前に validator を実行し、通らない記録は保存しない
+保存と集計には DAT の CLI `scripts/run_observation.py` を使います。保存先は `--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、DAT リポジトリの中は拒否されます。推奨はリポジトリ外のディレクトリです。導入先の `.dat/state/observations/` に置く場合は、導入先の `.gitignore` に `.dat/state/` を追加し（例: `examples/brownfield/.gitignore`）、`git status --ignored --short .dat/state` で `!!` と表示される（除外されている）ことを確認してから保存します。`save` は導入先リポジトリ内の保存先を検出・拒否しないため、除外は利用者の `.gitignore` 設定に依存します。
+
+1. 記録を一時ファイルに 1 ウェーブ 1 件で書く
+2. `save` で保存する。validator を通った記録だけが `<保存先>/<metadata.project>/<metadata.observationId>.yaml` にコピーされ、既存の ID は拒否される。`metadata.project` と `observationId` は英数字で始まり英数字・`.`・`_`・`-` だけからなる値にする（ファイル名に使うため）。保存先の外を指す値や symlink は拒否される。`OK` と一緒に値が `unknown` の項目が表示されるので、取れる値が残っていないか見直す。`NG` のときはエラーを直して再実行する
 
    ```bash
-   python <DAT のパス>/scripts/validate_run_observation.py .dat/state/observations/<observationId>.yaml
+   python <DAT のパス>/scripts/run_observation.py save <記録.yaml> --store .dat/state/observations
    ```
 
-3. 合成値の記録例: [examples/run-observation.yaml](examples/run-observation.yaml)
+3. 集計は `sum` で Markdown の表として出す。不正なファイルは表示して数えない。終了コードは、すべて数えたとき 0、不正なファイルを飛ばしたとき 1（表は出る）、保存先がないとき 2。集計は観察件数であり、構成の優劣の根拠ではない
+
+   ```bash
+   python <DAT のパス>/scripts/run_observation.py sum --store .dat/state/observations
+   ```
+
+4. 合成値の記録例: [examples/run-observation.yaml](examples/run-observation.yaml)
 
 ## 秘匿
 

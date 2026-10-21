@@ -5,8 +5,8 @@
 **Research-only / NOT ADOPTED / no runtime activation.** pstackはDATにインストールしない。外部Plugin/SDK/MCP/Skillのコード、設定、権限、モデル既定値を取り込まず、設計上の仮説だけを記録する。
 
 - 対象の正本: [#93](https://github.com/s977043/dynamic-agent-topology/issues/93)（選択的multi-model orchestration）、[#88](https://github.com/s977043/dynamic-agent-topology/issues/88)（model escalation / handoff）、[#82](https://github.com/s977043/dynamic-agent-topology/issues/82)（独立した反証的判断）。
-- 現在の設計作業: [Draft PR #194](https://github.com/s977043/dynamic-agent-topology/pull/194)。同PRのCascade/Critique設計を複製せず、その前提・評価に不足する論点をIssue側へ返す。
-- Release hold（2026-10-20再確認）: [PR #218](https://github.com/s977043/dynamic-agent-topology/pull/218)がHuman判断によりmergeされ、mainの`CITATION.cff`と`CHANGELOG.md`は**0.3.0の公開予定日2026-10-20**に更新された。ただし`v0.3.0`のimmutable tagとGitHub Releaseは**未公開**（Release API一覧は空）。metadataの予定日・PRのmergeと、実際の公開証跡は別。公開操作/タグと最終確定はHuman-ownedであり、release gate完了まで本研究PRはDraftでmergeしない。
+- 現在の設計作業: [merge済み設計PR #194](https://github.com/s977043/dynamic-agent-topology/pull/194)。同PRのCascade/Critique設計を複製せず、その前提・評価に不足する論点をIssue側へ返す。
+- 公開境界（2026-10-21再確認）: [v0.3.0 Release](https://github.com/s977043/dynamic-agent-topology/releases/tag/v0.3.0)は2026-10-21T01:13:38Zに公開され、tagは`0dd236ee1bc5e69b5620af151e93537e32a987dc`を指す。公開待ち条件は解消した。tag内の日付2026-10-20と実公開日2026-10-21の差は[#221](https://github.com/s977043/dynamic-agent-topology/pull/221)でmainを訂正し、Release本文にも注記済み。tagは動かさない。通常の独立レビュー・最新head CIは引き続き必要であり、公開は本研究の実行・採用を許可しない。
 - EXP-001は18/18 Run、9/9ペアのPilotで**Keep T0**。この結果は別モデル・別タスク・pstackへの効果証明ではない。Frozen 33 blobsおよび既存Decisionを変更しない。
 
 ## Provenance / 確認した事実

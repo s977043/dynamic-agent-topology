@@ -26,7 +26,7 @@ DAT is a runtime-agnostic specification and set of skills that lets an AI agent 
 
 There are only two skills: `dat-select` picks a structure before you start, and `dat-observe` records and summarizes when you finish. The skills only propose and record a structure; they do not change runtime settings. The specification and manual adapters are described below.
 
-Prerequisites: `dat-select` needs no extra tools. Saving and summarizing with `dat-observe` requires Python 3 with `jsonschema` and `pyyaml` (without them, the record is only displayed, not saved). Saving needs permission to write files and run commands. The plugin version (manifest `version`) moves with skill updates and is separate from the DAT spec version (`CITATION.cff`) recorded as `datVersion`.
+Prerequisites: `dat-select` needs no extra tools. Saving and summarizing with `dat-observe` requires Python 3 with `jsonschema` and `pyyaml` (e.g. `python3 -m pip install jsonschema pyyaml`; without them, the record is only displayed, not saved). Saving needs permission to write files and run commands. The plugin version (manifest `version`) moves with skill updates and is separate from the DAT spec version (`CITATION.cff`) recorded as `datVersion`.
 
 1. Install (Claude Code)
 

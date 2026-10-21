@@ -24,7 +24,8 @@
     "developerName": "dynamic-agent-topology maintainers",
     "category": "Developer Tools",
     "capabilities": [
-      "Read"
+      "Read",
+      "Write"
     ],
     "websiteURL": "https://github.com/s977043/dynamic-agent-topology"
   }

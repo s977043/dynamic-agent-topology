@@ -65,6 +65,9 @@ def check_manifests(errors: list[str]) -> dict:
 def check_skills(manifest: dict, errors: list[str]) -> None:
     value = manifest.get("skills")
     skills_dir = ROOT / value if isinstance(value, str) else None
+    if skills_dir is not None and ROOT not in skills_dir.resolve().parents:
+        errors.append(f"plugin.json skills must stay inside the plugin root: {value}")
+        return
     if skills_dir is None or not skills_dir.is_dir():
         errors.append(f"plugin.json skills does not point to a directory: {value}")
         return

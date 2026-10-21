@@ -26,7 +26,7 @@ AIエージェント（オーケストレーター）が、タスクに必要な
 
 Skill は 2 つだけです。`dat-select` が着手前に構成を選び、`dat-observe` が完了時に記録・集計します。Skill は構成を提案・記録するだけで、ランタイムの設定は変更しません。仕様と手動 adapter は下記を参照してください。
 
-前提: `dat-select` は追加の道具なしで使えます。`dat-observe` の保存・集計には Python 3 と `jsonschema`・`pyyaml` が必要です（ない場合は記録を表示するだけで保存しません）。保存にはファイル書き込みとコマンド実行の許可が要ります。プラグインの版（manifest の `version`）は Skill の更新に合わせて上がり、記録の `datVersion` に入る DAT 仕様の版（`CITATION.cff`）とは別です。
+前提: `dat-select` は追加の道具なしで使えます。`dat-observe` の保存・集計には Python 3 と `jsonschema`・`pyyaml` が必要です（例: `python3 -m pip install jsonschema pyyaml`。ない場合は記録を表示するだけで保存しません）。保存にはファイル書き込みとコマンド実行の許可が要ります。プラグインの版（manifest の `version`）は Skill の更新に合わせて上がり、記録の `datVersion` に入る DAT 仕様の版（`CITATION.cff`）とは別です。
 
 1. 入れる（Claude Code）
 

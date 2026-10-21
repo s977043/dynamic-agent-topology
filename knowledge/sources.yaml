@@ -240,3 +240,9 @@ sources:
     title: "Anthropic claude-quickstarts (source snapshot 9ec32b9)"
     url: "https://github.com/anthropics/claude-quickstarts/commit/9ec32b91df50b0d4906cae64b13c6298055ff40d"
     adopted: []
+
+  - id: cursor-pstack-2026
+    type: repository
+    title: "cursor/plugins: pstack role-based models, reasoning budgets and engineering playbooks"
+    url: "https://github.com/cursor/plugins/tree/0b8e952052d482ee6de06deebf14d590d77b1b34/pstack"
+    adopted: []

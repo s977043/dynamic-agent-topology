@@ -61,6 +61,9 @@
 | `METRICS.md` | 評価指標の意味 | 評価ガイド |
 | `EXP-001_*` | EXP-001の実行・記録補助 | ナビゲーション / 運用ガイド |
 | `PROVENANCE_AUDIT_DESIGN.md` | Attestation / Trace / Evaluation間provenance監査の再現と設計案（#57） | 非規範的な設計案（未採用） |
+| `POST_EXP001_EVALUATION_DESIGN.md` | post-EXP-001のescalation / stronger model評価の設計案（#93 / #88） | 非規範的な設計案（未採用） |
+| [EXP_TIME_SIGNAL_DESIGN.md](EXP_TIME_SIGNAL_DESIGN.md) | 経過時間シグナル（elapsed / budget）の paired 評価設計案（#201） | 非規範的な設計案（未採用） |
+| [RUN_OBSERVATION_DESIGN.md](RUN_OBSERVATION_DESIGN.md) | 日常開発のウェーブ観察記録（RunObservation）の設計案（#223） | 非規範的な設計案（未採用） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
 | `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |
 | [CLOUD_VERIFICATION_PLAN.md](CLOUD_VERIFICATION_PLAN.md) | Cloudで実行する知識整合性probeの事前計画とoracle | 非規範的な検証計画（#63） |

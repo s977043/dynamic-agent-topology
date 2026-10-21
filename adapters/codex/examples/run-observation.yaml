@@ -1,0 +1,34 @@
+apiVersion: dat/v1alpha1
+kind: RunObservation
+metadata:
+  observationId: obs-cx-0001
+  project: project-b
+  datVersion: 0.3.0
+startedAt: '2026-01-06T13:00:00Z'
+endedAt: unknown
+wallClockMs: unknown
+goalRecorded: true
+outcome: interrupted
+outcomeReason: stopped before review
+runtime:
+- role: organizer
+  name: codex
+model: unknown
+topologyEquivalent: T0
+topologyBasis:
+  agentInvolved: 'yes'
+  delegated: 'no'
+  verification: 'no'
+  independentReview: 'no'
+  specialistRole: 'no'
+tasks:
+  total: 1
+  delegated: 0
+agentInvocations: unknown
+artifacts:
+- ref: pr-2
+  state: open
+reviews: []
+rework:
+  count: unknown
+humanInterventions: unknown

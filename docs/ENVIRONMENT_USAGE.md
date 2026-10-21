@@ -1,5 +1,7 @@
 # 開発・レビュー・実験環境の比較と使い分け
 
+> 2026-10-14の実験進行・次手順は歴史的checkpointです。公開後の最新状態は[実行計画](CURRENT_EXECUTION_PLAN.md)と各Issue、#220の静的確認は末尾の2026-10-21節を参照してください。
+
 2026-10-14 JSTの検討記録。Codexクラウド、Claude Codeクラウド、Mac、ThinkPadを用途別に比較するための非規範的な台帳と提案です。実行許可、環境Judgment、Run acceptance、新しい必須Gateを定義しません。自律境界は[AGENT_HARNESS.md](AGENT_HARNESS.md)、実験の進行状況は[Issue #15](https://github.com/s977043/dynamic-agent-topology/issues/15)を正本とします。
 
 ## 確認済みの実績と限界
@@ -92,3 +94,28 @@ Codex CLIの版を合わせるだけではCPU・kernel・Docker・sandboxの一�
 | 未採取 | 未確認 | 例: Python / Git read | 未確認 | 未確認 | 未確認 | 開発検証候補、未承認 |
 
 4環境の維持価値は、同じrepo SHA・検証コマンドについて、セットアップ時間、検証成功/失敗、再現できない差分、作業の待ち時間、証跡の引き継ぎ時間を記録して判断します。これらは開発運用の比較案であり、EXP-001の指標や評価意味論には追加しません。環境追加で待ち時間が減らず維持負担が増える場合は、利用環境を減らす選択も検討します。
+
+## 2026-10-21: #220のモデル役割分担に向けた静的確認
+
+対象main `a9058ea86b4d865451edd3502416b3d1789c667f`。EXP-001は18/18・completed、Pilot限定のKeep T0。以下は現在のCloudで読めた宣言と未知項目の棚卸しであり、実モデル実行・追加課金ゼロ・実効権限の証明ではない。
+
+| 確認対象 | 現物で確認した宣言 | 未検証・限界 |
+|---|---|---|
+| `.claude/agents/agile-coach.md` / `scrum-master.md` | 2件とも `model: inherit`、`tools: Read, Grep, Glob`。助言専用で独立ReviewerやHuman判断を代替しない | Sonnet/Haiku/Opus固定割当なし。実効モデル・tool拒否は未計測 |
+| `.claude/settings.json` | 検証用Bash allow、Frozen対象へのEdit ask、Bash PreToolUse guard、bytecode無効化 | Write askも宣言されていると読み替えない。設定の読込・強制・追加課金制限は未実測 |
+| `.codex/config.toml` | `approval_policy="on-request"`、`sandbox_mode="workspace-write"` | 現在のセッション権限は上位設定に依存。このファイルを実効値の証拠にしない |
+| 実行環境 | この確認環境では `command -v claude` でCLI未検出 | 契約内残量、利用可能モデル、追加課金の境界、Claude runtimeのpermission dialogはNOT_TESTED |
+
+`CLAUDE.md`はEdit/Writeの両方にaskすると説明しますが、この時点のsettingsのaskはEditのみであり、宣言間に不整合があります。この文書は不整合を記録するだけで、Human-ownedのCLAUDE.mdや設定は変更しません。実効拒否の有無は別のRuntime試験が必要です。
+
+Claude公式仕様の通常モデル優先順は呼出し指定→frontmatter→環境変数→親で、`inherit`は親モデルを選ぶ。従って既定の環境変数だけで既存2 AgentがHaiku固定になるとは限らない。FORCE変数は別の制御で、ここでは導入しない。Cloudへのrepo設定適用範囲も利用形態に依存するため、Mac/ThinkPadの設定値をそのままClaude Cloudの実効値として扱わない。出典: [sub-agents](https://code.claude.com/docs/en/sub-agents)、[settings](https://code.claude.com/docs/en/settings)（2026-10-21照合）。
+
+| #220の仮説 | 既存候補 | 次の最小作業 |
+|---|---|---|
+| Sonnet主体・Opus昇格 | #206 / #88 / #162 | 契約内利用枠を制約として追加し、同一quality floor・切替条件を事前登録 |
+| Haiku read-only探索 | #206 / #208 / Advisor研究 | 探索oracle・activation・handoffコストを固定。新Scout設定を先に導入しない |
+| ModelとEffortの分離 | #206 / #208 | 同時変更を避け、変更因子を一つに限定 |
+| ReviewerのSonnet/Opus比較 | #206 / #82 | 同一既知欠陥・同一AC・独立oracleで判定 |
+| 単一/委任/並列 | #219 / #93 / #201 | 契約・予算の範囲で適格な比較だけ選ぶ |
+
+この棚卸しで#220の重複関係と宣言設定は整理できたが、G0全体・G2実効権限・実験の完了ではない。Operatorが実環境・利用枠・追加課金を防ぐ境界を確認し、fixture/oracle/停止条件を事前登録するまでモデル比較は起動しない。実験・設定採用は既存Human境界に従う。

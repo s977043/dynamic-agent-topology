@@ -121,6 +121,7 @@ jobs:
             check-jsonschema --schemafile schemas/run-observation.schema.json "$file"
           done
           PYTHONDONTWRITEBYTECODE=1 python scripts/validate_run_observation.py
+          PYTHONDONTWRITEBYTECODE=1 python scripts/validate_run_observation.py adapters/*/examples/run-observation.yaml
           PYTHONDONTWRITEBYTECODE=1 python scripts/test_validate_run_observation.py
 
       - name: Experiment semantic validation

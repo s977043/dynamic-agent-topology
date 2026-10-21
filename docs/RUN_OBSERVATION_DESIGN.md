@@ -1,6 +1,6 @@
 # ウェーブ観察記録の設計案（#223）
 
-状態: **非規範的な設計案（段階 2 実装中）**。段階 2 の schema（`schemas/run-observation.schema.json`）・validator（`scripts/validate_run_observation.py`）・fixture（`fixtures/run-observation/`）を [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223) の段階 2 として追加しました。採否と新 artifact kind の追加は Human の判断です。adapter・`topologies/`・EXP-001 の Frozen file は変更しません。観察記録の有効性は **INCONCLUSIVE**（DAT 仕様としての実測 0 件）です。
+状態: **非規範的な設計案（段階 3 実装中）**。段階 2 の schema（`schemas/run-observation.schema.json`）・validator（`scripts/validate_run_observation.py`）・fixture（`fixtures/run-observation/`）を [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223) の段階 2 として追加しました。段階 3 の記録手順と合成値の記録例は `adapters/claude-code/RUN_OBSERVATION.md`・`adapters/codex/RUN_OBSERVATION.md` にあります。採否と新 artifact kind の追加は Human の判断です。`topologies/`・EXP-001 の Frozen file は変更しません。観察記録の有効性は **INCONCLUSIVE**（DAT 仕様としての実測 0 件）です。
 
 - 起案日: 2026-10-21 / 基準: origin/main `560e512`
 - 関連: [Issue #223](https://github.com/s977043/dynamic-agent-topology/issues/223)

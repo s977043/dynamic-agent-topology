@@ -6,9 +6,11 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
-## 0.3.0 — 2026-10-20
+## 0.3.0 — 2026-10-21
 
 Content candidate: `d66cbdfea8fde66db0c77d01079757005893a8f8`.
+
+Release commit: `0dd236ee1bc5e69b5620af151e93537e32a987dc` (tag `v0.3.0`). The tagged `CITATION.cff` and this heading say 2026-10-20; the GitHub Release was actually published on 2026-10-21, and the tag is not moved.
 
 Previous boundary: historical content point `717a03fa389fb77a47694b9cf8a0c6e97ac0888b` (`0.2.1`, unpublished).
 

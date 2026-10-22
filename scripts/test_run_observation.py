@@ -74,6 +74,32 @@ with tempfile.TemporaryDirectory() as tmp:
     if (repo / "obs").exists():
         failures.append("store inside a git working tree must not be created")
 
+    nested_store = tmp / "nested-git-store"
+    nested_repo = nested_store / "nested-repo"
+    nested_repo.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(nested_repo)], check=True)
+    subprocess.run(
+        ["git", "-C", str(nested_repo), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+         "commit", "-q", "--allow-empty", "-m", "fixture"],
+        check=True,
+    )
+    nested_worktree = nested_store / "nested-worktree"
+    subprocess.run(
+        ["git", "-C", str(nested_repo), "worktree", "add", "-q", "--detach", str(nested_worktree), "HEAD"],
+        check=True,
+    )
+    if not (nested_worktree / ".git").is_file():
+        failures.append("linked-worktree regression must exercise a .git file")
+    (nested_store / "linked-repo").symlink_to(nested_repo, target_is_directory=True)
+    for project in ("nested-repo", "nested-worktree", "linked-repo"):
+        record = variant("t1-separate-session-verifier.yaml", work, "obs-0110", project)
+        result = run("save", str(record), "--store", str(nested_store))
+        expect(result, 1, "outside any git working tree", f"destination inside {project}")
+        if (nested_store / project / "obs-0110.yaml").exists():
+            failures.append(f"git destination {project} must not receive an observation")
+    if list(nested_store.glob("*/*.yaml")):
+        failures.append("refused git destinations must not save observation records")
+
     for project, observation_id in (("../outside", "obs-0101"), ("a/b", "obs-0102"), ("project-a", "../obs-0103"), ("..", "obs-0104")):
         escape = variant("t1-separate-session-verifier.yaml", work, observation_id, project)
         expect(run("save", str(escape), "--store", str(store)), 1, "must match", f"path element {project}/{observation_id}")
@@ -105,6 +131,25 @@ with tempfile.TemporaryDirectory() as tmp:
     broken = work / "broken.yaml"
     broken.write_text("metadata: [unclosed\n", encoding="utf-8")
     expect(run("save", str(broken), "--store", str(store)), 1, "cannot read", "malformed YAML")
+
+    invalid_utf8 = work / "invalid-utf8.yaml"
+    invalid_utf8.write_bytes(b"\xff\xfe")
+    utf8_save_store = tmp / "utf8-save-store"
+    result = run("save", str(invalid_utf8), "--store", str(utf8_save_store))
+    expect(result, 1, "cannot read", "invalid UTF-8 save")
+    if "Traceback" in result.stdout or utf8_save_store.exists():
+        failures.append("invalid UTF-8 save must be refused without traceback or creating a store")
+
+    utf8_sum_store = tmp / "utf8-sum-store"
+    utf8_project = utf8_sum_store / "project-a"
+    utf8_project.mkdir(parents=True)
+    shutil.copyfile(first, utf8_project / "valid.yaml")
+    shutil.copyfile(invalid_utf8, utf8_project / "invalid-utf8.yaml")
+    result = run("sum", "--store", str(utf8_sum_store))
+    for text in ("skipped invalid: project-a/invalid-utf8.yaml: cannot read", "observations: 1", "| project-a | T1 | 1 |"):
+        expect(result, 1, text, "sum skips invalid UTF-8 and counts valid record")
+    if "Traceback" in result.stdout:
+        failures.append("invalid UTF-8 sum must skip the file without traceback")
 
     relative = variant("t1-separate-session-verifier.yaml", work, "obs-0106", "project-c")
     expect(run("save", str(relative), "--store", "rel-store", cwd=tmp), 0, "OK obs-0106", "relative store")

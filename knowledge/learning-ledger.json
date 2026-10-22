@@ -269,6 +269,40 @@
       "observedDates": [
         "2026-10-14"
       ]
+    },
+    {
+      "id": "L-018",
+      "observation": "独立レビューの依頼文と方針の正本がオーナー判断に追従しておらず、レビュアーが材料の誤りに基づく must を出してレビュー回数が増えた（依頼文に古い記述「datVersion にプラグイン版を使う」が残っていた。方針を変えた後、正本を更新する前に再レビューを出した）",
+      "evidence": {
+        "description": "2026-10-22 merge の PR #230 で独立レビューを 2 観点で計 5 回実施（記録は PR #230 comment 6329253089）。方針の補足は Issue #223 comment 6328933361",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/230#issuecomment-6329253089",
+          "https://github.com/s977043/dynamic-agent-topology/issues/223#issuecomment-6328933361"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "方針を変えたら再レビューの前に正本を更新し、依頼文は正本から作り直す。依頼文に確定したオーナー判断を明記し、それに反する指摘は must に数えない",
+      "observedDates": [
+        "2026-10-22"
+      ]
+    },
+    {
+      "id": "L-019",
+      "observation": "エージェント（ワーカー）による `AGENTS.md` の編集が auto mode の分類器に Self-Modification として拒否され、PR の途中で Human による適用に切り替えた",
+      "evidence": {
+        "description": "2026-10-22 merge の PR #230。`AGENTS.md` の追記は Human が commit `852aab7` で適用した",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/230",
+          "https://github.com/s977043/dynamic-agent-topology/commit/852aab7"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "`AGENTS.md` / `CLAUDE.md` / `.claude/` を含む変更は、最初からエージェントが差分案を作り Human が適用・merge する手順で計画する",
+      "observedDates": [
+        "2026-10-22"
+      ]
     }
   ]
 }

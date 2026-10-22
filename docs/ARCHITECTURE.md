@@ -67,6 +67,10 @@ Runtime AdapterはDATの抽象CapabilityとRoleを、Claude Code / Codex / Gemin
 
 現行のManual Adapterでは、DATはRuntime BindingとCapability整合を検証しますが、`AGENTS.md` / `CLAUDE.md` / `GEMINI.md` 等を自動生成・上書きしません。未確認Capabilityは`unknown`として扱い、存在を推測しません。
 
+### Skillと配布パッケージ
+
+`skills/`（`dat-select`・`dat-observe`）は、Claude Code・Codex で共通の `SKILL.md` 形式で書いた利用手順です。特定Runtimeの機能に依存する値の取り方は書かず、`adapters/<runtime>/` を参照します。`.claude-plugin/` と `.codex-plugin/` はこれらのSkillを各Runtimeへ届けるための配布パッケージで、Runtime Mappingではありません。どちらも構成の定義・判定規則を持たず、`topologies/`・`policies/`・`schemas/` を正本として参照します。
+
 ## Observed execution
 
 `ExecutionTrace` は「宣言上どう動くはずだったか」ではなく、外部から観測できた実行イベントを記録します。

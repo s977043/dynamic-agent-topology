@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository. Tool-specific additions l
 
 ## What this repo is
 
-Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures. It is not an agent runtime and does not auto-apply runtime configuration (adapters are manual). Content is YAML specs validated against JSON Schemas, Python validators in `scripts/`, and Japanese-first docs (`README.md` ↔ `README_en.md` must stay in sync).
+Dynamic Agent Topology (DAT): a provider-agnostic **specification + experiment base** for choosing and evaluating AI agent team structures, also distributed as two skills (`skills/`) packaged as a plugin. It is not an agent runtime and does not auto-apply runtime configuration (adapters are manual). Content is YAML specs validated against JSON Schemas, Python validators in `scripts/`, and Japanese-first docs (`README.md` ↔ `README_en.md` must stay in sync).
 
 Core principle: use the simplest topology that reliably solves the task. P0 Deterministic Pipeline and T0 Single Agent are first-class baselines; T1 Worker→Verifier, T2 +Reviewer, T3 Specialized Team are hypotheses to test, not best practices.
 
@@ -27,6 +27,8 @@ When adding a new artifact kind, add its schema in `schemas/`, a semantic check 
 ## Architecture boundaries
 
 `docs/ARCHITECTURE.md` separates five planes: Desired Organization (`topologies/`, `roles/`, `baselines/`) → Control Plane (`policies/`) → Runtime Mapping (`adapters/<runtime>/`) → Observed Execution (traces) → Evaluation (`experiments/`). Do not merge concerns across them: Topology ≠ Routing Policy, Role ≠ Permission, Role ≠ Model, Runtime ≠ Model Provider, Reviewer ≠ Verifier. Runtime-specific details belong only in `adapters/`.
+
+`skills/` holds distribution skills in the runtime-shared SKILL.md format: they summarize the relevant parts of the specification as usage procedures and link to the canonical files, but never redefine topologies, routing/escalation rules, or RunObservation decision rules; the canonical files win on any conflict. `.claude-plugin/` and `.codex-plugin/` are distribution packaging only, not Runtime Mapping. Runtime-specific ways of obtaining values stay in `adapters/`.
 
 ## EXP-001 Feature Freeze
 

@@ -1,30 +1,37 @@
 # 残タスクの実行計画
 
-> **As-of checkpoint: 2026-10-21 UTC（GitHub read-only再確認）。** これは実行許可・採用・Run acceptance・Merge承認そのものではありません。main / PR head / 必須CI / 独立レビュー / Human判断を作業ごとに再取得します。古いcheckpointはGit履歴を参照してください。
+> **As-of checkpoint: 2026-10-22 UTC（GitHub read-only再確認）。** これは実行許可・採用・Run acceptance・Merge承認そのものではありません。main / PR head / 必須CI / 独立レビュー / Human判断を作業ごとに再取得します。古いcheckpointはGit履歴を参照してください。
 
 ## 確認済みの到達点
 
-- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。この計画の基準mainは `fed24f668dc60974481f57eb593f16db63b86dd5`。Open Issue **14**（#31/#59/#63/#82/#88/#93/#150/#159/#162/#166/#201/#211/#220/#223）、Open PR **3**（#205/#215/#225（本計画PRを含む））。PRとIssueを混ぜず、件数はこの時点のsnapshotとして扱います。
+- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。この計画の基準mainは `29f22ff4d759a75b1f90d90fe560e378831edf2e`。Open Issue **14**（#31/#59/#63/#82/#88/#93/#150/#159/#162/#166/#201/#211/#220/#223）、Open PR **2**（#205と本計画PRを含む）。PRとIssueを混ぜず、件数はこの時点のsnapshotとして扱います。
 - **v0.3.0公開済み:** [Release](https://github.com/s977043/dynamic-agent-topology/releases/tag/v0.3.0)は2026-10-21T01:13:38Zに公開、tagは `0dd236ee1bc5e69b5620af151e93537e32a987dc`。tag内の日付2026-10-20と実公開日の差は#221でmainを訂正し、Release本文にも説明済み。公開タグを移動しません。
 - EXP-001 [#15](https://github.com/s977043/dynamic-agent-topology/issues/15)はcompleted/closed、18/18 Runs・9/9 paired blocks・Pilot限定 **Keep T0**。[Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) completed revision3、33 original blobsを保持。過去Runの再実行・再prepare・Frozen変更の許可ではありません。[#57](https://github.com/s977043/dynamic-agent-topology/issues/57)のread-only provenance audit設計・実装も完了closed。
 - #200はHarness enforcement評価方法としてmerge、文書scopeの#199はclosed。#202/#206/#208/#219は**未採用研究ノート**としてmerge。新Runtime・モデル比較実測・性能向上・設定採用の承認ではありません。source台帳の`adopted: []`を維持しています。
 - #223は[#224](https://github.com/s977043/dynamic-agent-topology/pull/224)設計、[#226](https://github.com/s977043/dynamic-agent-topology/pull/226)schema/semantic validator/fixtures/CI、[#227](https://github.com/s977043/dynamic-agent-topology/pull/227)Claude Code/Codex記録手順と合成例がmerge済み。段階2/3を未実装として再起案しません。合成fixture・例のPASSは、段階4の実Runtime観察や比較効果の証拠ではありません。
+- #215はHuman merge済み。#229の保存・集計CLI、#230のPluginとdat-select/dat-observe、#231のLearning ledgerも統合済み。#232で不正UTF-8のsave拒否とsum継続を回帰テスト付きで修正しました。
 - #228で[#220](https://github.com/s977043/dynamic-agent-topology/issues/220)の静的宣言・研究重複を[環境台帳](ENVIRONMENT_USAGE.md)へ記録。2 Agentは`model: inherit`・Read/Grep/Glob、Editルールの対象を公式仕様と#193へ照合。Claude実モデル・契約枠・追加課金を防ぐ境界・実効permissionはNOT_TESTEDです。
 
 ## Cloudで実施した検証と限界
 
-main `c486b195438b8865bdc4e645cfb7766f02a78589`（#202まで統合）で、`.github/workflows/spec-lint.yml`の依存installを除く39検証runステップ（workflowのrun定義は40個）をPython3.12・`PYTHONDONTWRITEBYTECODE=1`で実行し全exit0。active retry専用ステップはcompleted状態により仕様どおりSKIPで、モデルを起動していません。RunObservationのschema/正負fixture/adapter例の検証も含みます。後続headのCIは、そのheadごとに別途確認します。
+main `48421fc387ecd6a7ccbf453336208b15c5a73052`（#215/#229/#230/#231まで統合）で、`.github/workflows/spec-lint.yml`の依存installを除く40検証runステップ（workflowのrun定義は41個）をPython3.12・`PYTHONDONTWRITEBYTECODE=1`で実行し全exit0。CLI回帰・Plugin/Skill validatorも含みます。active retry専用ステップはcompleted状態により仕様どおりSKIPで、モデルを起動していません。RunObservationのschema/正負fixture/adapter例の検証も含みます。後続headのCIは、そのheadごとに別途確認します。
 
-Repository targetの22項目はconnector GET snapshotを既存audit関数へ渡してPASS22 / DRIFT0 / UNKNOWN0。対象外のsecurity6設定の確認や#159のActions管理policy解消を意味しません。公式一次資料への接続は正規web connectorで可能になり、#202/#205/#206/#219の主要主張を照合しました。資料確認だけで有効性・実効権限・採用を認定しません。
+2026-10-21 checkpointのRepository targetの22項目はconnector GET snapshotを既存audit関数へ渡してPASS22 / DRIFT0 / UNKNOWN0。対象外のsecurity6設定の確認や#159のActions管理policy解消を意味しません。公式一次資料への接続は正規web connectorで可能になり、#202/#205/#206/#219の主要主張を照合しました。資料確認だけで有効性・実効権限・採用を認定しません。
+
+### Plugin導入と観察の現状
+
+このCodex Cloudでもmain48421fcのローカルmarketplaceからDAT Pluginの導入に成功し、cache内の2 Skillが参照sourceとbyte一致することを確認しました。現セッションへの自動再読込・新モデル起動・Claude Codeへの導入をこの確認から推定しません。開発mainの導入確認であり、v0.3.0公開タグにPluginが含まれるという意味ではありません。
+
+[#223のOwner報告](https://github.com/s977043/dynamic-agent-topology/issues/223#issuecomment-6329830368)では、両CLIのPlugin導入と新セッションでのSkill認識、観察6件/2repo、最新3件unknownなし、記録漏れ1件を報告しています。これは公開コメントの照合であり、Cloudによる元store全件の独立監査ではありません。母集団・重複識別子未照合のCloud記録とは合算しません。
 
 ## 次の実行順序
 
 | 順位 | 対象 | 次の具体的な作業・成果物 | 完了・停止条件 |
 |---|---|---|---|
-| P0 | 本計画 #225 | 最新main同期、下表14 IssueとPR状態の照合、独立別セッション3ループ、最新head CI | 必須指摘0・必須CI成功・strict up-to-dateを満たした通常文書PRのみmerge |
+| P0 | 本計画の更新PR | 最新main同期、下表14 IssueとPR状態の照合、独立別セッション3ループ、最新head CI | 必須指摘0・必須CI成功・strict up-to-dateを満たした通常文書PRのみmerge |
 | P1 | [#205](https://github.com/s977043/dynamic-agent-topology/pull/205) | AIDLE一次記事と解釈を照合済み。最新台帳を保持して同期し、新headのCI/独立レビューとHuman判断材料を完成 | 本PRで明示されたHuman C4/mergeを維持。研究mergeを実験承認にしない |
-| P1 | [#215](https://github.com/s977043/dynamic-agent-topology/pull/215) | completed Freeze説明を最新mainに同期。guidance正負テスト・33 blob・変更範囲・新headレビューを確認 | AGENTS変更はHuman merge。過去headの3ループ・CIを新headへ転用しない |
-| P1 | #220 / #223 | 静的確認・統合済み実装を再利用し、下表の実環境・観察の未達を最小単位で解消 | 契約・予算・秘匿・Operator条件が未確定ならRunや設定を起動/適用しない |
+| P1 | #223 | 完了時の記録をrepo外のstoreへ継続し、重複・欠測・収集漏れを記録。2repo以上/20件以上でH1/H2を規定順に判定 | 観察は効果証拠でない。公開転記は§6の仮名化・validator再実行・Human差分確認後。CLI修正やPlugin導入をH1支持としない |
+| P1 | #220 | 宣言・重複棚卸しを再利用し、契約内枠と実モデル/実効permissionの確認条件を具体化 | 未確定なら比較モデル起動・設定変更・追加支出をしない |
 | P1 | #31 / #159 | 管理者に必要な確認事項を具体化し、正規API/設定の証跡で再監査 | 設定を推測でPASSにせず、別actor/credentialへの切替で迂回しない |
 | P2 | その他研究Issue | 代表fixture・独立oracle・対照・全費用・停止条件のうち不足する最小項目を準備 | 事前条件を満たすものだけ比較へ進める。未知はUNKNOWN/INCONCLUSIVE/DEFER |
 
@@ -45,7 +52,7 @@ Repository targetの22項目はconnector GET snapshotを既存audit関数へ渡�
 | [#201](https://github.com/s977043/dynamic-agent-topology/issues/201) | #214の未採用経過時間シグナル設計は統合済み | U1〜U6・事前登録・予算・Operator/Human条件は未確定。設計mergeは起動許可でない |
 | [#211](https://github.com/s977043/dynamic-agent-topology/issues/211) | #212のAgency Agents研究登録を使い、既存T0との差分・ライセンス・配布条件を整理 | 予定8 Runは未実行。専門Role知識の採用・効果は独立した比較後 |
 | [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) | #228の宣言棚卸しと重複表を再利用。完了扱いは重複整理のみ | 実モデル/契約内枠/追加課金ゼロの実行境界/実効permission、fixture/oracle/停止条件をOperatorと確定。G0全体やG1〜G5は未完 |
-| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | 段階1〜3統合済み。段階4は承認済み対象repoの実ウェーブをadapter手順で観察し、sanitized artifactをvalidatorで確認 | 複数repoの実観察・欠損率/分類妥当性は未確認。観察とEvaluationを分離し、記録0/unknownを捏造しない。段階5の次版公開はHuman専権 |
+| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | 段階1〜3とCLI/Plugin統合済み。段階4はOwner報告6件/2repoで進行中、H1は20件未満のためINCONCLUSIVE。新セッションから継続収集し漏れも記録 | H1は6項目のunknownを分母に残し、2repo/20件成立後に各50%未満の棄却→全80%以上の支持→中間の順で判定。H2は同じ全件を記録者以外の2独立セッションが互いを見ず分類し、一致率とunknownを報告。原store監査・重複照合・§6公開転記前確認を経る。段階5の次版公開はHuman専権 |
 
 ## 変更ごとの3ループ
 

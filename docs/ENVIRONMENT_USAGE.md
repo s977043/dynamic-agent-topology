@@ -119,3 +119,17 @@ Claude公式仕様の通常モデル優先順は呼出し指定→frontmatter→
 | 単一/委任/並列 | #219 / #93 / #201 | 契約・予算の範囲で適格な比較だけ選ぶ |
 
 この棚卸しで#220の重複関係と宣言設定は整理できたが、G0全体・G2実効権限・実験の完了ではない。Operatorが実環境・利用枠・追加課金を防ぐ境界を確認し、fixture/oracle/停止条件を事前登録するまでモデル比較は起動しない。実験・設定採用は既存Human境界に従う。
+
+
+## 2026-10-22: Codex CloudのPlugin導入確認
+
+参照sourceはmain `48421fc387ecd6a7ccbf453336208b15c5a73052`、Codex CLI 0.159.2。次の正規CLIでローカルmarketplace登録とDAT Plugin導入に成功しました。
+
+```bash
+codex plugin marketplace add <DAT_ROOT> --json
+codex plugin add dat@dat-marketplace --json
+```
+
+導入cacheのdat-select/dat-observeのSKILL.mdがsourceとbyte一致することまで確認しました。現セッションの自動再読込、新しいモデル起動、Claude Code導入、実モデル・契約枠・追加課金ゼロ・実効permissionの確認ではありません。開発mainの導入であり、公開済みv0.3.0タグに新Pluginが含まれるとは扱いません。
+
+dat-observeの値収集・秘匿確認・repo外保存手順は利用できます。観察の公開転記はRUN_OBSERVATION_DESIGN §6の仮名化・validator再実行・Human差分確認に従い、観察YAMLをDATへコミットしません。Ownerの公開報告とCloudの独立storeは、元記録・重複識別子・母集団を照合する前に合算しません。

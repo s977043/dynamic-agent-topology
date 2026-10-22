@@ -123,10 +123,10 @@ Claude公式仕様の通常モデル優先順は呼出し指定→frontmatter→
 
 ## 2026-10-22: Codex CloudのPlugin導入確認
 
-参照sourceはmain `48421fc387ecd6a7ccbf453336208b15c5a73052`、Codex CLI 0.159.2。次の正規CLIでローカルmarketplace登録とDAT Plugin導入に成功しました。
+参照sourceはmain `48421fc387ecd6a7ccbf453336208b15c5a73052`、Codex CLI 0.159.2。DATのチェックアウトルートから次の正規CLIでローカルmarketplace登録とDAT Plugin導入に成功しました。
 
 ```bash
-codex plugin marketplace add <DAT_ROOT> --json
+codex plugin marketplace add . --json
 codex plugin add dat@dat-marketplace --json
 ```
 

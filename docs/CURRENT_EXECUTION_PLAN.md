@@ -52,7 +52,7 @@ main `48421fc387ecd6a7ccbf453336208b15c5a73052`（#215/#229/#230/#231まで統�
 | [#201](https://github.com/s977043/dynamic-agent-topology/issues/201) | #214の未採用経過時間シグナル設計は統合済み | U1〜U6・事前登録・予算・Operator/Human条件は未確定。設計mergeは起動許可でない |
 | [#211](https://github.com/s977043/dynamic-agent-topology/issues/211) | #212のAgency Agents研究登録を使い、既存T0との差分・ライセンス・配布条件を整理 | 予定8 Runは未実行。専門Role知識の採用・効果は独立した比較後 |
 | [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) | #228の宣言棚卸しと重複表を再利用。完了扱いは重複整理のみ | 実モデル/契約内枠/追加課金ゼロの実行境界/実効permission、fixture/oracle/停止条件をOperatorと確定。G0全体やG1〜G5は未完 |
-| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | 段階1〜3とCLI/Plugin統合済み。段階4はOwner報告6件/2repoで進行中、H1は20件未満のためINCONCLUSIVE。新セッションから継続収集し漏れも記録 | H1は6項目のunknownを分母に残し、2repo/20件成立後に各50%未満の棄却→全80%以上の支持→中間の順で判定。H2は同じ全件を記録者以外の2独立セッションが互いを見ず分類し、一致率とunknownを報告。原store監査・重複照合・§6公開転記前確認を経る。段階5の次版公開はHuman専権 |
+| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | 段階1〜3とCLI/Plugin統合済み。段階4はOwner報告6件/2repoで進行中、H1は20件未満のためINCONCLUSIVE。新セッションから継続収集し漏れも記録 | H1は6項目のunknownを分母に残し、2repo/20件成立後に6項目のいずれかが50%未満なら棄却→全項目80%以上なら支持→中間の順で判定。H2は同じ全件を記録者以外の2独立セッションが互いを見ず分類し、一致率とunknownを報告。原store監査・重複照合・§6公開転記前確認を経る。段階5の次版公開はHuman専権 |
 
 ## 変更ごとの3ループ
 

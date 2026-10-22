@@ -108,8 +108,12 @@ def save(path, store):
             print(f"- metadata.{key}: must match {PATH_ELEMENT.pattern} to be used as a file name")
         return 1
     dest = store / meta["project"] / f"{meta['observationId']}.yaml"
-    if store not in dest.resolve().parents:
+    resolved_dest = dest.resolve()
+    if store not in resolved_dest.parents:
         print(f"NG\n- destination resolves outside the store: {dest}")
+        return 1
+    if any((path / ".git").exists() for path in resolved_dest.parents):
+        print(f"NG\n- destination must be outside any git working tree: {dest}")
         return 1
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:

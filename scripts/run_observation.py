@@ -86,7 +86,7 @@ UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, 
 def load_record(path, validator):
     try:
         record = yaml.load(Path(path).read_text(encoding="utf-8"), Loader=UniqueKeyLoader)
-    except (OSError, yaml.YAMLError) as error:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as error:
         return None, [f"cannot read: {error}"]
     if not isinstance(record, dict):
         return None, ["record must be a mapping"]
@@ -108,8 +108,12 @@ def save(path, store):
             print(f"- metadata.{key}: must match {PATH_ELEMENT.pattern} to be used as a file name")
         return 1
     dest = store / meta["project"] / f"{meta['observationId']}.yaml"
-    if store not in dest.resolve().parents:
+    resolved_dest = dest.resolve()
+    if store not in resolved_dest.parents:
         print(f"NG\n- destination resolves outside the store: {dest}")
+        return 1
+    if any((path / ".git").exists() for path in resolved_dest.parents):
+        print(f"NG\n- destination must be outside any git working tree: {dest}")
         return 1
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:

@@ -123,6 +123,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python scripts/validate_run_observation.py
           PYTHONDONTWRITEBYTECODE=1 python scripts/validate_run_observation.py adapters/*/examples/run-observation.yaml
           PYTHONDONTWRITEBYTECODE=1 python scripts/test_validate_run_observation.py
+          PYTHONDONTWRITEBYTECODE=1 python scripts/test_run_observation.py
 
       - name: Experiment semantic validation
         run: python scripts/validate_experiments.py
@@ -211,6 +212,9 @@ jobs:
 
       - name: Test EXP-001 feature freeze validator
         run: python scripts/test_validate_experiment_freeze.py
+
+      - name: Validate plugin manifests and skills
+        run: python scripts/validate_plugin.py
 
       - name: Validate agent guidance
         run: python scripts/validate_agent_guidance.py

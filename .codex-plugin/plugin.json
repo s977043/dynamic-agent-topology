@@ -1,0 +1,32 @@
+{
+  "name": "dat",
+  "version": "0.3.0",
+  "description": "Pick the simplest sufficient agent team structure (P0/T0/T1/T2/T3) before a task, and record what actually ran as a RunObservation after it. Runtime-agnostic specification plus two skills; it never applies runtime configuration.",
+  "author": {
+    "name": "dynamic-agent-topology maintainers",
+    "url": "https://github.com/s977043/dynamic-agent-topology"
+  },
+  "homepage": "https://github.com/s977043/dynamic-agent-topology",
+  "repository": "https://github.com/s977043/dynamic-agent-topology",
+  "license": "MIT",
+  "keywords": [
+    "agent-topology",
+    "multi-agent",
+    "orchestration",
+    "observation",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Dynamic Agent Topology",
+    "shortDescription": "Choose the simplest sufficient agent team structure and record what actually ran",
+    "longDescription": "DAT is a runtime-agnostic specification for choosing and observing AI agent team structures. dat-select picks the simplest sufficient topology (P0/T0/T1/T2/T3) with reasons before a task; dat-observe records a RunObservation after it and summarizes stored records. It does not apply runtime configuration.",
+    "developerName": "dynamic-agent-topology maintainers",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/s977043/dynamic-agent-topology"
+  }
+}

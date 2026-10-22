@@ -68,6 +68,12 @@ with tempfile.TemporaryDirectory() as tmp:
     if (ROOT / "tmp-store").exists():
         failures.append("refused store must not be created")
 
+    repo = tmp / "adopter"
+    (repo / ".git").mkdir(parents=True)
+    expect(run("save", str(first), "--store", str(repo / "obs")), 2, "outside any git working tree", "store inside git tree")
+    if (repo / "obs").exists():
+        failures.append("store inside a git working tree must not be created")
+
     for project, observation_id in (("../outside", "obs-0101"), ("a/b", "obs-0102"), ("project-a", "../obs-0103"), ("..", "obs-0104")):
         escape = variant("t1-separate-session-verifier.yaml", work, observation_id, project)
         expect(run("save", str(escape), "--store", str(store)), 1, "must match", f"path element {project}/{observation_id}")

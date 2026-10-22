@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "dat",
+  "displayName": "Dynamic Agent Topology",
+  "version": "0.3.0",
+  "description": "Pick the simplest sufficient agent team structure (P0/T0/T1/T2/T3) before a task, and record what actually ran as a RunObservation after it. Runtime-agnostic specification plus two skills; it never applies runtime configuration.",
+  "author": {
+    "name": "dynamic-agent-topology maintainers",
+    "url": "https://github.com/s977043/dynamic-agent-topology"
+  },
+  "homepage": "https://github.com/s977043/dynamic-agent-topology",
+  "repository": "https://github.com/s977043/dynamic-agent-topology",
+  "license": "MIT",
+  "keywords": [
+    "agent-topology",
+    "multi-agent",
+    "orchestration",
+    "observation",
+    "skills"
+  ],
+  "skills": "./skills/"
+}

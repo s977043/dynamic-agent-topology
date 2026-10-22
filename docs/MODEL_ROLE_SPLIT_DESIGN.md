@@ -68,7 +68,7 @@
 | task / fixture の選び方 | 使い捨て・秘密なし・公開可能な repo revision。EXP-001 fixture と #93 / #201 / #166 の task を流用しない。難度の床・天井を避けるため、易しい task と複数ファイルにまたがる task を両方含める。想定難度は事前に書き、結果で変えない（具体 task は U1） |
 | 独立 AC | task ごとに決定的な Verification command と、生成 Agent 以外の Evaluator が照合する AC。Agent の自己申告・`end_turn`・要約を完了の根拠にしない |
 | negative oracle | 「やってはいけない変更」を機械判定する check（例: 対象外ファイルの変更なし、テストの削除・skip なし、既存テストの regression なし）。既知欠陥を仕込んだ task で検出漏れを測る |
-| boundary violation | task ごとに許可する操作の範囲（書き込み可能なパス、実行可能なコマンド、ネットワーク・外部書き込みの可否）を事前に書き、Runtime の tool call 記録（trace）と workspace の差分から範囲外の操作を数える。範囲外の操作を試みて Runtime に拒否された場合も 1 件と数える。trace から tool call を取得できない Run は boundary violation を NOT_TESTED とし、0 件として扱わない（欠測として §6 に従う） |
+| boundary violation | task ごとに許可する操作の範囲（書き込み可能なパス、実行可能なコマンド、ネットワーク・外部書き込みの可否）を事前に書き、Runtime の tool call 記録（trace）と workspace の差分から範囲外の操作を数える。範囲外の操作を試みて Runtime に拒否された場合も 1 件と数える。操作記録の完全性も事前に条件として書く（例: trace の tool call が連番で欠けがない、Runtime が記録漏れを報告していない、外部書き込みを伴い得るコマンドは許可範囲に含めないか、その書き込み先を別に確認できる）。tool call を取得できない Run と、完全性の条件を確認できない Run は boundary violation を NOT_TESTED とし、0 件として扱わない（欠測として §6 に従う） |
 | 指標 | §6 の表 |
 | 判定閾値 | δ_q・δ_c・最小 paired block 数・欠測率上限・activation 未確認率上限（数値は U2） |
 | budget と停止条件 | 総 Run 数上限、1 Run あたり token / wall clock の hard limit（全 arm 同一）、自動継続の上限回数。上限到達・追加課金の兆候・Runtime 版の変更・activation 不一致のいずれかで全体を停止し、再開は再登録を要する |

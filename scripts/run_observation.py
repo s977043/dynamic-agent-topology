@@ -58,43 +58,8 @@ def unknown_fields(value, location=""):
             yield from unknown_fields(item, f"{location}[{index}]")
 
 
-class UniqueKeyLoader(yaml.SafeLoader):
-    pass
-
-
-def construct_unique_mapping(loader, node, deep=False):
-    keys = set()
-    for key_node, _ in node.value:
-        key = loader.construct_object(key_node, deep=deep)
-        try:
-            hash(key)
-        except TypeError:
-            raise yaml.constructor.ConstructorError(
-                None, None, "mapping key must be a scalar", key_node.start_mark
-            ) from None
-        if key in keys:
-            raise yaml.constructor.ConstructorError(
-                None, None, f"duplicate key {key!r}", key_node.start_mark
-            )
-        keys.add(key)
-    return loader.construct_mapping(node, deep=deep)
-
-
-UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_unique_mapping)
-
-
-def load_record(path, validator):
-    try:
-        record = yaml.load(Path(path).read_text(encoding="utf-8"), Loader=UniqueKeyLoader)
-    except (OSError, UnicodeDecodeError, yaml.YAMLError) as error:
-        return None, [f"cannot read: {error}"]
-    if not isinstance(record, dict):
-        return None, ["record must be a mapping"]
-    return record, vro.validate_record(record, validator)
-
-
 def save(path, store):
-    record, errors = load_record(path, vro.load_validator())
+    record, errors = vro.load_record(path, vro.load_validator())
     if errors:
         print("NG")
         for error in errors:
@@ -136,7 +101,7 @@ def summarize(store):
     records = []
     skipped = 0
     for path in sorted(store.glob("*/*.yaml")):
-        record, errors = load_record(path, validator)
+        record, errors = vro.load_record(path, validator)
         if errors:
             print(f"skipped invalid: {path.relative_to(store)}: {cell(errors[0])}")
             skipped += 1

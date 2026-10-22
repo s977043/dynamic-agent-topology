@@ -4,12 +4,12 @@
 
 ## 確認済みの到達点
 
-- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。この計画の基準mainは `29f22ff4d759a75b1f90d90fe560e378831edf2e`。Open Issue **14**（#31/#59/#63/#82/#88/#93/#150/#159/#162/#166/#201/#211/#220/#223）、Open PR **2**（#205と本計画PRを含む）。PRとIssueを混ぜず、件数はこの時点のsnapshotとして扱います。
+- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。この計画の基準mainは `4284e1b099b58ffd1854345362a3ba56fb5a58a3`。Open Issue **14**（#31/#59/#63/#82/#88/#93/#150/#159/#162/#166/#201/#211/#220/#223）、Open PR **2**（#205と本計画PRを含む）。PRとIssueを混ぜず、件数はこの時点のsnapshotとして扱います。
 - **v0.3.0公開済み:** [Release](https://github.com/s977043/dynamic-agent-topology/releases/tag/v0.3.0)は2026-10-21T01:13:38Zに公開、tagは `0dd236ee1bc5e69b5620af151e93537e32a987dc`。tag内の日付2026-10-20と実公開日の差は#221でmainを訂正し、Release本文にも説明済み。公開タグを移動しません。
 - EXP-001 [#15](https://github.com/s977043/dynamic-agent-topology/issues/15)はcompleted/closed、18/18 Runs・9/9 paired blocks・Pilot限定 **Keep T0**。[Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) completed revision3、33 original blobsを保持。過去Runの再実行・再prepare・Frozen変更の許可ではありません。[#57](https://github.com/s977043/dynamic-agent-topology/issues/57)のread-only provenance audit設計・実装も完了closed。
 - #200はHarness enforcement評価方法としてmerge、文書scopeの#199はclosed。#202/#206/#208/#219は**未採用研究ノート**としてmerge。新Runtime・モデル比較実測・性能向上・設定採用の承認ではありません。source台帳の`adopted: []`を維持しています。
 - #223は[#224](https://github.com/s977043/dynamic-agent-topology/pull/224)設計、[#226](https://github.com/s977043/dynamic-agent-topology/pull/226)schema/semantic validator/fixtures/CI、[#227](https://github.com/s977043/dynamic-agent-topology/pull/227)Claude Code/Codex記録手順と合成例がmerge済み。段階2/3を未実装として再起案しません。合成fixture・例のPASSは、段階4の実Runtime観察や比較効果の証拠ではありません。
-- #215はHuman merge済み。#229の保存・集計CLI、#230のPluginとdat-select/dat-observe、#231のLearning ledgerも統合済み。#232で不正UTF-8のsave拒否とsum継続を回帰テスト付きで修正しました。
+- #215はHuman merge済み。#229の保存・集計CLI、#230のPluginとdat-select/dat-observe、#231のLearning ledgerも統合済み。#232で不正UTF-8のsave拒否とsum継続、#234でstore配下のGit作業ツリーへの保存拒否を回帰テスト付きで修正しました。
 - #228で[#220](https://github.com/s977043/dynamic-agent-topology/issues/220)の静的宣言・研究重複を[環境台帳](ENVIRONMENT_USAGE.md)へ記録。2 Agentは`model: inherit`・Read/Grep/Glob、Editルールの対象を公式仕様と#193へ照合。Claude実モデル・契約枠・追加課金を防ぐ境界・実効permissionはNOT_TESTEDです。
 
 ## Cloudで実施した検証と限界

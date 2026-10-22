@@ -88,6 +88,10 @@ with tempfile.TemporaryDirectory() as tmp:
         "valid": (source.encode("utf-8"), 0, ""),
         "duplicate-top": ((source + "\noutcome: completed\n").encode("utf-8"), 1, "duplicate key"),
         "duplicate-nested": (source.replace("metadata:\n", "metadata:\n  project: shadow-project\n", 1).encode("utf-8"), 1, "duplicate key"),
+        "merge-key": (source.replace(
+            "metadata:\n  observationId: obs-0001\n  project: project-a\n  datVersion: 0.3.0\n",
+            "metadata:\n  <<: {observationId: obs-0001, project: project-a, datVersion: 0.3.0}\n", 1,
+        ).encode("utf-8"), 1, "cannot read"),
         "malformed": (b"outcome: [broken\n", 1, "cannot read"),
         "invalid-utf8": (bytes([0xff, 0xfe]), 1, "cannot read"),
         "missing": (None, 1, "cannot read"),

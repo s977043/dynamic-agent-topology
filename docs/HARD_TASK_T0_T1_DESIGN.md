@@ -100,6 +100,8 @@ EXP-001 の Frozen file（scenarios、prompts、fixtures、T0/T1 topology、role
 
 ## 9. 未確定事項
 
+推奨値と根拠の下書きは [HARD_TASK_T0_T1_PREREGISTRATION_DRAFT.md](HARD_TASK_T0_T1_PREREGISTRATION_DRAFT.md)（未採用）。
+
 | # | 事項 | 現状 |
 |---|---|---|
 | U1 | 固定する Runtime / Model / Effort | 未定。EXP-001 の Codex / gpt-6.1-sol / high は候補の 1 つ（比較可能性は高いが、#220 等と同時期に変えない） |

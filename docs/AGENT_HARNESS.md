@@ -6,8 +6,9 @@
 
 ## 原則
 
-- **HOTL（Human-on-the-loop）で運用する。** 人間は事前承認したポリシー（下記の自律境界）の範囲で、監視・停止・事後受理を担います。範囲内の操作は Agent が機械ゲートを満たしたうえで実行し、各段階の結果を Issue / PR に記録します。
-- **ハーネスの規則変更は人間が承認する。** `AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則・自律境界・Guard、`scripts/validate_agent_guidance.py` の変更は、Agent が起案（差分・理由・影響範囲・ロールバック案）まで行い、人間が承認して merge します。merge 後に Agent が設定と実効権限を再確認します。Learning ledger への事実に基づく追記は例外として Agent が行えます。
+- **HOTL（Human-on-the-loop）で運用する。** 人間は事前承認したポリシー（下記の自律境界）の範囲で、監視・停止・事後受理を担います。範囲内の操作は Agent が機械ゲートを満たしたうえで実行し、各段階の結果を Issue / PR に記録します。人間だけが確認・判断する手順は減らし、基本は Agent が進めます（オーナー指示、2026-10-23）。
+- **人間への確認は Human 専権の操作と STOP 条件に限る。** それ以外は Agent が判断して進め、結果と根拠を報告します。
+- **ハーネスの規則変更も自律境界に従って Agent が merge できる。** `AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則・自律境界・Guard、`scripts/validate_agent_guidance.py` の変更は、Agent が差分・理由・影響範囲・ロールバック案を PR に書き、通常 PR と同じ条件（必須 CI 全 pass、作成セッションと別セッションの独立レビューで未解決の必須指摘 0。可能なら別モデル）を満たせば merge します。merge 後に Agent が設定と実効権限を再確認します。
 - **自己承認をしない。** 判断材料・変更を作成または修正した Agent セッションは、それを承認しません。
 - **Evidenceのない学びは昇格しない。** PR / commit / CI run / Issueへのリンクがない記録は候補のままです。
 - **Proseより機械的なGuardを優先する。** 昇格先は CI・validator → hook → permission設定 → `AGENTS.md` の文章 → skill の順に検討します。
@@ -37,13 +38,28 @@
 | 操作 | 実行者 | 条件 |
 | --- | --- | --- |
 | Learning ledger・Issue への記録、draft PR、validator / test、自分の branch への push | Agent | 記録と通知を残す |
-| 通常 PR の merge | Agent | 次をすべて満たす: 必須 CI 全 pass、作成者と別セッションの独立レビューで指摘解消、下記「人間が承認」の対象パスを含まない |
+| PR の merge（ハーネス規則・自律境界・権限・Guard の変更を含む） | Agent | 次をすべて満たす: 必須 CI 全 pass、PR 作成セッションと別セッション（可能なら別モデル）の独立レビューで未解決の必須指摘 0、下記 Human 専権の対象を含まない。merge した PR に判断の根拠（CI run、レビュー記録へのリンク）を残す |
 | Reviewer Judgment（Run acceptance、disposition の ACCEPT 等） | 独立 Agent Reviewer または人間 | 作成者と別セッション。Frozen 例外など高リスクの判断は別モデルも用いる（例: Codex（GPT 系）、Antigravity CLI（`agy`、Gemini 系）。下記）。記録には runtime・model・session ID・根拠リンクを書く |
 | EXP-001 の一回限りの model 起動（retry allowance の消費） | Agent | 手順書の全 Gate と preflight を機械的に検査して合格、Reviewer Judgment が記録済み、retry 未消費、Runtime/Model/Effort が固定、重複起動を防止、attestation・trace・Evidence を保存。異常時は停止し、追加起動はしない |
-| ハーネス規則・自律境界・権限・Guard の変更 | 人間が承認して merge | Agent は起案まで |
-| Feature Freeze の改訂、Frozen artifact の変更、release / tag、force push、削除、secret | 人間 | — |
+| Human 専権（下表） | 人間 | Agent は起案と材料の準備まで |
 
-人間はいつでも停止・差し戻しができます。停止の指示を受けたら、Agent は進行中の操作を安全な状態で止め、状態を報告します。
+Human 専権として残す操作と理由:
+
+| 操作 | 理由 |
+| --- | --- |
+| Feature Freeze の改訂、Frozen artifact の変更 | 実験条件を固定した前提が崩れ、EXP-001 の結果の比較可能性を失う。上記の EXP-001 retry 例外はそのまま |
+| release / tag の作成 | 公開した tag は動かさない規則で、公開後に取り消せない |
+| force push | 他者の commit を消すおそれがあり、取り消せない |
+| ブランチ・ファイル・issue などの削除 | 取り消せない、または復元に人手が要る |
+| 予算の承認と、課金が発生する model 起動（Operator） | 費用の責任者が人間のため。上記の EXP-001 retry 例外はそのまま |
+| secret の扱い | 漏洩すると取り消せない |
+
+STOP 条件（当たったら Agent は進行を止め、状態と根拠を記録して人間に確認する）: 必須の安全・権限検査が FAIL / UNKNOWN、ツールや permission による拒否、自分が作っていない変更が worktree や branch にある、独立レビューの必須指摘が解消できない、Human 専権の操作が必要になった。
+
+監視と介入:
+
+- 人間はいつでも停止・差し戻し・PR の revert を指示できます。停止の指示を受けたら、Agent は進行中の操作を安全な状態で止め、状態を報告します。
+- Agent は merge した PR と判断の根拠（CI run、独立レビューの記録、STOP 条件に当たらなかったこと）を PR / Issue に記録し、人間が事後に確認できるようにします。
 
 Reviewer Judgment の別モデルに Antigravity CLI を使う場合は、headless（`-p`）で `--mode plan --sandbox` を付けて起動します。この起動ではシェルが必要な tool が自動で拒否されることを確認しています。書き込み tool が拒否されるかは確認していないため、レビュー対象は使い捨ての checkout にします。headless では作業ディレクトリと `--add-dir` の外のファイル読み取りが拒否されるため、レビュー対象の checkout を作業ディレクトリにして起動し、それ以外の判断材料はローカルファイルにまとめて `--add-dir` で渡します。tool が 1 つでも拒否されると判断を出力せずに終わる（`denied_actions` に記録され、`response` は空）ため、依頼文に「シェルは使えないので、ハッシュの再計算やテストの再実行はせず記録の値どうしを照合する」ことと、読めるディレクトリの絶対パスを書きます。`--dangerously-skip-permissions` は使いません。記録の session ID には `--output-format json` の `conversation_id` を、model には `--model` で明示した値を書きます（usage に model が出ないため）。
 
@@ -131,7 +147,7 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 2. 前週との差分を見る: CI 初回 pass 率の低下、レビューループ数の多い PR、回数 2 以上の candidate、Evidence 欠落。
    CI 初回 pass 率は committer date からの推定値で誤分類があり得るため、確定値ではなく傾向として見る。
 3. 新しい観測や回数の増加は、Evidence を添えて Learning ledger に追記する（事実の追記は Agent が行える）。
-4. 回数 2 以上で Evidence の揃った candidate は、`promoted` への変更と対策（Guard の追加・規則の変更）を draft PR として起案する。規則・Guard の変更は人間が承認して merge する（「原則」「自律境界」に従う）。
+4. 回数 2 以上で Evidence の揃った candidate は、`promoted` への変更と対策（Guard の追加・規則の変更）を draft PR として起案する。規則・Guard の変更も「原則」「自律境界」の条件を満たせば Agent が merge する。
 5. 棚卸しの結果（見た run、追記・起案した PR）を PR 本文または Issue に記録する。
 
 ## Roadmap

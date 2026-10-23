@@ -299,7 +299,7 @@
       },
       "count": 1,
       "state": "candidate",
-      "countermeasure": "`AGENTS.md` / `CLAUDE.md` / `.claude/` を含む変更は、最初からエージェントが差分案を作り Human が適用・merge する手順で計画する",
+      "countermeasure": "HOTL 改訂でハーネス規則の変更も Agent が merge できるようになったため、Human への切り替えは前提にしない。`AGENTS.md` / `CLAUDE.md` / `.claude/` の編集が auto mode に拒否されたら回避せず止め、適用すべき差分を残して Human に適用を依頼する（STOP 条件「ツールや permission による拒否」）",
       "observedDates": [
         "2026-10-22"
       ]

@@ -65,7 +65,7 @@
 | [EXP_TIME_SIGNAL_DESIGN.md](EXP_TIME_SIGNAL_DESIGN.md) | 経過時間シグナル（elapsed / budget）の paired 評価設計案（#201） | 非規範的な設計案（未採用） |
 | [MODEL_ROLE_SPLIT_DESIGN.md](MODEL_ROLE_SPLIT_DESIGN.md) | 同一T0でメインモデルだけを変えるモデル役割分担の paired 評価設計案（#220） | 非規範的な設計案（未採用） |
 | [HARD_TASK_T0_T1_DESIGN.md](HARD_TASK_T0_T1_DESIGN.md) | T0の成功率が低いTaskでRuntime・Model・Effortを固定しT0/T1を比べる paired 評価設計案（EXP-001 床効果） | 非規範的な設計案（未採用） |
-| [HARD_TASK_T0_T1_PREREGISTRATION_DRAFT.md](HARD_TASK_T0_T1_PREREGISTRATION_DRAFT.md) | 上記設計案のU1〜U7の推奨値と根拠をまとめた事前登録の下書き | 非規範的な下書き（未採用） |
+| [HARD_TASK_T0_T1_PREREGISTRATION.md](HARD_TASK_T0_T1_PREREGISTRATION.md) | 上記設計案のU1〜U7の確定値と、実験開始前に残る手順 | U1〜U7確定版（事前登録はblob hashのIssue記録で成立） |
 | [RUN_OBSERVATION_DESIGN.md](RUN_OBSERVATION_DESIGN.md) | 日常開発のウェーブ観察記録（RunObservation）の設計案（#223） | 非規範的な設計案（未採用） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
 | `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |

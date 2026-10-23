@@ -95,19 +95,19 @@ EXP-001 の Frozen file（scenarios、prompts、fixtures、T0/T1 topology、role
 ## 8. 境界（Human-owned）
 
 - model 起動（較正・評価とも）は Operator が fresh workspace / fresh session で行う。Agent は代行しない。
-- 実験開始、予算承認、閾値の確定、新しい experiment / fixture の追加と採否は Human と独立 Reviewer が判断する。
+- 予算の承認と、課金が発生する model 起動は Human（Operator）専権。閾値などの設計判断と、新しい experiment / fixture の追加と採否は、[AGENT_HARNESS.md](AGENT_HARNESS.md) の HOTL の自律境界に従い Agent が独立レビュー付きで判断する。
 - Topology ≠ Routing Policy、Role ≠ Model。本設計は T0 / T1 の既存定義を変えず、runtime 固有の手順は `adapters/` 側に置く。
 
 ## 9. 未確定事項
 
-推奨値と根拠の下書きは [HARD_TASK_T0_T1_PREREGISTRATION_DRAFT.md](HARD_TASK_T0_T1_PREREGISTRATION_DRAFT.md)（未採用）。
+U1〜U7 は [HARD_TASK_T0_T1_PREREGISTRATION.md](HARD_TASK_T0_T1_PREREGISTRATION.md) で確定した（2026-10-23）。事前登録は同書の blob hash を Issue に記録した時点で成立する。
 
 | # | 事項 | 現状 |
 |---|---|---|
-| U1 | 固定する Runtime / Model / Effort | 未定。EXP-001 の Codex / gpt-6.1-sol / high は候補の 1 つ（比較可能性は高いが、#220 等と同時期に変えない） |
-| U2 | hard 候補の母集団の出所と件数 | 未定。#194 の U2 と共有し得る。公開可能な revision のみ |
-| U3 | p_max（0 を含めるか）、Δ、K、regression 上限、r_max、p_ceiling | 未定。推測で決めない |
-| U4 | n_cal、評価集合の最小 Task 数、rep 数 | 未定。rep 数の下限候補は EXP-001 の 3 |
-| U5 | 較正・評価の budget と承認者 | 未定 |
-| U6 | 新しい Task / fixture / experiment Artifact の置き場所と schema 適合 | 未定。別 PR で扱う |
-| U7 | #205 の task nature を共変量として記録するか | 未定。#205 は研究ノートとして merge 済み（未採用）。事前登録の時点で判断する |
+| U1 | 固定する Runtime / Model / Effort | 確定: Codex / gpt-6.1-sol / high |
+| U2 | hard 候補の母集団の出所と件数 | 手順を確定（候補 40〜50 件、追加は 1 回まで）。候補一覧は未作成 |
+| U3 | p_max（0 を含めるか）、Δ、K、regression 上限、r_max、p_ceiling | 確定: p_max = 2/5（0/5 除外）、Δ = 0.30、K = 1.5、+0.10、0.20、0.60 |
+| U4 | n_cal、評価集合の最小 Task 数、rep 数 | 確定: n_cal = 5、13 Task 以上、rep = 3 |
+| U5 | 較正・評価の budget と承認者 | 見積もり式と概算を確定。予算の上限と承認は Operator が決める |
+| U6 | 新しい Task / fixture / experiment Artifact の置き場所と schema 適合 | 事前登録成立後の別 PR で扱う |
+| U7 | #205 の task nature を共変量として記録するか | 確定: 記録する（主判定には使わない） |

@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_run_observation.py"
@@ -78,6 +79,45 @@ result = subprocess.run(
 )
 if result.returncode == 0:
     failures.append("explicit path mode must fail on an invalid record")
+
+# Parsing rules must agree at both public entry points, including malformed files.
+with tempfile.TemporaryDirectory() as tmp:
+    tmp = Path(tmp)
+    source = (FIXTURES / "valid" / "no-reviews-explicit-zero.yaml").read_text(encoding="utf-8")
+    cases = {
+        "valid": (source.encode("utf-8"), 0, ""),
+        "duplicate-top": ((source + "\noutcome: completed\n").encode("utf-8"), 1, "duplicate key"),
+        "duplicate-nested": (source.replace("metadata:\n", "metadata:\n  project: shadow-project\n", 1).encode("utf-8"), 1, "duplicate key"),
+        "merge-key": (source.replace(
+            "metadata:\n  observationId: obs-0001\n  project: project-a\n  datVersion: 0.3.0\n",
+            "metadata:\n  <<: {observationId: obs-0001, project: project-a, datVersion: 0.3.0}\n", 1,
+        ).encode("utf-8"), 1, "cannot read"),
+        "malformed": (b"outcome: [broken\n", 1, "cannot read"),
+        "invalid-utf8": (bytes([0xff, 0xfe]), 1, "cannot read"),
+        "missing": (None, 1, "cannot read"),
+    }
+    for name, (data, expected_code, diagnostic) in cases.items():
+        path = tmp / f"{name}.yaml"
+        if data is not None:
+            path.write_bytes(data)
+        store = tmp / f"store-{name}"
+        for command, args in (
+            ("validator", [str(SCRIPT), str(path)]),
+            ("save", [str(ROOT / "scripts" / "run_observation.py"), "save", str(path), "--store", str(store)]),
+        ):
+            result = subprocess.run([sys.executable, *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            if result.returncode != expected_code or diagnostic not in result.stdout or "Traceback" in result.stdout:
+                failures.append(f"{name} {command}: expected exit {expected_code} / {diagnostic!r} without traceback, got {result.returncode}\n{result.stdout}")
+        if expected_code and store.exists():
+            failures.append(f"{name}: rejected input must not create a store")
+
+    # One unreadable path must not prevent checking a later semantic failure.
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(tmp / "missing.yaml"), str(invalid["redaction-absolute-path-users"])],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 1 or "cannot read" not in result.stdout or "absolute path" not in result.stdout or "Traceback" in result.stdout:
+        failures.append("explicit path mode must continue after a read error\n" + result.stdout)
 
 if failures:
     print("RunObservation validator tests failed:")

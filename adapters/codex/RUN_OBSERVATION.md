@@ -29,7 +29,7 @@
 
 保存と集計には DAT の CLI `scripts/run_observation.py` を使います。保存先は `--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、リポジトリの外のディレクトリ（例: `~/.dat/observations`）を使います。DAT リポジトリと git の作業ツリーの中（保存先かその祖先に `.git` がある場所）は拒否されます。
 
-1. 記録を一時ファイルに 1 ウェーブ 1 件で書く
+1. 記録を一時ファイルに 1 ウェーブ 1 件で書く。重複した key と merge key（`<<:`）は拒否されるので、各 key を直接書く（[読込み規則](../../docs/RUN_OBSERVATION_DESIGN.md#6-保存先と秘匿)）
 2. `save` で保存する。validator を通った記録だけが `<保存先>/<metadata.project>/<metadata.observationId>.yaml` にコピーされ、既存の ID は拒否される。`metadata.project` と `observationId` は英数字で始まり英数字・`.`・`_`・`-` だけからなる値にする（ファイル名に使うため）。保存先の外を指す値や symlink は拒否される。`OK` と一緒に値が `unknown` の項目が表示されるので、取れる値が残っていないか見直す。`NG` のときはエラーを直して再実行する
 
    ```bash

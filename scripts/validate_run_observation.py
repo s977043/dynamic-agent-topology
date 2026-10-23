@@ -33,6 +33,43 @@ VERIFIER_KIND_BY_REVIEWER = {
 }
 
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    pass
+
+
+def construct_unique_mapping(loader, node, deep=False):
+    keys = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            hash(key)
+        except TypeError:
+            raise yaml.constructor.ConstructorError(
+                None, None, "mapping key must be a scalar", key_node.start_mark
+            ) from None
+        if key in keys:
+            raise yaml.constructor.ConstructorError(
+                None, None, f"duplicate key {key!r}", key_node.start_mark
+            )
+        keys.add(key)
+    return loader.construct_mapping(node, deep=deep)
+
+
+UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_unique_mapping)
+
+
+def load_record(path, validator):
+    """Read one unambiguous YAML mapping and apply the shared record checks."""
+    try:
+        record = yaml.load(Path(path).read_text(encoding="utf-8"), Loader=UniqueKeyLoader)
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as error:
+        return None, [f"cannot read: {error}"]
+    if not isinstance(record, dict):
+        return None, ["record must be a mapping"]
+    return record, validate_record(record, validator)
+
+
+
 def shannon_entropy(text):
     counts = {}
     for char in text:
@@ -204,8 +241,8 @@ def load_validator():
 
 
 def validate_file(path, validator):
-    record = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    return validate_record(record, validator)
+    _, errors = load_record(path, validator)
+    return errors
 
 
 def main(argv):

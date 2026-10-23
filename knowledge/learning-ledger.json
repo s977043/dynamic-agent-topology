@@ -299,7 +299,7 @@
       },
       "count": 1,
       "state": "candidate",
-      "countermeasure": "`AGENTS.md` / `CLAUDE.md` / `.claude/` を含む変更は、最初からエージェントが差分案を作り Human が適用・merge する手順で計画する",
+      "countermeasure": "規則変更 PR（`AGENTS.md` / `CLAUDE.md` / `.claude/` など）は Agent が起案と別モデルの独立レビューまで行い、merge は Human が行う。`AGENTS.md` などの編集や push が拒否されたら回避せず STOP し、適用すべき差分を残して Human に依頼する（STOP 条件「ツールや permission による拒否」）",
       "observedDates": [
         "2026-10-22"
       ]

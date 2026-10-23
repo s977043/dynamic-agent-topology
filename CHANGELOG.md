@@ -6,6 +6,10 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+### Changed
+
+- Compatibility: `scripts/validate_run_observation.py` now rejects RunObservation records with duplicate mapping keys or YAML merge keys (`<<:`), matching `scripts/run_observation.py`; unreadable records report `cannot read: ...` with exit 1 instead of a traceback. Rewrite merge-key records as plain YAML with each key written out (`docs/RUN_OBSERVATION_DESIGN.md` §6).
+
 ## 0.3.0 — 2026-10-21
 
 Content candidate: `d66cbdfea8fde66db0c77d01079757005893a8f8`.

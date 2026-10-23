@@ -1,0 +1,2062 @@
+# 難度の高い Task での T0/T1 比較の候補表（#244、事前登録 §3・§9 手順 2）
+# 事前登録: docs/HARD_TASK_T0_T1_PREREGISTRATION.md（blob 52b4a585044e00d52fea8db64f725c4b4f3258cd）
+# 状態: 候補表の初版。§9 手順 3 の固定（blob hash の Issue 記録・独立レビュー）は未実施。model は起動していない
+# 順序: orderKey（"<repo URL>@<revision>" の UTF-8 文字列）の SHA-256 の昇順。同じ orderKey は 1 件まで。
+#   先頭 C 件が initial（初回の候補）、残りが reserve（追加分の予備、先頭から使う）。手で並べ替えない
+# revision はバグ修正 commit（fixCommit）の親。AC は fixCommit で追加・変更されたテスト
+# 決定性: revision に fixCommit のテストファイルを重ねた状態で 3 回失敗、fixCommit で 3 回成功を確認
+#   （CPython 3.12.13、python -m unittest、sandbox-exec でネットワーク遮断）
+# taskNature: exploratory（探索）/ replication（複製）/ known-solution（既知解）。較正結果のない時点で
+#   Agent 1 名が件名と diff の規模から付けた暫定値（評定者間一致は NOT_TESTED）
+# excluded: 機械的な一次条件（件名・規模・テスト変更）を通過して確認した候補のうち、条件を満たさない・除外条件に当たるもの
+C: 44
+collected: 88
+initialCount: 44
+reserveCount: 44
+candidates:
+  - order: 1
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@1f8d15bbd68586704666533b21a5b35d710d68f0"
+    orderKeySha256: 00d3c3b9e8eb4317be4b1fc88ba21d7c78c2f2128f1134ce12d956839620199c
+    repo: https://github.com/tobymao/sqlglot
+    revision: 1f8d15bbd68586704666533b21a5b35d710d68f0
+    fixCommit: 61c3ca4479c167d9c90d51f73184568769fa0635
+    fixCommitDate: "2026-10-12T08:44:45-04:00"
+    fixSubject: "fix(oracle): parse CREATE TABLE TABLESPACE (#8605)"
+    fixSize: {files: 4, lines: 10}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_oracle.py"]
+      command: "python3.12 -m unittest tests/dialects/test_oracle.py"
+      failingBeforeFix: ["test_create_table_tablespace (tests.dialects.test_oracle.TestOracle.test_create_table_tablespace)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 61c3ca4479c167d9c90d51f73184568769fa0635 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 2
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@115ce02b002ed63ff23a4c99a24ad025ec1efbb4"
+    orderKeySha256: 00dc5586d4a5fe3892c45cbf69cdacbc18623fd8a11349c31495ec1187c9314a
+    repo: https://github.com/tobymao/sqlglot
+    revision: 115ce02b002ed63ff23a4c99a24ad025ec1efbb4
+    fixCommit: 479c4cae0e38d60d10f4aac833c4091d5c2304e2
+    fixCommitDate: "2026-10-20T16:37:33+03:00"
+    fixSubject: "fix(parser)!: respect dialect precedence of IS predicates (#8676)"
+    fixSize: {files: 18, lines: 231}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_duckdb.py", "tests/dialects/test_hive.py", "tests/dialects/test_mysql.py", "tests/dialects/test_postgres.py", "tests/dialects/test_sqlite.py", "tests/fixtures/optimizer/simplify.sql", "tests/test_build.py", "tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/dialects/test_duckdb.py tests/dialects/test_hive.py tests/dialects/test_mysql.py tests/dialects/test_postgres.py tests/dialects/test_sqlite.py tests/test_build.py tests/test_parser.py"
+      failingBeforeFix: ["test_is_precedence (tests.test_parser.TestParser.test_is_precedence)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 479c4cae0e38d60d10f4aac833c4091d5c2304e2 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 3
+    set: initial
+    orderKey: "https://github.com/eliben/pycparser@b7f48c8feedf903588e0d49f18574cd194be827e"
+    orderKeySha256: 0899df9bffe7787a6133b87b6cf464919735f0bce7119121bcb4f67d88b1ee67
+    repo: https://github.com/eliben/pycparser
+    revision: b7f48c8feedf903588e0d49f18574cd194be827e
+    fixCommit: 7adecd56efcffa3d086dedf274ce5a2a9d4eff55
+    fixCommitDate: "2026-10-08T06:05:32-07:00"
+    fixSubject: "Fix implementation of _Static_assert"
+    fixSize: {files: 2, lines: 43}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/c_files/c11.c", "tests/test_c_generator.py", "tests/test_c_parser.py"]
+      command: "python3.12 -m unittest tests/test_c_generator.py tests/test_c_parser.py"
+      failingBeforeFix: ["test_missing_semicolon (tests.test_c_parser.TestCParser_static_assert.test_missing_semicolon)", "test_semicolon_consumption (tests.test_c_parser.TestCParser_static_assert.test_semicolon_consumption)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/c_generator.py: # License: BSD / pycparser/c_parser.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit 7adecd56efcffa3d086dedf274ce5a2a9d4eff55 とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: known-solution
+  - order: 4
+    set: initial
+    orderKey: "https://github.com/eliben/pycparser@61f979c4cea46a333a5fcce4aef8cb33aab95229"
+    orderKeySha256: 0e0d85f4396ef2ef8d93614c5d5f51db34b912434f06ec1925d929499056bfd5
+    repo: https://github.com/eliben/pycparser
+    revision: 61f979c4cea46a333a5fcce4aef8cb33aab95229
+    fixCommit: 17da57c031afeba6a3cd3a52f067a1d476b59641
+    fixCommitDate: "2026-10-08T06:35:56-07:00"
+    fixSubject: "Fix generation of _Alignas and _Atomic"
+    fixSize: {files: 3, lines: 43}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_c_generator.py", "tests/test_c_parser.py"]
+      command: "python3.12 -m unittest tests/test_c_generator.py tests/test_c_parser.py"
+      failingBeforeFix: ["test_atomic_specifier_multiple_declarators (tests.test_c_parser.TestCParser_fundamentals.test_atomic_specifier_multiple_declarators)", "test_atomic_specifier_qualifiers (tests.test_c_generator.TestCtoC.test_atomic_specifier_qualifiers)", "test_atomic_specifier_qualifiers (tests.test_c_parser.TestCParser_fundamentals.test_atomic_specifier_qualifiers)", "test_atomic_type_names (tests.test_c_generator.TestCtoC.test_atomic_type_names)", "test_multiple_alignments (tests.test_c_generator.TestCtoC.test_multiple_alignments)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/ast_transforms.py: # License: BSD / pycparser/c_generator.py: # License: BSD / pycparser/c_parser.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit 17da57c031afeba6a3cd3a52f067a1d476b59641 とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: known-solution
+  - order: 5
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@e237d5980e8084cd2eceb874280efc3f3369c0ba"
+    orderKeySha256: 15747cf9a1d98236c3a8eb611c284a27541729834f680c0775992872814ad8c3
+    repo: https://github.com/tobymao/sqlglot
+    revision: e237d5980e8084cd2eceb874280efc3f3369c0ba
+    fixCommit: 98bedf649b244d321782a213944320d54f7cc868
+    fixCommitDate: "2026-10-12T07:20:46-04:00"
+    fixSubject: "fix(oracle): parse partition clauses and flashback queries [CODEX] (#8588)"
+    fixSize: {files: 4, lines: 29}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_oracle.py"]
+      command: "python3.12 -m unittest tests/dialects/test_oracle.py"
+      failingBeforeFix: ["test_insert_partition (tests.dialects.test_oracle.TestOracle.test_insert_partition)", "test_partition_selection (tests.dialects.test_oracle.TestOracle.test_partition_selection)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 98bedf649b244d321782a213944320d54f7cc868 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 6
+    set: initial
+    orderKey: "https://github.com/PyCQA/pyflakes@ef3c5cb31e06e9f094294353c3c83a9decc0fe57"
+    orderKeySha256: 1ac077b2a95f205ac68dcd224eea31c5001882b473323993757375764342c143
+    repo: https://github.com/PyCQA/pyflakes
+    revision: ef3c5cb31e06e9f094294353c3c83a9decc0fe57
+    fixCommit: 76416437ef22077b5e2949e78fa3000b3580e319
+    fixCommitDate: "2020-03-17T20:53:37Z"
+    fixSubject: "Fix quoted type annotations in unusual contexts (#516)"
+    fixSize: {files: 1, lines: 75}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyflakes/test/test_type_annotations.py"]
+      command: "python3.12 -m unittest pyflakes/test/test_type_annotations.py"
+      failingBeforeFix: ["test_nested_partially_quoted_type_assignment (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_nested_partially_quoted_type_assignment)", "test_partially_quoted_type_assignment (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_partially_quoted_type_assignment)", "test_quoted_type_cast (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_quoted_type_cast)", "test_quoted_type_cast_renamed_import (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_quoted_type_cast_renamed_import)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/PyCQA/pyflakes の公開済み commit 76416437ef22077b5e2949e78fa3000b3580e319 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 7
+    set: initial
+    orderKey: "https://github.com/pytest-dev/pyfakefs@796c48eb7830e3ee7fb57eb368dc115c1f3436ba"
+    orderKeySha256: 1b82c7e84f999fc93baead157fc7545dc4cc5d7331ac3720205219cba7be1592
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: 796c48eb7830e3ee7fb57eb368dc115c1f3436ba
+    fixCommit: 1759b6a70338e4daf7f547bff28ef8b1d857796b
+    fixCommitDate: "2026-10-11T18:50:28+05:30"
+    fixSubject: "Fix os.path.sameopenfile for fake file descriptors (#1349)"
+    fixSize: {files: 2, lines: 19}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_filesystem_test.py", "pyfakefs/tests/fake_os_test.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_filesystem_test.py pyfakefs/tests/fake_os_test.py"
+      failingBeforeFix: ["test_sameopenfile (pyfakefs.tests.fake_filesystem_test.FakePathModuleTest.test_sameopenfile)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_os.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_path.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_filesystem_test.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_os_test.py: # Copyright 2009 Google Inc. All Rights Reserved.。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit 1759b6a70338e4daf7f547bff28ef8b1d857796b とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: known-solution
+  - order: 8
+    set: initial
+    orderKey: "https://github.com/bottlepy/bottle@3fdb8b2a2e0d1641374b53ef2b051fe7f54508b5"
+    orderKeySha256: 1cd14bad5bbcd345d43fdb855893aadc562c74dc76dbc697c3c1196bada7bee7
+    repo: https://github.com/bottlepy/bottle
+    revision: 3fdb8b2a2e0d1641374b53ef2b051fe7f54508b5
+    fixCommit: 0fc2b723a61428299bd090732d409d7500935450
+    fixCommitDate: "2023-11-04T12:34:03+01:00"
+    fixSubject: "fix: Replace cgi.FieldStorage"
+    fixSize: {files: 2, lines: 293}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["test/test_environ.py", "test/test_multipart.py", "test/tools.py"]
+      command: "python3.12 -m unittest test/test_multipart.py"
+      failingBeforeFix: ["test_iterlines (test.test_multipart.TestMultipartParser.test_iterlines)", "test_iterlines_limit (test.test_multipart.TestMultipartParser.test_iterlines_limit)", "test_multiline_header (test.test_multipart.TestMultipartParser.test_multiline_header)", "test_options_parser (test.test_multipart.TestHeaderParser.test_options_parser)", "test_unicode_value (test.test_multipart.TestMultipartParser.test_unicode_value)", "test_werkzeug_examples (test.test_multipart.TestWerkzeugExamples.test_werkzeug_examples)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: bottle.py: License: MIT (see LICENSE for details)。別ライセンスの表記なしとして repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/bottlepy/bottle の公開済み commit 0fc2b723a61428299bd090732d409d7500935450 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 9
+    set: initial
+    orderKey: "https://github.com/pyasn1/pyasn1@7b3f79cac2ce765537baa406762d59eae47de04c"
+    orderKeySha256: 1f77b5780c1929653b07f3d187f93cfe9e9c9415a75e49a1bc6b8f9cfb139f4d
+    repo: https://github.com/pyasn1/pyasn1
+    revision: 7b3f79cac2ce765537baa406762d59eae47de04c
+    fixCommit: 62efcb94b15ca7fbd5261ca999bf5eca5680de5f
+    fixCommitDate: "2019-07-12T22:42:04+02:00"
+    fixSubject: "Fix CER/DER encoders to respect open types (#167)"
+    fixSize: {files: 2, lines: 156}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/codec/ber/test_decoder.py", "tests/codec/ber/test_encoder.py", "tests/codec/cer/test_decoder.py", "tests/codec/cer/test_encoder.py", "tests/codec/der/test_decoder.py", "tests/codec/der/test_encoder.py"]
+      command: "python3.12 -m unittest tests/codec/ber/test_decoder.py tests/codec/ber/test_encoder.py tests/codec/cer/test_decoder.py tests/codec/cer/test_encoder.py tests/codec/der/test_decoder.py tests/codec/der/test_encoder.py"
+      failingBeforeFix: ["testEncodeOpenTypeChoiceOne (tests.codec.cer.test_encoder.SequenceEncoderWithUntaggedOpenTypesTestCase.testEncodeOpenTypeChoiceOne)", "testEncodeOpenTypeChoiceOne (tests.codec.der.test_encoder.SequenceEncoderWithExplicitlyTaggedOpenTypesTestCase.testEncodeOpenTypeChoiceOne)", "testEncodeOpenTypeChoiceOne (tests.codec.der.test_encoder.SequenceEncoderWithExplicitlyTaggedSetOfOpenTypesTestCase.testEncodeOpenTypeChoiceOne)", "testEncodeOpenTypeChoiceOne (tests.codec.der.test_encoder.SequenceEncoderWithImplicitlyTaggedOpenTypesTestCase.testEncodeOpenTypeChoiceOne)", "testEncodeOpenTypeChoiceOne (tests.codec.der.test_encoder.SequenceEncoderWithImplicitlyTaggedSetOfOpenTypesTestCase.testEncodeOpenTypeChoiceOne)", "testEncodeOpenTypeChoiceOne (tests.codec.der.test_encoder.SequenceEncoderWithUntaggedOpenTypesTestCase.testEncodeOpenTypeChoiceOne)", "testEncodeOpenTypeChoiceTwo (tests.codec.cer.test_encoder.SequenceEncoderWithUntaggedOpenTypesTestCase.testEncodeOpenTypeChoiceTwo)", "testEncodeOpenTypeChoiceTwo (tests.codec.der.test_encoder.SequenceEncoderWithUntaggedOpenTypesTestCase.testEncodeOpenTypeChoiceTwo)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-2-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyasn1/codec/ber/encoder.py: # License: http://snmplabs.com/pyasn1/license.html / pyasn1/codec/cer/encoder.py: # License: http://snmplabs.com/pyasn1/license.html / tests/codec/ber/test_decoder.py: # License: http://snmplabs.com/pyasn1/license.html / tests/codec/ber/test_encoder.py: # License: http://snmplabs.com/pyasn1/license.html / tests/codec/cer/test_decoder.py: # License: http://snmplabs.com/pyasn1/license.html / tests/codec/cer/test_encoder.py: # License: http://snmplabs.com/pyasn1/license.html / tests/codec/der/test_decoder.py: # License: http://snmplabs.com/pyasn1/license.html / tests/codec/der/test_encoder.py: # License: http://snmplabs.com/pyasn1/license.html。別ライセンスの表記なしとして repo のライセンス（BSD-2-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyasn1/pyasn1 の公開済み commit 62efcb94b15ca7fbd5261ca999bf5eca5680de5f とその親"
+      redistribution: "BSD-2-Clause: 著作権表示・条件・免責を残せば再配布可"
+    taskNature: known-solution
+  - order: 10
+    set: initial
+    orderKey: "https://github.com/python/typing_extensions@700eadd2bad0bb118a884dd85adbcd073a2c0046"
+    orderKeySha256: 2248b8272d3f2d20a60f2543b0c519454855ffbae67a4ecb0064baa17a4e9338
+    repo: https://github.com/python/typing_extensions
+    revision: 700eadd2bad0bb118a884dd85adbcd073a2c0046
+    fixCommit: ca41832bbce2f2d800edbca0a2a48fb66ae406be
+    fixCommitDate: "2024-12-13T05:36:54+01:00"
+    fixSubject: "Fix Concatenate and Generic with ParamSpec substitution (#489)"
+    fixSize: {files: 1, lines: 181}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["src/test_typing_extensions.py"]
+      command: "python3.12 -m unittest src/test_typing_extensions.py"
+      failingBeforeFix: ["test_is_param_expr (src.test_typing_extensions.ConcatenateTests.test_is_param_expr)", "test_is_param_expr (src.test_typing_extensions.ParamSpecTests.test_is_param_expr)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: PSF-2.0
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（PSF-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/python/typing_extensions の公開済み commit ca41832bbce2f2d800edbca0a2a48fb66ae406be とその親"
+      redistribution: "PSF-2.0: ライセンス文と著作権表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 11
+    set: initial
+    orderKey: "https://github.com/PyCQA/pyflakes@cdb0606c85a417e961129aa88ebee210481f730d"
+    orderKeySha256: 234cfa9fa1576e4097b05ddef7afd9c381f40623caa15d12eaa36736f2e6c383
+    repo: https://github.com/PyCQA/pyflakes
+    revision: cdb0606c85a417e961129aa88ebee210481f730d
+    fixCommit: 5fc37cbda5bf4e5afcb64c45caa62062979256b4
+    fixCommitDate: "2020-09-28T20:06:42+02:00"
+    fixSubject: "Fix undefined name in annotations (#535)"
+    fixSize: {files: 1, lines: 62}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyflakes/test/test_type_annotations.py"]
+      command: "python3.12 -m unittest pyflakes/test/test_type_annotations.py"
+      failingBeforeFix: ["test_postponed_annotations (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_postponed_annotations)", "test_variable_annotations (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_variable_annotations)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/PyCQA/pyflakes の公開済み commit 5fc37cbda5bf4e5afcb64c45caa62062979256b4 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 12
+    set: initial
+    orderKey: "https://github.com/rthalley/dnspython@99878bf292c86ca7d42b5341cb480f0833b83ba3"
+    orderKeySha256: 2904f1ff92bc5992d1005ac4c282674752dd3e4e5fb61e5dd9fd956b939e8bab
+    repo: https://github.com/rthalley/dnspython
+    revision: 99878bf292c86ca7d42b5341cb480f0833b83ba3
+    fixCommit: 5171f9cd482e4ff31ca31c5b908940c4529acc14
+    fixCommitDate: "2025-07-10T13:55:55-07:00"
+    fixSubject: "More TSIG fixes. (#1207)"
+    fixSize: {files: 1, lines: 32}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_tsig.py"]
+      command: "python3.12 -m unittest tests/test_tsig.py"
+      failingBeforeFix: ["test_render_message_with_existing_tsig (tests.test_tsig.TSIGTestCase.test_render_message_with_existing_tsig)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: ISC
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: dns/message.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_tsig.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license。別ライセンスの表記なしとして repo のライセンス（ISC）に従う"
+      provenance: "GitHub の公開 repo https://github.com/rthalley/dnspython の公開済み commit 5171f9cd482e4ff31ca31c5b908940c4529acc14 とその親"
+      redistribution: "ISC: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: replication
+  - order: 13
+    set: initial
+    orderKey: "https://github.com/pytest-dev/pyfakefs@1759b6a70338e4daf7f547bff28ef8b1d857796b"
+    orderKeySha256: 2d1a2f5880b01ad51b3a222921afcc98c5d04c52ae0670b2eb66584ea0dcb7e9
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: 1759b6a70338e4daf7f547bff28ef8b1d857796b
+    fixCommit: bc690296e5a5fae63834d3abaaafdc158f7fb21a
+    fixCommitDate: "2026-09-14T18:58:31+02:00"
+    fixSubject: "Fix resolving Windows drive-relative paths"
+    fixSize: {files: 3, lines: 108}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_filesystem_test.py", "pyfakefs/tests/fake_os_test.py", "pyfakefs/tests/fake_pathlib_test.py", "pyfakefs/tests/test_utils.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_filesystem_test.py pyfakefs/tests/fake_os_test.py pyfakefs/tests/fake_pathlib_test.py pyfakefs/tests/test_utils.py"
+      failingBeforeFix: ["test_resolve_relative_windows_path_with_invalid_drive (pyfakefs.tests.fake_pathlib_test.FakePathlibFileObjectPropertyTest.test_resolve_relative_windows_path_with_invalid_drive)", "test_resolve_relative_windows_path_with_valid_drive (pyfakefs.tests.fake_pathlib_test.FakePathlibFileObjectPropertyTest.test_resolve_relative_windows_path_with_valid_drive)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_filesystem.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_open.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_path.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_filesystem_test.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_os_test.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_pathlib_test.py: # Licensed under the Apache License, Version 2.0 (the \"License\"); / pyfakefs/tests/test_utils.py: # Copyright 2009 Google Inc. All Rights Reserved.。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit bc690296e5a5fae63834d3abaaafdc158f7fb21a とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: known-solution
+  - order: 14
+    set: initial
+    orderKey: "https://github.com/simplejson/simplejson@83181c299c543d94d3cc486686a689985b1fe1de"
+    orderKeySha256: 2da5389dcdd462fcba7025c3fbfddc3fefef07ec974c3020da2a0e78607b889a
+    repo: https://github.com/simplejson/simplejson
+    revision: 83181c299c543d94d3cc486686a689985b1fe1de
+    fixCommit: 1ae4376804cbd09e683eebedf714984360effbca
+    fixCommitDate: "2026-10-17T17:46:03Z"
+    fixSubject: "Fix encoder crashes when user code mutates containers, and C/Python mismatches (#395)"
+    fixSize: {files: 2, lines: 146}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["simplejson/tests/test_dump.py", "simplejson/tests/test_errors.py", "simplejson/tests/test_for_json.py", "simplejson/tests/test_speedups.py"]
+      command: "python3.12 -m unittest simplejson/tests/test_dump.py simplejson/tests/test_errors.py simplejson/tests/test_for_json.py simplejson/tests/test_speedups.py"
+      failingBeforeFix: ["test_add_note_after_asdict_names_the_dict (simplejson.tests.test_errors.TestErrors.test_add_note_after_asdict_names_the_dict)", "test_methods_raising_type_error_are_called_once (simplejson.tests.test_for_json.TestForJson.test_methods_raising_type_error_are_called_once)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT OR AFL-2.1
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT OR AFL-2.1）に従う"
+      provenance: "GitHub の公開 repo https://github.com/simplejson/simplejson の公開済み commit 1ae4376804cbd09e683eebedf714984360effbca とその親"
+      redistribution: "MIT または AFL-2.1 の選択: MIT を選べば著作権表示と許諾表示を残して再配布可"
+    taskNature: exploratory
+  - order: 15
+    set: initial
+    orderKey: "https://github.com/lark-parser/lark@7b6a730abc5234ac27f23b7c4dfca34522135b8d"
+    orderKeySha256: 2ee91bc8b1fb41377e6a4483a2c3fa859eafa688789b9c726c48ab683a7d2b1d
+    repo: https://github.com/lark-parser/lark
+    revision: 7b6a730abc5234ac27f23b7c4dfca34522135b8d
+    fixCommit: a7c71f32cc416343dd717df6c4056ad47d04a2f9
+    fixCommitDate: "2020-12-11T11:45:59-05:00"
+    fixSubject: "Fixed Lark.lex(), added dont_ignore option, added tests for it."
+    fixSize: {files: 3, lines: 39}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/__main__.py", "tests/test_lexer.py"]
+      command: "python3.12 -m unittest tests/test_lexer.py"
+      failingBeforeFix: ["test_basic (tests.test_lexer.TestLexer.test_basic)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit a7c71f32cc416343dd717df6c4056ad47d04a2f9 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 16
+    set: initial
+    orderKey: "https://github.com/pyparsing/pyparsing@b6dccc8f796f4879b8bdc62aac8fe94d73d90f60"
+    orderKeySha256: 2fdd3b192968c27cafff88a2c9bd8795078e02a9cfdc0ac31481536b5c20f6c6
+    repo: https://github.com/pyparsing/pyparsing
+    revision: b6dccc8f796f4879b8bdc62aac8fe94d73d90f60
+    fixCommit: 51560caba558d87349f4f497b82acef1de9ec8f8
+    fixCommitDate: "2026-08-12T13:31:05+08:00"
+    fixSubject: "Fix RecursionError for bounded repetition with large upper bound (issue #332) (#652)"
+    fixSize: {files: 2, lines: 41}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_unit.py"]
+      command: "python3.12 -m unittest tests/test_unit.py"
+      failingBeforeFix: ["testOneOrMoreMax (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testOneOrMoreMax)", "testOneOrMoreMaxNegative (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testOneOrMoreMaxNegative)", "testZeroOrMoreMax (tests.test_unit.Test09_WithLeftRecursionParsing.testZeroOrMoreMax)", "testZeroOrMoreMax (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testZeroOrMoreMax)", "testZeroOrMoreMaxNegative (tests.test_unit.Test09_WithLeftRecursionParsing.testZeroOrMoreMaxNegative)", "testZeroOrMoreMaxNegative (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testZeroOrMoreMaxNegative)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyparsing/pyparsing の公開済み commit 51560caba558d87349f4f497b82acef1de9ec8f8 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 17
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@579789dc3d368daf6aa0919ed5c0994187472a4b"
+    orderKeySha256: 2ff906b6c05ede67d7aa82dc233d61c737935bf4b9c815a408cb135e08e7f9bf
+    repo: https://github.com/tobymao/sqlglot
+    revision: 579789dc3d368daf6aa0919ed5c0994187472a4b
+    fixCommit: 5b949bd6b7f1db1474a87ac34d3a9246fa7de237
+    fixCommitDate: "2026-10-12T16:31:55+03:00"
+    fixSubject: "fix(oracle): parse CREATE TABLE physical attributes and storage clauses closes #8581"
+    fixSize: {files: 4, lines: 84}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_oracle.py"]
+      command: "python3.12 -m unittest tests/dialects/test_oracle.py"
+      failingBeforeFix: ["test_create_table_physical_properties (tests.dialects.test_oracle.TestOracle.test_create_table_physical_properties)", "test_create_table_storage (tests.dialects.test_oracle.TestOracle.test_create_table_storage)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 5b949bd6b7f1db1474a87ac34d3a9246fa7de237 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 18
+    set: initial
+    orderKey: "https://github.com/cpburnz/python-pathspec@49ca2f41cdd5911ca692df0912db99fc7d4bcfd2"
+    orderKeySha256: 33a0aa170feace48151e70024bf54986d4203e95c71edee0ec62bc8146afad6c
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 49ca2f41cdd5911ca692df0912db99fc7d4bcfd2
+    fixCommit: f77f12bc0a4c0a61e06daa7de8745f5ef8f68583
+    fixCommitDate: "2026-10-09T20:59:04-04:00"
+    fixSubject: "Clean up #156 and add fix to iter_tree_entries()"
+    fixSize: {files: 2, lines: 15}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_01_util.py"]
+      command: "python3.12 -m unittest tests/test_01_util.py"
+      failingBeforeFix: ["test_02_link_9_no_follow_loop_links_2_entries (tests.test_01_util.IterTreeTest.test_02_link_9_no_follow_loop_links_2_entries)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit f77f12bc0a4c0a61e06daa7de8745f5ef8f68583 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: replication
+  - order: 19
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@7ee6201688a8184a27177aec66569c4d84cdfba1"
+    orderKeySha256: 38185fb42fd1d6312b12260bab72e4bdae0f08bf6be95cbdebd820a403036a17
+    repo: https://github.com/tobymao/sqlglot
+    revision: 7ee6201688a8184a27177aec66569c4d84cdfba1
+    fixCommit: 1f8d15bbd68586704666533b21a5b35d710d68f0
+    fixCommitDate: "2026-10-12T15:38:31+03:00"
+    fixSubject: "fix: convert DuckDB ARRAY_SLICE endpoints to SLICE lengths (#8609)"
+    fixSize: {files: 4, lines: 38}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_duckdb.py", "tests/dialects/test_spark.py"]
+      command: "python3.12 -m unittest tests/dialects/test_duckdb.py tests/dialects/test_spark.py"
+      failingBeforeFix: ["test_array_slice_to_length (tests.dialects.test_duckdb.TestDuckDB.test_array_slice_to_length)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 1f8d15bbd68586704666533b21a5b35d710d68f0 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 20
+    set: initial
+    orderKey: "https://github.com/simplejson/simplejson@59dac4e82cd6766fc31a9389d573d732580eaab5"
+    orderKeySha256: 3a1d3c32f4dd34a76fcbd74d2fea7ec53a4c6ec22b96358128e0c3597051000b
+    repo: https://github.com/simplejson/simplejson
+    revision: 59dac4e82cd6766fc31a9389d573d732580eaab5
+    fixCommit: dbd0aa395f480ef249cff9dc9add54a3035fc9e2
+    fixCommitDate: "2023-04-04T13:37:21-07:00"
+    fixSubject: "SJ-PT-23-100: Fix inconsistencies in error messages between C and Python implementations"
+    fixSize: {files: 2, lines: 13}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["simplejson/tests/test_fail.py"]
+      command: "python3.12 -m unittest simplejson/tests/test_fail.py"
+      failingBeforeFix: ["test_truncated_input (simplejson.tests.test_fail.TestFail.test_truncated_input)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT OR AFL-2.1
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT OR AFL-2.1）に従う"
+      provenance: "GitHub の公開 repo https://github.com/simplejson/simplejson の公開済み commit dbd0aa395f480ef249cff9dc9add54a3035fc9e2 とその親"
+      redistribution: "MIT または AFL-2.1 の選択: MIT を選べば著作権表示と許諾表示を残して再配布可"
+    taskNature: replication
+  - order: 21
+    set: initial
+    orderKey: "https://github.com/python/typing_extensions@d34c389d3d1f8cce006dfd1200e203551c16418c"
+    orderKeySha256: 3a61855451ad341bf5367c8ae3f2593db1954e29bdc254ff7d56037fed638ed8
+    repo: https://github.com/python/typing_extensions
+    revision: d34c389d3d1f8cce006dfd1200e203551c16418c
+    fixCommit: 8170fc7744ca1c2ca4911ce22095c907f7f58f8b
+    fixCommitDate: "2024-03-12T22:36:21Z"
+    fixSubject: "Fix runtime behaviour of PEP 696 (#293)"
+    fixSize: {files: 1, lines: 187}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["src/test_typing_extensions.py"]
+      command: "python3.12 -m unittest src/test_typing_extensions.py"
+      failingBeforeFix: ["test_erroneous_generic (src.test_typing_extensions.TypeVarLikeDefaultsTests.test_erroneous_generic)", "test_need_more_params (src.test_typing_extensions.TypeVarLikeDefaultsTests.test_need_more_params)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: PSF-2.0
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（PSF-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/python/typing_extensions の公開済み commit 8170fc7744ca1c2ca4911ce22095c907f7f58f8b とその親"
+      redistribution: "PSF-2.0: ライセンス文と著作権表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 22
+    set: initial
+    orderKey: "https://github.com/cpburnz/python-pathspec@37e289515fbae7e92077a2438996046e79cae5bf"
+    orderKeySha256: 3b674081bd0c1a6a44157ddb0515c721cc2e0c0082a5830b3b9be3b416660ddd
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 37e289515fbae7e92077a2438996046e79cae5bf
+    fixCommit: 81368adefcf18b97457958cb50bb04785e63cc6e
+    fixCommitDate: "2023-12-10T17:25:57-05:00"
+    fixSubject: "Fix issue #84"
+    fixSize: {files: 3, lines: 7}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_01_util.py", "tests/test_03_pathspec.py"]
+      command: "python3.12 -m unittest tests/test_01_util.py tests/test_03_pathspec.py"
+      failingBeforeFix: ["test_01_match_file_3_unmatch (tests.test_03_pathspec.PathSpecTest.test_01_match_file_3_unmatch)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit 81368adefcf18b97457958cb50bb04785e63cc6e とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 23
+    set: initial
+    orderKey: "https://github.com/lark-parser/lark@3e7e66eb8e06cd77fcc1712aeffcb9b86db09290"
+    orderKeySha256: 3b8fb09883ba4bec785008fc021ee103356ee60977ca0428ec618563ef738e9a
+    repo: https://github.com/lark-parser/lark
+    revision: 3e7e66eb8e06cd77fcc1712aeffcb9b86db09290
+    fixCommit: 7f795e827193be5849ac7ec574b51670a972b555
+    fixCommitDate: "2021-02-05T15:08:48+01:00"
+    fixSubject: "Fix for #826 (Thanks @mikeiovine) + stubs + tests"
+    fixSize: {files: 2, lines: 19}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_trees.py"]
+      command: "python3.12 -m unittest tests/test_trees.py"
+      failingBeforeFix: ["test_transformer_variants (tests.test_trees.TestTrees.test_transformer_variants)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit 7f795e827193be5849ac7ec574b51670a972b555 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 24
+    set: initial
+    orderKey: "https://github.com/rthalley/dnspython@759421d3e9add44fb5aecf3bac2939ef6bc85b59"
+    orderKeySha256: 3c8ec06b7778672e871bd102dedc7f42e2018f5f302734f7df1e2e074f6c6897
+    repo: https://github.com/rthalley/dnspython
+    revision: 759421d3e9add44fb5aecf3bac2939ef6bc85b59
+    fixCommit: 8a10f7b9b28950a60ae452f019268ca9a4306f5a
+    fixCommitDate: "2022-07-15T09:01:17-07:00"
+    fixSubject: "Fix dns.rdatatype special cases."
+    fixSize: {files: 2, lines: 52}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_rdata.py"]
+      command: "python3.12 -m unittest tests/test_rdata.py"
+      failingBeforeFix: ["test_module_registration (tests.test_rdata.RdataTestCase.test_module_registration)", "test_nsap_ptr_type (tests.test_rdata.UtilTestCase.test_nsap_ptr_type)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: ISC
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: dns/enum.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdatatype.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_rdata.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license。別ライセンスの表記なしとして repo のライセンス（ISC）に従う"
+      provenance: "GitHub の公開 repo https://github.com/rthalley/dnspython の公開済み commit 8a10f7b9b28950a60ae452f019268ca9a4306f5a とその親"
+      redistribution: "ISC: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 25
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@036c61079d71b9bba614085ecb7b163f4e81cc0d"
+    orderKeySha256: 3cff1bdd274e90d83076edb7f7cfc6983e0f7b1c9f23ab57d295ffa9621f1181
+    repo: https://github.com/tobymao/sqlglot
+    revision: 036c61079d71b9bba614085ecb7b163f4e81cc0d
+    fixCommit: 08f2405cfddc874f4366cbcca9e25233fcb11281
+    fixCommitDate: "2026-10-12T15:49:29+03:00"
+    fixSubject: "fix(oracle): expand alternative quoting and support national literals (#8606)"
+    fixSize: {files: 5, lines: 28}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_oracle.py", "tests/test_anonymize.py", "tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/dialects/test_oracle.py tests/test_anonymize.py tests/test_parser.py"
+      failingBeforeFix: ["test_quotes_preserved (tests.test_anonymize.TestAnonymize.test_quotes_preserved)", "test_text_match_excludes_delimited_tokens (tests.test_parser.TestParser.test_text_match_excludes_delimited_tokens)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 08f2405cfddc874f4366cbcca9e25233fcb11281 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 26
+    set: initial
+    orderKey: "https://github.com/pyasn1/pyasn1@ca9ec2e4182a020764eb29f1b80af73678a20e54"
+    orderKeySha256: 3e038c022fedfad81ed36205bb9997635a2c3a0c07c443c3fece2b8403e1f1e0
+    repo: https://github.com/pyasn1/pyasn1
+    revision: ca9ec2e4182a020764eb29f1b80af73678a20e54
+    fixCommit: 24b16971d3455b4f51a6fbd2bad6462c9302000e
+    fixCommitDate: "2026-07-05T11:11:51-07:00"
+    fixSubject: "Fix recursive ASN.1 schema decoding (#114)"
+    fixSize: {files: 3, lines: 57}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/codec/ber/test_decoder.py", "tests/codec/native/test_decoder.py", "tests/type/test_univ.py"]
+      command: "python3.12 -m unittest tests/codec/ber/test_decoder.py tests/codec/native/test_decoder.py tests/type/test_univ.py"
+      failingBeforeFix: ["testExplicitEmptyComponentTypeOverridePreserved (tests.type.test_univ.SequenceWithoutSchema.testExplicitEmptyComponentTypeOverridePreserved)", "testLateBoundComponentTypeOnExistingInstance (tests.type.test_univ.Choice.testLateBoundComponentTypeOnExistingInstance)", "testLateBoundComponentTypeOnExistingInstance (tests.type.test_univ.SequenceWithoutSchema.testLateBoundComponentTypeOnExistingInstance)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-2-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyasn1/codec/ber/decoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / pyasn1/codec/native/decoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / pyasn1/type/base.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/ber/test_decoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/native/test_decoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/type/test_univ.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html。別ライセンスの表記なしとして repo のライセンス（BSD-2-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyasn1/pyasn1 の公開済み commit 24b16971d3455b4f51a6fbd2bad6462c9302000e とその親"
+      redistribution: "BSD-2-Clause: 著作権表示・条件・免責を残せば再配布可"
+    taskNature: exploratory
+  - order: 27
+    set: initial
+    orderKey: "https://github.com/eliben/pycparser@74588ec8ce0116ff310cfa77218cdc31a2ea32ef"
+    orderKeySha256: 456735dcdd8a2fb5666b5906fa5afde40fdf30251c28fe7d3d33a8b64f1beea1
+    repo: https://github.com/eliben/pycparser
+    revision: 74588ec8ce0116ff310cfa77218cdc31a2ea32ef
+    fixCommit: dfbe88b193e103165dd009b0c0cdf348bd7b35de
+    fixCommitDate: "2026-10-08T06:21:26-07:00"
+    fixSubject: "Fix unicode escapes"
+    fixSize: {files: 1, lines: 78}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/c_files/c11.c", "tests/test_c_generator.py", "tests/test_c_lexer.py", "tests/test_c_parser.py"]
+      command: "python3.12 -m unittest tests/test_c_generator.py tests/test_c_lexer.py tests/test_c_parser.py"
+      failingBeforeFix: ["test_unicode_multicharacter_constants (tests.test_c_lexer.TestCLexerNoErrors.test_unicode_multicharacter_constants)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/c_lexer.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit dfbe88b193e103165dd009b0c0cdf348bd7b35de とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: known-solution
+  - order: 28
+    set: initial
+    orderKey: "https://github.com/cpburnz/python-pathspec@811bde1c624e85accee683b9cbf07c01538afacb"
+    orderKeySha256: 4583017df43c12f458c1d3881dec7c6247d34edc0ac69d01c3025fbfe0ed4a3a
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 811bde1c624e85accee683b9cbf07c01538afacb
+    fixCommit: 3ceb237ff97ffad067b35c98a512cf975232f0b1
+    fixCommitDate: "2026-09-26T15:05:59-04:00"
+    fixSubject: "Add errors arg and fix #146"
+    fixSize: {files: 4, lines: 342}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_03_gitignore_basic.py", "tests/test_04_gitignore_spec.py"]
+      command: "python3.12 -m unittest tests/test_03_gitignore_basic.py tests/test_04_gitignore_spec.py"
+      failingBeforeFix: ["test_09_single_backslash_fail (tests.test_04_gitignore_spec.GitIgnoreSpecPatternTest.test_09_single_backslash_fail)", "test_09_single_exclamation_mark_fail (tests.test_03_gitignore_basic.GitIgnoreBasicPatternTest.test_09_single_exclamation_mark_fail)", "test_09_single_exclamation_mark_fail (tests.test_04_gitignore_spec.GitIgnoreSpecPatternTest.test_09_single_exclamation_mark_fail)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit 3ceb237ff97ffad067b35c98a512cf975232f0b1 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 29
+    set: initial
+    orderKey: "https://github.com/pyparsing/pyparsing@057a2e6d1b8391dc85abe725d4d12c0987a9ec10"
+    orderKeySha256: 55a042d3f6c2af3a782d6c2086cce16054d5ea8f16c7ca65fc139b15e376541d
+    repo: https://github.com/pyparsing/pyparsing
+    revision: 057a2e6d1b8391dc85abe725d4d12c0987a9ec10
+    fixCommit: 0a2d906a3e6b9a30b6a0701588caec3937ff271f
+    fixCommitDate: "2026-06-19T22:10:56+01:00"
+    fixSubject: "Fix Located capturing leading whitespace in its location (#621)"
+    fixSize: {files: 2, lines: 17}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_unit.py"]
+      command: "python3.12 -m unittest tests/test_unit.py"
+      failingBeforeFix: ["testLocatedExprLeadingWhitespace (tests.test_unit.Test04_WithPackrat.testLocatedExprLeadingWhitespace)", "testLocatedExprLeadingWhitespace (tests.test_unit.Test06_WithBoundedPackrat.testLocatedExprLeadingWhitespace)", "testLocatedExprLeadingWhitespace (tests.test_unit.Test08_WithUnboundedPackrat.testLocatedExprLeadingWhitespace)", "testLocatedExprLeadingWhitespace (tests.test_unit.Test09_WithLeftRecursionParsing.testLocatedExprLeadingWhitespace)", "testLocatedExprLeadingWhitespace (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testLocatedExprLeadingWhitespace)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyparsing/pyparsing の公開済み commit 0a2d906a3e6b9a30b6a0701588caec3937ff271f とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 30
+    set: initial
+    orderKey: "https://github.com/PyCQA/pyflakes@d539458de5d7d4ee2c154cd6077db56de7935c2c"
+    orderKeySha256: 57e0e84c33ee6b6766b91d76346e6768ea263cfccac67ba73d7ead854793a2d4
+    repo: https://github.com/PyCQA/pyflakes
+    revision: d539458de5d7d4ee2c154cd6077db56de7935c2c
+    fixCommit: 23082bce15a0b3448d07b7b30169bde2c0c6c326
+    fixCommitDate: "2026-09-02T15:46:19-04:00"
+    fixSubject: "fix handling of cast / NamedTuple / TypeVar / TypedDict (#868)"
+    fixSize: {files: 1, lines: 113}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyflakes/test/test_type_annotations.py"]
+      command: "python3.12 -m unittest pyflakes/test/test_type_annotations.py"
+      failingBeforeFix: ["test_cast_named_argument (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_cast_named_argument)", "test_cast_only_one_undefined (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_cast_only_one_undefined)", "test_quoted_TypeVar_default (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_quoted_TypeVar_default)", "test_typevar_undefined_arg0 (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_typevar_undefined_arg0)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/PyCQA/pyflakes の公開済み commit 23082bce15a0b3448d07b7b30169bde2c0c6c326 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 31
+    set: initial
+    orderKey: "https://github.com/rthalley/dnspython@1f1888d35b820f67f3bb9262427e8b64f44d62f8"
+    orderKeySha256: 5890118748787e8ec0d535d8b3e1ee8da04c6f7ea62d8a84630dfd816fd6597a
+    repo: https://github.com/rthalley/dnspython
+    revision: 1f1888d35b820f67f3bb9262427e8b64f44d62f8
+    fixCommit: 78362aa6b9bce8f0942577c72773cb36c5050b92
+    fixCommitDate: "2020-09-03T07:46:53-07:00"
+    fixSubject: "fix rrset match signature problems"
+    fixSize: {files: 2, lines: 32}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_rrset.py"]
+      command: "python3.12 -m unittest tests/test_rrset.py"
+      failingBeforeFix: ["testFullMatch1 (tests.test_rrset.RRsetTestCase.testFullMatch1)", "testFullMatch2 (tests.test_rrset.RRsetTestCase.testFullMatch2)", "testMatchCompatibilityWithRdatasetMatch (tests.test_rrset.RRsetTestCase.testMatchCompatibilityWithRdatasetMatch)", "testNoFullMatch1 (tests.test_rrset.RRsetTestCase.testNoFullMatch1)", "testNoFullMatch2 (tests.test_rrset.RRsetTestCase.testNoFullMatch2)", "testNoFullMatch3 (tests.test_rrset.RRsetTestCase.testNoFullMatch3)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: ISC
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: dns/message.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rrset.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_rrset.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license。別ライセンスの表記なしとして repo のライセンス（ISC）に従う"
+      provenance: "GitHub の公開 repo https://github.com/rthalley/dnspython の公開済み commit 78362aa6b9bce8f0942577c72773cb36c5050b92 とその親"
+      redistribution: "ISC: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 32
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@b1fd4e9edf05ee6211656c235a62040e0f055bf0"
+    orderKeySha256: 5fc870a6edc4bd96c8b7b939b331c79b221339ca9562b0235d3667f839484c57
+    repo: https://github.com/tobymao/sqlglot
+    revision: b1fd4e9edf05ee6211656c235a62040e0f055bf0
+    fixCommit: fc1472a0d54c4e8d0d6700b0a4dbe66f0f32707b
+    fixCommitDate: "2026-10-20T05:03:02-07:00"
+    fixSubject: "fix(starrocks): parse map{...} literals as maps [CLAUDE] (#8682)"
+    fixSize: {files: 3, lines: 43}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_duckdb.py", "tests/dialects/test_starrocks.py"]
+      command: "python3.12 -m unittest tests/dialects/test_duckdb.py tests/dialects/test_starrocks.py"
+      failingBeforeFix: ["test_map_literal (tests.dialects.test_starrocks.TestStarrocks.test_map_literal)", "test_map_struct (tests.dialects.test_duckdb.TestDuckDB.test_map_struct)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit fc1472a0d54c4e8d0d6700b0a4dbe66f0f32707b とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 33
+    set: initial
+    orderKey: "https://github.com/PyCQA/pyflakes@43541ee1dd394ec4691625e7295f701b3b073dca"
+    orderKeySha256: 64654d3f7d8a99c8cc752accd4f93388339501963b0db23595633160ee7a4aae
+    repo: https://github.com/PyCQA/pyflakes
+    revision: 43541ee1dd394ec4691625e7295f701b3b073dca
+    fixCommit: e3f26593eac942435c3e8e114506172678d58ce1
+    fixCommitDate: "2021-03-14T17:02:46+01:00"
+    fixSubject: "Fix: Named types incorrectly raising UndefinedName inside annotated subscript (#609)"
+    fixSize: {files: 1, lines: 75}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyflakes/test/test_type_annotations.py"]
+      command: "python3.12 -m unittest pyflakes/test/test_type_annotations.py"
+      failingBeforeFix: ["test_namedtypes_classes (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_namedtypes_classes)", "test_typednames_correct_forward_ref (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_typednames_correct_forward_ref)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/PyCQA/pyflakes の公開済み commit e3f26593eac942435c3e8e114506172678d58ce1 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 34
+    set: initial
+    orderKey: "https://github.com/cpburnz/python-pathspec@ef2e68cb56392aae4507ca176eb7e91a8590df6c"
+    orderKeySha256: 64779afb1b46ff30305c5137d22998c4ad730bc325aa3d2fe8e40abf5aa7a444
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: ef2e68cb56392aae4507ca176eb7e91a8590df6c
+    fixCommit: d2a90bff977907f926f85745149903190c6a2deb
+    fixCommitDate: "2022-08-12T22:05:10-04:00"
+    fixSubject: "Fix issues 51 and 55"
+    fixSize: {files: 1, lines: 89}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_gitwildmatch.py"]
+      command: "python3.12 -m unittest tests/test_gitwildmatch.py"
+      failingBeforeFix: ["test_10_escape_asterisk_start (tests.test_gitwildmatch.GitWildMatchTest.test_10_escape_asterisk_start)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit d2a90bff977907f926f85745149903190c6a2deb とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 35
+    set: initial
+    orderKey: "https://github.com/eliben/pycparser@dbcd5fddfb92e639a7c9e3b1b4eeebe503ccd2cc"
+    orderKeySha256: 649e10781fa35263348bd9c59f5332551df1388dee9ff035fd98d9eec6f0734b
+    repo: https://github.com/eliben/pycparser
+    revision: dbcd5fddfb92e639a7c9e3b1b4eeebe503ccd2cc
+    fixCommit: 1d31981b1f91008a7e7ee7b7143f4654d0847f51
+    fixCommitDate: "2026-10-08T06:54:28-07:00"
+    fixSubject: "Fix concatenation escapes"
+    fixSize: {files: 1, lines: 66}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_c_generator.py", "tests/test_c_parser.py"]
+      command: "python3.12 -m unittest tests/test_c_generator.py tests/test_c_parser.py"
+      failingBeforeFix: ["test_unified_string_literals_trigraph_boundaries (tests.test_c_parser.TestCParser_fundamentals.test_unified_string_literals_trigraph_boundaries)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/c_parser.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit 1d31981b1f91008a7e7ee7b7143f4654d0847f51 とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: known-solution
+  - order: 36
+    set: initial
+    orderKey: "https://github.com/rthalley/dnspython@380846b2d6b550963d3e117f15abf8da26d18505"
+    orderKeySha256: 6cabe143a6972eb0cc5ae91fa358952c1cb0ffb2eb094f781826aefa360273a7
+    repo: https://github.com/rthalley/dnspython
+    revision: 380846b2d6b550963d3e117f15abf8da26d18505
+    fixCommit: 51a96a2e2c80aaf81229ce01e3f74a15d67f7ef9
+    fixCommitDate: "2021-10-10T16:53:26-07:00"
+    fixSubject: "Fix #698 and #702, problems caused by _cmp() giving the wrong result in certain comparisons of rdata with relative and absolute names."
+    fixSize: {files: 3, lines: 46}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_rdata.py", "tests/test_zonedigest.py"]
+      command: "python3.12 -m unittest tests/test_rdata.py tests/test_zonedigest.py"
+      failingBeforeFix: ["test_relative_vs_absolute_compare (tests.test_rdata.RdataTestCase.test_relative_vs_absolute_compare)", "test_relative_vs_relative_compare (tests.test_rdata.RdataTestCase.test_relative_vs_relative_compare)", "test_relative_zone_sorting (tests.test_zonedigest.ZoneDigestTestCase.test_relative_zone_sorting)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: ISC
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: dns/message.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdata.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/zone.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_rdata.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_zonedigest.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license。別ライセンスの表記なしとして repo のライセンス（ISC）に従う"
+      provenance: "GitHub の公開 repo https://github.com/rthalley/dnspython の公開済み commit 51a96a2e2c80aaf81229ce01e3f74a15d67f7ef9 とその親"
+      redistribution: "ISC: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 37
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@fb9b151a7fa22259c58140450e1075d7a0ff0f68"
+    orderKeySha256: 7071989be68f31342e66c9e0f3e311e9d7a5bd8ca2ca9b8b6238cd82fd5c5d14
+    repo: https://github.com/tobymao/sqlglot
+    revision: fb9b151a7fa22259c58140450e1075d7a0ff0f68
+    fixCommit: e38929edd78a20f74fc19fee819e14ac23add687
+    fixCommitDate: "2026-10-12T17:38:31+05:30"
+    fixSubject: "fix(teradata): default window aggregate frame to the whole partition [CLAUDE] (#8596)"
+    fixSize: {files: 2, lines: 63}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_teradata.py"]
+      command: "python3.12 -m unittest tests/dialects/test_teradata.py"
+      failingBeforeFix: ["test_window_aggregate_default_frame (tests.dialects.test_teradata.TestTeradata.test_window_aggregate_default_frame)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit e38929edd78a20f74fc19fee819e14ac23add687 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 38
+    set: initial
+    orderKey: "https://github.com/more-itertools/more-itertools@cb75bb9c55f7ed3e77ce599097e1ba8da411746d"
+    orderKeySha256: 74c16b85adc0d7671e42ba62afce93729754fd15e92853b059a6cb5b9e793553
+    repo: https://github.com/more-itertools/more-itertools
+    revision: cb75bb9c55f7ed3e77ce599097e1ba8da411746d
+    fixCommit: d992be0de9383ddcaae3a24866a2d96b52132b07
+    fixCommitDate: "2026-07-12T15:05:04-05:00"
+    fixSubject: "Fix stability in running_min and running_max"
+    fixSize: {files: 1, lines: 50}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_more.py"]
+      command: "python3.12 -m unittest tests/test_more.py"
+      failingBeforeFix: ["test_stability (tests.test_more.TestRunningMax.test_stability)", "test_stability (tests.test_more.TestRunningMin.test_stability)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/more-itertools/more-itertools の公開済み commit d992be0de9383ddcaae3a24866a2d96b52132b07 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 39
+    set: initial
+    orderKey: "https://github.com/eliben/pycparser@17da57c031afeba6a3cd3a52f067a1d476b59641"
+    orderKeySha256: 76f48204e1217b2e0c0059d68bc4ca04f01c1b010910a1684bb61261747f9ec8
+    repo: https://github.com/eliben/pycparser
+    revision: 17da57c031afeba6a3cd3a52f067a1d476b59641
+    fixCommit: 8bc38aa15f76cf6165afb139e7f5711fdae4aa88
+    fixCommitDate: "2026-10-08T06:42:50-07:00"
+    fixSubject: "Fix dropped specifiers in lists"
+    fixSize: {files: 1, lines: 34}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_c_generator.py"]
+      command: "python3.12 -m unittest tests/test_c_generator.py"
+      failingBeforeFix: ["test_for_declaration_lists (tests.test_c_generator.TestCtoC.test_for_declaration_lists)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/c_generator.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit 8bc38aa15f76cf6165afb139e7f5711fdae4aa88 とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: exploratory
+  - order: 40
+    set: initial
+    orderKey: "https://github.com/bottlepy/bottle@90d749bef49120396ecc347ea67df98881157030"
+    orderKeySha256: 78e006410b149acde614ceed2c01cb4f5edde284bc9969c3b00f7604e84b629e
+    repo: https://github.com/bottlepy/bottle
+    revision: 90d749bef49120396ecc347ea67df98881157030
+    fixCommit: ee61a68e8409ca3d57ae66f49f5f18a975a7d687
+    fixCommitDate: "2021-10-14T11:51:21+02:00"
+    fixSubject: "Fix #1350: Serve compressed files as is in static_file()"
+    fixSize: {files: 1, lines: 31}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["test/test_sendfile.py"]
+      command: "python3.12 -m unittest test/test_sendfile.py"
+      failingBeforeFix: ["test_mime_gzip (test.test_sendfile.TestSendFile.test_mime_gzip)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: bottle.py: License: MIT (see LICENSE for details)。別ライセンスの表記なしとして repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/bottlepy/bottle の公開済み commit ee61a68e8409ca3d57ae66f49f5f18a975a7d687 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 41
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@b679d0cf8cad5bab7bb5004d9b8f8ce51d542b42"
+    orderKeySha256: 791577d8a9da3c94590c0d4afcce63f5cad6f73924bda475febf062eaa4cef8b
+    repo: https://github.com/tobymao/sqlglot
+    revision: b679d0cf8cad5bab7bb5004d9b8f8ce51d542b42
+    fixCommit: ba643d33285475774c3253551e1ed18ac89e6c22
+    fixCommitDate: "2026-10-13T23:00:21+08:00"
+    fixSubject: "fix(clickhouse): transpile RegexpCount to countMatches [CLAUDE] (#8616)"
+    fixSize: {files: 2, lines: 25}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_clickhouse.py"]
+      command: "python3.12 -m unittest tests/dialects/test_clickhouse.py"
+      failingBeforeFix: ["test_clickhouse (tests.dialects.test_clickhouse.TestClickhouse.test_clickhouse)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit ba643d33285475774c3253551e1ed18ac89e6c22 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: replication
+  - order: 42
+    set: initial
+    orderKey: "https://github.com/pyparsing/pyparsing@6f2fbcbd359fcf0e66038fa7f57470a30d597c59"
+    orderKeySha256: 7af77cde8159260aad7816ecec6e2c037d42f9e368e5ea9db62aee7368655da9
+    repo: https://github.com/pyparsing/pyparsing
+    revision: 6f2fbcbd359fcf0e66038fa7f57470a30d597c59
+    fixCommit: a6ae98ba59b993d0b6d0475e7cb3b0a33c853f22
+    fixCommitDate: "2026-08-09T16:51:44-05:00"
+    fixSubject: "Fix Dict returning an empty nested ParseResults.as_dict() as [] instead of {}; remove vestigial ParseResults._modal attribute; fix incidental bug when Dict tries to create a dict with a ParseResults value for a key (not hashable); incorporated partial solution submitted in PR #635"
+    fixSize: {files: 4, lines: 52}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_unit.py"]
+      command: "python3.12 -m unittest tests/test_unit.py"
+      failingBeforeFix: ["testEmptyDictReturnsDictWhenCallingAsDict (tests.test_unit.Test06_WithBoundedPackrat.testEmptyDictReturnsDictWhenCallingAsDict)", "testEmptyDictReturnsDictWhenCallingAsDict (tests.test_unit.Test08_WithUnboundedPackrat.testEmptyDictReturnsDictWhenCallingAsDict)", "testEmptyDictReturnsDictWhenCallingAsDict (tests.test_unit.Test09_WithLeftRecursionParsing.testEmptyDictReturnsDictWhenCallingAsDict)", "testEmptyDictReturnsDictWhenCallingAsDict (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testEmptyDictReturnsDictWhenCallingAsDict)", "testParseResultsPickle (tests.test_unit.Test04_WithPackrat.testParseResultsPickle)", "testParseResultsPickle (tests.test_unit.Test06_WithBoundedPackrat.testParseResultsPickle)", "testParseResultsPickle (tests.test_unit.Test08_WithUnboundedPackrat.testParseResultsPickle)", "testParseResultsPickle (tests.test_unit.Test09_WithLeftRecursionParsing.testParseResultsPickle)", "testParseResultsPickle (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testParseResultsPickle)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyparsing/__init__.py: # see LICENSE file for terms and conditions for using this software.。別ライセンスの表記なしとして repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyparsing/pyparsing の公開済み commit a6ae98ba59b993d0b6d0475e7cb3b0a33c853f22 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 43
+    set: initial
+    orderKey: "https://github.com/tobymao/sqlglot@7eff3a2fee87193523a35676b160f15b375ea8e7"
+    orderKeySha256: 84e5ca2e274b965e92d55bf603f7946cc43cb6451dc74a8890c539869a1071e0
+    repo: https://github.com/tobymao/sqlglot
+    revision: 7eff3a2fee87193523a35676b160f15b375ea8e7
+    fixCommit: 092e29a82fdb153c6c1925627b0b4a7955398c9b
+    fixCommitDate: "2026-10-21T21:11:04+03:00"
+    fixSubject: "fix(databricks): preserve timestamp precision during SQL generation"
+    fixSize: {files: 2, lines: 6}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_databricks.py"]
+      command: "python3.12 -m unittest tests/dialects/test_databricks.py"
+      failingBeforeFix: ["test_timestamp_precision (tests.dialects.test_databricks.TestDatabricks.test_timestamp_precision)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 092e29a82fdb153c6c1925627b0b4a7955398c9b とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 44
+    set: initial
+    orderKey: "https://github.com/simplejson/simplejson@fa8feea8837e9859b207ae1883051b97510ca3e6"
+    orderKeySha256: 8b04a2c2dc7e3081e2ec49512f692f1a52f08ea519d079e2bbb1d3f62d059655
+    repo: https://github.com/simplejson/simplejson
+    revision: fa8feea8837e9859b207ae1883051b97510ca3e6
+    fixCommit: b0fe1ef4cb7db57f14dfb8416a468bfb77bbd3ec
+    fixCommitDate: "2026-08-06T21:02:53+05:30"
+    fixSubject: "Handle non-finite Decimals like floats in the encoder (fixes #149) (#381)"
+    fixSize: {files: 2, lines: 145}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["simplejson/tests/test_decimal.py"]
+      command: "python3.12 -m unittest simplejson/tests/test_decimal.py"
+      failingBeforeFix: ["test_decimal_nan_allow (simplejson.tests.test_decimal.TestDecimal.test_decimal_nan_allow)", "test_decimal_nan_as_key (simplejson.tests.test_decimal.TestDecimal.test_decimal_nan_as_key)", "test_decimal_nan_as_value (simplejson.tests.test_decimal.TestDecimal.test_decimal_nan_as_value)", "test_decimal_nan_deny (simplejson.tests.test_decimal.TestDecimal.test_decimal_nan_deny)", "test_decimal_nan_ignore (simplejson.tests.test_decimal.TestDecimal.test_decimal_nan_ignore)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT OR AFL-2.1
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT OR AFL-2.1）に従う"
+      provenance: "GitHub の公開 repo https://github.com/simplejson/simplejson の公開済み commit b0fe1ef4cb7db57f14dfb8416a468bfb77bbd3ec とその親"
+      redistribution: "MIT または AFL-2.1 の選択: MIT を選べば著作権表示と許諾表示を残して再配布可"
+    taskNature: replication
+  - order: 45
+    set: reserve
+    orderKey: "https://github.com/pyparsing/pyparsing@ecb1b14dbf1ad1b699c081ed63b9746a244ee5fa"
+    orderKeySha256: 8bc77cd5feb0a23c46f53b6a5ad548c4edbffd8ed46e55117b7bbccac6cfd7e9
+    repo: https://github.com/pyparsing/pyparsing
+    revision: ecb1b14dbf1ad1b699c081ed63b9746a244ee5fa
+    fixCommit: e378aaf45c5fad96d69daac25f53ff7469cb2878
+    fixCommitDate: "2026-06-24T11:59:36+02:00"
+    fixSubject: "fix: as_datetime passes ParseResults instead of input string to ParseException"
+    fixSize: {files: 1, lines: 46}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_unit.py"]
+      command: "python3.12 -m unittest tests/test_unit.py"
+      failingBeforeFix: ["testCommonExpressions (tests.test_unit.Test02_WithoutPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test04_WithPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test06_WithBoundedPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test08_WithUnboundedPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test09_WithLeftRecursionParsing.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testCommonExpressions)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyparsing/pyparsing の公開済み commit e378aaf45c5fad96d69daac25f53ff7469cb2878 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 46
+    set: reserve
+    orderKey: "https://github.com/bottlepy/bottle@011016ce30f92e450bd111b0c9844e93ebad5243"
+    orderKeySha256: 8eff088392b21f370b7aaaf423a904be73ebe22576f6bf8e0014f4816e3386eb
+    repo: https://github.com/bottlepy/bottle
+    revision: 011016ce30f92e450bd111b0c9844e93ebad5243
+    fixCommit: e3d8e71107a05f96dd57f8a848cef2d7cfc6e6fd
+    fixCommitDate: "2025-06-15T11:52:53+02:00"
+    fixSubject: "fix: Route.__repr__ and Route.get_undecorated_callback exceptions."
+    fixSize: {files: 1, lines: 32}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["test/test_route.py"]
+      command: "python3.12 -m unittest test/test_route.py"
+      failingBeforeFix: ["test_unwrap_closure (test.test_route.TestRoute.test_unwrap_closure)", "test_unwrap_closure_callable (test.test_route.TestRoute.test_unwrap_closure_callable)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: bottle.py: License: MIT (see LICENSE for details)。別ライセンスの表記なしとして repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/bottlepy/bottle の公開済み commit e3d8e71107a05f96dd57f8a848cef2d7cfc6e6fd とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 47
+    set: reserve
+    orderKey: "https://github.com/pyasn1/pyasn1@76dfe86f35b99153c036a9e5b9da7f41959570c4"
+    orderKeySha256: 8f3dbe3ecb55273b733c4016e929098e0e9e5168d862a1899926c090d64ad243
+    repo: https://github.com/pyasn1/pyasn1
+    revision: 76dfe86f35b99153c036a9e5b9da7f41959570c4
+    fixCommit: ca9ec2e4182a020764eb29f1b80af73678a20e54
+    fixCommitDate: "2026-07-02T23:25:30-07:00"
+    fixSubject: "Fix encoder mutation of defaulted components (#112)"
+    fixSize: {files: 3, lines: 54}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/codec/__main__.py", "tests/codec/cer/test_encoder.py", "tests/codec/der/test_encoder.py", "tests/codec/native/test_encoder.py", "tests/codec/test_encoder_no_mutation.py"]
+      command: "python3.12 -m unittest tests/codec/cer/test_encoder.py tests/codec/der/test_encoder.py tests/codec/native/test_encoder.py tests/codec/test_encoder_no_mutation.py"
+      failingBeforeFix: ["testDefaultedComponentNotInstantiated (tests.codec.cer.test_encoder.DefaultedSetEncoderNoMutationTestCase.testDefaultedComponentNotInstantiated)", "testDefaultedComponentNotInstantiated (tests.codec.der.test_encoder.DefaultedSequenceEncoderNoMutationTestCase.testDefaultedComponentNotInstantiated)", "testDefaultedComponentNotInstantiated (tests.codec.native.test_encoder.SequenceEncoderTestCase.testDefaultedComponentNotInstantiated)", "testOptionalAndDefaultedComponentsAreNotMutated (tests.codec.test_encoder_no_mutation.DefaultedComponentsNoMutationTestCase.testOptionalAndDefaultedComponentsAreNotMutated)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-2-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyasn1/codec/ber/encoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / pyasn1/codec/cer/encoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / pyasn1/codec/native/encoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/__main__.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/cer/test_encoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/der/test_encoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/native/test_encoder.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html / tests/codec/test_encoder_no_mutation.py: # License: https://pyasn1.readthedocs.io/en/latest/license.html。別ライセンスの表記なしとして repo のライセンス（BSD-2-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyasn1/pyasn1 の公開済み commit ca9ec2e4182a020764eb29f1b80af73678a20e54 とその親"
+      redistribution: "BSD-2-Clause: 著作権表示・条件・免責を残せば再配布可"
+    taskNature: exploratory
+  - order: 48
+    set: reserve
+    orderKey: "https://github.com/cpburnz/python-pathspec@ac29e19b2dcc92fbd2e34562781cf9cd52378171"
+    orderKeySha256: 91d3c8608e06be6545b69862f96cfb0e2a641517623e3dddda3d849319620e7f
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: ac29e19b2dcc92fbd2e34562781cf9cd52378171
+    fixCommit: f70a1d2fcfb24bc1e4d9a9dbadae467645afb23e
+    fixCommitDate: "2026-10-18T12:59:11+08:00"
+    fixSubject: "Fix ancestor exclusion checks after gitignore negations"
+    fixSize: {files: 3, lines: 81}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_06_gitignore.py", "tests/test_09_gitignore_ancestor_negation.py"]
+      command: "python3.12 -m unittest tests/test_06_gitignore.py tests/test_09_gitignore_ancestor_negation.py"
+      failingBeforeFix: ["test_excluded_ancestor (tests.test_09_gitignore_ancestor_negation.AncestorNegationTest.test_excluded_ancestor)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit f70a1d2fcfb24bc1e4d9a9dbadae467645afb23e とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 49
+    set: reserve
+    orderKey: "https://github.com/cpburnz/python-pathspec@0f5e50bdd90c0267474ad3d815c7b7bbf5de99f6"
+    orderKeySha256: 93120bf5c455f7b8627e8ee82840539581eb2254bf260430fb870031287b84e5
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 0f5e50bdd90c0267474ad3d815c7b7bbf5de99f6
+    fixCommit: 4608cee86e989b0388dec41ddf02603094aaf593
+    fixCommitDate: "2022-09-02T08:53:08-04:00"
+    fixSubject: "Fix issue 62"
+    fixSize: {files: 2, lines: 19}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_gitignore.py", "tests/test_gitwildmatch.py", "tests/test_pathspec.py"]
+      command: "python3.12 -m unittest tests/test_gitignore.py tests/test_gitwildmatch.py tests/test_pathspec.py"
+      failingBeforeFix: ["test_04_issue_62 (tests.test_gitignore.GitIgnoreSpecTest.test_04_issue_62)", "test_07_issue_62 (tests.test_pathspec.PathSpecTest.test_07_issue_62)", "test_12_asterisk_1_regex (tests.test_gitwildmatch.GitWildMatchTest.test_12_asterisk_1_regex)", "test_12_asterisk_3_child (tests.test_gitwildmatch.GitWildMatchTest.test_12_asterisk_3_child)", "test_12_asterisk_4_descendant (tests.test_gitwildmatch.GitWildMatchTest.test_12_asterisk_4_descendant)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit 4608cee86e989b0388dec41ddf02603094aaf593 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 50
+    set: reserve
+    orderKey: "https://github.com/rthalley/dnspython@41b991ef150c51b9fc8977467f2766122b26c109"
+    orderKeySha256: 93955c5791fb358b5942160cc625e3dc50f99fa89a8ba4cb263df4a87afe07d0
+    repo: https://github.com/rthalley/dnspython
+    revision: 41b991ef150c51b9fc8977467f2766122b26c109
+    fixCommit: 2ab3d1628c9ae0545e225522b3b445c3478dc6ad
+    fixCommitDate: "2024-02-18T10:27:43-08:00"
+    fixSubject: "The Tudoor fix should not eat valid Truncated exceptions [#1053] (#1054)"
+    fixSize: {files: 2, lines: 24}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_async.py", "tests/test_query.py"]
+      command: "python3.12 -m unittest tests/test_async.py tests/test_query.py"
+      failingBeforeFix: ["test_good_wire_with_truncation_flag_and_truncation_raise (tests.test_query.IgnoreErrors.test_good_wire_with_truncation_flag_and_truncation_raise)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: ISC
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: dns/asyncquery.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/query.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_async.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_query.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license。別ライセンスの表記なしとして repo のライセンス（ISC）に従う"
+      provenance: "GitHub の公開 repo https://github.com/rthalley/dnspython の公開済み commit 2ab3d1628c9ae0545e225522b3b445c3478dc6ad とその親"
+      redistribution: "ISC: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 51
+    set: reserve
+    orderKey: "https://github.com/eliben/pycparser@a1b5e46cf3015fe83c1f2a9de1a0e6d2fce76c19"
+    orderKeySha256: 97bbdf1a9e2042fdd7a515b0d4689c6ac866b303b2434bdae84ba2b98a5dd59c
+    repo: https://github.com/eliben/pycparser
+    revision: a1b5e46cf3015fe83c1f2a9de1a0e6d2fce76c19
+    fixCommit: bdcc186728124e6a90ed865031f11fba84165c19
+    fixCommitDate: "2021-09-13T21:09:29-07:00"
+    fixSubject: "A different, more robust appoach to fix _Atomic specifiers."
+    fixSize: {files: 3, lines: 111}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_c_parser.py"]
+      command: "python3.12 -m unittest tests/test_c_parser.py"
+      failingBeforeFix: ["test_atomic_specifier (tests.test_c_parser.TestCParser_fundamentals.test_atomic_specifier)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/ast_transforms.py: # License: BSD / pycparser/c_parser.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit bdcc186728124e6a90ed865031f11fba84165c19 とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: exploratory
+  - order: 52
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@6683ad28a45a8b803de0ce650d737adec609fbd4"
+    orderKeySha256: 988bc35ee48b4fa05a1472410423eb4880c4c82b7b6ab369a039ef140f1103eb
+    repo: https://github.com/tobymao/sqlglot
+    revision: 6683ad28a45a8b803de0ce650d737adec609fbd4
+    fixCommit: 361b23b87b5ee3a3a301c07daaf02d703aad21fe
+    fixCommitDate: "2026-10-09T13:35:21+02:00"
+    fixSubject: "fix(parser): allow SEARCH + CYCLE and CYCLE TO ... DEFAULT [CLAUDE] (#8574)"
+    fixSize: {files: 3, lines: 43}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_oracle.py", "tests/dialects/test_postgres.py"]
+      command: "python3.12 -m unittest tests/dialects/test_oracle.py tests/dialects/test_postgres.py"
+      failingBeforeFix: ["test_recursive_cte (tests.dialects.test_postgres.TestPostgres.test_recursive_cte)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 361b23b87b5ee3a3a301c07daaf02d703aad21fe とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 53
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@c1dbe0c49701cd37c595492d1461a97c0597215c"
+    orderKeySha256: 994ae4a9250b2715b27f1e1fe4a57ae57199cdf0092de139f408b86bbb497879
+    repo: https://github.com/lark-parser/lark
+    revision: c1dbe0c49701cd37c595492d1461a97c0597215c
+    fixCommit: 2faac2305de336448e15184d257861ad15c6d8db
+    fixCommitDate: "2024-06-24T21:54:48-07:00"
+    fixSubject: "Fix SymbolNode.end for completed tokens (Issue #1431)"
+    fixSize: {files: 2, lines: 17}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/test_parser.py"
+      failingBeforeFix: ["test_symbol_node_start_end_dynamic_lexer (tests.test_parser._make_full_earley_test.<locals>._TestFullEarley.test_symbol_node_start_end_dynamic_lexer)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit 2faac2305de336448e15184d257861ad15c6d8db とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 54
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@41a962d5c1252c073b2883ea49b9ae2f49d77a6b"
+    orderKeySha256: 9d185895955f7bfd0bee346ec3bd258953a883725369a579f3745519d427ac09
+    repo: https://github.com/tobymao/sqlglot
+    revision: 41a962d5c1252c073b2883ea49b9ae2f49d77a6b
+    fixCommit: b50e43e4407e010d15da9b313ff99df1b1099343
+    fixCommitDate: "2026-10-17T04:06:31-07:00"
+    fixSubject: "fix(clickhouse): parse PASTE JOIN instead of aliasing the table (#8662)"
+    fixSize: {files: 4, lines: 6}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_clickhouse.py"]
+      command: "python3.12 -m unittest tests/dialects/test_clickhouse.py"
+      failingBeforeFix: ["test_clickhouse (tests.dialects.test_clickhouse.TestClickhouse.test_clickhouse)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit b50e43e4407e010d15da9b313ff99df1b1099343 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 55
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@aa58ce602e3f50b87192f2e1bd2994d56da10c3c"
+    orderKeySha256: 9dd130de5b82ff06704552b46f909670b3a795f20fe436f07c40cfd64fdddaad
+    repo: https://github.com/tobymao/sqlglot
+    revision: aa58ce602e3f50b87192f2e1bd2994d56da10c3c
+    fixCommit: 1a0fc4299add581c61a21c92d0c41d13698b20c5
+    fixCommitDate: "2026-10-08T16:59:26-04:00"
+    fixSubject: "fix(parser): `ALTER` actions/options in any order. (#8565)"
+    fixSize: {files: 1, lines: 31}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_mysql.py", "tests/dialects/test_starrocks.py"]
+      command: "python3.12 -m unittest tests/dialects/test_mysql.py tests/dialects/test_starrocks.py"
+      failingBeforeFix: ["test_alter_mixed_actions (tests.dialects.test_mysql.TestMySQL.test_alter_mixed_actions)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 1a0fc4299add581c61a21c92d0c41d13698b20c5 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 56
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@282f7b29e9b183cfcad34f2d3bc197bf72cb0a57"
+    orderKeySha256: a56ed4d1b58b0b9da16e593472e7f80ac5b87b61efadeb184bdd4914d9b3f0da
+    repo: https://github.com/tobymao/sqlglot
+    revision: 282f7b29e9b183cfcad34f2d3bc197bf72cb0a57
+    fixCommit: ab0a291f91f1ba8c32058340bf76738c4ea685ea
+    fixCommitDate: "2026-10-12T15:28:45+03:00"
+    fixSubject: "fix(oracle): normalize flashback timestamps and simplify parsing (#8608)"
+    fixSize: {files: 3, lines: 28}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_oracle.py"]
+      command: "python3.12 -m unittest tests/dialects/test_oracle.py"
+      failingBeforeFix: ["test_flashback (tests.dialects.test_oracle.TestOracle.test_flashback)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit ab0a291f91f1ba8c32058340bf76738c4ea685ea とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 57
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@e7c2564859ba865618d81db1a5aa0b9a3ce5ec8e"
+    orderKeySha256: a98acdc324b8459d440cb30b7df90d0a8d112ba2837b743771a5be09cccef077
+    repo: https://github.com/lark-parser/lark
+    revision: e7c2564859ba865618d81db1a5aa0b9a3ce5ec8e
+    fixCommit: b974caecc8fcffa014afa22ee15b1fdb4a24e489
+    fixCommitDate: "2026-08-27T07:07:40-04:00"
+    fixSubject: "Fix InteractiveParser.copy() sharing the lexer thread with the original (#1641)"
+    fixSize: {files: 2, lines: 9}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/test_parser.py"
+      failingBeforeFix: ["test_interactive_parser_copy_resume (tests.test_parser.tests.test_parser.TestLalrBasic.test_interactive_parser_copy_resume)", "test_interactive_parser_copy_resume (tests.test_parser.tests.test_parser.TestLalrContextual.test_interactive_parser_copy_resume)", "test_interactive_parser_copy_resume (tests.test_parser.tests.test_parser.TestLalrCustom_new.test_interactive_parser_copy_resume)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit b974caecc8fcffa014afa22ee15b1fdb4a24e489 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 58
+    set: reserve
+    orderKey: "https://github.com/pytest-dev/pyfakefs@a69adc434d1365a012c38f8743731a3504d5c3f1"
+    orderKeySha256: ab8ae258d1e324ca410ae2a1294fa7118b0fe3806af221587bd76cc3eb35f074
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: a69adc434d1365a012c38f8743731a3504d5c3f1
+    fixCommit: 6c0ac39172618099e6be6ea1e20fbf161c19b2a0
+    fixCommitDate: "2025-05-22T20:44:33+02:00"
+    fixSubject: "Fix instantiation of standalone FakePathlibModule"
+    fixSize: {files: 2, lines: 53}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_filesystem_test.py", "pyfakefs/tests/fake_pathlib_test.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_filesystem_test.py pyfakefs/tests/fake_pathlib_test.py"
+      failingBeforeFix: ["test_instantiated_pathlib (pyfakefs.tests.fake_pathlib_test.InstantiatedPathlibTest.test_instantiated_pathlib)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_filesystem_unittest.py: # Copyright 2014 Altera Corporation. All Rights Reserved. / pyfakefs/fake_pathlib.py: # Licensed under the Apache License, Version 2.0 (the \"License\"); / pyfakefs/tests/fake_filesystem_test.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_pathlib_test.py: # Licensed under the Apache License, Version 2.0 (the \"License\");。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit 6c0ac39172618099e6be6ea1e20fbf161c19b2a0 とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: exploratory
+  - order: 59
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@f8287a0918808a8a74e618b556c630eb1504f971"
+    orderKeySha256: affafde3fa2e63e007dca83b0d09d14eee2042472e5d9e7b2ab5916c33d3408c
+    repo: https://github.com/tobymao/sqlglot
+    revision: f8287a0918808a8a74e618b556c630eb1504f971
+    fixCommit: 03744a2a8376af5f5f70230b04d1c5fbfb71dc61
+    fixCommitDate: "2026-10-15T06:51:44-04:00"
+    fixSubject: "fix(hive,spark): parse ALTER TABLE REPLACE COLUMNS [CLAUDE] (#8633)"
+    fixSize: {files: 3, lines: 17}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_hive.py", "tests/dialects/test_spark.py"]
+      command: "python3.12 -m unittest tests/dialects/test_hive.py tests/dialects/test_spark.py"
+      failingBeforeFix: ["test_ddl (tests.dialects.test_hive.TestHive.test_ddl)", "test_ddl (tests.dialects.test_spark.TestSpark.test_ddl)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 03744a2a8376af5f5f70230b04d1c5fbfb71dc61 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 60
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@e0af20ff164ed42564df40652f26400734cf0617"
+    orderKeySha256: affc3653948a8206469920f39fa6ec4a65b55d7201fd0afd2917594c1d441e16
+    repo: https://github.com/lark-parser/lark
+    revision: e0af20ff164ed42564df40652f26400734cf0617
+    fixCommit: 97c4f3fdafd5f46abf5e28d8bee9c1bde3d321bb
+    fixCommitDate: "2022-01-15T15:41:00+02:00"
+    fixSubject: "Bugfix: maybe_placeholders now don't accumulate over the | operator (Issue #1078)"
+    fixSize: {files: 1, lines: 43}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/test_parser.py"
+      failingBeforeFix: ["test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyBasic.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyCustom_old.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyDynamic.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyDynamic_complete.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestLalrBasic.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestLalrContextual.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestLalrCustom_new.test_maybe_placeholders)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit 97c4f3fdafd5f46abf5e28d8bee9c1bde3d321bb とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 61
+    set: reserve
+    orderKey: "https://github.com/pytest-dev/pyfakefs@d11b848ad7921d88f20232f59aaeb87e5f3a5705"
+    orderKeySha256: b387ada7f1846da83f3238115f1cf7c31986acbe58d4df6d212aa00f78088709
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: d11b848ad7921d88f20232f59aaeb87e5f3a5705
+    fixCommit: d8751513c6ff4e4e6d723329cff0f8b89e181c24
+    fixCommitDate: "2024-05-06T12:48:17-05:00"
+    fixSubject: "Fix pure windows path behavior (#1011)"
+    fixSize: {files: 1, lines: 33}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_pathlib_test.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_pathlib_test.py"
+      failingBeforeFix: ["test_windows_pure_path_parsing (pyfakefs.tests.fake_pathlib_test.FakePathlibModulePurePathTest.test_windows_pure_path_parsing)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_pathlib.py: # Licensed under the Apache License, Version 2.0 (the \"License\"); / pyfakefs/tests/fake_pathlib_test.py: # Licensed under the Apache License, Version 2.0 (the \"License\");。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit d8751513c6ff4e4e6d723329cff0f8b89e181c24 とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: known-solution
+  - order: 62
+    set: reserve
+    orderKey: "https://github.com/rthalley/dnspython@7cc53f6b1043b671ee4873e65f17244f9df403c9"
+    orderKeySha256: b5129a0a5406554bb052b00767cf423ff28f3c354cbc1ec0c5f69d1ce56d5698
+    repo: https://github.com/rthalley/dnspython
+    revision: 7cc53f6b1043b671ee4873e65f17244f9df403c9
+    fixCommit: 40ff526586aa52b52721df8977f0e73c69dfe4c2
+    fixCommitDate: "2026-07-03T08:18:39-07:00"
+    fixSubject: "Fix other isdigit() instances that are better as isdecimal()."
+    fixSize: {files: 12, lines: 60}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_tokenizer.py"]
+      command: "python3.12 -m unittest tests/test_tokenizer.py"
+      failingBeforeFix: ["testGetUInt (tests.test_tokenizer.TokenizerTestCase.testGetUInt)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: ISC
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: dns/e164.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/enum.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/flags.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/grange.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/inet.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/name.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdtypes/ANY/GPOS.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdtypes/ANY/LOC.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdtypes/IN/WKS.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdtypes/rrsigbase.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/rdtypes/svcbbase.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / dns/tokenizer.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license / tests/test_tokenizer.py: # Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license。別ライセンスの表記なしとして repo のライセンス（ISC）に従う"
+      provenance: "GitHub の公開 repo https://github.com/rthalley/dnspython の公開済み commit 40ff526586aa52b52721df8977f0e73c69dfe4c2 とその親"
+      redistribution: "ISC: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: replication
+  - order: 63
+    set: reserve
+    orderKey: "https://github.com/pyparsing/pyparsing@038ff39cbc29b77a74ac21674206d5bf170ca769"
+    orderKeySha256: b5a2df64148645b124452a3a539a4fd0482851cf30f66cf156596e50c3b4c029
+    repo: https://github.com/pyparsing/pyparsing
+    revision: 038ff39cbc29b77a74ac21674206d5bf170ca769
+    fixCommit: efd56db4e59f36b1673ce0eb0823e3afaa9d1201
+    fixCommitDate: "2026-08-18T09:55:14+05:30"
+    fixSubject: "Fix match_previous_expr to match nested and repeated expressions (#653)"
+    fixSize: {files: 2, lines: 58}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_unit.py"]
+      command: "python3.12 -m unittest tests/test_unit.py"
+      failingBeforeFix: ["testRepeaterReusedParser (tests.test_unit.Test02_WithoutPackrat.testRepeaterReusedParser)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyparsing/pyparsing の公開済み commit efd56db4e59f36b1673ce0eb0823e3afaa9d1201 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 64
+    set: reserve
+    orderKey: "https://github.com/cpburnz/python-pathspec@5bd2db7bd2125475a3396a4547d0c0eb418b88a2"
+    orderKeySha256: b6e51a54f4736d1e935660d75d781e48a17b25dc7eac77c01fa990d78fb50875
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 5bd2db7bd2125475a3396a4547d0c0eb418b88a2
+    fixCommit: 5fda810ef51900b7d46a728d247a7f70cb6543cd
+    fixCommitDate: "2023-12-09T17:13:23-05:00"
+    fixSubject: "Fix issue 81"
+    fixSize: {files: 2, lines: 211}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_02_gitwildmatch.py"]
+      command: "python3.12 -m unittest tests/test_02_gitwildmatch.py"
+      failingBeforeFix: ["test_03_child_double_asterisk (tests.test_02_gitwildmatch.GitWildMatchTest.test_03_child_double_asterisk)", "test_03_duplicate_leading_double_asterisk_edge_case (tests.test_02_gitwildmatch.GitWildMatchTest.test_03_duplicate_leading_double_asterisk_edge_case)", "test_03_only_double_asterisk (tests.test_02_gitwildmatch.GitWildMatchTest.test_03_only_double_asterisk)", "test_14_issue_81_a (tests.test_02_gitwildmatch.GitWildMatchTest.test_14_issue_81_a)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit 5fda810ef51900b7d46a728d247a7f70cb6543cd とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 65
+    set: reserve
+    orderKey: "https://github.com/pytest-dev/pyfakefs@c16556dc954b9829cc2bd21c2aac25f6ac60895d"
+    orderKeySha256: b72e5f94d5ae4fc1907d8d10a5b7cf7b6ea86c13e492a1b3a06109b8ba0bfd21
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: c16556dc954b9829cc2bd21c2aac25f6ac60895d
+    fixCommit: 967e1ec37e424960c6e92a15bfbd2b31ef783198
+    fixCommitDate: "2026-03-18T20:12:20+01:00"
+    fixSubject: "Fix os.path.realpath with absolute path (Windows)"
+    fixSize: {files: 2, lines: 27}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_filesystem_test.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_filesystem_test.py"
+      failingBeforeFix: ["test_realpath_from_bytes_path_starting_with_sep_in_windows (pyfakefs.tests.fake_filesystem_test.FakePathModuleTest.test_realpath_from_bytes_path_starting_with_sep_in_windows)", "test_realpath_from_path_starting_with_sep_in_windows (pyfakefs.tests.fake_filesystem_test.FakePathModuleTest.test_realpath_from_path_starting_with_sep_in_windows)", "test_realpath_from_path_with_drive (pyfakefs.tests.fake_filesystem_test.FakePathModuleTest.test_realpath_from_path_with_drive)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_filesystem.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_path.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_filesystem_test.py: # Copyright 2009 Google Inc. All Rights Reserved.。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit 967e1ec37e424960c6e92a15bfbd2b31ef783198 とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: known-solution
+  - order: 66
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@ad8764a0436a7b5c500b783ebe50dbf20c1e477c"
+    orderKeySha256: b85e99455739a1e545e6dbc80beda98de140f50e83b10e94d7fba1141e8e5582
+    repo: https://github.com/tobymao/sqlglot
+    revision: ad8764a0436a7b5c500b783ebe50dbf20c1e477c
+    fixCommit: f814e4cb2a8743bba63e8818bae25207bbd3966f
+    fixCommitDate: "2026-10-14T22:38:45+02:00"
+    fixSubject: "fix(mysql): preserve population and sample aggregate semantics [CODEX] (#8632)"
+    fixSize: {files: 2, lines: 6}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_duckdb.py", "tests/dialects/test_mysql.py"]
+      command: "python3.12 -m unittest tests/dialects/test_duckdb.py tests/dialects/test_mysql.py"
+      failingBeforeFix: ["test_duckdb (tests.dialects.test_duckdb.TestDuckDB.test_duckdb)", "test_statistical_aggregates (tests.dialects.test_mysql.TestMySQL.test_statistical_aggregates)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit f814e4cb2a8743bba63e8818bae25207bbd3966f とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 67
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@8955d752acc88ee23955dd6e07d567542a8cfaf8"
+    orderKeySha256: c0db25874ccf083fa115e79de136797104a4f3ad3a93d2aee68970f575597183
+    repo: https://github.com/tobymao/sqlglot
+    revision: 8955d752acc88ee23955dd6e07d567542a8cfaf8
+    fixCommit: b1fd4e9edf05ee6211656c235a62040e0f055bf0
+    fixCommitDate: "2026-10-20T14:40:36+03:00"
+    fixSubject: "fix(mysql): respect bitwise operator precedence (#8688)"
+    fixSize: {files: 1, lines: 40}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_mysql.py"]
+      command: "python3.12 -m unittest tests/dialects/test_mysql.py"
+      failingBeforeFix: ["test_bitwise_precedence (tests.dialects.test_mysql.TestMySQL.test_bitwise_precedence)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit b1fd4e9edf05ee6211656c235a62040e0f055bf0 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 68
+    set: reserve
+    orderKey: "https://github.com/pytest-dev/pyfakefs@c3a1cc8d43ec17630404deb33c641b2012e652ac"
+    orderKeySha256: c0dbfc32e71530ece86ca1ee0c2fe7305c92e473e6de6b0533459552db0d41be
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: c3a1cc8d43ec17630404deb33c641b2012e652ac
+    fixCommit: 5283be61fe5b32dece689f3863fcae2e66502fb0
+    fixCommitDate: "2024-03-12T18:40:17+01:00"
+    fixSubject: "Fix permission handling for opening file via file descriptor"
+    fixSize: {files: 5, lines: 139}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_open_test.py", "pyfakefs/tests/fake_os_test.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_open_test.py pyfakefs/tests/fake_os_test.py"
+      failingBeforeFix: ["test_fdopen_twice (pyfakefs.tests.fake_os_test.FakeOsModuleTest.test_fdopen_twice)", "test_fdopen_twice (pyfakefs.tests.fake_os_test.FakeOsModuleTestCaseInsensitiveFS.test_fdopen_twice)", "test_open_fd_read_mode_for_ro_file (pyfakefs.tests.fake_os_test.FakeOsModuleTest.test_open_fd_read_mode_for_ro_file)", "test_open_fd_write_mode_for_ro_file (pyfakefs.tests.fake_os_test.FakeOsModuleTest.test_open_fd_write_mode_for_ro_file)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_file.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_filesystem.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_open.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_os.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/helpers.py: # Licensed under the Apache License, Version 2.0 (the \"License\"); / pyfakefs/tests/fake_open_test.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_os_test.py: # Copyright 2009 Google Inc. All Rights Reserved.。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit 5283be61fe5b32dece689f3863fcae2e66502fb0 とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: exploratory
+  - order: 69
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@b4fe22a27dd67bca414be767b92ab2960798f0d6"
+    orderKeySha256: c25220b636da208cf81fec6e1527a53355380fa82ac077e2b2ae75fa12148935
+    repo: https://github.com/lark-parser/lark
+    revision: b4fe22a27dd67bca414be767b92ab2960798f0d6
+    fixCommit: fa8565366be027df0f788cb1432d90b2b94aa264
+    fixCommitDate: "2021-07-26T18:53:43+02:00"
+    fixSubject: "Off-by-one fix + Change of thresholds + fix tests"
+    fixSize: {files: 2, lines: 37}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/test_parser.py"
+      failingBeforeFix: ["test_ranged_repeat_large (tests.test_parser.tests.test_parser.TestLalrStandard.test_ranged_repeat_large)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit fa8565366be027df0f788cb1432d90b2b94aa264 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 70
+    set: reserve
+    orderKey: "https://github.com/cpburnz/python-pathspec@f9a833e7907f0058eb64421d01eeca5d1c82333a"
+    orderKeySha256: c5386ca7352b906a4a74ce470b3b6ee86c8e0e65d6b14531cbdecb673f6954e7
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: f9a833e7907f0058eb64421d01eeca5d1c82333a
+    fixCommit: 7c7893d4e02168a47f3fc10f1ce62306a9f185e6
+    fixCommitDate: "2026-09-12T07:16:01Z"
+    fixSubject: "Fix trailing-space trimming after escaped backslashes"
+    fixSize: {files: 2, lines: 62}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_07_gitignore_trailing_space.py"]
+      command: "python3.12 -m unittest tests/test_07_gitignore_trailing_space.py"
+      failingBeforeFix: ["test_00_even_backslash_run_trailing_space_stripped (tests.test_07_gitignore_trailing_space.TrailingSpaceAfterEscapedBackslashTest.test_00_even_backslash_run_trailing_space_stripped)", "test_01_four_backslashes_trailing_space_stripped (tests.test_07_gitignore_trailing_space.TrailingSpaceAfterEscapedBackslashTest.test_01_four_backslashes_trailing_space_stripped)", "test_04_regex_normalization (tests.test_07_gitignore_trailing_space.TrailingSpaceAfterEscapedBackslashTest.test_04_regex_normalization)", "test_05_pathspec_end_to_end (tests.test_07_gitignore_trailing_space.TrailingSpaceAfterEscapedBackslashTest.test_05_pathspec_end_to_end)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit 7c7893d4e02168a47f3fc10f1ce62306a9f185e6 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 71
+    set: reserve
+    orderKey: "https://github.com/coleifer/huey@54cd1adaede46ae8d4b6ae78ff7423fcefc8b28c"
+    orderKeySha256: c7351b1c96e8e5d9ccfded91c50d75db1d9be03f90f03289e2a2240b8c9dcb48
+    repo: https://github.com/coleifer/huey
+    revision: 54cd1adaede46ae8d4b6ae78ff7423fcefc8b28c
+    fixCommit: 8f96e2afba1a220a6d2c1c64199ae6a3595fc753
+    fixCommitDate: "2026-08-31T10:20:10-05:00"
+    fixSubject: "Fix to ensure exception in a signal does not disrupt the others."
+    fixSize: {files: 2, lines: 15}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["huey/tests/test_signals.py"]
+      command: "python3.12 -m unittest huey/tests/test_signals.py"
+      failingBeforeFix: ["test_handler_error_does_not_block_others (huey.tests.test_signals.TestSignals.test_handler_error_does_not_block_others)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/coleifer/huey の公開済み commit 8f96e2afba1a220a6d2c1c64199ae6a3595fc753 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 72
+    set: reserve
+    orderKey: "https://github.com/cpburnz/python-pathspec@3ceb237ff97ffad067b35c98a512cf975232f0b1"
+    orderKeySha256: c7f120972797f5f53a500433c8b47af8324b7bb15f2b504f6145b60e29d6517e
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 3ceb237ff97ffad067b35c98a512cf975232f0b1
+    fixCommit: ea7c7fd28c218cc5c95b100c2e9e86215a16e727
+    fixCommitDate: "2026-09-26T15:16:11-04:00"
+    fixSubject: "Add errors arg and fix #146"
+    fixSize: {files: 2, lines: 24}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_03_gitignore_basic.py", "tests/test_04_gitignore_spec.py"]
+      command: "python3.12 -m unittest tests/test_03_gitignore_basic.py tests/test_04_gitignore_spec.py"
+      failingBeforeFix: ["test_09_single_exclamation_mark_fail (tests.test_04_gitignore_spec.GitIgnoreSpecPatternTest.test_09_single_exclamation_mark_fail)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit ea7c7fd28c218cc5c95b100c2e9e86215a16e727 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 73
+    set: reserve
+    orderKey: "https://github.com/simplejson/simplejson@9559fc756deaf20b6bae961b58c5289d8582c8b7"
+    orderKeySha256: c9adffa4043a8abed247800e225117470590e33ed03ee813de3675349348fe3c
+    repo: https://github.com/simplejson/simplejson
+    revision: 9559fc756deaf20b6bae961b58c5289d8582c8b7
+    fixCommit: 7c2ccb773ab9343e25f14d72356dab75420e288f
+    fixCommitDate: "2023-04-04T09:59:33-07:00"
+    fixSubject: "SJ-PT-23-01: Fix invalid handling of unicode escape sequences in Python decoder"
+    fixSize: {files: 3, lines: 50}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["simplejson/tests/test_scanstring.py"]
+      command: "python3.12 -m unittest simplejson/tests/test_scanstring.py"
+      failingBeforeFix: ["test_py_scanstring (simplejson.tests.test_scanstring.TestScanString.test_py_scanstring)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT OR AFL-2.1
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT OR AFL-2.1）に従う"
+      provenance: "GitHub の公開 repo https://github.com/simplejson/simplejson の公開済み commit 7c2ccb773ab9343e25f14d72356dab75420e288f とその親"
+      redistribution: "MIT または AFL-2.1 の選択: MIT を選べば著作権表示と許諾表示を残して再配布可"
+    taskNature: exploratory
+  - order: 74
+    set: reserve
+    orderKey: "https://github.com/PyCQA/pyflakes@4ed1ba41d1406dbb6c9ffbd369c2f523c2dc48f3"
+    orderKeySha256: c9dc313ae2cc0996596972e24db7b6a395b2414631c41674f7e8d16134f8a945
+    repo: https://github.com/PyCQA/pyflakes
+    revision: 4ed1ba41d1406dbb6c9ffbd369c2f523c2dc48f3
+    fixCommit: c9708a18a17fbf17e0d88c1d1675ac1a926c4565
+    fixCommitDate: "2020-02-14T13:31:44-08:00"
+    fixSubject: "Fix false positive with partially quoted annotations (#479)"
+    fixSize: {files: 1, lines: 90}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyflakes/test/test_type_annotations.py"]
+      command: "python3.12 -m unittest pyflakes/test/test_type_annotations.py"
+      failingBeforeFix: ["test_partial_string_annotations_with_future_annotations (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_partial_string_annotations_with_future_annotations)", "test_partially_quoted_type_annotation (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_partially_quoted_type_annotation)", "test_typingExtensionsOverload (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_typingExtensionsOverload)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/PyCQA/pyflakes の公開済み commit c9708a18a17fbf17e0d88c1d1675ac1a926c4565 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 75
+    set: reserve
+    orderKey: "https://github.com/eliben/pycparser@992715f12aef69eb1351308f14fb5f1ff972ce57"
+    orderKeySha256: caaa3ea907b4624ea36537e95f6c8e32d7a8cb827a9cfefde20ac3001d1e6ac1
+    repo: https://github.com/eliben/pycparser
+    revision: 992715f12aef69eb1351308f14fb5f1ff972ce57
+    fixCommit: 96059858252ea3673226a9a4d03a356bd51ba47e
+    fixCommitDate: "2019-03-26T14:53:19+02:00"
+    fixSubject: "Fix array type generation (#312) (#313)"
+    fixSize: {files: 2, lines: 20}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_c_generator.py"]
+      command: "python3.12 -m unittest tests/test_c_generator.py"
+      failingBeforeFix: ["test_array_decl (tests.test_c_generator.TestCtoC.test_array_decl)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pycparser/c_generator.py: # License: BSD。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/eliben/pycparser の公開済み commit 96059858252ea3673226a9a4d03a356bd51ba47e とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: exploratory
+  - order: 76
+    set: reserve
+    orderKey: "https://github.com/pytest-dev/pyfakefs@97704e4980dc948b463dbeed199a312b9dc19d5c"
+    orderKeySha256: d131fbf8642a9fb8765f9262bca49f034f33d909b46be0a3fcd519fcb6876157
+    repo: https://github.com/pytest-dev/pyfakefs
+    revision: 97704e4980dc948b463dbeed199a312b9dc19d5c
+    fixCommit: 2d9974c6098946e713cbfc55ac85b9ab82ea5d8d
+    fixCommitDate: "2026-03-01T14:40:52+01:00"
+    fixSubject: "Fix handling of full paths and separators (#1291)"
+    fixSize: {files: 2, lines: 36}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyfakefs/tests/fake_filesystem_test.py", "pyfakefs/tests/fake_pathlib_test.py"]
+      command: "python3.12 -m unittest pyfakefs/tests/fake_filesystem_test.py pyfakefs/tests/fake_pathlib_test.py"
+      failingBeforeFix: ["test_expand_user_path (pyfakefs.tests.fake_filesystem_test.FakePathModuleTest.test_expand_user_path)", "test_expand_user_posix_windowsfs_path (pyfakefs.tests.fake_filesystem_test.FakePathModuleTest.test_expand_user_posix_windowsfs_path)", "test_expanduser_posix_windowsfs_path (pyfakefs.tests.fake_pathlib_test.FakePathlibFileObjectPropertyTest.test_expanduser_posix_windowsfs_path)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: Apache-2.0
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: pyfakefs/fake_path.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/fake_pathlib.py: # Licensed under the Apache License, Version 2.0 (the \"License\"); / pyfakefs/tests/fake_filesystem_test.py: # Copyright 2009 Google Inc. All Rights Reserved. / pyfakefs/tests/fake_pathlib_test.py: # Licensed under the Apache License, Version 2.0 (the \"License\");。別ライセンスの表記なしとして repo のライセンス（Apache-2.0）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pytest-dev/pyfakefs の公開済み commit 2d9974c6098946e713cbfc55ac85b9ab82ea5d8d とその親"
+      redistribution: "Apache-2.0: ライセンス文・NOTICE を添え、変更箇所を明示すれば再配布可"
+    taskNature: exploratory
+  - order: 77
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@54005bf19b32d1dbcaecbd9f752059bc647339c5"
+    orderKeySha256: d34269278362a4282b9a92ad5992d3549a7fc85e804a2a8bcc22217260106fcb
+    repo: https://github.com/tobymao/sqlglot
+    revision: 54005bf19b32d1dbcaecbd9f752059bc647339c5
+    fixCommit: 862fd55467e09527e07240725c6e78c793099ff1
+    fixCommitDate: "2026-10-08T18:32:59+03:00"
+    fixSubject: "fix(trino): preserve precision for all temporal literals (#8564)"
+    fixSize: {files: 3, lines: 20}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_presto.py", "tests/dialects/test_trino.py"]
+      command: "python3.12 -m unittest tests/dialects/test_presto.py tests/dialects/test_trino.py"
+      failingBeforeFix: ["test_temporal_literal_precision (tests.dialects.test_trino.TestTrino.test_temporal_literal_precision)", "test_trino (tests.dialects.test_trino.TestTrino.test_trino)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 862fd55467e09527e07240725c6e78c793099ff1 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: replication
+  - order: 78
+    set: reserve
+    orderKey: "https://github.com/cpburnz/python-pathspec@6fd6bee628f5f2746ac46939b13fd127941a73f9"
+    orderKeySha256: d3de180c5d64ea7770e8d219c1be907b07df9b0776d9ee208a6f26ce4a53afe4
+    repo: https://github.com/cpburnz/python-pathspec
+    revision: 6fd6bee628f5f2746ac46939b13fd127941a73f9
+    fixCommit: 9302492483b06ca1613aa8b11cf08cef93930b12
+    fixCommitDate: "2023-04-23T15:25:43-04:00"
+    fixSubject: "Fix issue 77"
+    fixSize: {files: 2, lines: 12}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_gitwildmatch.py"]
+      command: "python3.12 -m unittest tests/test_gitwildmatch.py"
+      failingBeforeFix: ["test_13_issue_77_1_regex (tests.test_gitwildmatch.GitWildMatchTest.test_13_issue_77_1_regex)", "test_13_issue_77_2_results (tests.test_gitwildmatch.GitWildMatchTest.test_13_issue_77_2_results)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/cpburnz/python-pathspec の公開済み commit 9302492483b06ca1613aa8b11cf08cef93930b12 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 79
+    set: reserve
+    orderKey: "https://github.com/more-itertools/more-itertools@13638be1c2ad38e55731ba62a5e0c519c2fe865f"
+    orderKeySha256: d3e36e598080f18c0925682bb3cb6c6e57c9a104abb890ad9e3d92ab36bd93fc
+    repo: https://github.com/more-itertools/more-itertools
+    revision: 13638be1c2ad38e55731ba62a5e0c519c2fe865f
+    fixCommit: b1042ae2e9cb6e6588806b4aebf7af5e76cb90bc
+    fixCommitDate: "2020-10-15T23:41:07-07:00"
+    fixSubject: "nth_product fixes"
+    fixSize: {files: 2, lines: 28}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_recipes.py"]
+      command: "python3.12 -m unittest tests/test_recipes.py"
+      failingBeforeFix: ["test_basic (tests.test_recipes.NthProductTests.test_basic)", "test_invalid_index (tests.test_recipes.NthProductTests.test_invalid_index)", "test_long (tests.test_recipes.NthProductTests.test_long)", "test_negative (tests.test_recipes.NthProductTests.test_negative)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/more-itertools/more-itertools の公開済み commit b1042ae2e9cb6e6588806b4aebf7af5e76cb90bc とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 80
+    set: reserve
+    orderKey: "https://github.com/PyCQA/pyflakes@5fc37cbda5bf4e5afcb64c45caa62062979256b4"
+    orderKeySha256: d5c765c752804d167d246631d6b1ed769848e7b9b49a105f355bfc4e1cdfbdf8
+    repo: https://github.com/PyCQA/pyflakes
+    revision: 5fc37cbda5bf4e5afcb64c45caa62062979256b4
+    fixCommit: c23a81037d4f68067c4c987985d177ec7664de59
+    fixCommitDate: "2020-09-28T17:44:21-03:00"
+    fixSubject: "fix: don't return syntax error for Annotated's metadata (#580)"
+    fixSize: {files: 1, lines: 44}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["pyflakes/test/test_type_annotations.py"]
+      command: "python3.12 -m unittest pyflakes/test/test_type_annotations.py"
+      failingBeforeFix: ["test_annotated_type_typing_with_string_args (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_annotated_type_typing_with_string_args)", "test_annotated_type_typing_with_string_args_in_union (pyflakes.test.test_type_annotations.TestTypeAnnotations.test_annotated_type_typing_with_string_args_in_union)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/PyCQA/pyflakes の公開済み commit c23a81037d4f68067c4c987985d177ec7664de59 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 81
+    set: reserve
+    orderKey: "https://github.com/coleifer/huey@47564bc3fca494def23b5fbc195ccfb1971b06ad"
+    orderKeySha256: d87d291aac474ef27d9b3d5b2463c29cd297648a114285472266bed6a55c4750
+    repo: https://github.com/coleifer/huey
+    revision: 47564bc3fca494def23b5fbc195ccfb1971b06ad
+    fixCommit: 85c265580c3ed63ac836288ccf6ac52194f267bf
+    fixCommitDate: "2026-07-10T17:36:42-05:00"
+    fixSubject: "Fix for chord when member is a pipeline and intermediate fails."
+    fixSize: {files: 1, lines: 35}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["huey/tests/test_api.py"]
+      command: "python3.12 -m unittest huey/tests/test_api.py"
+      failingBeforeFix: ["test_chord_pipeline_member_head_fails (huey.tests.test_api.TestChordPrimitive.test_chord_pipeline_member_head_fails)", "test_chord_pipeline_member_head_revoked (huey.tests.test_api.TestChordPrimitive.test_chord_pipeline_member_head_revoked)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/coleifer/huey の公開済み commit 85c265580c3ed63ac836288ccf6ac52194f267bf とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 82
+    set: reserve
+    orderKey: "https://github.com/pyparsing/pyparsing@49dbf490b79a39ada993bd2b531d91262e5f2c76"
+    orderKeySha256: dce2a4cb11fe7d33f32e81950538ad1e1ef8b3f7ed415ee4651d1c3d7b2279c0
+    repo: https://github.com/pyparsing/pyparsing
+    revision: 49dbf490b79a39ada993bd2b531d91262e5f2c76
+    fixCommit: 73a8b553fb5fc50b3cb2e4b5b2b8652f8d997a29
+    fixCommitDate: "2026-06-20T22:00:32+02:00"
+    fixSubject: "Fix as_datetime mis-scaling fractional seconds into microsecond field"
+    fixSize: {files: 2, lines: 14}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_unit.py"]
+      command: "python3.12 -m unittest tests/test_unit.py"
+      failingBeforeFix: ["testCommonExpressions (tests.test_unit.Test02_WithoutPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test04_WithPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test06_WithBoundedPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test08_WithUnboundedPackrat.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test09_WithLeftRecursionParsing.testCommonExpressions)", "testCommonExpressions (tests.test_unit.Test10_WithLeftRecursionParsingBoundedMemo.testCommonExpressions)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/pyparsing/pyparsing の公開済み commit 73a8b553fb5fc50b3cb2e4b5b2b8652f8d997a29 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 83
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@3d5729d5d28ce4b42fd059fb5b393c449e950998"
+    orderKeySha256: e0bf64bca9a6c256ff329237c21afcd462bd09e5d9f4fe521620d68c766b2f70
+    repo: https://github.com/lark-parser/lark
+    revision: 3d5729d5d28ce4b42fd059fb5b393c449e950998
+    fixCommit: a202f2c7e8318bf582a6a75b4379c2efe58f2fad
+    fixCommitDate: "2021-03-25T18:56:37+01:00"
+    fixSubject: "Fix for cache + inline Transformer"
+    fixSize: {files: 2, lines: 5}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_cache.py"]
+      command: "python3.12 -m unittest tests/test_cache.py"
+      failingBeforeFix: ["test_simple (tests.test_cache.TestCache.test_simple)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit a202f2c7e8318bf582a6a75b4379c2efe58f2fad とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 84
+    set: reserve
+    orderKey: "https://github.com/Python-Markdown/markdown@9933a0a4699f3dea91f46528a2bf54863f531c08"
+    orderKeySha256: e47cbe8c990aad832ea5b7ece63761fd36753c166c6c8abf122ec28cff9bb98e
+    repo: https://github.com/Python-Markdown/markdown
+    revision: 9933a0a4699f3dea91f46528a2bf54863f531c08
+    fixCommit: f9253495f5d9919f2fdd5e147832b5fc21330f65
+    fixCommitDate: "2026-01-21T09:35:33-07:00"
+    fixSubject: "More HTML fixes"
+    fixSize: {files: 1, lines: 37}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_syntax/blocks/test_html_blocks.py"]
+      command: "python3.12 -m unittest tests/test_syntax/blocks/test_html_blocks.py"
+      failingBeforeFix: ["test_no_hang_issue_1586 (tests.test_syntax.blocks.test_html_blocks.TestHTMLBlocks.test_no_hang_issue_1586)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: BSD-3-Clause
+      files: "対象ファイルの先頭 30 行のライセンス関連表記: markdown/htmlparser.py: # License: BSD (see LICENSE.md for details). / tests/test_syntax/blocks/test_html_blocks.py: License: BSD (see LICENSE.md for details).。別ライセンスの表記なしとして repo のライセンス（BSD-3-Clause）に従う"
+      provenance: "GitHub の公開 repo https://github.com/Python-Markdown/markdown の公開済み commit f9253495f5d9919f2fdd5e147832b5fc21330f65 とその親"
+      redistribution: "BSD-3-Clause: 著作権表示・条件・免責を残せば再配布可（名称の宣伝利用不可）"
+    taskNature: replication
+  - order: 85
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@a798b2207acb9a1da28227974db5b11493bd1f52"
+    orderKeySha256: e62dd31f03f2d46937481c7c60b8df7db9da8e7092680663951721d9deb5554f
+    repo: https://github.com/tobymao/sqlglot
+    revision: a798b2207acb9a1da28227974db5b11493bd1f52
+    fixCommit: 68cd4a2d8f766132e338721df8676e0b42d6b7ca
+    fixCommitDate: "2026-10-20T21:48:33+05:30"
+    fixSubject: "fix(duckdb): quote identifiers that are DuckDB reserved keywords [CLAUDE] (#8700)"
+    fixSize: {files: 1, lines: 31}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_duckdb.py"]
+      command: "python3.12 -m unittest tests/dialects/test_duckdb.py"
+      failingBeforeFix: ["test_reserved_keyword_identifiers (tests.dialects.test_duckdb.TestDuckDB.test_reserved_keyword_identifiers)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit 68cd4a2d8f766132e338721df8676e0b42d6b7ca とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+  - order: 86
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@811a4eb4925679fb62640f56e3bec4acada42fb9"
+    orderKeySha256: e934226634e1827f1abbb3bb442d80128b76cb30be2fc1bd2c7b2a3ff5a1b124
+    repo: https://github.com/lark-parser/lark
+    revision: 811a4eb4925679fb62640f56e3bec4acada42fb9
+    fixCommit: 83ce0c7a001b412c7676405a8eff7ca164288d2a
+    fixCommitDate: "2021-04-02T14:43:49-05:00"
+    fixSubject: "Fix copying and comparing of some classes"
+    fixSize: {files: 2, lines: 24}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/test_parser.py"
+      failingBeforeFix: ["test_error_with_puppet (tests.test_parser.tests.test_parser.TestLalrStandard.test_error_with_puppet)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit 83ce0c7a001b412c7676405a8eff7ca164288d2a とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: replication
+  - order: 87
+    set: reserve
+    orderKey: "https://github.com/lark-parser/lark@7c8d6ee787692f7287d38de92d06174bf956d72a"
+    orderKeySha256: eb35e995ad72bfd311c575f551187c35364da992f1acd47581954a1e249ca3c8
+    repo: https://github.com/lark-parser/lark
+    revision: 7c8d6ee787692f7287d38de92d06174bf956d72a
+    fixCommit: 3112259b2388fa9fc3cdc2c77c85c416e3a80c58
+    fixCommitDate: "2020-10-01T16:34:52+02:00"
+    fixSubject: "Fix for maybe_placeholders when keep_all_tokens=True"
+    fixSize: {files: 3, lines: 27}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/test_parser.py"]
+      command: "python3.12 -m unittest tests/test_parser.py"
+      failingBeforeFix: ["test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyDynamic.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyDynamic_complete.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestEarleyStandard.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestLalrContextual.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestLalrCustom.test_maybe_placeholders)", "test_maybe_placeholders (tests.test_parser.tests.test_parser.TestLalrStandard.test_maybe_placeholders)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/lark-parser/lark の公開済み commit 3112259b2388fa9fc3cdc2c77c85c416e3a80c58 とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: exploratory
+  - order: 88
+    set: reserve
+    orderKey: "https://github.com/tobymao/sqlglot@9beb4ab2807839088f3439a2b937d222e598b617"
+    orderKeySha256: eb9740afc7d8ef0f803ca12bb7ce44124b3e247476ffd7a57f5d2b160fabfd3e
+    repo: https://github.com/tobymao/sqlglot
+    revision: 9beb4ab2807839088f3439a2b937d222e598b617
+    fixCommit: f8c314c449080860604b9ddd716d6bc75c89155f
+    fixCommitDate: "2026-10-19T15:06:07+05:30"
+    fixSubject: "fix(teradata): transpile SAMPLE row counts and fractions [CLAUDE] (#8670)"
+    fixSize: {files: 3, lines: 31}
+    acceptanceCriteria:
+      testFilesFromFixCommit: ["tests/dialects/test_teradata.py"]
+      command: "python3.12 -m unittest tests/dialects/test_teradata.py"
+      failingBeforeFix: ["test_teradata (tests.dialects.test_teradata.TestTeradata.test_teradata)"]
+      determinism: {beforeFixExitCodes: [1, 1, 1], afterFixExitCodes: [0, 0, 0], network: denied}
+    negativeOracle: "AC のテストファイルが修正 commit の blob と一致すること（テスト削除・skip 追加・期待値書き換えを検出）。加えて failingBeforeFix の各テストが実行され skip されていないこと"
+    license:
+      repo: MIT
+      files: "対象ファイルの先頭 30 行に別ライセンスの表記なし。repo のライセンス（MIT）に従う"
+      provenance: "GitHub の公開 repo https://github.com/tobymao/sqlglot の公開済み commit f8c314c449080860604b9ddd716d6bc75c89155f とその親"
+      redistribution: "MIT: 著作権表示と許諾表示を残せば再配布可"
+    taskNature: known-solution
+excluded:
+  - {repo: https://github.com/PyCQA/pyflakes, revision: 44ef321b0e608c61182ecf5d88f9edeececa5403, fixCommit: d875b02835fb9b1480a95c5245040eb31a384357, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/Python-Markdown/markdown, revision: 59a97092e815c15ee29a670877d091d8bae442b1, fixCommit: ce04b81f4e7397de391df895e0f915a67f611c91, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/Python-Markdown/markdown, revision: a06659b62209de98cbc23715addb2b768a245788, fixCommit: dbb9b3d766e847f1909fa0c92c6b997f0e7c868d, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/Python-Markdown/markdown, revision: 570625884328ea3c71000391de77776691074033, fixCommit: 071c4f1420ac3c80ad621522b9996bcc1cd94bcf, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/Python-Markdown/markdown, revision: be7ba7bfa17e7cb0c795e101662d1e490334ec84, fixCommit: 611cf6d98297f8cb79c06d2c785c885b88a12cf0, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/Python-Markdown/markdown, revision: 18b17e1bf5efa22ed06f09df14cc4c3ff8d7b5f8, fixCommit: 11c9e179390ba4e3fbc5ed35b9af16ea93f7d5ca, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/Python-Markdown/markdown, revision: c4386475a6b6daea43b7d7717add4271adc9a3c1, fixCommit: 7f29f1a69d236f5bb11645c2fa03fcf701487c8c, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/coleifer/huey, revision: b730f2fa151df2d006af50bc9ea75e5289865cb3, fixCommit: abaa6d412be04ab0afe534c133361e0eb7d86c23, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: 2c64f4ea303c4f2e017d96e9da6f60cc71f887fe, fixCommit: f1bae289c788e62a6a295ddc0813ba11323cd8b8, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: 0b9c3fb847a0a1e05cfa34fb46626b368d1b648c, fixCommit: 49322fa5e3a007c27187157f264565bb7803bd95, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: b82d7c478e8b7a2bdd06aa037bce2c0b4fc3b1ca, fixCommit: 8457eed11debf98b87879251e1a2871c40538b6c, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: 9199e8c60fd1c3dfcc080a4fb62502cbf46d3c1a, fixCommit: adf4b375071f7c48f80dbbf77903f38c8a122fcf, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: 750505de239b785045f2d8c7dac14a51c80ed636, fixCommit: 0f46eaa8108a4bacb1e69b7ccef5dc6541e567c5, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/coleifer/huey, revision: 4a97c1035e27deb1962a3901156c5f09262566ab, fixCommit: d6828c715deb3ded1ce6f0dc2d84d215438c8829, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: 5235225ba635f01b56149e38fc0fb75f35ad853d, fixCommit: 6f1c9986ddb76c45a594efea633238b58a113074, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/coleifer/huey, revision: 5a970095998a543a1051a971235d1f8abc9c89ec, fixCommit: 70838218d0a9ec506cff0b1df61a47c6b584aeaf, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/coleifer/huey, revision: cd1e0ec6340c357c84c828dfa7ccf73aa964c63a, fixCommit: 54cd1adaede46ae8d4b6ae78ff7423fcefc8b28c, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/coleifer/huey, revision: 755a86e8702e3717223c93f81f9f174d4298e52f, fixCommit: 8fbf3473b16049d2b96a60ae99a5dbc07df4e71f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/cpburnz/python-pathspec, revision: ce7e2e24687f7fa53562af413d75b8f1c65a7965, fixCommit: b7dc6dded8681ab88cb611d716fbcb643c784a11, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/cpburnz/python-pathspec, revision: fd0fd97c2f520e21f9772f11837d2eef913e3356, fixCommit: 3ef1451dfa126cfacc6cba49f59847cea1c733c6, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/cpburnz/python-pathspec, revision: d180237967664c56b5969eb1e77b4a8146935b7c, fixCommit: daff5f242aa61b38095812ab8da334a07c9d5569, reason: "AC が修正の意図を表していない（既存テストの失敗への追従で、修正対象のバグを特定できない）"}
+  - {repo: https://github.com/cpburnz/python-pathspec, revision: 441261fcfdeb791a33586eec34932c56a1dafb0c, fixCommit: 88f7960b0d0a9e11a6ba08f28d0d8aca1109c089, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/cpburnz/python-pathspec, revision: 3199cd43f74c22bafcff9848458dd04613fbe64e, fixCommit: b70e3fb420ec48a9164c3e50f9aa729535738409, reason: "AC が修正の意図を表していない（デバッグ表示・str の変更で、バグ修正ではない）"}
+  - {repo: https://github.com/eliben/pycparser, revision: 5d5904d2538e054356ac01ba9ef965783f73e36b, fixCommit: 62ee4ba5fbe58f469c72e7b5b02e88584577a147, reason: "修正前の実行がタイムアウト"}
+  - {repo: https://github.com/eliben/pycparser, revision: 61eac63fda12f9ba4504def70d0d76cd3ac1bbff, fixCommit: 6da5009936d0c220b14f8c70deb0a2c7f82ac922, reason: "修正前の実行がタイムアウト"}
+  - {repo: https://github.com/hukkin/tomli, revision: bc1048993c13c8942e5cdf3faaf904453fa89416, fixCommit: 948211d852a62ab78b20bae5d288f882822ca14f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/lark-parser/lark, revision: c9ca287e9e2ae2a3f5ad7cf028fdabf408f053a1, fixCommit: 96873d64ba8ef85fcad1daa2dd2e9bf931eb06ba, reason: "2C（88 件）を超えたため未登録（順序キーで 89 位以降）"}
+  - {repo: https://github.com/lark-parser/lark, revision: c6f2b023f35d069448f81d60224e20bb07ee9b0a, fixCommit: a423097362a835349f2297a332b76983c6e2ce1e, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/lark-parser/lark, revision: d41e3cdfb9c79cd09c5df10193e8a8dd46da6885, fixCommit: abdbabe429ccb57ab4e803dc01ddbc1100097310, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/lark-parser/lark, revision: 284dfe7fd3ea77c4c3bdfe7cecbdf3ec526d1ad8, fixCommit: 712df517b22e0394f6321b90d8e1fd4e29b7fdfb, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/lark-parser/lark, revision: 9e545f88253824f0afbdc41aa816599bf624be71, fixCommit: 225c9e16a51bef87af1260a2b308a3809ac9c75f, reason: "AC が修正の意図を表していない（%import 機能の追加とテスト修正で、バグ修正ではない）"}
+  - {repo: https://github.com/lark-parser/lark, revision: 8b4f874d3d99d1381dd196df5ae0a31da19364c3, fixCommit: b6b31548ca5fd0a6528fbb31c0877f00c28303d9, reason: "AC が修正の意図を表していない（レビュー対応と未使用関数の削除で、修正対象のバグを特定できない）"}
+  - {repo: https://github.com/lark-parser/lark, revision: ace1c9f4ea9b2c5217d00e74bbdd3c24d1e394b6, fixCommit: c621eeb369b051d213f116026497ff7ed8c1b9c4, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/lark-parser/lark, revision: 771998429889ba4d98bc4b6ab6d4bb67603b38d2, fixCommit: 1457e01e7e088b1984825bad531b110fead80ea2, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/lark-parser/lark, revision: a3040707f7e2e723c57b297b17c853d7350adc4b, fixCommit: 4a197bbecc3a0993f8d25b224771609144847d23, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/martinblech/xmltodict, revision: 89c4bf77b856da1e446fb6f017bf87c7c7f298bf, fixCommit: ed704344226ed6451f6735811c695fb5004df44d, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/more-itertools/more-itertools, revision: cb45fe16d7aa9a5161a531f4f7f4ce98c370f92d, fixCommit: 683cd592af762e6b63454476ec0951f4402bd4ae, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/more-itertools/more-itertools, revision: a89d4143883f81ff0d7299057ffae855aa303e78, fixCommit: 395bdfc00db80a36b36662a3bddf1f453289adf6, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/more-itertools/more-itertools, revision: 17fd95a0c34763c34853f3a89048d60733815dc4, fixCommit: 4bd0bd876273a8ff2171352c937b91a8c053d00b, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/more-itertools/more-itertools, revision: 02e4afb07149400124069a2ea3924b414a0f91ec, fixCommit: 0de415570d062395855eb145baa30e4e28b0f7da, reason: "AC が修正の意図を表しているか確認できない（件名 'fix checks' から修正対象のバグを特定できない）"}
+  - {repo: https://github.com/more-itertools/more-itertools, revision: 54f84c9c55180b927ce2d3a156413fd50589afb5, fixCommit: f5774b65f79c4d71c38b2adb2eefcaff0867d142, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/pyasn1/pyasn1, revision: 626cddb7743b6b614a90246647c93da60e53b408, fixCommit: f0484d424454fd294a5ee55d5e862c051905b1a9, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pyasn1/pyasn1, revision: 6993b85ff7a4bd758a40ffc3447b9c85a7e35e59, fixCommit: d1381d4367dfb5854a07e644b58dc71e3e3a75ba, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/pyparsing/pyparsing, revision: 0a2d906a3e6b9a30b6a0701588caec3937ff271f, fixCommit: 21bd661008ad2e9bc3c803071488ae413b2f054a, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/pyparsing/pyparsing, revision: e378aaf45c5fad96d69daac25f53ff7469cb2878, fixCommit: 9b728b8835aeef5974f0ee2be8df204b642ba008, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/pyparsing/pyparsing, revision: 8ea81b5c8daa7b363adf8b2c081db6df6770ce81, fixCommit: 92f52e2c3b3ffb24215e966c0c349ca5678a7f86, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pyparsing/pyparsing, revision: d3388aaf5c60d1069b7294a743ccd0e7c87a1d1d, fixCommit: 59b167db1ba364422e1505e8e112f8447764cd22, reason: "修正後の結果が不安定（flaky）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 09d693ec53f3a25d43ebb9433e11352fac12c367, fixCommit: 99f7a66ea7006e937d30f6887474809993c84369, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 4f237ea78f5f943d85414274cc4de96e1e70650f, fixCommit: 06c08b6bad624d1da43782481de1c5fb5606aaab, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 8c005b983dc20e24ad1d17750fc94d4ccf014d0a, fixCommit: 8fa06759fa3f5914e564340b58217cd694dd4145, reason: "AC が修正の意図を表していない（Windows でのテスト失敗への追従）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 025f06cc56e5ab995d0ca2276e5b2325991e5cf4, fixCommit: e801c65c36289254e9f967080efa08f342f941fd, reason: "修正前の失敗がテスト単位で特定できない（import・収集の失敗のみ）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 520914feaa39b457256c701588498a0a8c76b5cf, fixCommit: f459e90900b6bda8adb555f50582ba1738c6bbf1, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 1b57df85afb9601f6842d4fc2576a1e642b0d925, fixCommit: c256c01a3b9c8b4990186488629383137beb359d, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 40e695e559cc5284c62e999b45a6139318b6941a, fixCommit: 87eaba83fe713ebd0b00ceff76025956b301dcce, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 7419c6125278d0ab2a993076420a6376a15cc306, fixCommit: e06472b0671d2f077cc41e9ab9cf38893ef0c97f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 0f88211b75c8a16b59999ce6d7344f32d16d7b06, fixCommit: 26e8b72f24dcd33782be9f8bc7558d8e2096ff50, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 0fb50dd162f87121431540b9f962bcdda647013f, fixCommit: 28fbf1cefa221607c84c744bb6b669b25f87444d, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: ba4f21780d8af71f230666dba64020f42a08b046, fixCommit: 4e999910363caec2bdbcae65442af050274b369b, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 3d488c8d7200b40ef615906fc1715a40a8834ed8, fixCommit: e9969a3ac57be75d93fc7367d3c579e57cad42c2, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 4b6944994aca9c5623b2cd3c91c420d49560d23c, fixCommit: 0d5d2b135f269fa2e0ff9dd5eadd913054cbeb33, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 4ddc3062aaec33e8cb00c51c7452786c44d8afb9, fixCommit: 9f38b8904b92dbfc2eeaf405dc5b9fb8f6f476aa, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/pytest-dev/pyfakefs, revision: 0dce6bc408ce4d52598fa1a61694f4cbd1bbbff3, fixCommit: bede00d7c6a523cd57c44f26b773ed6097020dd5, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 7ab5407f2265cf5f9b4ca611b7951f8e354c9887, fixCommit: 8f6929f50dfd843b092f7f774918328e83be81bf, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 4fe38bc322c78b6107ccb91d2cf7773704dd47e4, fixCommit: 5a02150d8c1170f618689042684b98380cba8e1a, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: af2ebf70a671760460f6cbd1f2d953be7c79f9c4, fixCommit: 48a5fe07702f4a5068b056b580b6725deb5ad13d, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 8042f3ba1ae65fd474f9e2a5ab641d1a2d8dbed6, fixCommit: b56468c27aadf90da890ef006d563b1acf495145, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 25b09718c4125894242e4f5955a4f5f6cd57c91f, fixCommit: 7e998c28b9969dcc2bc13e84ea98a0bfa475b2ae, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 501a00e4701185ec93220155a0caa3da71d327e8, fixCommit: 8bff0a36f3cd05236a4339e082915fd460d5a725, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 7e6a4c00175d382c33e14ac1724ef314cbd1e2ba, fixCommit: dfe4889858cea9503797229a9dea1524f8f1e767, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 09c1ed49509d3c0a963e5bfed50e4b941954810c, fixCommit: 8b6582e26822ed4bd51f8ac8bd5ac0383626d137, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: cca17ebfd641fc3b681912789ad4cfe131daf2c5, fixCommit: d03ea9b73f7b748a4c7d3c8d220220500070f354, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: afabbbdd6df2dfc76b06f91b3e1feffe7d046dbc, fixCommit: 0363a6d51884017b8b1a77a0e38fe02327edeb14, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 132685bbb25b1e670ac130297aef788ae190d904, fixCommit: 348f5441aa588052f0ef0579b02aa65902763743, reason: "修正前の失敗がテスト単位で特定できない（import・収集の失敗のみ）"}
+  - {repo: https://github.com/python/typing_extensions, revision: 8184ac61398c187203dad819eb5b9d34005a96ae, fixCommit: 86cf372510ee23aee6e7318293568c79e263b26c, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/python/typing_extensions, revision: d44e9cf73eb4d917b9114d9a23ecc73b03ce6e5f, fixCommit: 11cc786b464985d5efbd5fb5bc4ba9b1eb518988, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/rthalley/dnspython, revision: 77b9cdc41ffe002c0bb49f387b4f1fdbb190ff60, fixCommit: c19e6716a86593528ae3d4904bf1cefcfcd477b9, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/rthalley/dnspython, revision: f64a5af8b4a6e7ef6c7985b281236a229195e556, fixCommit: 9c91b29cb4505650b02cc45cb7389e232ecb9af1, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/rthalley/dnspython, revision: 5e32c6e4bb3f82b7c345174a33674f0214387dce, fixCommit: 4ab8fdc0c0d0ec757c5de0ec961a3cda4d1ffdb5, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/rthalley/dnspython, revision: 6514e048c1fd609fbda1949cf483e76e7fbf5580, fixCommit: 23a6cd2a6d8b1d9612edd11261870acd702c3136, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/rthalley/dnspython, revision: af5cc101a40ebab31453e240bc201cf989328784, fixCommit: 9b1050da738d429fd77a205f3d430169b7eaf8b5, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/rthalley/dnspython, revision: fdbbf4b429472242531d4121ff668c63c81d3a1a, fixCommit: 227eace43e1926726c29e0f20b23f4f04c1095e1, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/simplejson/simplejson, revision: 6932004966ab70ef47250a2b3152acd8c904e6b5, fixCommit: f6dfa66b5f8494eca4d2773f9ba54bdbbbbfaa20, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/simplejson/simplejson, revision: c23e6d9c29cfab5f7508570e7402e823478b0b07, fixCommit: d0bffce13b24c55f1074556b93a16a8d81c3cb6e, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/simplejson/simplejson, revision: e2e5f0b2d3bae3fd9a56bbaab42f6d75fb980ad5, fixCommit: 0dbb9d875127a9009f01a4036fa950b0a5f4f589, reason: "修正前でも AC テストが通る（決定的に失敗しない）"}
+  - {repo: https://github.com/simplejson/simplejson, revision: 0dbb9d875127a9009f01a4036fa950b0a5f4f589, fixCommit: 825100a7fc498dafae31d10bef3e3cfaba1fdc5b, reason: "AC が修正の意図を表していない（リリースの一括変更で、単一の修正意図に対応しない）"}
+  - {repo: https://github.com/tartley/colorama, revision: c784d79ef81e1ef6eab22b6f63fb94cfa65a2604, fixCommit: bfa8c22e8f9b51ad3428c165087540cea5d44a1f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tartley/colorama, revision: b3fca6f5dd8964321d80ec2425ef9b160a69d093, fixCommit: db005539a7d1791159024ecd5f9e46e8bed66e75, reason: "修正前の失敗がテスト単位で特定できない（import・収集の失敗のみ）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 1d8e1c9963e36652a57dd837989b3e4bcb7fc90a, fixCommit: b8333a81f02fafaa040bb3b8535f1c17eb9caf0c, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: bea35b336cba03cb528a6e34c17b265c84ed9793, fixCommit: 51864e76b42b26f1fdeb829e349bd43db4d81598, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 6b5191d9e3219be38027a63e0f44d68aaeaf8558, fixCommit: a00dc2e5c489214bea53bacbbeba8713f21ebce1, reason: "修正前の失敗がテスト単位で特定できない（import・収集の失敗のみ）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 9114355463fd02a9b505c869edb0561503a07b19, fixCommit: 7d9a6cd599c41e4bd886c757e1b9e60b39bef70c, reason: "修正前の失敗がテスト単位で特定できない（import・収集の失敗のみ）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: e38929edd78a20f74fc19fee819e14ac23add687, fixCommit: cf39265a3e8efd8c32bab7f9c9b4f123fdfbf682, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: a0cc28b91c3d186801d478e83967e967b86c90dd, fixCommit: 4d7d7ca94250269dc1903d7175b7b8aa96e9a480, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: e71e4ee1da5c3c6a7d3616d4cd4160a681202f0d, fixCommit: ad8764a0436a7b5c500b783ebe50dbf20c1e477c, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: f814e4cb2a8743bba63e8818bae25207bbd3966f, fixCommit: 552774469174ee686def95e6bcb2da46f61e047b, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 094509aad83fff575f1b4d198e4d03c21c432e58, fixCommit: d747f5b20dd71a379437dd3cf251ec130edd94b3, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 03744a2a8376af5f5f70230b04d1c5fbfb71dc61, fixCommit: 021991fb9a63060e2f71aeac48e134f67c77227f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: c388227a73fe4e6652e311db0a04b8d838c7c821, fixCommit: d17c7680b70bccb5fda677aaf63980b2663224dc, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 9e57e448de90bc273a926e63f77f4fdf788d0fac, fixCommit: f536a8233b4f9aa1efac982dd9d6b098ed3982a4, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: fc1472a0d54c4e8d0d6700b0a4dbe66f0f32707b, fixCommit: 115ce02b002ed63ff23a4c99a24ad025ec1efbb4, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 7e4d995f75dac9fb6ed110109b80bf12f24cdea5, fixCommit: d44db25a534d86ba593958dd0cc533f8310daef0, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 68cd4a2d8f766132e338721df8676e0b42d6b7ca, fixCommit: 55bff6129f36820c78efccf920c877443dc7fb70, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: e0ccb31966ca81b5adf39aeb1f82add511f1fe54, fixCommit: 67961afbed7c986dfe26ab82db89a25814c1bdcb, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 3377b95795837881a1ffe86c0ea6965084b195d7, fixCommit: 83479d061b1b92836cc41b6fdf266f575a72dc3f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 30ceae53a0049859d9fd36b2ec1336a9cad7d4d2, fixCommit: 4678f6cb67662b0156d942f603eee816abbfec5a, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/tobymao/sqlglot, revision: 069a75175b3914ccaed99162eaae9b817482da48, fixCommit: a97d03579f530531451e773823d823404cb6bedd, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/wbond/asn1crypto, revision: a19fbecf3478be3fbffc2d4ab05df4fb1159771d, fixCommit: 9a5a0259885c0ccd610815aa4ec52afb1fd9554f, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/wbond/asn1crypto, revision: f20cd69609ccce350440c0a95cb9f5e4b812ec99, fixCommit: 432edc1f8627ab3c2f96abf986f2eeef6654ebee, reason: "修正後に AC テストが通らない（3 回中で失敗、環境非互換・依存不足を含む）"}
+  - {repo: https://github.com/wbond/asn1crypto, revision: 8c1f7c3952b126240bce02bd79bd7090820114b3, fixCommit: 8609892a88f571bc10110603c173832cd100cb44, reason: "2C（88 件）を超えたため未登録（順序キーで 89 位以降）"}

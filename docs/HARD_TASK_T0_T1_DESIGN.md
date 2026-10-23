@@ -27,7 +27,7 @@
 
 | 対象 | 読んだ範囲 | 扱う問い | 本設計との関係 |
 |---|---|---|---|
-| [POST_EXP001_EVALUATION_DESIGN.md](POST_EXP001_EVALUATION_DESIGN.md)（#194） | 全文 | 混合母集団での T0 vs stronger model（F）と shadow gate（EXP-002）、失敗後の model 昇格（EXP-003） | 変える因子が model / gate で、Topology は変えない。「T0 が失敗し得る task の母集団」（U2）という部品は共通。本設計は Topology の比較で、問いは重複しない。母集団の調達は U2 と共有し得る（§10） |
+| [POST_EXP001_EVALUATION_DESIGN.md](POST_EXP001_EVALUATION_DESIGN.md)（#194） | 全文 | 混合母集団での T0 vs stronger model（F）と shadow gate（EXP-002）、失敗後の model 昇格（EXP-003） | 変える因子が model / gate で、Topology は変えない。「T0 が失敗し得る task の母集団」（U2）という部品は共通。本設計は Topology の比較で、問いは重複しない。母集団の調達は同書 §10 の U2 と共有し得る |
 | [Issue #93](https://github.com/s977043/dynamic-agent-topology/issues/93) | 本文・全コメント | compound strategy、Critique A–D、Cascade E–G、multi-model、司令官型（PR #219） | T1（Worker→Verifier、同一 model）の難度別比較を正面から扱う arm・設計はない |
 | [Issue #88](https://github.com/s977043/dynamic-agent-topology/issues/88) | 本文・全コメント | baseline 失敗後の fresh session / handoff / model 昇格（A–E） | 対象は eligible failure 上の recovery。Topology は変えない。「EXP-001 の成功 Run を失敗として流用しない」は本設計も守る |
 | [Issue #82](https://github.com/s977043/dynamic-agent-topology/issues/82) | 本文・全コメント | 反証 objective / 独立 Adversary Role の段階 ablation | 独立 Role 化（C）は近いが、対象は Reviewer / Adversary の判断。本設計は既存 T1 の Verifier を変えずに使う。#82 の carryover・事前宣言・評価者独立の統制は本設計でも採る |
@@ -40,14 +40,14 @@
 
 **H1（主）**: 事前に T0 の成功率が低いと確認し凍結した評価 Task 集合で、Runtime・Model・Effort を固定したとき、T1 の verified success rate が T0 より事前宣言の最小改善幅 Δ 以上高い。
 
-**H2（コスト）**: H1 が成り立つとき、T1 の token 増加は EXP-001 基準 3 の考え方（「品質改善がその増加を明示的に正当化できる」）で正当化できる。具体的には、verified success 1 件あたりの total tokens（失敗 Run の消費を含む）が T0 を事前宣言の倍率 K 以上上回らない。
+**H2（コスト）**: H1 が成り立つとき、T1 の token 増加は EXP-001 基準 3 の考え方（「品質改善がその増加を明示的に正当化できる」）で正当化できる。具体的には、verified success 1 件あたりの total tokens（失敗 Run の消費を含む）が T0 を事前宣言の倍率 K 以上上回らない。T0 の評価集合での verified success が 0 件のときは、1 件あたりの値が定義できないため H2 は評価不能とし、全体の判定は H1 を満たしても INCONCLUSIVE とする（T1 の成功 1 件あたり total tokens と T0 の総 token は報告する）。
 
-**H3（安全）**: T1 の regression rate と critical boundary violation が T0 を上回らない（boundary violation は EXP-001 基準 4 と同じく 1 件でも標準採用しない）。
+**H3（安全）**: T1 の regression rate が T0 を事前宣言の regression 上限を超えて上回らない（判定単位は評価集合全体の Run 単位の割合）。critical boundary violation は別の規則とし、EXP-001 基準 4 と同じく T1 に 1 件でもあれば、H1・H2 の結果にかかわらず T1 を標準採用しない（判定単位は Run 単位の件数。T0 側の件数は比較に使わず報告する）。
 
 反証条件:
 
 - 評価集合で T1 − T0 の verified success 差が Δ 未満 → H1 は不支持（Keep T0 を維持）。
-- T0 の評価集合での成功率が較正時より大きく上がり、上限近くに張り付く → 難度の操作化に失敗。H1 は INCONCLUSIVE。
+- T0 の評価集合での verified success rate が、較正時の値から事前宣言の上昇幅 r_max を超えて上がる、または事前宣言の上限 p_ceiling 以上になる（判定単位は評価集合全体の Run 単位の割合）→ 難度の操作化に失敗。H1 は INCONCLUSIVE。r_max と p_ceiling は U3 で評価 Run 前に固定する。
 - Verifier が false accept で成功を水増ししている（独立 AC で不合格のものを T1 が成功と申告）→ その Run は失敗として数え、verifier false accept rate を別に報告する。
 
 Δ、K、regression の上限は推測で決めない（§9 U3）。
@@ -79,7 +79,7 @@
 | 独立 AC | Task ごとに、Worker・Verifier に渡す情報とは別に保持する決定的な Verification command / 期待結果。T1 の Verifier の判断は成功判定に使わない |
 | negative oracle | 誤った修正・テスト削除・AC の回避などを不合格にする負側チェック。Task ごとに少なくとも 1 つ |
 | 指標 | 主: verified success rate。副: regression rate、human interventions、total tokens（T1 は全 session 合計）、wall clock、verifier false accept rate、boundary violations、verified success 1 件あたり total tokens。定義は [METRICS.md](METRICS.md) と EXP-001 の集計に揃える |
-| 閾値 | Δ、K、regression 上限、INCONCLUSIVE 条件（欠損率、paired 不成立、T0 成功率の張り付き） |
+| 閾値 | Δ、K、regression 上限、INCONCLUSIVE 条件（欠損率、paired 不成立、T0 成功率の上昇幅 r_max と上限 p_ceiling、T0 の評価成功 0 件） |
 | budget と停止条件 | 較正・評価それぞれの token / Run 上限と承認者。予算到達、infrastructure failure の連続、boundary violation、quarantine などで停止し、停止した Run は失敗・中止として区別して残す |
 | counterbalance | Task × rep を block とし、block 内の T0 / T1 順序を交互または事前乱数で決める。fresh workspace / fresh session、arm 間で patch・診断・Verifier 所見を持ち越さない |
 | 固定条件 | Runtime・Model・Effort・prompt 方針・tool 権限。実効値を Trace から確認し、宣言と異なる Run は control deviation として記録する |
@@ -104,7 +104,7 @@ EXP-001 の Frozen file（scenarios、prompts、fixtures、T0/T1 topology、role
 |---|---|---|
 | U1 | 固定する Runtime / Model / Effort | 未定。EXP-001 の Codex / gpt-6.1-sol / high は候補の 1 つ（比較可能性は高いが、#220 等と同時期に変えない） |
 | U2 | hard 候補の母集団の出所と件数 | 未定。#194 の U2 と共有し得る。公開可能な revision のみ |
-| U3 | p_max（0 を含めるか）、Δ、K、regression 上限 | 未定。推測で決めない |
+| U3 | p_max（0 を含めるか）、Δ、K、regression 上限、r_max、p_ceiling | 未定。推測で決めない |
 | U4 | n_cal、評価集合の最小 Task 数、rep 数 | 未定。rep 数の下限候補は EXP-001 の 3 |
 | U5 | 較正・評価の budget と承認者 | 未定 |
 | U6 | 新しい Task / fixture / experiment Artifact の置き場所と schema 適合 | 未定。別 PR で扱う |

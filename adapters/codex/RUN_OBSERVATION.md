@@ -13,7 +13,7 @@
 | 項目 | 情報源 | 取れないとき |
 |---|---|---|
 | `metadata.project` / `datVersion` | `project` は導入先のディレクトリ名（worktree なら親リポジトリ名。`.dat/project.yaml` があればその `metadata.name`）。`datVersion` は参照した DAT 仕様の版（DAT の `CITATION.cff` の `version`。導入先に `.dat/dat.lock.yaml` があればその版） | 必須文字列。分からなければ記録しない |
-| `startedAt` / `endedAt` / `wallClockMs` | 作業台帳・コミットや PR の時刻など、記録者が確認できる時刻。セッションから開始・終了時刻を取る機能は未確認 | `unknown`。`wallClockMs` は両時刻が分かるときだけ |
+| `startedAt` / `endedAt` / `wallClockMs` | 作業台帳・コミットや PR の時刻など、記録者が確認できる時刻。セッションから開始・終了時刻を取る機能は未確認。記録はウェーブの終了時に行うので、ほかに確かな終了時刻がなければ `endedAt` には記録する時刻（`date -u` などで取得）を入れる | `startedAt` は `unknown`。`wallClockMs` は両時刻が分かるときだけ |
 | `goalRecorded` | ウェーブ開始前に目的を書いた記録（台帳・Issue）があるか | `unknown` |
 | `outcome` / `outcomeReason` | 完了時の状態。理由は 1 行の要約 | `unknown` |
 | `runtime` | Organizer と Worker が Codex なら `name: codex`。版の取得方法は未確認 | `version` を省略。全体が分からなければ `unknown` |

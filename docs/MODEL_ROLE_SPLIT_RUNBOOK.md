@@ -75,7 +75,10 @@ Agent は [H] の手順を代行しません。[H] の手順の結果が Issue �
 4. [A] 確定値を 1 つの事前登録ファイルにまとめる。含める項目: arm A・B の model ID、task 集合と想定難度、AC と Verification command、negative oracle の check、task ごとの許可範囲と trace の完全性条件、δ_q・δ_c・最小 paired block 数・欠測率上限・activation 未確認率上限、budget（総 Run 数上限、1 Run あたり token / wall clock の hard limit、自動継続の上限回数）、counterbalance の順序、介入規則。
 5. [A] 事前登録ファイルを commit し、その blob hash を確定して Issue #220 に記録する（レビュー対象の固定）。
 6. [R] 手順 5 の hash と一致するファイルを独立レビューする。必須指摘があれば [A] が直し、新しい hash を確定・記録して手順 6 をやり直す。
-7. [A] 必須指摘 0 のレビューを受けた hash のファイルを含む PR の merge 後、merge 先の blob hash がレビュー済みの hash と一致することを確認し、Issue #220 に記録する。この時点で事前登録が成立する（Gate 4）。以後、結果を見て書き換えない。
+7. [A] 必須指摘 0 のレビューを受けた hash のファイルを含む PR を、AGENT_HARNESS.md の自律境界に従って merge する。
+8. [A] merge 後の main で事前登録ファイルの blob hash を計算し、レビュー済みの hash と一致することを確認して Issue #220 に記録する。この時点で事前登録が成立し、Gate 4 が PASS になる。以後、結果を見て書き換えない。
+
+手順 7・8 は G3 のどの手順（実行承認・予備検証）よりも前に終える。
 
 ### 実行前 Gate の一覧
 
@@ -83,31 +86,40 @@ Agent は [H] の手順を代行しません。[H] の手順の結果が Issue �
 |---|---|---|---|
 | 1 | 追加課金ゼロ: 既存契約の範囲内で追加 API 課金が発生しない（または無効化されている）ことを実環境で確認し、確認方法と日時を記録。利用枠の残量と追加請求の有無を混同しない | [H] | 予備検証の前（model 起動前） |
 | 2 | activation 計測の成立: 利用 Runtime の trace / usage に応答モデル ID と tool call が出る仕様・設定であることを、model を起動せずに確認（CLI の出力形式・設定の確認） | [A] 確認案 / [H] 実環境で確定 | 予備検証の前（model 起動前） |
-| 3 | A/B の設定差分が model binding だけであることの機械的確認 | [A] | 予備検証の前（model 起動前）。本 Run の各 block の前にも再確認 |
-| 4 | 事前登録の成立: レビュー済み hash と merge 後の blob hash の一致（手順 7） | [A] 照合 / [R] レビュー | 予備検証の前（model 起動前）。本 Run の前に hash を再照合 |
+| 3 | A/B の設定差分が model binding だけであることの機械的確認 | [A] | 予備検証の前（model 起動前） |
+| 4 | 事前登録の成立: レビュー済み hash と merge 後の blob hash の一致（手順 8） | [A] 照合 / [R] レビュー | 手順 8 の完了時（G3 の開始前） |
 
 1 つでも FAIL / NOT_TESTED なら model を起動せず、状態を Issue #220 に記録して停止する。
 
+**再確認の範囲**（ここだけで定める）:
+
+| 時点 | 再確認する Gate | 実行者 |
+|---|---|---|
+| 本 Run の実行承認（手順 13）の前 | Gate 1〜4 すべて（Gate 4 は main 上の blob hash の再計算と照合） | [H] Gate 1・2 / [A] Gate 3・4 |
+| 本 Run の各 paired block の前 | Gate 3 と Gate 4 の hash 照合 | [A] |
+
+再確認で 1 つでも PASS でなければ、§5 の停止条件として扱う。
+
 ### G3: 予備検証と実行承認
 
-順序: Gate 1〜4 の PASS → budget と実行の承認 → 予備検証 → 予備検証の判定 → 本 Run の実行承認 → 本 Run。
+順序: 事前登録 PR の merge と hash 照合（手順 7・8、Gate 4）→ Gate 1〜3 の PASS → budget と実行の承認 → 予備検証 → 予備検証の判定 → 再確認 → 本 Run の実行承認 → 本 Run。
 
-8. [H] Gate 1 を確認して記録する。[A] は Gate 2〜4 の結果を記録し、[H] が Gate 2 を実環境で確定する。
-9. [H] 事前登録した budget（hash 記録済みのファイルの上限）を承認し、予備検証の実行を明示的に承認したことを Issue #220 に記録する。承認の記録には事前登録の hash を書く。
-10. [H] **予備検証**（設計案 §8）: 1 task を A/B で 1 回ずつ実行する。
-11. [A] 予備検証の結果から、activation trace（arm 宣言との一致）・token・cache・elapsed・tool call が欠測なく取れたかを判定し、PASS / FAIL を Issue #220 に記録する。結果は効果推定に使わない。FAIL なら本 Run に進まず、設計案の見直しを Issue #220 で提起する。
-12. [H] 手順 11 が PASS で Gate 1〜4 が引き続き有効であることを確認し、本 Run の実行を明示的に承認したことを、事前登録の hash と budget とともに Issue #220 に記録する。承認の記録がない限り本 Run を始めない。
+9. [H] Gate 1 を確認して記録する。[A] は Gate 2・3 の結果を記録し、[H] が Gate 2 を実環境で確定する。Gate 4 は手順 8 で PASS 済みであることを確認する。
+10. [H] 事前登録した budget（hash 記録済みのファイルの上限）を承認し、予備検証の実行を明示的に承認したことを Issue #220 に記録する。承認の記録には事前登録の hash を書く。
+11. [H] **予備検証**（設計案 §8）: 1 task を A/B で 1 回ずつ実行する。
+12. [A] 予備検証の結果から、activation trace（arm 宣言との一致）・token・cache・elapsed・tool call が欠測なく取れたかを判定し、PASS / FAIL を Issue #220 に記録する。結果は効果推定に使わない。FAIL なら本 Run に進まず、設計案の見直しを Issue #220 で提起する。
+13. [H] 手順 12 が PASS で、上の「再確認の範囲」の確認が済んでいることを確かめ、本 Run の実行を明示的に承認したことを、事前登録の hash と budget とともに Issue #220 に記録する。承認の記録がない限り本 Run を始めない。
 
 ### G3: 本 Run
 
-13. [H] 事前登録の順序で paired block を実行する。block の前に Gate 3 と事前登録の hash を再確認する。block 内で Runtime・CLI 版・Effort・tool 版を固定し、記録する。介入は事前登録の介入規則の範囲で行い、arm 別に記録する。
-14. [A] 各 Run の後に `ExecutionTrace` / `RunEvaluation` を作り、§2 の指標を記録する。activation 不一致を検出したら §5 の停止条件として [H] に報告する。
+14. [H] 事前登録の順序で paired block を実行する。各 block の前の再確認は「再確認の範囲」に従う。block 内で Runtime・CLI 版・Effort・tool 版を固定し、記録する。介入は事前登録の介入規則の範囲で行い、arm 別に記録する。
+15. [A] 各 Run の後に `ExecutionTrace` / `RunEvaluation` を作り、§2 の指標を記録する。activation 不一致を検出したら §5 の停止条件として [H] に報告する。
 
 ### G4: 判定
 
-15. [A] 設計案 §7 の判定規則で集計案を作る。最小 paired block 数に満たない場合は feasibility-only とし、効果を主張しない。
-16. [R] exact head・差分・Evidence を評価し、PASS / FAIL / INCONCLUSIVE の Judgment を Issue #220 に記録する。
-17. PASS でも既定化しない。設定変更（`.claude/`・`CLAUDE.md`・`AGENTS.md`・Harness rules）は G5 として別 PR で起案し、Human が merge する。
+16. [A] 設計案 §7 の判定規則で集計案を作る。最小 paired block 数に満たない場合は feasibility-only とし、効果を主張しない。
+17. [R] exact head・差分・Evidence を評価し、PASS / FAIL / INCONCLUSIVE の Judgment を Issue #220 に記録する。
+18. PASS でも既定化しない。設定変更（`.claude/`・`CLAUDE.md`・`AGENTS.md`・Harness rules）は G5 として別 PR で起案し、Human が merge する。
 
 ## 5. 停止条件
 

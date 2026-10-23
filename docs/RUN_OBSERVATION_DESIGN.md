@@ -170,6 +170,8 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - 参考: `schemas/execution-trace.schema.json` でも `runtime.name`、`model.id`、`events[].actor`・`target`・`artifact` は制約のない自由文字列で、識別情報が入り得る。`RunObservation` の同形の項目も同じく自由文字列として扱う
 - 識別情報（PR URL・ブランチ名・private リポジトリ名・導入先名・個人名など）は、private な導入先では DAT 側へ転記するときに仮名（例: `project-a`、`pr-1`）へ置き換える
 - **サニタイズ済み**の定義: (1) 上の「含めないもの」を含まない、(2) 識別情報が公開済みのもの（public リポジトリ名・公開 PR 番号）か仮名だけである、(3) 段階 2 の validator を通る、の 3 つをすべて満たすこと
+- **YAML の読込み規則**: validator（`scripts/validate_run_observation.py`）と CLI（`save` / `sum`）は同じ読込みを使い、重複した mapping key と YAML merge key（`<<:`）を含む記録を拒否する。読込みに失敗した記録は traceback ではなく `cannot read: ...` の診断を出して exit 1 になる
+  - **互換性**: 以前の validator は merge key を展開して受理していた。merge key を使った記録は、`<<:` を使わず各 key を直接書いた通常の YAML に展開して書き直す
 - **保存前**（保存先への書き込み時）: 記録者が validator を実行し、通らない記録は保存しない
 - 保存と集計の CLI: `scripts/run_observation.py`（`save` / `sum`）。validator を通った記録だけを保存する。手順は各 adapter の `RUN_OBSERVATION.md`
 - **転記前**（集計値や DOGFOODING へ載せるとき）: 識別情報を仮名に置き換え、validator を再実行し、人が差分を確認してから載せる。転記するのは集計値と仮名化した記録だけ

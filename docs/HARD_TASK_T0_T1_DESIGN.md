@@ -32,7 +32,7 @@
 | [Issue #88](https://github.com/s977043/dynamic-agent-topology/issues/88) | 本文・全コメント | baseline 失敗後の fresh session / handoff / model 昇格（A–E） | 対象は eligible failure 上の recovery。Topology は変えない。「EXP-001 の成功 Run を失敗として流用しない」は本設計も守る |
 | [Issue #82](https://github.com/s977043/dynamic-agent-topology/issues/82) | 本文・全コメント | 反証 objective / 独立 Adversary Role の段階 ablation | 独立 Role 化（C）は近いが、対象は Reviewer / Adversary の判断。本設計は既存 T1 の Verifier を変えずに使う。#82 の carryover・事前宣言・評価者独立の統制は本設計でも採る |
 | [Issue #166](https://github.com/s977043/dynamic-agent-topology/issues/166) | 本文・全コメント | Worker 数と規模の数理モデル（EXP-POP / EXP-ECO） | 問いが異なる。重複なし |
-| [PR #205](https://github.com/s977043/dynamic-agent-topology/pull/205)（open） | 本文・diff 全体 | task nature（探索 / 複製 / 既知解）で層別した treatment と selector | H1 が「探索的 Task で独立 Verifier が T0 より良いか」で近いが、層の軸が task nature で selector 評価を含む。本設計の軸は「T0 の実測成功率で定義する難度」で selector を扱わない。#205 が merge された場合、難度層と task nature を事前記録の共変量として両方残せる |
+| [PR #205](https://github.com/s977043/dynamic-agent-topology/pull/205)（2026-10-23 merge。研究ノートとして追加され、`knowledge/sources.yaml` では未採用） | 本文・diff 全体 | task nature（探索 / 複製 / 既知解）で層別した treatment と selector | H1 が「探索的 Task で独立 Verifier が T0 より良いか」で近いが、層の軸が task nature で selector 評価を含む。本設計の軸は「T0 の実測成功率で定義する難度」で selector を扱わない。#205 は研究ノートとして merge されたため、難度層と task nature を事前記録の共変量として両方残すことができる（残すかは U7） |
 
 判断: 「T0 / T1 を固定 model で難度条件付きに比べる」問いを主題にした既存 issue・文書はないため、新規文書とした。
 
@@ -108,4 +108,4 @@ EXP-001 の Frozen file（scenarios、prompts、fixtures、T0/T1 topology、role
 | U4 | n_cal、評価集合の最小 Task 数、rep 数 | 未定。rep 数の下限候補は EXP-001 の 3 |
 | U5 | 較正・評価の budget と承認者 | 未定 |
 | U6 | 新しい Task / fixture / experiment Artifact の置き場所と schema 適合 | 未定。別 PR で扱う |
-| U7 | #205 の task nature を共変量として記録するか | #205 の採否後に判断 |
+| U7 | #205 の task nature を共変量として記録するか | 未定。#205 は研究ノートとして merge 済み（未採用）。事前登録の時点で判断する |

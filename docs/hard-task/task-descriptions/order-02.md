@@ -18,7 +18,7 @@ for d in ["postgres", "duckdb", "mysql", "snowflake"]:
 
 ## 期待結果
 
-- 解析結果が、それぞれの方言で実際にその式が評価される意味と一致する（postgres・duckdb・mysql などでは `(a = b) IS NULL` の意味、snowflake では現在と同じ `a = (b IS NULL)` の意味）
+- 解析結果が、それぞれの方言でその式が実際に評価される意味と一致する
 - 解析した式を SQL に戻したとき、元の意味が保たれる
 
 ## 実際の結果

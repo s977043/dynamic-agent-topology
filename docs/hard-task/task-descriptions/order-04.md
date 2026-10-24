@@ -35,4 +35,4 @@ print(Lark(g, parser='lalr', lexer=CustomLexer, cache=True).parse('a'))
 
 ## 実際の結果
 
-1 回目は `Tree(start, [Token(A, 'a')])` を出力し、カレントディレクトリに cache ファイルが 1 つできる。2 回目の `Lark(...)` の構築が `AttributeError` で失敗する。cache ファイルが残った状態で再び実行すると、1 回目の構築から同じ例外で失敗する。
+1 回目は `Tree(start, [Token(A, 'a')])` を出力し、カレントディレクトリに cache ファイルが 1 つできる。2 回目の `Lark(...)` の構築が例外で失敗する。cache ファイルが残った状態で再び実行すると、1 回目の構築から同じ例外で失敗する。

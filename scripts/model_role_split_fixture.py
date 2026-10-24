@@ -240,6 +240,23 @@ def baseline_ids(order):
     return (FIXTURE / "baseline" / f"order-{order:02d}.txt").read_text(encoding="utf-8").split("\n")[:-1]
 
 
+ALL_FILES = "作業ディレクトリ内の全ファイル（readOnlyPaths を除く）"
+
+
+def writable(cand, path):
+    """Evaluate permissions.writablePaths: the whole-workspace phrase, or fnmatch patterns / directory prefixes."""
+    import fnmatch
+
+    for entry in cand["permissions"]["writablePaths"]:
+        if entry == ALL_FILES:
+            return True
+        if any(ord(ch) > 127 for ch in entry):
+            sys.exit(f"order {cand['order']}: cannot evaluate writablePaths entry {entry!r}")
+        if fnmatch.fnmatchcase(path, entry) or path.startswith(entry.rstrip("/") + "/"):
+            return True
+    return False
+
+
 def verify(cand, ws, cache, python):
     ws = Path(ws).resolve()
     task = load_task(cand["order"])
@@ -250,7 +267,7 @@ def verify(cand, ws, cache, python):
     deleted = sorted(set(expected) - set(actual))
     modified = sorted(p for p in set(actual) & set(expected) if actual[p] != expected[p])
     ro = set(cand["permissions"]["readOnlyPaths"])
-    outside = sorted({p for p in added + deleted + modified if p in ro}
+    outside = sorted({p for p in added + deleted + modified if p in ro or not writable(cand, p)}
                      | {p for p in links if p in added + modified})
     tampered = sorted(p for p in deleted + modified if is_test_path(p))
     with tempfile.TemporaryDirectory() as tmp:

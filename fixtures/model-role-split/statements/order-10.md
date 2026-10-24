@@ -24,7 +24,7 @@ app.route("/close")(lambda: body)
 ## 期待結果
 
 - 返り値が `["OK"]`・`[b"OK"]`・`"OK"`・`b"OK"`・それらの list のどれでも、レスポンスの処理の後で `close()` が呼ばれる。`start_response` の中で例外が起きた場合も同じ
-- テスト補助（`test/tools.py`）はレスポンスを閉じるときに、モジュールの関数 `bottle._try_close(obj)` を呼ぶ。この関数は、obj が `close()` を持つときだけ呼ぶ
+- `bottle._try_close(obj)` という名前で呼べ、obj が `close()` を持つときはその `close()` を呼ぶ
 
 ## 実際の結果
 

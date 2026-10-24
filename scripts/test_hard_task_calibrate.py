@@ -6,6 +6,7 @@ from pathlib import Path
 import contextlib
 import io
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,7 +29,7 @@ def run_cli(argv: list[str]) -> tuple[int, str, str]:
 
 
 def dry_args(work: Path, prompt: Path, *extra: str) -> list[str]:
-    return ["run", "--dry-run", "--work-root", str(work), "--prompt", str(prompt), "--timeout-s", "60",
+    return ["run", "--dry-run", "--work-root", str(work), "--task-dir", str(prompt), "--timeout-s", "60",
             "--max-run-tokens", "200000", "--budget-tokens", "10000000", *extra]
 
 
@@ -118,29 +119,81 @@ def test_container_isolation(tmp: Path) -> None:
     under_root = [b.split(":")[0] for b in binds if b.startswith(str(work))]
     check(all(s.startswith(str(rdir.resolve())) for s in under_root), "only this Run's files are mounted")
     check("--cap-drop" in cmd and "--read-only" in cmd and f"seccomp={htc.SECCOMP}" in cmd, "EXP-001 constraints")
-    expected = htc.bind_sources(Args, rdir)
-    good = {"Mounts": [{"Type": "bind", "Destination": d, "Source": s} for d, s in expected.items()],
-            "HostConfig": {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True,
-                           "SecurityOpt": ["seccomp={...}", "no-new-privileges"]}}
-    htc.check_container(good, expected, work.resolve())
-    leaky = json.loads(json.dumps(good))
-    leaky["Mounts"].append({"Type": "bind", "Destination": "/past", "Source": str(work / "HTC-02-n1")})
-    for bad, why in ((leaky, "extra mount"),
-                     ({**good, "HostConfig": {**good["HostConfig"], "Privileged": True}}, "privileged"),
-                     ({**good, "HostConfig": {**good["HostConfig"], "SecurityOpt": ["seccomp=unconfined"]}}, "seccomp")):
+    check(any(b.endswith(":/work") for b in binds) and all(b.endswith(":ro") for b in binds if not b.endswith(":/work")),
+          "only /work is writable")
+    expected = htc.expected_mounts(Args, rdir)
+    profile = htc.SECCOMP.read_text(encoding="utf-8")
+    compact = json.dumps(json.loads(profile), separators=(",", ":"))
+
+    def inspect(mounts, **host):
+        base = {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True,
+                "Tmpfs": {"/tmp": "", htc.CODEX_HOME: "uid=1"},
+                "SecurityOpt": [f"seccomp={compact}", "no-new-privileges"]}
+        return {"Mounts": [{"Type": t, "Source": s, "Destination": d, "RW": rw} for t, s, d, rw in mounts],
+                "HostConfig": {**base, **host}}
+
+    evidence = htc.check_container(inspect(expected), expected, work.resolve())
+    check(evidence["seccompMatchesLaunchedProfile"] and evidence["seccompLaunchedSha256"] == htc.SECCOMP_SHA256,
+          "seccomp recorded against the launched profile")
+    ro_work = [(t, s, d, False if d == "/work" else rw) for t, s, d, rw in expected]
+    rw_auth = [(t, s, d, True if d.endswith("auth.json") else rw) for t, s, d, rw in expected]
+    bad_cases = [
+        (inspect(expected + [("bind", str(work / "HTC-02-n1"), "/past", False)]), expected, "extra bind"),
+        (inspect(expected + [("volume", "v", "/data", True)]), expected, "volume mount"),
+        (inspect(ro_work), expected, "RW flag on /work"),
+        (inspect(rw_auth), expected, "writable auth.json"),
+        (inspect(expected, Tmpfs={"/tmp": ""}), expected, "HostConfig.Tmpfs missing codex-home"),
+        (inspect(expected, Tmpfs={"/tmp": "", htc.CODEX_HOME: "", "/var": ""}), expected, "extra tmpfs"),
+        (inspect(expected, Privileged=True), expected, "privileged"),
+        (inspect(expected, SecurityOpt=["seccomp=unconfined", "no-new-privileges"]), expected, "unconfined"),
+        (inspect(expected, SecurityOpt=['seccomp={"defaultAction":"SCMP_ACT_ALLOW"}', "no-new-privileges"]),
+         expected, "different seccomp profile"),
+    ]
+    wide = [(t, str(work.resolve()) if d == "/work" else s, d, rw) for t, s, d, rw in expected]
+    bad_cases.append((inspect(wide), wide, "whole work root"))
+    for bad, exp, why in bad_cases:
         try:
-            htc.check_container(bad, expected, work.resolve())
+            htc.check_container(bad, exp, work.resolve())
         except htc.Stop:
             continue
         raise AssertionError(f"container check accepted {why}")
-    wide = {**expected, "/work": str(work.resolve())}
-    try:
-        htc.check_container({**good, "Mounts": [{"Type": "bind", "Destination": d, "Source": s} for d, s in wide.items()]},
-                            wide, work.resolve())
-    except htc.Stop:
-        pass
-    else:
-        raise AssertionError("mounting the whole work root was accepted")
+    link = tmp / "auth-link.json"
+    link.symlink_to("/home/op/.codex/auth.json")
+    linked = [(t, str(link) if d.endswith("auth.json") else s, d, rw) for t, s, d, rw in expected]
+    htc.check_container(inspect(linked), expected, work.resolve())
+
+
+def test_auth_probe() -> None:
+    htc.check_auth_probe(0, "SANDBOX_ALIVE\nAUTH_DENIED\n")
+    for rc, out, why in ((0, "AUTH_DENIED\n", "no liveness marker"),
+                         (4, "SANDBOX_ALIVE\nUNKNOWN: unexpected error class\n", "unknown error class"),
+                         (3, "SANDBOX_ALIVE\nBLOCK: sandbox can read auth file\n", "readable"),
+                         (1, "SANDBOX_ALIVE\nAUTH_DENIED\n", "nonzero exit"),
+                         (0, "", "empty")):
+        try:
+            htc.check_auth_probe(rc, out)
+        except htc.Stop:
+            continue
+        raise AssertionError(f"auth probe accepted {why}")
+    check("SANDBOX_ALIVE" in htc.AUTH_PROBE and "Permission denied" in htc.AUTH_PROBE, "probe matches EXP-001")
+
+
+def test_task_descriptions(tmp: Path, tasks: Path) -> None:
+    cands = htc.load_candidates()
+    loaded = htc.load_task_descriptions(tasks, cands)
+    check(sorted(loaded) == [1, 2, 3, 4, 5], "five descriptions")
+    for content, why in ((cands[0]["fixSubject"], "fix subject"), (cands[0]["fixCommit"], "fix commit"),
+                         ("{fixSubject}", "placeholder"), ("  \n", "empty")):
+        bad = tmp / f"bad-{why.replace(' ', '-')}"
+        shutil.copytree(tasks, bad)
+        (bad / "order-01.md").write_text(content + "\n")
+        try:
+            htc.load_task_descriptions(bad, cands)
+        except htc.Stop:
+            continue
+        raise AssertionError(f"task description accepted {why}")
+    rc, _, err = run_cli(dry_args(tmp / "notask", tmp / "missing-dir"))
+    check(rc == 2 and "missing" in err, "missing task directory stops")
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -184,7 +237,15 @@ def test_workspace_and_grade(tmp: Path) -> None:
     (ws / "toy.py").write_text("def add(a, b):\n    return 0\n")
     check(not htc.grade(cand, ws, tmp / "run1" / "grade3", ac_files, py)["verifiedSuccess"],
           "editing the visible test does not change the AC")
-    htc.probe_ac_sandbox(py)
+    probe = htc.probe_ac_sandbox(py)
+    check(probe["control"] == "CONNECTED" and probe["sandboxed"] in ("ERRNO EPERM", "ERRNO EACCES"),
+          "local listener reachable outside, denied inside the sandbox")
+    try:
+        htc.probe_ac_sandbox("/usr/bin/false")
+    except htc.Stop:
+        pass
+    else:
+        raise AssertionError("probe accepted a failing control")
     net_test = {"tests/test_toy.py": (
         b"import socket, unittest\n\nclass T(unittest.TestCase):\n    def test_add(self):\n"
         b"        socket.create_connection(('1.1.1.1', 53), timeout=3)\n")}
@@ -195,8 +256,12 @@ def main() -> int:
     test_plan()
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d).resolve()
-        prompt = tmp / "prompt.md"
-        prompt.write_text("Fix the bug in {repo} at {revision}.\n")
+        prompt = tmp / "tasks"
+        prompt.mkdir()
+        for order in range(1, 6):
+            (prompt / f"order-{order:02d}.md").write_text(f"Symptom-only description for candidate {order}.\n")
+        test_task_descriptions(tmp, prompt)
+        test_auth_probe()
         test_dry_run_and_summary(tmp, prompt)
         test_control_deviation(tmp, prompt)
         test_limits_and_lock(tmp, prompt)

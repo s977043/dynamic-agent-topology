@@ -22,6 +22,7 @@ import json
 import os
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import tarfile
@@ -48,7 +49,6 @@ N_CAL = 5
 P_MAX_SUCCESSES = 2
 C = 44
 T0_TOKENS_EXP001 = 68022.0
-PROMPT_FIELDS = ("repo", "revision", "fixSubject")
 LOCK_NAME = ".calibration.lock"
 CODEX_HOME = "/tmp/codex-home"
 # Same profile as EXP-001 config-never.sh: workspace-write equivalent, CODEX_HOME hidden from sandboxed commands.
@@ -105,10 +105,28 @@ def plan(candidates: list[dict]) -> list[dict]:
     return runs
 
 
-def render_prompt(template: str, cand: dict) -> str:
-    out = template
-    for field in PROMPT_FIELDS:
-        out = out.replace("{" + field + "}", str(cand[field]))
+def task_file(task_dir: Path, order: int) -> Path:
+    return task_dir / f"order-{order:02d}.md"
+
+
+def load_task_descriptions(task_dir: Path, candidates: list[dict]) -> dict[int, tuple[str, str]]:
+    """Per-candidate symptom descriptions, passed verbatim as the T0 prompt. Returns {order: (text, sha256)}.
+
+    Mechanical leak guard only: the fix commit hash and the fix subject must not appear. The review for
+    hints about cause or fix location happens in a separate PR before calibration.
+    """
+    out = {}
+    for cand in candidates:
+        path = task_file(task_dir, cand["order"])
+        if not path.is_file() or not path.read_text(encoding="utf-8").strip():
+            raise Stop(f"missing or empty task description: {path}")
+        text = path.read_text(encoding="utf-8")
+        lowered = text.lower()
+        if cand["fixCommit"][:7] in lowered or cand["fixSubject"].lower() in lowered:
+            raise Stop(f"{path.name} contains the fix commit hash or subject")
+        if "{" + "fixSubject" + "}" in text:
+            raise Stop(f"{path.name} uses the removed {{fixSubject}} placeholder")
+        out[cand["order"]] = (text, sha256_file(path))
     return out
 
 
@@ -122,58 +140,118 @@ def ac_sandbox_prefix(grade_dir: Path) -> list[str]:
     return ["/usr/bin/sandbox-exec", "-p", profile]
 
 
-def probe_ac_sandbox(ac_python: str) -> None:
-    """Stop unless sandbox-exec exists and actually blocks an outbound connection."""
+NET_PROBE = """import errno, socket, sys
+s = socket.socket()
+s.settimeout(5)
+try:
+    s.connect(("127.0.0.1", int(sys.argv[1])))
+except OSError as exc:
+    print("ERRNO", errno.errorcode.get(exc.errno, exc.errno))
+    sys.exit(0)
+print("CONNECTED")
+"""
+
+
+def probe_ac_sandbox(ac_python: str) -> dict:
+    """Controlled check against a local listener: reachable outside the sandbox, EPERM/EACCES inside it.
+
+    Anything else (timeout, refused, other errno, probe crash) is not evidence of sandbox denial and stops.
+    """
     if not Path("/usr/bin/sandbox-exec").exists():
         raise Stop("sandbox-exec not found: cannot run the AC with network denied")
-    with tempfile.TemporaryDirectory() as d:
-        code = ("import socket,sys\ns=socket.socket();s.settimeout(3)\n"
-                "try:\n s.connect(('1.1.1.1',53))\nexcept OSError:\n sys.exit(7)\nsys.exit(0)")
-        rc = subprocess.run([*ac_sandbox_prefix(Path(d)), ac_python, "-c", code], capture_output=True,
-                            check=False).returncode
-    if rc != 7:
-        raise Stop(f"AC sandbox did not block network (probe rc={rc})")
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(4)
+    port = str(listener.getsockname()[1])
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            control = subprocess.run([ac_python, "-c", NET_PROBE, port], capture_output=True, text=True,
+                                     timeout=30, check=False)
+            boxed = subprocess.run([*ac_sandbox_prefix(Path(d)), ac_python, "-c", NET_PROBE, port],
+                                   capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise Stop(f"AC network probe could not run: {exc}")
+    finally:
+        listener.close()
+    result = {"control": control.stdout.strip(), "sandboxed": boxed.stdout.strip()}
+    if control.returncode != 0 or result["control"] != "CONNECTED":
+        raise Stop(f"AC network probe control could not connect to the local listener: {result}")
+    if boxed.returncode != 0 or result["sandboxed"] not in ("ERRNO EPERM", "ERRNO EACCES"):
+        raise Stop(f"AC network probe: sandbox denial not confirmed: {result}")
+    return result
 
 
 # ---------------------------------------------------------------- container isolation (real Runs)
 
-def bind_sources(args, rdir: Path) -> dict[str, str]:
-    """The only host paths a Run's container may see (container path -> host path)."""
-    return {"/work": str((rdir / "workspace").resolve()),
-            "/run-input/prompt.md": str((rdir / "prompt.md").resolve()),
-            "/cx": str(Path(args.codex_dir).resolve()) if args.codex_dir else "<codex-dir>",
-            f"{CODEX_HOME}/auth.json": str(Path(args.auth_file).expanduser().resolve())}
+TMPFS_ALLOWED = ("/tmp", CODEX_HOME)
+
+
+def bind_sources(args, rdir: Path) -> dict[str, tuple[str, bool]]:
+    """The only host paths a Run's container may see: container path -> (realpath of host path, writable)."""
+    return {"/work": (os.path.realpath(rdir / "workspace"), True),
+            "/run-input/prompt.md": (os.path.realpath(rdir / "prompt.md"), False),
+            "/cx": (os.path.realpath(args.codex_dir) if args.codex_dir else "<codex-dir>", False),
+            f"{CODEX_HOME}/auth.json": (os.path.realpath(Path(args.auth_file).expanduser()), False)}
+
+
+def expected_mounts(args, rdir: Path) -> list[tuple[str, str, str, bool]]:
+    return sorted(("bind", src, dest, rw) for dest, (src, rw) in bind_sources(args, rdir).items())
 
 
 def docker_run_command(args, rdir: Path, name: str) -> list[str]:
     binds = bind_sources(args, rdir)
-    ro = {"/run-input/prompt.md", "/cx", f"{CODEX_HOME}/auth.json"}
     uid, gid = os.getuid(), os.getgid()
     cmd = ["docker", "run", "--rm", "-d", "--name", name, "--platform", "linux/arm64",
            "--security-opt", f"seccomp={SECCOMP}", "--security-opt", "no-new-privileges", "--cap-drop", "ALL",
            "--user", f"{uid}:{gid}", "--read-only", "--tmpfs", "/tmp",
            "--tmpfs", f"{CODEX_HOME}:uid={uid},gid={gid},mode=700",
            "-e", "HOME=/tmp/home", "-e", f"CODEX_HOME={CODEX_HOME}"]
-    for target, source in binds.items():
-        cmd += ["-v", f"{source}:{target}" + (":ro" if target in ro else "")]
+    for target, (source, rw) in binds.items():
+        cmd += ["-v", f"{source}:{target}" + ("" if rw else ":ro")]
     return cmd + ["-w", "/work", IMAGE, "sleep", "infinity"]
 
 
-def check_container(inspect: dict, binds: dict[str, str], work_root: Path) -> None:
-    """Stop unless the container has exactly the expected binds and the EXP-001 constraints."""
+def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], work_root: Path) -> dict:
+    """Stop unless every mount, the tmpfs set, and the EXP-001 constraints match exactly (run-kit-g host-mounts)."""
     host = inspect.get("HostConfig", {})
-    mounts = {m["Destination"]: m["Source"] for m in inspect.get("Mounts", []) if m.get("Type") == "bind"}
-    if mounts != binds:
-        raise Stop(f"container bind mounts {mounts} != expected {binds}")
-    rdir = Path(binds["/work"]).parent
-    for src in map(Path, mounts.values()):
-        if src == work_root or (work_root in src.parents and rdir != src and rdir not in src.parents):
+    binds, tmpfs = [], []
+    for m in inspect.get("Mounts", []):
+        kind = m.get("Type")
+        if kind == "bind":
+            binds.append(("bind", os.path.realpath(m.get("Source", "")), m.get("Destination"), bool(m.get("RW"))))
+        elif kind == "tmpfs":
+            tmpfs.append(m.get("Destination"))
+        else:
+            raise Stop(f"mount of unexpected type {kind!r} at {m.get('Destination')}")
+    if sorted(binds) != sorted(expected):
+        raise Stop(f"mounts {sorted(binds)} != expected {sorted(expected)}")
+    if tmpfs and sorted(tmpfs) != sorted(TMPFS_ALLOWED):
+        raise Stop(f"tmpfs in Mounts {tmpfs} is not exactly {TMPFS_ALLOWED}")
+    host_tmpfs = sorted((host.get("Tmpfs") or {}).keys())
+    if host_tmpfs != sorted(TMPFS_ALLOWED):
+        raise Stop(f"HostConfig.Tmpfs {host_tmpfs} is not exactly {TMPFS_ALLOWED}")
+    rdir = Path(next(src for _, src, dest, _ in expected if dest == "/work")).parent
+    for _, src, _, _ in expected:
+        p = Path(src)
+        if p == work_root or (work_root in p.parents and rdir != p and rdir not in p.parents):
             raise Stop(f"bind {src} exposes another Run under the work root")
     if host.get("Privileged") or host.get("CapAdd") or host.get("CapDrop") != ["ALL"] or not host.get("ReadonlyRootfs"):
         raise Stop("container constraints differ from EXP-001 (privileged / caps / read-only rootfs)")
     opts = host.get("SecurityOpt") or []
-    if "no-new-privileges" not in opts or not any(o.startswith("seccomp") for o in opts) or any("unconfined" in o for o in opts):
-        raise Stop(f"container security options {opts} differ from EXP-001")
+    seccomp = [o.split("=", 1)[1] for o in opts if o.startswith("seccomp=")]
+    if "no-new-privileges" not in opts or len(seccomp) != 1 or any("unconfined" in o for o in opts):
+        raise Stop(f"container security options differ from EXP-001: {[o[:40] for o in opts]}")
+    try:
+        matches = json.loads(seccomp[0]) == json.loads(SECCOMP.read_text(encoding="utf-8"))
+    except ValueError:
+        matches = False
+    evidence = {"mounts": [list(b) for b in sorted(binds)], "hostTmpfs": host_tmpfs,
+                "seccompLaunchedSha256": sha256_file(SECCOMP),
+                "seccompInspectSha256": hashlib.sha256(seccomp[0].encode()).hexdigest(),
+                "seccompMatchesLaunchedProfile": matches}
+    if not matches:
+        raise Stop(f"inspected seccomp profile does not match the launched profile: {evidence}")
+    return evidence
 
 
 def docker(*args: str, stdin: str | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -191,8 +269,29 @@ def preflight_container(args) -> None:
         raise Stop("seccomp profile SHA-256 mismatch")
     if not args.codex_dir or not (Path(args.codex_dir) / "bin/codex").is_file():
         raise Stop("--codex-dir must contain bin/codex (Linux build for the container)")
-    if not Path(args.auth_file).expanduser().is_file():
-        raise Stop(f"auth file not found: {args.auth_file}")
+    auth = Path(args.auth_file).expanduser()
+    if not auth.is_file() or auth.stat().st_size == 0:
+        raise Stop(f"auth file missing or empty: {args.auth_file}")
+
+
+# Same probe as EXP-001 retry-t1-r01 preflight-d.sh: liveness marker, then a deny result of a known error class.
+AUTH_PROBE = f"""set -euo pipefail
+echo SANDBOX_ALIVE
+command -v cat >/dev/null || {{ echo "UNKNOWN: cat missing"; exit 4; }}
+if err=$(cat {CODEX_HOME}/auth.json 2>&1 >/dev/null); then echo "BLOCK: sandbox can read auth file"; exit 3; fi
+case $err in *"Permission denied"*|*"No such file or directory"*) echo AUTH_DENIED ;; *) echo "UNKNOWN: unexpected error class"; exit 4 ;; esac
+"""
+
+
+def check_auth_probe(rc: int, output: str) -> None:
+    """The probe must have started inside the sandbox, reported the expected deny, and exited 0 — each separately."""
+    lines = output.splitlines()
+    if "SANDBOX_ALIVE" not in lines:
+        raise Stop("auth probe did not run inside the Codex sandbox")
+    if "AUTH_DENIED" not in lines:
+        raise Stop(f"auth probe did not report AUTH_DENIED: {[ln for ln in lines if ln != 'SANDBOX_ALIVE'][:3]}")
+    if rc != 0:
+        raise Stop(f"auth probe exited {rc}")
 
 
 def codex_exec_command(name: str) -> list[str]:
@@ -200,31 +299,31 @@ def codex_exec_command(name: str) -> list[str]:
             "-m", MODEL, "-c", f"model_reasoning_effort={EFFORT}", "-c", "approval_policy=never", "-C", "/work", "-"]
 
 
-def container_exec_codex(args, rdir: Path, prompt: str) -> tuple[int | None, dict]:
-    """One fresh container per Run. Returns (codex exit code or None on timeout, isolation evidence)."""
+def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple[int | None, dict]:
+    """One fresh container per Run; fills `evidence` as checks pass. Returns (exit code or None on timeout, evidence)."""
     name = f"htc-{rdir.name.lower()}-{os.getpid()}"  # same name as recorded in run.json
-    evidence: dict = {"container": name}
+    evidence["container"] = name
     started = False
     try:
         docker(*docker_run_command(args, rdir, name)[1:])
         started = True
         inspect = json.loads(docker("inspect", name).stdout)[0]
-        check_container(inspect, bind_sources(args, rdir), Path(args.work_root).resolve())
-        evidence["binds"] = sorted(bind_sources(args, rdir))
+        evidence.update(check_container(inspect, expected_mounts(args, rdir), Path(args.work_root).resolve()))
+        if docker("exec", name, "test", "-s", f"{CODEX_HOME}/auth.json", check=False).returncode != 0:
+            raise Stop("auth.json is not mounted in the container (missing or empty)")
         docker("exec", "-i", name, "sh", "-c", f'mkdir -p /tmp/home && cat > "{CODEX_HOME}/config.toml"', stdin=CONFIG_TOML)
         version = docker("exec", name, "/cx/bin/codex", "--version").stdout.strip()
         evidence["codexVersion"] = version
         if version != RUNTIME_VERSION:
             raise Stop(f"runtime version {version!r} != {RUNTIME_VERSION!r}")
-        probe = docker("exec", name, "/cx/bin/codex", "sandbox", "-P", "t1-workspace", "-C", "/work", "--", "sh", "-c",
-                       f"cat {CODEX_HOME}/auth.json >/dev/null 2>&1 && echo AUTH_READABLE || echo AUTH_DENIED",
-                       check=False).stdout.split()
-        evidence["sandboxProbe"] = probe[:1]
-        if probe[:1] != ["AUTH_DENIED"]:
-            raise Stop("isolation probe: auth.json readable from the Codex sandbox")
+        probe = docker("exec", name, "/cx/bin/codex", "sandbox", "-P", "t1-workspace", "-C", "/work", "--",
+                       "bash", "-c", AUTH_PROBE, check=False)
+        evidence["authProbe"] = {"exitCode": probe.returncode, "lines": probe.stdout.splitlines()[:3]}
+        check_auth_probe(probe.returncode, probe.stdout)
         cmd = codex_exec_command(name)
         with (rdir / "codex-events.jsonl").open("w", encoding="utf-8") as out, \
                 (rdir / "codex-stderr.log").open("w", encoding="utf-8") as err:
+            evidence["modelLaunched"] = True
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True)
             try:
                 proc.communicate(prompt, timeout=args.timeout_s)
@@ -421,7 +520,7 @@ def grade(cand: dict, ws: Path, grade_dir: Path, ac_files: dict[str, bytes], ac_
 
 # ---------------------------------------------------------------- batch
 
-def run_one(args, run: dict, work_root: Path, template: str, prompt_sha: str, ac_files: dict[str, bytes]) -> dict:
+def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_files: dict[str, bytes]) -> dict:
     cand = run["candidate"]
     rdir = work_root / run["runId"]
     rdir.mkdir(mode=0o700)
@@ -436,8 +535,9 @@ def run_one(args, run: dict, work_root: Path, template: str, prompt_sha: str, ac
         prepare_workspace(cand, ws, Path(args.mirror_dir) if args.mirror_dir else None)
     else:
         ws.mkdir()
-    prompt = render_prompt(template, cand)
     (rdir / "prompt.md").write_text(prompt, encoding="utf-8")
+    if sha256_file(rdir / "prompt.md") != prompt_sha:
+        raise Stop(f"{run['runId']}: prompt copy SHA-256 differs from the task description")
     name = f"htc-{run['runId'].lower()}-{os.getpid()}"
     record["containerCommand"] = docker_run_command(args, rdir, name)
     record["command"] = codex_exec_command(name)
@@ -446,7 +546,16 @@ def run_one(args, run: dict, work_root: Path, template: str, prompt_sha: str, ac
     if args.dry_run:
         rc = fake_codex(args, rdir / "sessions")
     else:
-        rc, record["isolation"] = container_exec_codex(args, rdir, prompt)
+        record["isolation"] = {}
+        try:
+            rc, _ = container_exec_codex(args, rdir, prompt, record["isolation"])
+        except Stop as exc:
+            record["status"] = "isolation-stop"
+            record["stopReason"] = str(exc)
+            if not record["isolation"].get("modelLaunched"):
+                record["totalTokens"] = 0
+            write_record(rdir, record)
+            raise
     record["wallClockMs"] = int((time.monotonic() - started) * 1000)
     record["codexExitCode"] = rc
     session = find_session(rdir / "sessions")
@@ -484,9 +593,9 @@ def cmd_run(args) -> int:
     candidates = load_candidates()
     runs = plan(candidates)
     preflight(args, runs)
-    template_path = Path(args.prompt)
-    template = template_path.read_text(encoding="utf-8")
-    prompt_sha = sha256_file(template_path)
+    tasks = load_task_descriptions(Path(args.task_dir), candidates)
+    for order, (_, sha) in sorted(tasks.items()):
+        print(f"task description order-{order:02d}.md sha256 {sha} (must match the hash recorded in #244)")
     work_root = Path(args.work_root).resolve()
     lock = acquire_lock(work_root)
     try:
@@ -501,7 +610,8 @@ def cmd_run(args) -> int:
                 continue
             if spent + args.max_run_tokens > args.budget_tokens:
                 raise Stop(f"budget: spent {spent} + max per run {args.max_run_tokens} > {args.budget_tokens}")
-            record = run_one(args, run, work_root, template, prompt_sha, ac_files.get(run["order"], {}))
+            text, sha = tasks[run["order"]]
+            record = run_one(args, run, work_root, text, sha, ac_files.get(run["order"], {}))
             spent += record["totalTokens"]
             print(f"{run['runId']}: {record['status']} tokens={record['totalTokens']} "
                   f"success={record.get('verifiedSuccess')}")
@@ -576,7 +686,8 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("plan").set_defaults(func=cmd_plan)
     r = sub.add_parser("run")
     r.add_argument("--work-root", required=True, help="results directory outside the DAT repo")
-    r.add_argument("--prompt", required=True, help=f"T0 prompt template; placeholders: {', '.join(PROMPT_FIELDS)}")
+    r.add_argument("--task-dir", required=True,
+                   help="directory with order-01.md .. order-05.md: per-candidate symptom descriptions, passed verbatim")
     r.add_argument("--timeout-s", type=int, required=True, help="per-Run wall clock hard limit (no default)")
     r.add_argument("--max-run-tokens", type=int, required=True, help="per-Run token limit, checked after the Run")
     r.add_argument("--budget-tokens", type=int, required=True, help="approved calibration budget for this batch")

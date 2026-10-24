@@ -36,12 +36,17 @@
 確認（キットが Run ごとに機械的に行い、1 つでも満たさなければ model を起動せずに停止）:
 
 1. 起動前: `docker` があり daemon に接続できる、image が手元にある、seccomp の SHA-256 が一致、`--codex-dir` に `bin/codex` がある、auth ファイルがある
-2. container 起動後: `docker inspect` の bind mount が上の 4 つと **完全一致**（追加の mount、work root 全体や他 Run の mount があれば停止）、Privileged=false、CapAdd なし、CapDrop=ALL、ReadonlyRootfs=true、no-new-privileges と seccomp があり unconfined でない
+2. container 起動後の mount（EXP-001 run-kit-g `host/host-mounts.sh.in` と同じ考え方）:
+   - `docker inspect` の全 mount を type・source・destination・RW で照合する。bind と tmpfs 以外の type（volume など）があれば停止
+   - bind は inspect 側・期待側の両方の source を realpath で正規化し、4 つと **完全一致**（`/work` だけ RW、他は読み取り専用）
+   - `HostConfig.Tmpfs` が `/tmp` と `/tmp/codex-home` の 2 つと完全一致（`Mounts` に tmpfs が載る場合も同じ集合）
+   - Privileged=false、CapAdd なし、CapDrop=ALL、ReadonlyRootfs=true、no-new-privileges があり、seccomp が 1 つで unconfined でない
+   - inspect の seccomp の値が、起動時に指定した profile（SHA-256 `085e468f…`）と JSON として一致する。両方の SHA-256 と一致の判定を `run.json` の `isolation` に残す
 3. container 内の `codex --version` が `codex-cli 0.160.1`
-4. Codex sandbox からの probe で auth.json が読めない（`AUTH_DENIED`）
-5. AC の sandbox: 起動前に sandbox-exec 内から外部への接続を試し、失敗することを確認（接続できたら停止）
+4. auth（EXP-001 retry-t1-r01 `preflight-d.sh` と同じ probe）: host 側の auth ファイルが空でないこと、container 内の `/tmp/codex-home/auth.json` が空でないことを確かめた後、Codex sandbox 内で probe を実行し、次の 3 つを **別々に** 確かめる: (a) sandbox 内で開始した印 `SANDBOX_ALIVE` が出る、(b) `cat` の失敗が既知の拒否（`Permission denied` / `No such file or directory`）で `AUTH_DENIED` が出る（それ以外のエラーは `UNKNOWN` で停止）、(c) probe 自体が exit 0
+5. AC の sandbox（起動前）: host でローカルの listen ソケットを開き、sandbox の外からは接続でき（対照）、sandbox-exec の中からは `EPERM` / `EACCES` で拒否されることを確かめる。対照が接続できない、sandbox 内の結果が timeout・refused・別の errno・probe の異常終了のときは、拒否を確認できないとして停止する。外部ネットワークに依存しない
 
-確認結果は各 `run.json` の `isolation`（container 名、mount 先、Codex 版、probe 結果）に残る。Operator は最初の Run の後に `run.json` の `isolation` を目視で確認し、#244 に記録する。
+確認結果は各 `run.json` の `isolation`（container 名、mount の一覧、HostConfig.Tmpfs、seccomp の SHA-256 と一致の判定、Codex 版、auth probe の exit code と出力）に残る。隔離の確認で止まった Run は `isolation-stop` として残し、model を起動する前なら totalTokens を 0 と記録する。Operator は最初の Run の後に `run.json` の `isolation` を目視で確認し、#244 に記録する。
 
 ## 3. 止める条件（キットが自動で止める）
 
@@ -68,7 +73,7 @@
 
    ```bash
    python3.12 scripts/hard_task_calibrate.py plan
-   python3.12 scripts/hard_task_calibrate.py run --dry-run --work-root ~/dat-runs/dry --prompt <PROMPT> \
+   python3.12 scripts/hard_task_calibrate.py run --dry-run --work-root ~/dat-runs/dry --task-dir <TASK_DIR> \
      --timeout-s 1800 --max-run-tokens 300000 --budget-tokens 7500000
    python3.12 scripts/hard_task_calibrate.py summarize --work-root ~/dat-runs/dry
    ```
@@ -76,12 +81,12 @@
 3. 本番（25 Run。コマンド 1 つ）:
 
    ```bash
-   python3.12 scripts/hard_task_calibrate.py run --work-root ~/dat-runs/hard-task-cal-1 --prompt <PROMPT> \
+   python3.12 scripts/hard_task_calibrate.py run --work-root ~/dat-runs/hard-task-cal-1 --task-dir <TASK_DIR> \
      --codex-dir <Codex 0.160.1 linux-arm64 musl のディレクトリ> \
      --timeout-s 1800 --max-run-tokens 300000 --budget-tokens 7500000
    ```
 
-   `<PROMPT>` は §6 の未確定事項。決まった prompt の SHA-256（各 `run.json` の `promptSha256`）を #244 に記録してから起動する。
+   `<TASK_DIR>` は §6 の決定に従って別 PR で作る、候補ごとの説明 `order-01.md`〜`order-05.md` のディレクトリ。キットはその内容をそのまま prompt として渡し（置換はしない）、修正 commit の hash・件名が含まれていれば止める。起動時に各ファイルの SHA-256 を表示するので、#244 に記録済みの hash と一致することを確かめてから進める（各 `run.json` の `promptSha256` にも残る）。
 4. exit code が 0 なら 25 Run 完了。2 なら標準エラーの `STOP:` の理由を #244 に記録する。再開は、理由を解消した後に同じ上限で `--skip-existing` を付けて行う（既存の Run は作り直さず、その token は予算に数える）。
 5. 集計を保存する: `python3.12 scripts/hard_task_calibrate.py summarize --work-root ~/dat-runs/hard-task-cal-1 --output ~/dat-runs/hard-task-cal-1-summary.json`
 6. 集計の `m`、`updatedCalibrationEstimate`（5 × 44 × 68,022 × m）、`remainingCalibrationEstimate`（残り 39 候補）、各候補の `verifiedSuccesses` と `band` を #244 に記録する（§6）。残り 39 候補の較正は Operator の再承認まで始めない。
@@ -108,5 +113,5 @@
 | 1 Run の経過時間の上限（`--timeout-s`） | **確定済み**: 30 分（1800）。[#244 issuecomment-6387347455](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6387347455) |
 | 1 Run の token 上限（`--max-run-tokens`） | **確定済み**: 300,000。同上 |
 | バッチの token 予算（`--budget-tokens`） | **確定済み**: 25 Run 全体で 7,500,000。同上 |
-| T0 の prompt（Worker に課題をどう示すか） | **未確定**。設計案・事前登録は「修正 commit とテストを渡さない」（§3 の 2）だけを定め、Task の提示方法の記述はない。比較: (a) 修正 commit の件名を渡す案は準備が要らないが、件名は修正内容を示しうる（例: 「parse CREATE TABLE TABLESPACE」は直す箇所と方法を示す）ため難度が下がり、候補間で漏れ方がばらつく。(b) 症状だけを書いた説明（再現手順と期待・実際の挙動。原因や修正方法は書かない）を渡す案は、候補ごとの作成が要るが、提示する情報の水準を揃えられる。**推奨: (b)**（理由: 難度を T0 の実測で定義する設計で、提示情報が修正内容を漏らすと難度の操作化が崩れるため。説明は較正前に、結果を見ずに作り、hash を記録する）。キットの `--prompt` は必須で `{repo}`・`{revision}`・`{fixSubject}` を置換できるが、(b) を採るなら候補ごとの説明を渡す仕組みの追加が要る |
+| T0 の prompt（Worker に課題をどう示すか） | **決定**（オーガナイザー、PR #251 のレビュー 2 回目の対応時）: 修正 commit の件名・修正内容・原因・テストを渡さず、**症状・再現手順・期待結果・実際の結果だけ** を書いた候補ごとの説明を渡す。説明は較正 Run の結果を見る前に作り、ファイルの hash を #244 に記録してから較正を始める。説明の作成は別 PR とし、作成者と別セッションのレビューで漏洩（原因・修正箇所の示唆）がないかを確かめる。キットは `--task-dir` で候補ごとの説明ファイルを受け取り、`{fixSubject}` などの置換機能は持たない（`{fixSubject}` が書かれていれば止まる）。理由: 件名は修正内容を示しうる（例: 「parse CREATE TABLE TABLESPACE」は直す箇所と方法を示す）ため、難度を T0 の実測で定義する設計で難度の操作化が崩れる。説明ファイルは未作成 |
 | Codex 0.160.1 の Linux バイナリ | EXP-001 の container で使ったのは 0.160.0。0.160.1 の Linux バイナリの取得と SHA-256 の記録は未実施（**NOT_TESTED**） |

@@ -12,7 +12,7 @@
 
 - 対象は store 直下の `<store>/<project>/<observationId>.yaml` だけ。それより深い・浅い位置の YAML は数えない。`run_observation.py sum` はそうしたファイルを `warning: not counted ...` として出す
 - validator を通らない記録は数えない（`sum` は `skipped invalid` として出す）
-- `observationId` は store 全体で一意とする。`run_observation.py save` は、同じ `observationId` のファイルが store のどこかにあれば保存を拒否する。既存の store に重複が残っている場合は、件数を出す前に解消する
+- `observationId` は store 全体で一意とする。`run_observation.py save` は、同じ `observationId`（ファイル名または記録内の `metadata.observationId`）が store のどこかにあれば保存を拒否する。`sum` は集計対象の記録に重複があれば該当パスを示して終了コード 1 で止まり、表を出さない。重複は件数を出す前に解消する
 
 ## 3. 期間で数えるときの基準時刻
 
@@ -29,6 +29,8 @@
 - validator を通らない記録
 
 除外は記録ファイルを削除・書き換えずに、集計側の一覧で行う。
+
+例外として、validator の定義変更で無効になった記録（例: same-session の助言だけで `independentReview: 'yes'` とした記録）は、Human の承認のうえで記録を直す。直すまでは `skipped invalid` として件数を別に示し、集計には入れない。
 
 ## 5. 記録単位の変化（2026-10-23）
 

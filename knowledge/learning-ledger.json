@@ -317,6 +317,22 @@
       "observedDates": [
         "2026-10-23"
       ]
+    },
+    {
+      "id": "L-021",
+      "observation": "RunObservation の集計が再現できなかった: 期間の件数をファイル mtime で数えた、入れ子ディレクトリや重複 observationId を検出しなかった、same-session の助言だけで `independentReview: 'yes'` とした自己矛盾の記録が保存できた",
+      "evidence": {
+        "description": "2026-10-25 の観測記録 45 件に対する 4 本の独立レビュー。対策は PR #250",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/pull/250"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "`docs/OBSERVATION_MEASUREMENT.md` の集計規則（endedAt 基準・store 直下のみ）、validator の independentReview 整合検査、`run_observation.py` の重複・入れ子検出",
+      "observedDates": [
+        "2026-10-25"
+      ]
     }
   ]
 }

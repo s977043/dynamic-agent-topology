@@ -10,6 +10,10 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 - Compatibility: `scripts/validate_run_observation.py` now rejects RunObservation records with duplicate mapping keys or YAML merge keys (`<<:`), matching `scripts/run_observation.py`; unreadable records report `cannot read: ...` with exit 1 instead of a traceback. Rewrite merge-key records as plain YAML with each key written out (`docs/RUN_OBSERVATION_DESIGN.md` §6).
 
+- Compatibility: `scripts/validate_run_observation.py` now accepts `topologyBasis.independentReview: 'yes'` only when a `role: advisory` review has `reviewerKind` `separate-session`, `separate-model`, or `human`; records whose only advisory reviews are `same-session` are rejected. Fix such a record by setting `independentReview: 'no'` and re-deriving `topologyEquivalent` with `docs/RUN_OBSERVATION_DESIGN.md` §5.2. Until fixed, `scripts/run_observation.py sum` reports it as `skipped invalid` and exits 1. `sum` also exits 1 without tables when counted records share an `observationId`, and `save` refuses an `observationId` already stored anywhere in the store.
+
+- Compatibility: RunObservation gains optional `interruptionKind`, `rework.triggers`, `taskDifficulty`, and `usage`. Records that use them are rejected by the 0.3.0 CLI and validator (`additionalProperties: false`); save and summarize them with this version. Aggregation rules are in `docs/OBSERVATION_MEASUREMENT.md`.
+
 ## 0.3.0 — 2026-10-21
 
 Content candidate: `d66cbdfea8fde66db0c77d01079757005893a8f8`.

@@ -194,6 +194,20 @@ with tempfile.TemporaryDirectory() as tmp:
     expect(run("save", str(nested_id), "--store", str(store)), 1, "already recorded", "observationId in a nested file")
     shutil.rmtree(store / "project-b" / "deep")
 
+    renamed = store / "project-b" / "renamed.yaml"
+    renamed.write_text(variant("t0-no-delegation-advisory-only.yaml", work, "obs-0303", "project-b").read_text(encoding="utf-8"), encoding="utf-8")
+    same_id = variant("t0-no-delegation-advisory-only.yaml", work, "obs-0303", "project-b")
+    expect(run("save", str(same_id), "--store", str(store)), 1, "already recorded", "observationId stored under another file name")
+    if (store / "project-b" / "obs-0303.yaml").exists():
+        failures.append("observationId stored under another file name must not be saved again")
+    shutil.copyfile(renamed, store / "project-a" / "copy.yaml")
+    result = run("sum", "--store", str(store))
+    expect(result, 1, "duplicate observationId obs-0303: project-a/copy.yaml, project-b/renamed.yaml", "sum detects duplicate observationId")
+    if "observations:" in result.stdout:
+        failures.append("sum must not print counts when observationIds are duplicated")
+    (store / "project-a" / "copy.yaml").unlink()
+    renamed.unlink()
+
     shutil.copyfile(invalid, store / "project-a" / "obs-bad.yaml")
     shutil.copyfile(complex_key, store / "project-a" / "obs-complex.yaml")
     piped = store / "pipe" / "obs-0201.yaml"

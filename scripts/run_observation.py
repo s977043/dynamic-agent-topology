@@ -9,13 +9,14 @@ repository or any git working tree (a .git in the store or an ancestor) is
 refused so that observation records are never committed.
 Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
 project and observationId must be single safe file-name elements, and an
-observationId already present anywhere in the store is refused. sum counts only
+observationId already present anywhere in the store (as a file name or as a
+stored metadata.observationId) is refused. sum counts only
 <store>/<project>/*.yaml and warns about YAML files at any other depth
 (docs/OBSERVATION_MEASUREMENT.md).
 
 Exit codes: save returns 0 when stored and 1 when refused. sum returns 0 when
 every file was counted, 1 when tables were printed but invalid files were
-skipped, and 2 when the store does not exist. Both return 2 on a bad --store.
+skipped or when counted records share an observationId (no tables), and 2 when the store does not exist. Both return 2 on a bad --store.
 """
 from collections import Counter
 from pathlib import Path
@@ -61,6 +62,15 @@ def unknown_fields(value, location=""):
             yield from unknown_fields(item, f"{location}[{index}]")
 
 
+def stored_observation_id(path):
+    try:
+        record = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        return None
+    metadata = record.get("metadata") if isinstance(record, dict) else None
+    return metadata.get("observationId") if isinstance(metadata, dict) else None
+
+
 def save(path, store):
     record, errors = vro.load_record(path, vro.load_validator())
     if errors:
@@ -83,7 +93,10 @@ def save(path, store):
     if any((path / ".git").exists() for path in resolved_dest.parents):
         print(f"NG\n- destination must be outside any git working tree: {dest}")
         return 1
-    existing = sorted(store.rglob(f"{meta['observationId']}.yaml")) if store.is_dir() else []
+    existing = [
+        p for p in (sorted(store.rglob("*.yaml")) if store.is_dir() else [])
+        if p.stem == meta["observationId"] or stored_observation_id(p) == meta["observationId"]
+    ]
     if existing:
         print(f"NG\n- observationId already recorded: {existing[0]}")
         return 1
@@ -118,7 +131,17 @@ def summarize(store):
             print(f"skipped invalid: {path.relative_to(store)}: {cell(errors[0])}")
             skipped += 1
             continue
-        records.append(record)
+        records.append((path, record))
+    paths_by_id = {}
+    for path, record in records:
+        paths_by_id.setdefault(record["metadata"]["observationId"], []).append(path)
+    duplicates = {key: paths for key, paths in paths_by_id.items() if len(paths) > 1}
+    if duplicates:
+        print("NG")
+        for key, paths in sorted(duplicates.items()):
+            print(f"- duplicate observationId {cell(key)}: {', '.join(cell(p.relative_to(store)) for p in paths)}")
+        return 1
+    records = [record for _, record in records]
     print(f"observations: {len(records)}")
     if records:
         by_project = Counter((r["metadata"]["project"], r["topologyEquivalent"]) for r in records)

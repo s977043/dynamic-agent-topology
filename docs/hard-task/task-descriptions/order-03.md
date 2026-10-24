@@ -26,7 +26,7 @@ for src in ['_Static_assert(1, "ok")',
 
 ## 期待結果
 
-- 1 つ目の出力は `['StaticAssert', 'StaticAssert', 'EmptyStatement', 'Decl']`（書かれた `;;` の 2 つ目だけが空文になる）
+- `_Static_assert(...);` の後に空文は追加されない。書かれた `;;` の 2 つ目のように、実際に書かれた余分なセミコロンだけが空文になる
 - セミコロンのない 3 つの入力は、いずれも `ParseError` になる
 - ファイルの先頭でも関数本体の中でも、`_Static_assert(...);` はそれ自体が 1 つの宣言として扱われる
 

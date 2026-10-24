@@ -28,8 +28,7 @@ for src in ["_Alignas(4) _Alignas(16) int x;",
 ## 期待結果
 
 - 生成したコードは元の宣言と同じ意味になり、それを再び解析して生成しても同じ結果になる
-- 例: `_Alignas(4) _Alignas(16) int x;\n`、`const _Atomic int x;\n`、`int * const _Atomic p;\n`、`_Atomic int a;\n_Atomic int b;\n`、`int n = sizeof(int * const _Atomic);\n`
-- `const _Atomic(int) a, b;` を解析したとき、`a` と `b` はそれぞれ別の型ノードを持ち、どちらにも `const` と `_Atomic` が付く
+- 複数の `_Alignas` はすべて残り、`_Atomic(型)` の外側の修飾子は失われず、複数の変数を宣言したときは各変数の名前が保たれる
 
 ## 実際の結果
 

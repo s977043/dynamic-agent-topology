@@ -129,6 +129,25 @@ def test_retry_never_launched(tmp: Path, prompt: Path) -> None:
     check(rc == 0 and "retry" not in out, "a Run that launched the model is not retried")
 
 
+def test_missing_launch_flag(tmp: Path, prompt: Path) -> None:
+    work = tmp / "legacy"
+    rc, _, _ = run_cli(dry_args(work, prompt))
+    check(rc == 0, "full dry batch")
+    path = work / "HTC-03-n2" / "run.json"
+    record = json.loads(path.read_text())
+    record.pop("modelLaunched")
+    record.update({"status": "isolation-stop", "totalTokens": 0})
+    path.write_text(json.dumps(record))
+    rc, _, err = run_cli(dry_args(work, prompt, "--skip-existing"))
+    check(rc == 2 and str(path) in err and "modelLaunched" in err, "resume stops on a record without the flag")
+    rc, _, err = run_cli(["summarize", "--work-root", str(work)])
+    check(rc == 2 and str(path) in err, "summarize stops on a record without the flag")
+    record["modelLaunched"] = "no"
+    path.write_text(json.dumps(record))
+    rc, _, err = run_cli(["summarize", "--work-root", str(work)])
+    check(rc == 2 and str(path) in err, "non-boolean flag stops")
+
+
 class Args:
     codex_dir = "/opt/cx"
     auth_file = "/home/op/.codex/auth.json"
@@ -291,6 +310,7 @@ def main() -> int:
         test_limits_and_lock(tmp, prompt)
         test_resume_counts_existing_tokens(tmp, prompt)
         test_retry_never_launched(tmp, prompt)
+        test_missing_launch_flag(tmp, prompt)
         test_container_isolation(tmp)
         test_workspace_and_grade(tmp)
     print("test_hard_task_calibrate: OK")

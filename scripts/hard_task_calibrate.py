@@ -391,7 +391,10 @@ def will_grade(args) -> bool:
 
 def read_record(rdir: Path) -> dict:
     path = rdir / "run.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    record = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if not isinstance(record.get("modelLaunched"), bool):
+        raise Stop(f"{path} has no boolean modelLaunched; cannot tell whether the model ran")
+    return record
 
 
 def never_launched(record: dict) -> bool:
@@ -654,7 +657,7 @@ def cmd_run(args) -> int:
 
 
 def summarize(work_root: Path) -> dict:
-    records = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(work_root.glob("HTC-*/run.json"))]
+    records = [read_record(p.parent) for p in sorted(work_root.glob("HTC-*/run.json"))]
     per = {}
     for rec in records:
         row = per.setdefault(rec["order"], {"order": rec["order"], "repo": rec["repo"], "revision": rec["revision"],

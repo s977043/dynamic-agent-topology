@@ -1,0 +1,27 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。fixCommit・failingBeforeFix・本ファイルの他の値は Evaluator 用
+order: 12
+orderKey: https://github.com/more-itertools/more-itertools@1ea82a711c69f590054987b5cb194157f8ce8ac4
+difficulty: easy
+knownDefect: false
+pilot: false
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: 1ea82a711c69f590054987b5cb194157f8ce8ac4
+  overlayFromFixCommit:
+  - tests/test_more.py
+  git: 履歴なしの単一 commit（task baseline）
+readOnlyBlobs:
+  tests/test_more.py: b3a9351595a6fd7f1aa9c1e35978f08106e43df0
+baselinePassing:
+  path: baseline/order-12.txt
+  count: 733
+statement: |
+  このリポジトリでは `python3.12 -m unittest tests/test_more.py` が失敗します。失敗の原因になっているライブラリ側の不具合を直し、このコマンドが成功するようにしてください。
+
+  - 変更してはいけないファイル: `tests/test_more.py`
+  - テストの削除・skip・期待値の書き換えをしない。既存のテストを壊さない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/test_more.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

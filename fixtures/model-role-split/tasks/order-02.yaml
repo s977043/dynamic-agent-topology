@@ -1,0 +1,27 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。fixCommit・failingBeforeFix・本ファイルの他の値は Evaluator 用
+order: 2
+orderKey: https://github.com/rthalley/dnspython@af21b39addc69ff9b414d3d61f347af13682fdd0
+difficulty: easy
+knownDefect: false
+pilot: true
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: af21b39addc69ff9b414d3d61f347af13682fdd0
+  overlayFromFixCommit:
+  - tests/test_svcb.py
+  git: 履歴なしの単一 commit（task baseline）
+readOnlyBlobs:
+  tests/test_svcb.py: ee04ba8d89aeb62ea0041437fd00533be14b7920
+baselinePassing:
+  path: baseline/order-02.txt
+  count: 16
+statement: |
+  このリポジトリでは `python3.12 -m unittest tests/test_svcb.py` が失敗します。失敗の原因になっているライブラリ側の不具合を直し、このコマンドが成功するようにしてください。
+
+  - 変更してはいけないファイル: `tests/test_svcb.py`
+  - テストの削除・skip・期待値の書き換えをしない。既存のテストを壊さない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/test_svcb.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

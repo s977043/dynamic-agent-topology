@@ -9,6 +9,8 @@ endedAt: unknown
 wallClockMs: unknown
 goalRecorded: true
 outcome: interrupted
+interruptionKind: unknown
+taskDifficulty: standard
 outcomeReason: stopped before review
 runtime:
 - role: organizer
@@ -32,3 +34,6 @@ reviews: []
 rework:
   count: unknown
 humanInterventions: unknown
+usage:
+  totalTokens: unknown
+  costUsd: unknown

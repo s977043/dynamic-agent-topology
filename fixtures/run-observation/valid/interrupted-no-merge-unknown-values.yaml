@@ -9,6 +9,7 @@ endedAt: unknown
 wallClockMs: unknown
 goalRecorded: true
 outcome: interrupted
+interruptionKind: environment
 runtime: unknown
 model: unknown
 topologyEquivalent: T1

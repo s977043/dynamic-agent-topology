@@ -84,6 +84,48 @@
       "type": "string",
       "minLength": 1
     },
+    "interruptionKind": {
+      "enum": [
+        "human-decision",
+        "ownership",
+        "environment",
+        "failure",
+        "unknown"
+      ]
+    },
+    "taskDifficulty": {
+      "description": "Difficulty class recorded before choosing the topology.",
+      "enum": [
+        "trivial",
+        "standard",
+        "hard",
+        "unknown"
+      ]
+    },
+    "usage": {
+      "type": "object",
+      "required": [
+        "totalTokens",
+        "costUsd"
+      ],
+      "properties": {
+        "totalTokens": {
+          "$ref": "#/$defs/countOrUnknown"
+        },
+        "costUsd": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "runtime": {
       "oneOf": [
         {
@@ -308,6 +350,19 @@
       "properties": {
         "count": {
           "$ref": "#/$defs/countOrUnknown"
+        },
+        "triggers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "review-finding",
+              "self-correction",
+              "spec-change",
+              "ci-failure",
+              "unknown"
+            ]
+          }
         }
       },
       "additionalProperties": false

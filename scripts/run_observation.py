@@ -8,11 +8,16 @@
 repository or any git working tree (a .git in the store or an ancestor) is
 refused so that observation records are never committed.
 Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
-project and observationId must be single safe file-name elements.
+project and observationId must be single safe file-name elements, and an
+observationId already present anywhere in the store (as a file name or as a
+stored metadata.observationId) is refused; save is also refused while any YAML
+file in the store cannot be read or parsed. sum counts only
+<store>/<project>/*.yaml and warns about YAML files at any other depth
+(docs/OBSERVATION_MEASUREMENT.md).
 
 Exit codes: save returns 0 when stored and 1 when refused. sum returns 0 when
 every file was counted, 1 when tables were printed but invalid files were
-skipped, and 2 when the store does not exist. Both return 2 on a bad --store.
+skipped or when counted records share an observationId (no tables), and 2 when the store does not exist. Both return 2 on a bad --store.
 """
 from collections import Counter
 from pathlib import Path
@@ -58,6 +63,16 @@ def unknown_fields(value, location=""):
             yield from unknown_fields(item, f"{location}[{index}]")
 
 
+def stored_observation_id(path):
+    """Return (observationId or None, read error or None) for a stored YAML file."""
+    try:
+        record = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as error:
+        return None, " ".join(str(error).splitlines())
+    metadata = record.get("metadata") if isinstance(record, dict) else None
+    return (metadata.get("observationId") if isinstance(metadata, dict) else None), None
+
+
 def save(path, store):
     record, errors = vro.load_record(path, vro.load_validator())
     if errors:
@@ -80,6 +95,21 @@ def save(path, store):
     if any((path / ".git").exists() for path in resolved_dest.parents):
         print(f"NG\n- destination must be outside any git working tree: {dest}")
         return 1
+    existing = []
+    unreadable = []
+    for stored in sorted(store.rglob("*.yaml")) if store.is_dir() else []:
+        stored_id, error = stored_observation_id(stored)
+        if error:
+            unreadable.append(f"- cannot check for duplicate observationId: {stored}: {error}")
+        elif stored.stem == meta["observationId"] or stored_id == meta["observationId"]:
+            existing.append(stored)
+    if unreadable:
+        print("NG")
+        print("\n".join(unreadable))
+        return 1
+    if existing:
+        print(f"NG\n- observationId already recorded: {existing[0]}")
+        return 1
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         with open(dest, "x", encoding="utf-8") as handle:
@@ -90,6 +120,8 @@ def save(path, store):
     unknowns = list(unknown_fields(record))
     print(f"OK {meta['observationId']} -> {dest}")
     print(f"unknown: {', '.join(unknowns) if unknowns else 'none'}")
+    for warning in vro.record_warnings(record):
+        print(f"warning: {warning}")
     return 0
 
 
@@ -100,13 +132,26 @@ def summarize(store):
     validator = vro.load_validator()
     records = []
     skipped = 0
+    for path in sorted(store.rglob("*.yaml")):
+        if len(path.relative_to(store).parts) != 2:
+            print(f"warning: not counted (outside <project>/<observationId>.yaml): {cell(path.relative_to(store))}")
     for path in sorted(store.glob("*/*.yaml")):
         record, errors = vro.load_record(path, validator)
         if errors:
             print(f"skipped invalid: {path.relative_to(store)}: {cell(errors[0])}")
             skipped += 1
             continue
-        records.append(record)
+        records.append((path, record))
+    paths_by_id = {}
+    for path, record in records:
+        paths_by_id.setdefault(record["metadata"]["observationId"], []).append(path)
+    duplicates = {key: paths for key, paths in paths_by_id.items() if len(paths) > 1}
+    if duplicates:
+        print("NG")
+        for key, paths in sorted(duplicates.items()):
+            print(f"- duplicate observationId {cell(key)}: {', '.join(cell(p.relative_to(store)) for p in paths)}")
+        return 1
+    records = [record for _, record in records]
     print(f"observations: {len(records)}")
     if records:
         by_project = Counter((r["metadata"]["project"], r["topologyEquivalent"]) for r in records)
@@ -122,6 +167,14 @@ def summarize(store):
             group = [r for r in records if r["topologyEquivalent"] == topology]
             known = [r["rework"]["count"] for r in group if isinstance(r["rework"]["count"], int)]
             print(f"| {cell(topology)} | {len(known)}/{len(group)} | {sum(known)} |")
+        decisions = Counter(
+            vro.normalize_decision(review["decision"])
+            for r in records if r["reviews"] != "unknown" for review in r["reviews"]
+        )
+        print("\n| review decision (normalized) | reviews |\n|---|---|")
+        for decision, count in sorted(decisions.items()):
+            print(f"| {cell(decision)} | {count} |")
+        print(f"\nendedAt unknown (cannot be placed in a period): {sum(r['endedAt'] == 'unknown' for r in records)}")
     print(f"\n{NOTICE}")
     return 1 if skipped else 0
 

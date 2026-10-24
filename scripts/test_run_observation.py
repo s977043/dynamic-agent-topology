@@ -194,6 +194,16 @@ with tempfile.TemporaryDirectory() as tmp:
     expect(run("save", str(nested_id), "--store", str(store)), 1, "already recorded", "observationId in a nested file")
     shutil.rmtree(store / "project-b" / "deep")
 
+    for name, data in (("broken.yaml", b"metadata: [unclosed\n"), ("non-utf8.yaml", b"\xff\xfe")):
+        unreadable = store / "project-b" / name
+        unreadable.write_bytes(data)
+        fresh = variant("t0-no-delegation-advisory-only.yaml", work, "obs-0304", "project-b")
+        result = run("save", str(fresh), "--store", str(store))
+        expect(result, 1, f"store/project-b/{name}: ", f"save with unreadable {name} in store")
+        if "Traceback" in result.stdout or (store / "project-b" / "obs-0304.yaml").exists():
+            failures.append(f"save must stop without writing while {name} is unreadable")
+        unreadable.unlink()
+
     renamed = store / "project-b" / "renamed.yaml"
     renamed.write_text(variant("t0-no-delegation-advisory-only.yaml", work, "obs-0303", "project-b").read_text(encoding="utf-8"), encoding="utf-8")
     same_id = variant("t0-no-delegation-advisory-only.yaml", work, "obs-0303", "project-b")

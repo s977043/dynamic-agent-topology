@@ -10,7 +10,8 @@ refused so that observation records are never committed.
 Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
 project and observationId must be single safe file-name elements, and an
 observationId already present anywhere in the store (as a file name or as a
-stored metadata.observationId) is refused. sum counts only
+stored metadata.observationId) is refused; save is also refused while any YAML
+file in the store cannot be read or parsed. sum counts only
 <store>/<project>/*.yaml and warns about YAML files at any other depth
 (docs/OBSERVATION_MEASUREMENT.md).
 
@@ -63,12 +64,13 @@ def unknown_fields(value, location=""):
 
 
 def stored_observation_id(path):
+    """Return (observationId or None, read error or None) for a stored YAML file."""
     try:
         record = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, yaml.YAMLError):
-        return None
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as error:
+        return None, " ".join(str(error).splitlines())
     metadata = record.get("metadata") if isinstance(record, dict) else None
-    return metadata.get("observationId") if isinstance(metadata, dict) else None
+    return (metadata.get("observationId") if isinstance(metadata, dict) else None), None
 
 
 def save(path, store):
@@ -93,10 +95,18 @@ def save(path, store):
     if any((path / ".git").exists() for path in resolved_dest.parents):
         print(f"NG\n- destination must be outside any git working tree: {dest}")
         return 1
-    existing = [
-        p for p in (sorted(store.rglob("*.yaml")) if store.is_dir() else [])
-        if p.stem == meta["observationId"] or stored_observation_id(p) == meta["observationId"]
-    ]
+    existing = []
+    unreadable = []
+    for stored in sorted(store.rglob("*.yaml")) if store.is_dir() else []:
+        stored_id, error = stored_observation_id(stored)
+        if error:
+            unreadable.append(f"- cannot check for duplicate observationId: {stored}: {error}")
+        elif stored.stem == meta["observationId"] or stored_id == meta["observationId"]:
+            existing.append(stored)
+    if unreadable:
+        print("NG")
+        print("\n".join(unreadable))
+        return 1
     if existing:
         print(f"NG\n- observationId already recorded: {existing[0]}")
         return 1

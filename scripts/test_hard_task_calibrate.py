@@ -81,6 +81,66 @@ def test_limits_and_lock(tmp: Path, prompt: Path) -> None:
     check(rc == 2 and "lock exists" in err and not list(work.glob("HTC-*")), "duplicate launch refused")
     rc, _, err = run_cli(dry_args(ROOT / "tmp-calibration", prompt))
     check(rc == 2 and "outside" in err, "work root inside repo refused")
+    work = tmp / "real"
+    rc, _, err = run_cli([a for a in dry_args(work, prompt) if a != "--dry-run"])
+    check(rc == 2 and not list(work.glob("HTC-*")), f"real run without isolation inputs stops before any Run: {err}")
+
+
+def test_resume_counts_existing_tokens(tmp: Path, prompt: Path) -> None:
+    work = tmp / "resume"
+    base = dry_args(work, prompt)[:-1]
+    rc, _, _ = run_cli(base + ["300000"])
+    check(rc == 2 and len(list(work.glob("HTC-*"))) == 2, "first batch stops on budget")
+    rc, out, err = run_cli(base + ["300000", "--skip-existing"])
+    check(rc == 2 and "136044" in out and "budget" in err and len(list(work.glob("HTC-*"))) == 2,
+          "resume counts existing tokens against the budget")
+    rc, _, _ = run_cli(base + ["400000", "--skip-existing"])
+    check(rc == 2 and len(list(work.glob("HTC-*"))) == 3, "resume with a larger budget adds only what fits")
+    record = work / "HTC-03-n1" / "run.json"
+    data = json.loads(record.read_text())
+    del data["totalTokens"]
+    record.write_text(json.dumps(data))
+    rc, _, err = run_cli(base + ["10000000", "--skip-existing"])
+    check(rc == 2 and "no totalTokens" in err and len(list(work.glob("HTC-*"))) == 3, "unknown usage stops resume")
+
+
+class Args:
+    codex_dir = "/opt/cx"
+    auth_file = "/home/op/.codex/auth.json"
+
+
+def test_container_isolation(tmp: Path) -> None:
+    work = tmp / "iso"
+    rdir = work / "HTC-01-n1"
+    cmd = htc.docker_run_command(Args, rdir, "c")
+    binds = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
+    check(len(binds) == 4, "four bind mounts")
+    under_root = [b.split(":")[0] for b in binds if b.startswith(str(work))]
+    check(all(s.startswith(str(rdir.resolve())) for s in under_root), "only this Run's files are mounted")
+    check("--cap-drop" in cmd and "--read-only" in cmd and f"seccomp={htc.SECCOMP}" in cmd, "EXP-001 constraints")
+    expected = htc.bind_sources(Args, rdir)
+    good = {"Mounts": [{"Type": "bind", "Destination": d, "Source": s} for d, s in expected.items()],
+            "HostConfig": {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True,
+                           "SecurityOpt": ["seccomp={...}", "no-new-privileges"]}}
+    htc.check_container(good, expected, work.resolve())
+    leaky = json.loads(json.dumps(good))
+    leaky["Mounts"].append({"Type": "bind", "Destination": "/past", "Source": str(work / "HTC-02-n1")})
+    for bad, why in ((leaky, "extra mount"),
+                     ({**good, "HostConfig": {**good["HostConfig"], "Privileged": True}}, "privileged"),
+                     ({**good, "HostConfig": {**good["HostConfig"], "SecurityOpt": ["seccomp=unconfined"]}}, "seccomp")):
+        try:
+            htc.check_container(bad, expected, work.resolve())
+        except htc.Stop:
+            continue
+        raise AssertionError(f"container check accepted {why}")
+    wide = {**expected, "/work": str(work.resolve())}
+    try:
+        htc.check_container({**good, "Mounts": [{"Type": "bind", "Destination": d, "Source": s} for d, s in wide.items()]},
+                            wide, work.resolve())
+    except htc.Stop:
+        pass
+    else:
+        raise AssertionError("mounting the whole work root was accepted")
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -124,6 +184,11 @@ def test_workspace_and_grade(tmp: Path) -> None:
     (ws / "toy.py").write_text("def add(a, b):\n    return 0\n")
     check(not htc.grade(cand, ws, tmp / "run1" / "grade3", ac_files, py)["verifiedSuccess"],
           "editing the visible test does not change the AC")
+    htc.probe_ac_sandbox(py)
+    net_test = {"tests/test_toy.py": (
+        b"import socket, unittest\n\nclass T(unittest.TestCase):\n    def test_add(self):\n"
+        b"        socket.create_connection(('1.1.1.1', 53), timeout=3)\n")}
+    check(not htc.grade(cand, ws, tmp / "run1" / "grade4", net_test, py)["verifiedSuccess"], "AC has no network")
 
 
 def main() -> int:
@@ -135,6 +200,8 @@ def main() -> int:
         test_dry_run_and_summary(tmp, prompt)
         test_control_deviation(tmp, prompt)
         test_limits_and_lock(tmp, prompt)
+        test_resume_counts_existing_tokens(tmp, prompt)
+        test_container_isolation(tmp)
         test_workspace_and_grade(tmp)
     print("test_hard_task_calibrate: OK")
     return 0

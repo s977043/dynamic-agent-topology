@@ -46,7 +46,7 @@
 4. auth（EXP-001 retry-t1-r01 `preflight-d.sh` と同じ probe）: host 側の auth ファイルが空でないこと、container 内の `/tmp/codex-home/auth.json` が空でないことを確かめた後、Codex sandbox 内で probe を実行し、次の 3 つを **別々に** 確かめる: (a) sandbox 内で開始した印 `SANDBOX_ALIVE` が出る、(b) `cat` の失敗が既知の拒否（`Permission denied` / `No such file or directory`）で `AUTH_DENIED` が出る（それ以外のエラーは `UNKNOWN` で停止）、(c) probe 自体が exit 0
 5. AC の sandbox（起動前）: host でローカルの listen ソケットを開き、sandbox の外からは接続でき（対照）、sandbox-exec の中からは `EPERM` / `EACCES` で拒否されることを確かめる。対照が接続できない、sandbox 内の結果が timeout・refused・別の errno・probe の異常終了のときは、拒否を確認できないとして停止する。外部ネットワークに依存しない
 
-確認結果は各 `run.json` の `isolation`（container 名、mount の一覧、HostConfig.Tmpfs、seccomp の SHA-256 と一致の判定、Codex 版、auth probe の exit code と出力）に残る。隔離の確認で止まった Run は `isolation-stop` として残し、model を起動する前なら totalTokens を 0 と記録する。Operator は最初の Run の後に `run.json` の `isolation` を目視で確認し、#244 に記録する。
+確認結果は各 `run.json` の `isolation`（container 名、mount の一覧、HostConfig.Tmpfs、seccomp の SHA-256 と一致の判定、Codex 版、auth probe の exit code と出力）に残る。隔離の確認で止まった Run は `isolation-stop` として残す。model を起動する前に止まった Run（`modelLaunched: false`）は消化済みとして扱わず、`--skip-existing` での再開時に `<work-root>/attempts/<runId>/attempt-<N>/` へ退避（上書きしない）してから同じ Run を新しく実行する。予算の加算と m の平均は model を起動した Run だけを対象にする。Operator は最初の Run の後に `run.json` の `isolation` を目視で確認し、#244 に記録する。
 
 ## 3. 止める条件（キットが自動で止める）
 

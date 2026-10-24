@@ -105,6 +105,30 @@ def test_resume_counts_existing_tokens(tmp: Path, prompt: Path) -> None:
     check(rc == 2 and "no totalTokens" in err and len(list(work.glob("HTC-*"))) == 3, "unknown usage stops resume")
 
 
+def test_retry_never_launched(tmp: Path, prompt: Path) -> None:
+    work = tmp / "retry"
+    rc, _, _ = run_cli(dry_args(work, prompt))
+    check(rc == 0, "full dry batch")
+    stopped = work / "HTC-02-n3"
+    record = json.loads((stopped / "run.json").read_text())
+    record.update({"status": "isolation-stop", "modelLaunched": False, "stopReason": "mounts differ"})
+    record.pop("totalTokens")
+    (stopped / "run.json").write_text(json.dumps(record))
+    summary = htc.summarize(work)
+    check(summary["m"] == 1.0 and summary["totalTokensSpent"] == 24 * 68022, "never-launched Run not in m or spend")
+    rc, out, err = run_cli(dry_args(work, prompt, "--skip-existing"))
+    check(rc == 0 and "retry HTC-02-n3" in out and out.count("skip existing") == 24, f"retried: {err}")
+    kept = work / "attempts" / "HTC-02-n3" / "attempt-1" / "run.json"
+    check(json.loads(kept.read_text())["status"] == "isolation-stop", "failed attempt preserved")
+    check(json.loads((stopped / "run.json").read_text())["status"] == "dry-run-ungraded", "Run re-executed")
+    check(htc.summarize(work)["runsFound"] == 25, "25 Runs after retry")
+    launched = json.loads((work / "HTC-01-n1" / "run.json").read_text())
+    launched.update({"status": "isolation-stop", "modelLaunched": True})
+    (work / "HTC-01-n1" / "run.json").write_text(json.dumps(launched))
+    rc, out, _ = run_cli(dry_args(work, prompt, "--skip-existing"))
+    check(rc == 0 and "retry" not in out, "a Run that launched the model is not retried")
+
+
 class Args:
     codex_dir = "/opt/cx"
     auth_file = "/home/op/.codex/auth.json"
@@ -266,6 +290,7 @@ def main() -> int:
         test_control_deviation(tmp, prompt)
         test_limits_and_lock(tmp, prompt)
         test_resume_counts_existing_tokens(tmp, prompt)
+        test_retry_never_launched(tmp, prompt)
         test_container_isolation(tmp)
         test_workspace_and_grade(tmp)
     print("test_hard_task_calibrate: OK")

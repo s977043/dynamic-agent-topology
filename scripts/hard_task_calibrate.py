@@ -389,15 +389,38 @@ def will_grade(args) -> bool:
     return not args.dry_run or args.mirror_dir is not None
 
 
+def read_record(rdir: Path) -> dict:
+    path = rdir / "run.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def never_launched(record: dict) -> bool:
+    """A Run stopped by the isolation checks before the model started; it is retried, not counted."""
+    return record.get("status") == "isolation-stop" and record.get("modelLaunched") is False
+
+
+def preserve_attempt(work_root: Path, rdir: Path) -> Path:
+    """Move a never-launched Run directory to attempts/<runId>/attempt-<N> (never overwrites)."""
+    base = work_root / "attempts" / rdir.name
+    base.mkdir(parents=True, exist_ok=True)
+    n = 1
+    while (base / f"attempt-{n}").exists():
+        n += 1
+    dest = base / f"attempt-{n}"
+    rdir.rename(dest)
+    return dest
+
+
 def spent_by_existing(work_root: Path, runs: list[dict]) -> int:
-    """Tokens already used by existing Run directories; a Run without a token count cannot be bounded."""
+    """Tokens already used by existing Run directories that launched the model; unknown usage cannot be bounded."""
     spent = 0
     for run in runs:
         rdir = work_root / run["runId"]
         if not rdir.exists():
             continue
-        record_path = rdir / "run.json"
-        record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.exists() else {}
+        record = read_record(rdir)
+        if never_launched(record):
+            continue
         if not isinstance(record.get("totalTokens"), int):
             raise Stop(f"{run['runId']} has no totalTokens; record its usage before resuming")
         spent += record["totalTokens"]
@@ -528,7 +551,7 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
               "repo": cand["repo"], "revision": cand["revision"], "dryRun": args.dry_run,
               "declared": {"runtime": RUNTIME_VERSION, "model": MODEL, "effort": EFFORT},
               "limits": {"timeoutS": args.timeout_s, "maxRunTokens": args.max_run_tokens},
-              "promptSha256": prompt_sha, "status": "started", "startedAt": now()}
+              "promptSha256": prompt_sha, "status": "started", "modelLaunched": False, "startedAt": now()}
     write_record(rdir, record)
     ws = rdir / "workspace"
     if will_grade(args):
@@ -545,15 +568,16 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     started = time.monotonic()
     if args.dry_run:
         rc = fake_codex(args, rdir / "sessions")
+        record["modelLaunched"] = True  # simulated
     else:
         record["isolation"] = {}
         try:
             rc, _ = container_exec_codex(args, rdir, prompt, record["isolation"])
+            record["modelLaunched"] = True
         except Stop as exc:
             record["status"] = "isolation-stop"
             record["stopReason"] = str(exc)
-            if not record["isolation"].get("modelLaunched"):
-                record["totalTokens"] = 0
+            record["modelLaunched"] = bool(record["isolation"].get("modelLaunched"))
             write_record(rdir, record)
             raise
     record["wallClockMs"] = int((time.monotonic() - started) * 1000)
@@ -605,9 +629,13 @@ def cmd_run(args) -> int:
         mirror = Path(args.mirror_dir) if args.mirror_dir else None
         ac_files = load_ac_files(candidates, mirror) if will_grade(args) else {}
         for run in runs:
-            if (work_root / run["runId"]).exists():
-                print(f"skip existing {run['runId']}")
-                continue
+            rdir = work_root / run["runId"]
+            if rdir.exists():
+                if not never_launched(read_record(rdir)):
+                    print(f"skip existing {run['runId']}")
+                    continue
+                print(f"retry {run['runId']}: model was never launched; previous attempt kept at "
+                      f"{preserve_attempt(work_root, rdir)}")
             if spent + args.max_run_tokens > args.budget_tokens:
                 raise Stop(f"budget: spent {spent} + max per run {args.max_run_tokens} > {args.budget_tokens}")
             text, sha = tasks[run["order"]]
@@ -646,7 +674,8 @@ def summarize(work_root: Path) -> dict:
             row["band"] = "hard"
         else:
             row["band"] = "not-hard"
-    tokens = [r["totalTokens"] for r in records if isinstance(r.get("totalTokens"), int)]
+    tokens = [r["totalTokens"] for r in records
+              if r.get("modelLaunched") is True and isinstance(r.get("totalTokens"), int)]
     mean = sum(tokens) / len(tokens) if tokens else None
     m = mean / T0_TOKENS_EXP001 if mean is not None else None
     return {

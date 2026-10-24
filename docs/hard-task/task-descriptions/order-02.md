@@ -18,8 +18,7 @@ for d in ["postgres", "duckdb", "mysql", "snowflake"]:
 
 ## 期待結果
 
-- postgres・duckdb・mysql など、比較演算子を IS 述語より先に結合する方言では、最上位が `Is` で、その左側が `a = b`（括弧で囲まれた比較）になる。`=` 以外の比較演算子（`<>`、`!=`、`<`、`>`、`<=`、`>=`）でも同じ
-- snowflake と redshift では、現在と同じく `a = (b IS NULL)` の形になる
+- 解析結果が、それぞれの方言で実際にその式が評価される意味と一致する（postgres・duckdb・mysql などでは `(a = b) IS NULL` の意味、snowflake では現在と同じ `a = (b IS NULL)` の意味）
 - 解析した式を SQL に戻したとき、元の意味が保たれる
 
 ## 実際の結果

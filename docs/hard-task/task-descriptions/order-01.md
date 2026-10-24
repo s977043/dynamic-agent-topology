@@ -1,4 +1,4 @@
-# 不具合報告: Oracle の CREATE TABLE に TABLESPACE を付けると構文として解析されない
+# 不具合報告: Oracle 方言の一部の CREATE TABLE 文が通常の文として扱われない
 
 作業ディレクトリの repository（sqlglot）にある次の不具合を修正してください。
 
@@ -20,9 +20,9 @@ for sql in ['CREATE TABLE t (id NUMBER) TABLESPACE ts',
 
 ## 期待結果
 
-- 結果は `CREATE TABLE` の式として解析され、テーブル名と列定義（`id NUMBER`）が構造として取り出せる
+- 警告は出ず、他の `CREATE TABLE` 文と同じように通常の文として扱われる
 - Oracle 方言で SQL に戻すと、入力と同じ文になる（引用符付きの名前も保たれる）
-- TABLESPACE を表せない方言（例: postgres）へ `unsupported_level="RAISE"` で変換すると、未対応であることを示すエラーになる
+- その指定を表せない方言（例: postgres）へ `unsupported_level="RAISE"` で変換すると、未対応であることを示すエラーになる
 
 ## 実際の結果
 

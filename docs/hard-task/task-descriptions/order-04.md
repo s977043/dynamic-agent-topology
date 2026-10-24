@@ -29,15 +29,10 @@ print(Lark(g, parser='lalr', lexer=CustomLexer, cache=True).parse('a'))
 
 ## 期待結果
 
-- 2 回とも parser を作れ、`parse('a')` が `Tree('start', [Token('A', 'a')])` を返す
-- 同じ文法・同じ設定であれば、cache は 1 つだけ作られ、2 回目はそれを使う
+- 2 回とも parser を作れ、2 回目も 1 回目と同じ解析結果を返す
+- 2 回目は 1 回目に作られた cache を使って構築される
 - 独自の lexer を使わない場合の cache の動作は変わらない
 
 ## 実際の結果
 
-```text
-Tree(start, [Token(A, 'a')])
-AttributeError: 'functools.partial' object has no attribute 'deserialize'
-```
-
-1 回目は期待どおりの木を返し、カレントディレクトリに cache ファイルが 1 つできる。2 回目の `Lark(...)` の構築で `AttributeError` が出る（出力は例外の最終行）。cache ファイルが残った状態で再び実行すると、1 回目の構築から同じ例外が出る。
+1 回目は `Tree(start, [Token(A, 'a')])` を出力し、カレントディレクトリに cache ファイルが 1 つできる。2 回目の `Lark(...)` の構築が `AttributeError` で失敗する。cache ファイルが残った状態で再び実行すると、1 回目の構築から同じ例外で失敗する。

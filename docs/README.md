@@ -65,10 +65,12 @@
 | [EXP_TIME_SIGNAL_DESIGN.md](EXP_TIME_SIGNAL_DESIGN.md) | 経過時間シグナル（elapsed / budget）の paired 評価設計案（#201） | 非規範的な設計案（未採用） |
 | [MODEL_ROLE_SPLIT_DESIGN.md](MODEL_ROLE_SPLIT_DESIGN.md) | 同一T0でメインモデルだけを変えるモデル役割分担の paired 評価設計案（#220） | 非規範的な設計案（未採用） |
 | [MODEL_ROLE_SPLIT_RUNBOOK.md](MODEL_ROLE_SPLIT_RUNBOOK.md) | 上記設計案の比較条件・測定項目・記録先・停止条件と、Operator / Agent / Reviewer の手順（#220） | 非規範的な実行手順書（未採用） |
-| [MODEL_ROLE_SPLIT_PREREGISTRATION.md](MODEL_ROLE_SPLIT_PREREGISTRATION.md) | 上記設計案のU1〜U6の推奨値・判断者と事前登録の本文案（#220） | 下書き（未確定。blob hashは確定版で記録） |
+| [MODEL_ROLE_SPLIT_PREREGISTRATION.md](MODEL_ROLE_SPLIT_PREREGISTRATION.md) | 上記設計案のU1〜U6の確定値と事前登録の本文（#220） | U1〜U6確定版（事前登録はblob hashのIssue記録で成立） |
+| [model-role-split/CANDIDATES.yaml](model-role-split/CANDIDATES.yaml) | 上記事前登録 §2（U1）の手順で集めた18 Task の候補表（易9・複数ファイル9、既知欠陥3、SHA-256順。#220） | 第1版（事前登録と同じPRで固定） |
 | [HARD_TASK_T0_T1_DESIGN.md](HARD_TASK_T0_T1_DESIGN.md) | T0の成功率が低いTaskでRuntime・Model・Effortを固定しT0/T1を比べる paired 評価設計案（EXP-001 床効果） | 非規範的な設計案（未採用） |
 | [HARD_TASK_T0_T1_PREREGISTRATION.md](HARD_TASK_T0_T1_PREREGISTRATION.md) | 上記設計案のU1〜U7の確定値と、実験開始前に残る手順 | U1〜U7確定版（事前登録はblob hashのIssue記録で成立） |
 | [hard-task/CANDIDATES.yaml](hard-task/CANDIDATES.yaml) | 上記事前登録 §3 の手順で集めた候補表（初回44件・予備44件、SHA-256順。[#244](https://github.com/s977043/dynamic-agent-topology/issues/244)） | 第2版（§9手順3の固定は未実施） |
+| [hard-task/CALIBRATION_RUNBOOK.md](hard-task/CALIBRATION_RUNBOOK.md) | 上記事前登録 §9 手順 6 の最初の較正 25 Run（5候補×5回）を Operator が実行する手順と、実行・集計キット `scripts/hard_task_calibrate.py` | 起案（未実行。prompt と上限は未確定） |
 | [RUN_OBSERVATION_DESIGN.md](RUN_OBSERVATION_DESIGN.md) | 日常開発のウェーブ観察記録（RunObservation）の設計案（#223） | 非規範的な設計案（未採用） |
 | [OBSERVATION_MEASUREMENT.md](OBSERVATION_MEASUREMENT.md) | RunObservation の集計対象・期間の基準時刻・除外条件・記録単位の変化 | 計測の取り決め（構成の優劣の根拠にはしない） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |

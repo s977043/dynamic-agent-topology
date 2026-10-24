@@ -4,6 +4,8 @@ import subprocess
 import sys
 import tempfile
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_run_observation.py"
 FIXTURES = ROOT / "fixtures" / "run-observation"
@@ -18,7 +20,10 @@ EXPECTED_ERRORS = {
     "basis-same-session-verifier": "same-session review cannot have role verifier",
     "basis-verifier-review-without-verification": "verification: must be yes",
     "basis-advisory-without-independent-review": "independentReview: does not match",
-    "basis-independent-review-without-advisory": "independentReview: does not match",
+    "basis-independent-review-without-advisory": "independentReview: 'yes' requires",
+    "basis-independent-review-same-session-only": "independentReview: 'yes' requires",
+    "schema-interruption-kind-not-in-enum": "schema: interruptionKind",
+    "schema-rework-trigger-not-in-enum": "schema: rework/triggers/0",
     "basis-independent-review-unknown-with-reviews": "independentReview: does not match",
     "topology-not-following-basis": "does not follow from topologyBasis",
     "topology-t1-claimed-with-unknown-basis": "does not follow from topologyBasis",
@@ -66,6 +71,31 @@ for prefix in TOKEN_PREFIXES:
 for text in ("2026-01-05T09:00:00Z", "separate-session-verifier-merge-ok", "0.3.0"):
     if vro.check_redaction({"value": text}):
         failures.append(f"ordinary value must not be flagged: {text!r}")
+
+for alias, canonical in (
+    ("merge-ok", "approve"), ("approve", "approve"),
+    ("changes-required", "changes-requested"), ("request-changes", "changes-requested"),
+    ("changes-requested", "changes-requested"), ("comments", "comment"),
+    ("unknown", "unknown"), ("lgtm", "other"),
+):
+    if vro.normalize_decision(alias) != canonical:
+        failures.append(f"decision {alias!r} must normalize to {canonical!r}")
+
+interrupted = yaml.safe_load((FIXTURES / "valid" / "interrupted-no-merge-unknown-values.yaml").read_text(encoding="utf-8"))
+if vro.record_warnings(interrupted):
+    failures.append("interrupted record with interruptionKind must not warn")
+del interrupted["interruptionKind"]
+interrupted["reviews"][0]["decision"] = "lgtm"
+warnings = vro.record_warnings(interrupted)
+if vro.validate_record(interrupted, validator) or len(warnings) != 2 or not any("interruptionKind" in w for w in warnings):
+    failures.append(f"missing interruptionKind and unknown decision must warn without error, got {warnings}")
+
+with tempfile.TemporaryDirectory() as tmp:
+    path = Path(tmp) / "interrupted.yaml"
+    path.write_text(yaml.safe_dump(interrupted), encoding="utf-8")
+    result = subprocess.run([sys.executable, str(SCRIPT), str(path)], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if result.returncode != 0 or "warning: interruptionKind" not in result.stdout:
+        failures.append("explicit path mode must print warnings and still pass\n" + result.stdout)
 
 result = subprocess.run([sys.executable, str(SCRIPT)], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 if result.returncode != 0:

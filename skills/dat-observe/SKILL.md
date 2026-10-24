@@ -23,7 +23,13 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
    - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
    - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない
-   - `topologyEquivalent` は設計 §5.2 の表を上から順に当てはめる。助言レビュー（`advisory`）と検証（`verifier`）を混ぜない
+   - `topologyEquivalent` は設計 §5.2 の表を上から順に当てはめる。助言レビュー（`advisory`）と検証（`verifier`）を混ぜない。`same-session` の助言だけなら `independentReview: 'no'`
+   - `taskDifficulty`（`trivial` / `standard` / `hard` / `unknown`）は構成を選ぶ前に決めた区分を書く。結果を見てから付けない
+   - `outcome: interrupted` なら `interruptionKind`（`human-decision` / `ownership` / `environment` / `failure` / `unknown`）を書く
+   - 手戻りがあれば `rework.triggers`（`review-finding` / `self-correction` / `spec-change` / `ci-failure` / `unknown`）を書く
+   - `model[].effort` と `usage`（`totalTokens`・`costUsd`）は確認できた値だけ書き、分からなければ `unknown`
+   - `reviews[].decision` は `approve` / `changes-requested` / `comment` / `unknown` のいずれかで書く
+   - `startedAt` / `endedAt` はウェーブの開始・終了時に控えておく。期間の集計は `endedAt` で行う（[docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)）
 3. **秘匿を確かめる**（保存前の必須条件。全文字列値が対象）: エージェント自身が全文字列値を読み、次を含まないことを確かめる。CLI の `OK` はこの確認の代わりにならない（validator が見るのは長さ・絶対パス・既知のトークン形式だけ）。秘密情報・トークン、private source、プロンプトや会話の本文、レビュー本文、個人環境の絶対パスを含めない。private な PR・ブランチ・リポジトリ名・個人名は仮名にする。`outcomeReason` は改行なしの 1 行。
 4. **保存先**: リポジトリの外の 1 か所。`--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、指定がなければ `~/.dat/observations` を案内する。
 5. **検証して保存する**: 保存には Python 3・`jsonschema`・`pyyaml` と DAT の CLI が必須で、ファイル書き込みとコマンド実行の許可が要る。手順 3 の確認を終えてから実行する。validator を通った記録だけを保存する。`NG` なら直して再実行し、`OK` と一緒に出る `unknown` の項目に取れる値が残っていないか見直す。
@@ -41,7 +47,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations
 ```
 
-出力の表をそのまま示す。Python が使えないときは集計できないと報告する。
+出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md) に従う。Python が使えないときは集計できないと報告する。
 
 ## しないこと
 

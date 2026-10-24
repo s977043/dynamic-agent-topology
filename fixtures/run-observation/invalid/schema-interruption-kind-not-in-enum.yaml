@@ -1,0 +1,41 @@
+apiVersion: dat/v1alpha1
+kind: RunObservation
+metadata:
+  observationId: obs-0001
+  project: project-a
+  datVersion: 0.3.0
+startedAt: '2026-01-05T09:00:00Z'
+endedAt: unknown
+wallClockMs: unknown
+goalRecorded: true
+outcome: interrupted
+interruptionKind: session-limit
+runtime: unknown
+model: unknown
+topologyEquivalent: T1
+topologyBasis:
+  agentInvolved: 'yes'
+  delegated: 'yes'
+  verification: 'yes'
+  verifierKind: separate-session
+  independentReview: 'no'
+  specialistRole: 'no'
+tasks:
+  total: 2
+  delegated: 2
+agentInvocations: 3
+artifacts:
+- ref: pr-2
+  state: open
+reviews:
+- target: pr-2
+  reviewerKind: separate-session
+  role: verifier
+  findings:
+    blocking: 0
+    nonBlocking: 1
+  decision: request-changes
+rework:
+  count: unknown
+humanInterventions: unknown
+outcomeReason: stopped at session limit

@@ -72,6 +72,7 @@
 | [hard-task/CANDIDATES.yaml](hard-task/CANDIDATES.yaml) | 上記事前登録 §3 の手順で集めた候補表（初回44件・予備44件、SHA-256順。[#244](https://github.com/s977043/dynamic-agent-topology/issues/244)） | 第2版（§9手順3の固定は未実施） |
 | [hard-task/CALIBRATION_RUNBOOK.md](hard-task/CALIBRATION_RUNBOOK.md) | 上記事前登録 §9 手順 6 の最初の較正 25 Run（5候補×5回）を Operator が実行する手順と、実行・集計キット `scripts/hard_task_calibrate.py` | 起案（未実行。prompt と上限は未確定） |
 | [RUN_OBSERVATION_DESIGN.md](RUN_OBSERVATION_DESIGN.md) | 日常開発のウェーブ観察記録（RunObservation）の設計案（#223） | 非規範的な設計案（未採用） |
+| [OBSERVATION_MEASUREMENT.md](OBSERVATION_MEASUREMENT.md) | RunObservation の集計対象・期間の基準時刻・除外条件・記録単位の変化 | 計測の取り決め（構成の優劣の根拠にはしない） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |
 | `ENVIRONMENT_USAGE.md` | 環境の観測台帳、用途比較、後続検証案 | 非規範的な検討記録 |
 | [CLOUD_VERIFICATION_PLAN.md](CLOUD_VERIFICATION_PLAN.md) | Cloudで実行する知識整合性probeの事前計画とoracle | 非規範的な検証計画（#63） |

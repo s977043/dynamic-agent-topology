@@ -29,7 +29,7 @@
 | U3 | arm A は G0-2 で観測した現行既定の実効 model ID、arm B は G0-2 時点で利用可能な Sonnet の最新 model ID。どちらも alias ではなく完全な model ID 文字列で固定する | alias（`sonnet` 等）で指定（実行時に解決先が変わりうるため採らない） | 設計案 §4・§6（activation と effectiveness の分離） | 規則 | 選び方は AI、利用可否と実効値の確認は Human 確定（手順書 G0-2） |
 | U4 | Operator が、(1) API key 課金の経路がない（環境変数・設定に API key がない）、(2) アカウント設定で超過分の追加課金が無効、(3) 利用枠の残量と請求の有無を別々に確認、の 3 点を実環境で確かめ、方法と日時を Issue #220 に記録する | 追加課金の上限額を設定して少額の課金を許容する（「追加課金ゼロ」の制約を変えるため Human 判断の別案件） | 設計案 §5 Gate 1、Issue #220 の費用点検 5 | 規則 | **Human 確定** |
 | U5 | Claude Code CLI の非対話実行で stream-json 出力を保存し、応答の model ID と tool call を取得する。model を起動せずに CLI の help と公式 docs で出力形式を確認する（Gate 2 の [A] 確認案）。実環境での確定は予備検証で行う | provider の usage 画面から事後に取得（Run 単位の対応付けができず、tool call も取れない） | 設計案 §6・手順書 Gate 2 | Source claim（NOT_TESTED） | 方法は AI、実環境での確定は Human 確定（課金を伴う起動のため） |
-| U6 | A/B の Judgment が PASS または FAIL（計測成立）で出た後にだけ、C（Haiku read-only 探索委任）を先に、D（Opus escalation）を後に、それぞれ別の事前登録で検討する。A/B が計測不成立による INCONCLUSIVE なら C/D に進まない | C と D を同時に登録（交絡と予算の分散で INCONCLUSIVE になりやすい） | 設計案 §1（単一変更の原則）、Issue #220 の G1 | 規則 | 導入判断は AI（独立レビュー付き）、その予算は Human 確定 |
+| U6 | A/B の Judgment が PASS または FAIL（計測成立）で出た後にだけ、C（Haiku read-only 探索委任）を先に、D（Opus escalation）を後に、それぞれ別の事前登録で検討する。A/B が計測不成立による INCONCLUSIVE なら C/D に進まない | C と D を同時に登録（交絡と予算の分散で INCONCLUSIVE になりやすい） | 設計案 §1（単一変更の原則）、Issue #220 の G1 | 規則 | C/D を別の事前登録で検討するという設計上の判断は AI（独立レビュー付き）。C/D の採用・既定化・設定変更の判断は AI 判断にせず、独立 Reviewer の Judgment と Human が行う（設計案 §0・§7、手順書 手順 16〜18、AGENT_HARNESS.md の自律境界）。その予算は Human 確定 |
 
 ## 2. U1: Task / fixture と negative oracle
 
@@ -39,7 +39,7 @@
   3. **難度の混合**: 修正が 1 ファイル・30 行未満の Task を 9、2 ファイル以上または 30 行以上の Task を 9。想定難度は Run 前に候補表に書き、結果で変えない。
   4. **既知欠陥**: 3 Task に、AC を満たしても negative oracle で検出できる罠（例: テストを skip すれば通る形）を仕込み、検出漏れを測る。
   5. **除外条件**（結果以外の理由に限る）: ネットワーク・外部サービスが必要、テストが flaky（各 3 回実行で確認）、ライセンス・由来が不明、EXP-001 / #93 / #201 / #166 / HARD_TASK の候補と同じ repo revision。
-  6. **許可範囲**: Task ごとに書き込み可能なパス、実行可能なコマンド、ネットワーク不可を候補表に書く（設計案 §5 boundary violation）。
+  6. **許可範囲**: Task ごとに書き込み可能なパス、実行可能なコマンド、ネットワーク不可を候補表に書く（設計案 §5 boundary violation）。外部書き込みを伴い得るコマンド（push、パッケージの publish、外部 API への書き込みなど）は許可範囲に含めない。含める必要がある Task は、その書き込み先を trace とは別に確認できる方法も候補表に書く。
   7. 候補表（repo、revision、ライセンス、AC、Verification command、negative oracle、許可範囲、想定難度）は確定版と同じ PR に入れ、hash の対象に含める。
 - **未確認**: 1 Task の準備工数、Claude 系 model での難度（**UNKNOWN**）。
 
@@ -53,7 +53,7 @@
   - A・B とも成功率 0.8、真の差 0、block 内独立を仮定: p₁₀ = p₀₁ = 0.16、p₁₀ + p₀₁ = 0.32。
   - δ_q = 0.15: n ≒ 6.19 × 0.32 / 0.0225 ≒ 88.0 → **88 block**。18 Task × rep 5 = 90 block で満たす。
   - δ_q = 0.10: n ≒ 6.19 × 0.32 / 0.01 ≒ 198 block（約 2.3 倍）。
-  - 同じ Task の rep どうしは相関するため実効件数は 90 より少ない。90 block は feasibility-only を外す下限で、検出力の保証とは解釈しない。
+  - 90 block は、推測した前提での計算上の目安（88 block）に届くという意味に限る。検出力の裏付けではない。同じ Task の rep どうしは相関するため実効件数は 90 より少なく、実効検出力は **UNKNOWN**。90 block は feasibility-only を外す件数の下限としてだけ使う。
 - **δ_c = 0.20**: cost per verified task（#203 の定義、手順書の評価軸）で B が A より 20% 以上低いこと。model の単価差だけで達成しうる幅だが、Sonnet で再試行・長い対話が増えると相殺されうるため、この幅を最小の実用差とする。推測。
 - **欠測率上限 0.10・activation 未確認率上限 0.05**: activation 未確認は効果解釈の前提を崩すため欠測より厳しくする。推測。
 
@@ -71,13 +71,13 @@
 ## 6. U5: trace の取得
 
 - 確認案: CLI の help と公式 docs で、非対話実行の stream-json 出力に応答 model ID（assistant message の `model`）と tool call（`tool_use`）が含まれることを、model を起動せずに確かめる。
-- 完全性の条件: tool call を連番で照合でき欠けがない、Runtime が記録漏れを報告していない。満たせない Run は boundary violation を NOT_TESTED とする（設計案 §5）。
+- 完全性の条件（設計案 §5）: tool call を連番で照合でき欠けがない、Runtime が記録漏れを報告していない、外部書き込みを伴い得るコマンドは許可範囲に含めないか、その書き込み先を trace とは別に確認できる。条件を 1 つでも確認できない Run は boundary violation を NOT_TESTED（欠測）とし、0 件として扱わない。
 - 実環境での成立は予備検証（手順書 手順 11・12）で確かめる。それまで **NOT_TESTED**。
 
 ## 7. budget（Human が確定）
 
 - **目安（推測）**: 本 Run 180 Run（90 block × 2 arm）+ 予備検証 2 Run。1 Run を EXP-001 T0 の 68,022 tokens と置くと 182 × 68,022 ≒ **12.4M tokens × m**（m は Claude 系 model・本 Task 集合での EXP-001 比で **UNKNOWN**）。
-- **推奨する上限**: 1 Run あたり 300,000 tokens・wall clock 30 分の hard limit（両 arm 同一）、自動継続 0 回、総 Run 数 182。予備検証で m を実測し、見積もりを更新して Human が本 Run の予算を再承認する。
+- **推奨する上限**: 1 Run あたり 300,000 tokens・wall clock 30 分の hard limit（両 arm 同一）、自動継続 0 回、総 Run 数 182。予備検証で m を実測し、見積もりを更新して Human が本 Run の予算を再承認する。再見積もりが総上限（182 Run × 300,000 tokens）や 1 Run の hard limit を超える場合は、Run 数を減らして続けない（最小 paired block 数を割り feasibility-only になるため）。上限を見直した新しい版として再登録し、hash を記録し直したうえで Human が再承認する。
 - 予算額と model 起動の可否は **Human が確定**する。本書の数値は推奨値にすぎない。
 
 ## 8. 事前登録の本文案（確定版に入れる項目）
@@ -90,7 +90,7 @@
 | task 集合と想定難度 | 候補表 `<path>` の 18 Task（易 9・複数ファイル 9、既知欠陥 3）。想定難度は候補表に記載 |
 | AC と Verification command | 候補表の Task ごとの決定的な command。判定は生成 Agent 以外の Evaluator が照合する |
 | negative oracle | 全 Task 共通の 3 check（§1 U1）と、既知欠陥 Task の検出 check |
-| 許可範囲と trace の完全性条件 | 候補表の Task ごとの許可範囲。完全性条件は §6 |
+| 許可範囲と trace の完全性条件 | 候補表の Task ごとの許可範囲（外部書き込みを伴い得るコマンドは含めないか、書き込み先の別確認の方法を併記）。完全性条件は §6。完全性を確認できない Run の boundary violation は NOT_TESTED（欠測）とし、0 件として扱わない |
 | 閾値 | δ_q = 0.15、δ_c = 0.20、最小 paired block 数 90、欠測率上限 0.10、activation 未確認率上限 0.05。判定は設計案 §7 |
 | budget | 総 Run 数 182、1 Run 300,000 tokens・30 分の hard limit、自動継続 0 回（Human が確定） |
 | counterbalance | block 番号の奇数は A→B、偶数は B→A。block の実行順は Task × rep の固定 seed `<seed>` による乱順 |

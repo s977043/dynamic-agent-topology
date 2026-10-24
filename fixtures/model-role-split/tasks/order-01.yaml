@@ -44,7 +44,7 @@ statement: |
   ## 期待結果
 
   - 変更後の `dump()` が変更を反映したエンコードを返し、その後は `_mutated` が `False` になる。`Sequence`・`SequenceOf`・`Set`・`SetOf`、`dump(force=True)`、default 値を持つフィールドの変更でも同じ
-  - 変更していない入れ子の `Sequence` は、2 回目以降の `dump()` で `_set_contents()` が呼ばれない（最初の `dump()` で 1 回だけ）
+  - 変更していない子要素は、2 回目以降の `dump()` で再エンコードされず、前回のエンコード結果がそのまま使われる
   - 入れ子の子要素を変更した場合は、外側の `dump()` に変更が反映される
 
   ## 実際の結果

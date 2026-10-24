@@ -1,5 +1,5 @@
 # #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
-# statement だけを Agent に渡す。fixCommit・failingBeforeFix・本ファイルの他の値は Evaluator 用
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
 order: 10
 orderKey: https://github.com/bottlepy/bottle@2fa7afd35feb8f4c67699b670cc45556e93f62c2
 difficulty: easy
@@ -10,10 +10,12 @@ candidates:
   blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
 workspace:
   base: 2fa7afd35feb8f4c67699b670cc45556e93f62c2
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
   overlayFromFixCommit:
   - test/test_wsgi.py
   - test/tools.py
-  git: 履歴なしの単一 commit（task baseline）
 readOnlyBlobs:
   test/test_wsgi.py: 1310a4f078843612753a96b962cd48ce046713f7
   test/tools.py: c167d89469a6d1d517532bde07e5c1e8d7b3f661
@@ -21,9 +23,41 @@ baselinePassing:
   path: baseline/order-10.txt
   count: 6
 statement: |
-  このリポジトリでは `python3.12 -m unittest test/test_wsgi.py` が失敗します。失敗の原因になっているライブラリ側の不具合を直し、このコマンドが成功するようにしてください。
+  ## 症状
+
+  route の callback が `close()` を持つオブジェクト（ファイルや独自の iterable など）を返したとき、まれな経路でそのオブジェクトが閉じられません。
+
+  ## 再現手順
+
+  ```python
+  import bottle
+
+  class Body:
+      def __init__(self):
+          self.closed = False
+      def __iter__(self):
+          return iter([b"OK"])
+      def close(self):
+          self.closed = True
+
+  body = Body()
+  app = bottle.Bottle()
+  app.route("/close")(lambda: body)
+  # WSGI で /close を呼び出し、レスポンスを読み終えたあとに body.closed を確かめる
+  ```
+
+  ## 期待結果
+
+  - 返り値が `["OK"]`・`[b"OK"]`・`"OK"`・`b"OK"`・それらの list のどれでも、レスポンスの処理の後で `close()` が呼ばれる。`start_response` の中で例外が起きた場合も同じ
+  - テスト補助（`test/tools.py`）はレスポンスを閉じるときに、モジュールの関数 `bottle._try_close(obj)` を呼ぶ。この関数は、obj が `close()` を持つときだけ呼ぶ
+
+  ## 実際の結果
+
+  一部の経路で `close()` が呼ばれません。
+
+  ## 作業の条件
 
   - 変更してはいけないファイル: `test/test_wsgi.py`, `test/tools.py`
-  - テストの削除・skip・期待値の書き換えをしない。既存のテストを壊さない
+  - テストの削除・skip・期待値の書き換えをしない
   - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
   - 実行してよいコマンド: `python3.12 -m unittest test/test_wsgi.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

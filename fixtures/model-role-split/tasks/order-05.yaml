@@ -1,5 +1,5 @@
 # #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
-# statement だけを Agent に渡す。fixCommit・failingBeforeFix・本ファイルの他の値は Evaluator 用
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
 order: 5
 orderKey: https://github.com/pytest-dev/pyfakefs@9f9cc01d1d1b74f7a5cfc9842cd7cb167cb706c7
 difficulty: easy
@@ -10,18 +10,44 @@ candidates:
   blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
 workspace:
   base: 9f9cc01d1d1b74f7a5cfc9842cd7cb167cb706c7
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
   overlayFromFixCommit:
   - pyfakefs/tests/fake_open_test.py
-  git: 履歴なしの単一 commit（task baseline）
 readOnlyBlobs:
   pyfakefs/tests/fake_open_test.py: 1793a36c9dbecee4fdce5cacf0da14e4a224cf31
 baselinePassing:
   path: baseline/order-05.txt
   count: 159
 statement: |
-  このリポジトリでは `python3.12 -m unittest pyfakefs/tests/fake_open_test.py` が失敗します。失敗の原因になっているライブラリ側の不具合を直し、このコマンドが成功するようにしてください。
+  ## 症状
+
+  `sys.tracebacklimit` を小さい値にした状態で、pyfakefs の偽のファイルシステム上のファイルを `open()` すると、`IndexError` で落ちます。
+
+  ## 再現手順
+
+  pyfakefs の `fake_filesystem_unittest.TestCase`（`setUpPyfakefs()` 済み）の中で、次を実行します。
+
+  ```python
+  import sys
+
+  sys.tracebacklimit = 2
+  with open("/foo", "w") as f:
+      f.write("test")
+  ```
+
+  ## 期待結果
+
+  ファイルが作られ、例外は出ない。テスト後に `sys.tracebacklimit` を元に戻したとき、他のテストに影響しない
+
+  ## 実際の結果
+
+  `IndexError: list index out of range`
+
+  ## 作業の条件
 
   - 変更してはいけないファイル: `pyfakefs/tests/fake_open_test.py`
-  - テストの削除・skip・期待値の書き換えをしない。既存のテストを壊さない
+  - テストの削除・skip・期待値の書き換えをしない
   - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
   - 実行してよいコマンド: `python3.12 -m unittest pyfakefs/tests/fake_open_test.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

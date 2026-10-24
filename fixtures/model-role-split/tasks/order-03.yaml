@@ -1,5 +1,5 @@
 # #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
-# statement だけを Agent に渡す。fixCommit・failingBeforeFix・本ファイルの他の値は Evaluator 用
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
 order: 3
 orderKey: https://github.com/tobymao/sqlglot@911ee761a6db0e34be6ec4beec17bb8047e54679
 difficulty: easy
@@ -10,10 +10,12 @@ candidates:
   blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
 workspace:
   base: 911ee761a6db0e34be6ec4beec17bb8047e54679
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
   overlayFromFixCommit:
   - tests/dialects/test_postgres.py
   - tests/dialects/test_sqlite.py
-  git: 履歴なしの単一 commit（task baseline）
 readOnlyBlobs:
   tests/dialects/test_postgres.py: 5d717c6ada4b53fd494d66db7a42db0388654cbc
   tests/dialects/test_sqlite.py: 17123bdff36c10627d2175c9460fe988453af9da
@@ -21,9 +23,34 @@ baselinePassing:
   path: baseline/order-03.txt
   count: 48
 statement: |
-  このリポジトリでは `python3.12 -m unittest tests/dialects/test_postgres.py tests/dialects/test_sqlite.py` が失敗します。失敗の原因になっているライブラリ側の不具合を直し、このコマンドが成功するようにしてください。
+  ## 症状
+
+  `INSERT INTO <table> AS <alias> (<columns>) ...` の形で、対象テーブルの alias の直後に書いた列リストが、INSERT の列リストではなく alias の列として解釈されます。
+
+  ## 再現手順
+
+  ```python
+  import sqlglot
+
+  print(sqlglot.transpile("INSERT INTO foo AS f (x, y) VALUES (1, 2)", read="sqlite", write="sqlite")[0])
+  print(sqlglot.transpile(
+      "INSERT INTO newtable AS t(a, b, c) VALUES (1, 2, 3) ON CONFLICT(c) DO UPDATE SET a = t.a + 1 WHERE t.a < 1",
+      read="postgres", write="postgres")[0])
+  ```
+
+  ## 期待結果
+
+  - SQLite: `INSERT INTO foo AS f (x, y) VALUES (1, 2)`
+  - PostgreSQL: `INSERT INTO newtable AS t (a, b, c) VALUES (1, 2, 3) ON CONFLICT(c) DO UPDATE SET a = t.a + 1 WHERE t.a < 1`
+
+  ## 実際の結果
+
+  - SQLite: `INSERT INTO foo AS f VALUES (1, 2)`（列リストが消える）
+  - PostgreSQL: `INSERT INTO newtable AS t(a, b, c) VALUES ...`
+
+  ## 作業の条件
 
   - 変更してはいけないファイル: `tests/dialects/test_postgres.py`, `tests/dialects/test_sqlite.py`
-  - テストの削除・skip・期待値の書き換えをしない。既存のテストを壊さない
+  - テストの削除・skip・期待値の書き換えをしない
   - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
   - 実行してよいコマンド: `python3.12 -m unittest tests/dialects/test_postgres.py tests/dialects/test_sqlite.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

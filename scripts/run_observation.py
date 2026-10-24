@@ -8,7 +8,10 @@
 repository or any git working tree (a .git in the store or an ancestor) is
 refused so that observation records are never committed.
 Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
-project and observationId must be single safe file-name elements.
+project and observationId must be single safe file-name elements, and an
+observationId already present anywhere in the store is refused. sum counts only
+<store>/<project>/*.yaml and warns about YAML files at any other depth
+(docs/OBSERVATION_MEASUREMENT.md).
 
 Exit codes: save returns 0 when stored and 1 when refused. sum returns 0 when
 every file was counted, 1 when tables were printed but invalid files were
@@ -80,6 +83,10 @@ def save(path, store):
     if any((path / ".git").exists() for path in resolved_dest.parents):
         print(f"NG\n- destination must be outside any git working tree: {dest}")
         return 1
+    existing = sorted(store.rglob(f"{meta['observationId']}.yaml")) if store.is_dir() else []
+    if existing:
+        print(f"NG\n- observationId already recorded: {existing[0]}")
+        return 1
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         with open(dest, "x", encoding="utf-8") as handle:
@@ -90,6 +97,8 @@ def save(path, store):
     unknowns = list(unknown_fields(record))
     print(f"OK {meta['observationId']} -> {dest}")
     print(f"unknown: {', '.join(unknowns) if unknowns else 'none'}")
+    for warning in vro.record_warnings(record):
+        print(f"warning: {warning}")
     return 0
 
 
@@ -100,6 +109,9 @@ def summarize(store):
     validator = vro.load_validator()
     records = []
     skipped = 0
+    for path in sorted(store.rglob("*.yaml")):
+        if len(path.relative_to(store).parts) != 2:
+            print(f"warning: not counted (outside <project>/<observationId>.yaml): {cell(path.relative_to(store))}")
     for path in sorted(store.glob("*/*.yaml")):
         record, errors = vro.load_record(path, validator)
         if errors:
@@ -122,6 +134,14 @@ def summarize(store):
             group = [r for r in records if r["topologyEquivalent"] == topology]
             known = [r["rework"]["count"] for r in group if isinstance(r["rework"]["count"], int)]
             print(f"| {cell(topology)} | {len(known)}/{len(group)} | {sum(known)} |")
+        decisions = Counter(
+            vro.normalize_decision(review["decision"])
+            for r in records if r["reviews"] != "unknown" for review in r["reviews"]
+        )
+        print("\n| review decision (normalized) | reviews |\n|---|---|")
+        for decision, count in sorted(decisions.items()):
+            print(f"| {cell(decision)} | {count} |")
+        print(f"\nendedAt unknown (cannot be placed in a period): {sum(r['endedAt'] == 'unknown' for r in records)}")
     print(f"\n{NOTICE}")
     return 1 if skipped else 0
 

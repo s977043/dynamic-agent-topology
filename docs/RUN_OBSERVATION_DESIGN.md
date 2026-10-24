@@ -98,7 +98,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - `agentInvolved`: エージェントが実装または検証に関与したか
 - `delegated`: Worker への委託があったか
 - `verification`: 生成物を受け入れる前の検証の記録があるか。あれば `verifierKind`（`organizer` / `separate-session` / `separate-model` / `human`）も残す
-- `independentReview`: 実装者と別の主体による助言のレビュー（受け入れ判断を持たない）があったか。`reviews[]` に `role: advisory` が 1 件以上あれば `yes`
+- `independentReview`: 実装者と別の主体による助言のレビュー（受け入れ判断を持たない）があったか。`reviews[]` に `reviewerKind` が `separate-session` / `separate-model` / `human` の `role: advisory` が 1 件以上あれば `yes`（`same-session` の助言は実装者と別の主体ではないので数えない）
 - `specialistRole`: Worker・Reviewer・Verifier 以外の専門役割が別タスクで実施されたか
 
 各 `reviews[]` には `role`（`advisory`: 助言のみ / `verifier`: 受け入れ・merge の判断を持つ）を必須で持たせ、助言と検証を記録上で区別する。`role: verifier` のレビューは `verification`（と `verifierKind`）の根拠にだけ使い、`independentReview` には数えない。`role: advisory` は `independentReview` の根拠にだけ使い、`verification` には数えない。1 件のレビューが両方に数えられることはない（Reviewer ≠ Verifier）。
@@ -121,7 +121,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - `verifierKind` が `organizer` 以外なのに、根拠レビューがない（`role: verifier` のレビューがない、または受け入れた `artifacts[].ref` を `target` に持つものがない）
 - `reviewerKind: same-session` かつ `role: verifier` のレビューがある
 - `role: verifier` が `reviews[]` にあるのに `verification` が `yes` でない
-- `role: advisory` の有無と `independentReview` の `yes` / `no` が一致しない（`reviews` 自体が `unknown` のときだけ `independentReview: unknown` を許す）
+- 独立した `reviewerKind`（`separate-session` / `separate-model` / `human`）の `role: advisory` の有無と `independentReview` の `yes` / `no` が一致しない（`reviews` 自体が `unknown` のときだけ `independentReview: unknown` を許す）
 
 判定は上から順に適用し、最初に当たったものに決める（相互排他）。
 

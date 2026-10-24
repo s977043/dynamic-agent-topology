@@ -165,6 +165,35 @@ with tempfile.TemporaryDirectory() as tmp:
     env["DAT_OBSERVATION_STORE"] = str(store)
     expect(run("save", str(other), env=env), 0, "OK obs-0003", "store from environment")
 
+    cross = variant("t1-separate-session-verifier.yaml", work, "obs-0001", "project-z")
+    expect(run("save", str(cross), "--store", str(store)), 1, "already recorded", "observationId in another project")
+    if (store / "project-z").exists():
+        failures.append("observationId recorded in another project must not be saved again")
+
+    nested = store / "project-a" / "nested" / "obs-0301.yaml"
+    nested.parent.mkdir()
+    shutil.copyfile(first, nested)
+    shutil.copyfile(first, store / "top-level.yaml")
+    result = run("sum", "--store", str(store))
+    for text in (
+        "warning: not counted (outside <project>/<observationId>.yaml): project-a/nested/obs-0301.yaml",
+        "warning: not counted (outside <project>/<observationId>.yaml): top-level.yaml",
+        "observations: 3",
+        "| approve | 1 |",
+        "| changes-requested | 1 |",
+        "| comment | 1 |",
+        "endedAt unknown (cannot be placed in a period): 1",
+    ):
+        expect(result, 0, text, "sum warns about files outside the counted layout")
+    shutil.rmtree(nested.parent)
+    (store / "top-level.yaml").unlink()
+
+    nested_id = variant("t0-no-delegation-advisory-only.yaml", work, "obs-0302", "project-b")
+    (store / "project-b" / "deep").mkdir()
+    shutil.copyfile(nested_id, store / "project-b" / "deep" / "obs-0302.yaml")
+    expect(run("save", str(nested_id), "--store", str(store)), 1, "already recorded", "observationId in a nested file")
+    shutil.rmtree(store / "project-b" / "deep")
+
     shutil.copyfile(invalid, store / "project-a" / "obs-bad.yaml")
     shutil.copyfile(complex_key, store / "project-a" / "obs-complex.yaml")
     piped = store / "pipe" / "obs-0201.yaml"

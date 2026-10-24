@@ -81,7 +81,7 @@
 - **目安（推測）**: 本 Run 180 Run（90 block × 2 arm）+ 予備検証 2 Run。
 - **承認状況（2026-10-25、[Issue #220](https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6386579854)）**: Operator が **予備検証 2 Run のみ承認**（合計上限 600,000 tokens、1 Run あたり 300,000 tokens・30 分、自動継続 0 回）。本 Run の 180 Run は **再承認待ち**（予備検証で m を実測したあとに改めて承認を受ける）。承認前は本 Run を起動しない。
 - 見積もりの内訳:1 Run を EXP-001 T0 の 68,022 tokens と置くと 182 × 68,022 ≒ **12.4M tokens × m**（m は Claude 系 model・本 Task 集合での EXP-001 比で **UNKNOWN**）。
-- **推奨する上限**: 1 Run あたり 300,000 tokens・wall clock 30 分の hard limit（両 arm 同一）、自動継続 0 回、総 Run 数 182。予備検証で m を実測し、見積もりを更新して Human が本 Run の予算を再承認する。再見積もりが総上限（182 Run × 300,000 tokens）や 1 Run の hard limit を超える場合は、Run 数を減らして続けない（最小 paired block 数を割り feasibility-only になるため）。上限を見直した新しい版として再登録し、hash を記録し直したうえで Human が再承認する。
+- **推奨する上限**（本 Run 分は推奨値で Human 未承認）: 1 Run あたり 300,000 tokens・wall clock 30 分の hard limit（両 arm 同一）、自動継続 0 回、総 Run 数 182（予備検証 2 + 本 Run 180）。予備検証で m を実測し、見積もりを更新して Human が本 Run の予算を再承認する。再見積もりが総上限（182 Run × 300,000 tokens）や 1 Run の hard limit を超える場合は、Run 数を減らして続けない（最小 paired block 数を割り feasibility-only になるため）。上限を見直した新しい版として再登録し、hash を記録し直したうえで Human が再承認する。
 - 予算額と model 起動の可否は **Human が確定**する。本書の数値は推奨値にすぎない。
 
 ## 8. 事前登録の本文案（確定版に入れる項目）
@@ -90,16 +90,17 @@
 
 | 項目 | 本文案 |
 |---|---|
-| arm | A: T0 Single Agent、model `claude-opus-5-5`。B: A と同一、model `claude-sonnet-5-5`。Effort・tool・permission・prompt・Runtime（Claude Code CLI 2.1.310）は両 arm で同一、subagent なし。arm A の既定設定は alias `opus` のため、Run では alias ではなく完全な model ID を指定し、実効値が `claude-opus-5-5` であることを予備検証の trace で照合する（未照合の間は **NOT_TESTED**） |
+| arm | A: T0 Single Agent、model `claude-opus-5-5`。B: A と同一、model `claude-sonnet-5-5`。Effort は両 arm とも `high` を `claude --model <model ID> --effort high` で Run ごとに明示する。tool・permission・prompt・Runtime（Claude Code CLI 2.1.310）は両 arm で同一、subagent なし。Effort の根拠: CLI 2.1.310 の `claude --help` に `--effort <level>`（low, medium, high, xhigh, max）があり、公式 docs（code.claude.com/docs/en/model-config、2026-10-25 参照）で Opus 5.5・Sonnet 5.5 はともに `high` に対応し、既定は両者とも `medium`、`--effort` と環境変数 `CLAUDE_CODE_EFFORT_LEVEL` が settings より優先される（Source claim）。既定の `medium` ではなく `high` を明示し、環境変数 `CLAUDE_CODE_EFFORT_LEVEL` は未設定にして実行する。実効 Effort は予備検証の trace で確かめる（それまで **NOT_TESTED**）。arm A の既定設定は alias `opus` のため、Run では alias ではなく完全な model ID を指定し、実効値が `claude-opus-5-5` であることを予備検証の trace で照合する（未照合の間は **NOT_TESTED**） |
 | task 集合と想定難度 | 候補表 [`docs/model-role-split/CANDIDATES.yaml`](model-role-split/CANDIDATES.yaml) の 18 Task（易 9・複数ファイル 9、既知欠陥 3 = order 1・7・13）。想定難度は候補表に記載。予備検証の Task は order 2。複数ファイルの 9 件はすべて sqlglot で、repo 由来の効果と難度の効果を分離できない（候補表の limitations） |
 | AC と Verification command | 候補表の Task ごとの決定的な command。判定は生成 Agent 以外の Evaluator が照合する |
 | negative oracle | 全 Task 共通の 3 check（§1 U1）と、既知欠陥 Task の検出 check |
-| 許可範囲と trace の完全性条件 | 候補表の Task ごとの許可範囲（外部書き込みを伴い得るコマンドは含めないか、書き込み先の別確認の方法を併記）。完全性条件は §6。完全性を確認できない Run の boundary violation は NOT_TESTED（欠測）とし、0 件として扱わない |
+| 許可範囲と trace の完全性条件 | 候補表の各 Task の `permissions`（writablePaths・readOnlyPaths・allowedCommands・network・externalWrites・exceptions。外部書き込みを伴い得るコマンドは含めないか、書き込み先の別確認の方法を併記）。完全性条件は §6。完全性を確認できない Run の boundary violation は NOT_TESTED（欠測）とし、0 件として扱わない |
 | 閾値 | δ_q = 0.15、δ_c = 0.20、最小 paired block 数 90、欠測率上限 0.10、activation 未確認率上限 0.05。判定は設計案 §7 |
-| budget | 総 Run 数 182、1 Run 300,000 tokens・30 分の hard limit、自動継続 0 回（Human が確定） |
+| budget | **予備検証**: 2 Run（order 2 の Task を A/B で 1 回ずつ）、合計 600,000 tokens、1 Run 300,000 tokens・30 分の hard limit、自動継続 0 回（Human 承認済み、2026-10-25）。**本 Run**: 180 Run（90 block × 2 arm）、1 Run の hard limit と自動継続は予備検証と同じ値を推奨（**再承認待ち**。予備検証で m を実測した後に Human が承認するまで起動しない） |
 | counterbalance | block 番号の奇数は A→B、偶数は B→A。block の実行順は Task × rep の固定 seed `220` による乱順。手順: Python 3.12 で `blocks = [(order, rep) for order in range(1, 19) for rep in range(1, 6)]` を作り `random.Random(220).shuffle(blocks)` した順を block 番号 1〜90 とする |
 | 環境 | 各 Run は fresh workspace・fresh session。block 内で Runtime・CLI 版・Effort・tool 版を固定し記録 |
 | 介入規則 | Operator の介入は、hard limit 到達時の停止、許可外操作の承認要求への拒否、Runtime の異常終了時の中止に限る。arm 別に回数と種類を記録する。Task の内容に関する助言はしない |
+| 結果解釈の制限 | 複数ファイル Task の 9 件はすべて tobymao/sqlglot のため、複数ファイル Task での結果は sqlglot での結果としてだけ報告し、**複数ファイル Task 一般への効果は示さない**。repo 由来の効果と難度の効果は分離できない。易 Task（9 repo）との差も難度の差とは解釈しない |
 | 停止条件 | 手順書 §5 |
 | 実行前 Gate | 手順書の Gate 1〜4。Gate 1（U4）は Human が確定 |
 

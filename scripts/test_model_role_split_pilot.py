@@ -74,7 +74,20 @@ def test_container_isolation(tmp: Path) -> None:
     rdir = work / "MRS-P02-A"
     cmd = mp.docker_run_command(Args, rdir, "c", "net")
     binds = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
-    check(len(binds) == 4, "four bind mounts")
+    check(len(binds) == 3 and not any(".credentials" in b for b in binds),
+          "three bind mounts, no credential in the Run container")
+    pcmd = mp.proxy_run_command(Args, "p", "net")
+    pbinds = [pcmd[i + 1] for i, a in enumerate(pcmd) if a == "-v"]
+    check(any(b.startswith(os.path.realpath(Args.credentials_file) + ":") and b.endswith(f"{mp.PROXY_SECRET}:ro") for b in pbinds)
+          and len(pbinds) == 2, "credential mounted read-only into the proxy only")
+    env = mp.container_env("p")
+    check(env["ANTHROPIC_AUTH_TOKEN"] == mp.PLACEHOLDER_TOKEN and env["ANTHROPIC_BASE_URL"] == "http://p:3128",
+          "Worker gets the proxy URL and a placeholder")
+    pexp = sorted(("bind", s, d, rw) for d, (s, rw) in mp.proxy_bind_sources(Args).items())
+    pins = {"Mounts": [{"Type": t, "Source": s, "Destination": d, "RW": rw} for t, s, d, rw in pexp], "HostConfig": {}}
+    mp.check_proxy_container(pins, Args)
+    expect_stop(mp.check_proxy_container, {**pins, "HostConfig": {"PidMode": "host"}}, Args)
+    expect_stop(mp.check_proxy_container, {**pins, "Mounts": pins["Mounts"][:1]}, Args)
     check(cmd[cmd.index("--network") + 1] == "net" and "--cap-drop" in cmd and "--read-only" in cmd
           and f"seccomp={mp.SECCOMP}" in cmd, "internal network and EXP-001 constraints")
     check(any(b.endswith(":/work") for b in binds) and all(b.endswith(":ro") for b in binds if not b.endswith(":/work")),
@@ -90,11 +103,13 @@ def test_container_isolation(tmp: Path) -> None:
 
     evidence = mp.check_container(inspect(expected), expected, work.resolve(), "net")
     check(evidence["seccompMatchesLaunchedProfile"], "seccomp matches")
-    rw_cred = [(t, s, d, True if d == mp.CREDENTIALS else rw) for t, s, d, rw in expected]
+    rw_cc = [(t, s, d, True if d == "/cc" else rw) for t, s, d, rw in expected]
     bad_cases = [
         inspect(expected + [("bind", str(work / "MRS-P02-B"), "/past", False)]),
+        inspect(expected + [("bind", Args.credentials_file, "/cc-home/.credentials.json", False)]),
         inspect(expected + [("volume", "v", "/data", True)]),
-        inspect(rw_cred),
+        inspect(rw_cc),
+        inspect(expected, PidMode="container:p"),
         inspect(expected, Tmpfs={"/tmp": ""}),
         inspect(expected, NetworkMode="bridge"),
         inspect(expected, Privileged=True),
@@ -129,34 +144,37 @@ def test_gates() -> None:
     expect_stop(mp.check_sandbox_status, ok.replace('"unavailableReason":null', '"unavailableReason":"bwrap missing"'))
     expect_stop(mp.check_sandbox_status, ok.replace('"enabledSource":"settings"', '"enabledSource":"default"'))
     expect_stop(mp.check_sandbox_status, "not json")
-    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nDIRECT ERRNO ENETUNREACH\nPROXY_DENY HTTP/1.1 403 Forbidden\n"
-            "PROXY_ALLOW HTTP/1.1 200 Connection Established\n")
+    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nDIRECT ERRNO ENETUNREACH\nPROXY_REACHABLE CONNECTED\n"
+            "PROXY_CONNECT_DENY HTTP/1.0 403 Forbidden\nPROXY_ROUTE_DENY HTTP/1.0 403 Forbidden\n")
     mp.check_egress(0, good)
     expect_stop(mp.check_egress, 0, good.replace("ERRNO ENETUNREACH", "CONNECTED"))
     expect_stop(mp.check_egress, 0, good.replace("ERRNO ENETUNREACH", "ERRNO ETIMEDOUT"))
     expect_stop(mp.check_egress, 0, good.replace("LOOPBACK CONNECTED", "LOOPBACK ERRNO ECONNREFUSED"))
-    expect_stop(mp.check_egress, 0, good.replace("403 Forbidden", "200 Connection Established"))
+    expect_stop(mp.check_egress, 0, good.replace("CONNECT_DENY HTTP/1.0 403", "CONNECT_DENY HTTP/1.0 200"))
+    expect_stop(mp.check_egress, 0, good.replace("ROUTE_DENY HTTP/1.0 403", "ROUTE_DENY HTTP/1.0 502"))
     expect_stop(mp.check_egress, 1, good)
     expect_stop(mp.check_egress, 0, good.replace("PROBE_STARTED\n", ""))
-    mp.check_auth_probe(0, "PROBE_STARTED\nAUTH_DENIED\n")
-    expect_stop(mp.check_auth_probe, 3, "PROBE_STARTED\nBLOCK: worker uid can read the credential file\n")
-    expect_stop(mp.check_auth_probe, 0, "AUTH_DENIED\n")
-    expect_stop(mp.check_auth_probe, 4, "PROBE_STARTED\nAUTH_DENIED\n")
-    url = mp.CREDENTIAL_RISK_APPROVAL
-    block = f"PROBE_STARTED\n{mp.CREDENTIAL_READ_BLOCK}\n"
-    check(mp.credential_probe_outcome(3, block, url) == url, "known risk accepted only with the approval URL")
-    check(mp.credential_probe_outcome(0, "PROBE_STARTED\nAUTH_DENIED\n", url) is None, "denied probe passes outright")
-    expect_stop(mp.credential_probe_outcome, 3, block, None)
-    expect_stop(mp.credential_probe_outcome, 3, block, url.replace("6402829329", "1"))
-    expect_stop(mp.credential_probe_outcome, 3, f"{mp.CREDENTIAL_READ_BLOCK}\n", url)
-    expect_stop(mp.credential_probe_outcome, 4, "PROBE_STARTED\nUNKNOWN: unexpected error class\n", url)
-    expect_stop(mp.credential_probe_outcome, 4, block, url)
-    log = "\n".join(json.dumps({"request": ["CONNECT", t], "allowed": a}) for t, a in
-                    (("example.com:443", False), ("api.anthropic.com:443", True), ("api.anthropic.com:443", True),
-                     ("evil.example:443", False))) + "\nnot json\n"
-    got = mp.proxy_connects(log, 2)
-    check(got == {"allowed": ["CONNECT api.anthropic.com:443"], "denied": ["CONNECT evil.example:443"], "unparsed": 1},
-          f"only post-gate proxy entries are counted: {got}")
+    mp.check_auth_probe(0, "PROBE_STARTED\nCREDENTIAL_ABSENT\n")
+    expect_stop(mp.check_auth_probe, 3, "PROBE_STARTED\nBLOCK: path /proxy-secret\n")
+    expect_stop(mp.check_auth_probe, 0, "CREDENTIAL_ABSENT\n")
+    expect_stop(mp.check_auth_probe, 4, "PROBE_STARTED\nCREDENTIAL_ABSENT\n")
+    soon = (mp.dt.datetime.now(mp.dt.timezone.utc) + mp.dt.timedelta(hours=2)).isoformat()
+    check(mp.check_credential_record(soon, "USD 5")["limit"] == "USD 5", "short-lived, limited credential recorded")
+    late = (mp.dt.datetime.now(mp.dt.timezone.utc) + mp.dt.timedelta(hours=48)).isoformat()
+    past = (mp.dt.datetime.now(mp.dt.timezone.utc) - mp.dt.timedelta(hours=1)).isoformat()
+    for bad in ((late, "USD 5"), (past, "USD 5"), (soon, " "), (None, "USD 5"), ("2026-10-26T10:00:00", "USD 5")):
+        expect_stop(mp.check_credential_record, *bad)
+    log = "\n".join(json.dumps({"request": r, "allowed": a, "status": s}) for r, a, s in
+                    ((["CONNECT", "api.anthropic.com:443"], False, 403), (["GET", "/"], False, 403),
+                     (["POST", "/v1/messages"], True, 200), (["POST", "/v1/messages"], True, 429),
+                     (["GET", "/v2/x"], False, 403))) + "\nnot json\n"
+    got = mp.proxy_requests(log, 2)
+    check(got == {"allowed": ["POST /v1/messages"] * 2, "denied": ["GET /v2/x"], "statuses": {"200": 1, "429": 1, "403": 1},
+                  "unparsed": 1}, f"only post-gate proxy entries are counted: {got}")
+    check(mp.egress_anomaly(got), "denied request is an anomaly")
+    ok = {"allowed": ["GET /v1/models", "POST /v1/messages"], "denied": [], "statuses": {}, "unparsed": 0}
+    check(not mp.egress_anomaly(ok), "documented routes only")
+    check(mp.egress_anomaly({**ok, "allowed": ["GET /v1/models"]}), "no Messages call is an anomaly")
 
 
 def test_secret_quarantine(tmp: Path) -> None:
@@ -266,12 +284,12 @@ def test_guards(tmp: Path) -> None:
     real = ["run", "--work-root", str(tmp / "real"), "--timeout-s", "1800", "--max-run-tokens", "300000",
             "--budget-tokens", "600000", "--image", "python:3.12"]
     rc, _, err = run_cli(real)
-    check(rc == 2 and "--accept-credential-read-risk" in err, f"real Run needs the approval URL: {err}")
-    rc, _, err = run_cli(real + ["--accept-credential-read-risk", "https://example.com/approval"])
-    check(rc == 2 and "--accept-credential-read-risk" in err, "any other URL is refused")
-    rc, _, err = run_cli(real + ["--accept-credential-read-risk", mp.CREDENTIAL_RISK_APPROVAL])
-    check(rc == 2 and "STOP:" in err and "--accept" not in err, f"then the container preflight stops: {err}")
+    check(rc == 2 and "--credential-expires-at" in err, f"real Run needs the credential expiry: {err}")
+    soon = (mp.dt.datetime.now(mp.dt.timezone.utc) + mp.dt.timedelta(hours=2)).isoformat()
+    rc, _, err = run_cli(real + ["--credential-expires-at", soon, "--credential-limit", "USD 5"])
+    check(rc == 2 and "STOP:" in err and "credential" not in err, f"then the container preflight stops: {err}")
     check(not (tmp / "real").exists(), "nothing created before preflight passes")
+    check(mp.PROXY_AUTH_PATH == "NOT_TESTED", "real Runs stop before the model until the proxy path is confirmed")
 
 
 def test_never_launched_retry(tmp: Path) -> None:

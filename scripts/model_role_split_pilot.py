@@ -8,10 +8,14 @@ Subcommands:
 
 Each real Run executes the Linux Claude Code binary in its own Docker container (the #244 / EXP-001 run-kit-g
 constraints: pinned image digest, cap-drop ALL, read-only rootfs, no-new-privileges, the EXP-001 seccomp profile,
-uid:gid, tmpfs, exact mount check). The container sits on an internal Docker network whose only exit is an allowlist
-CONNECT proxy container (api.anthropic.com:443). Every isolation gate (mounts, version, binary hash, sandbox posture,
-egress probes, credential probe) is checked before the model starts; any gate that fails or cannot be confirmed
-stops the Run with modelLaunched false. Grading reuses the fixture's verify (network denied by sandbox-exec).
+uid:gid, tmpfs, exact mount check). The container sits on an internal Docker network whose only exit is an
+authenticating proxy container: Claude Code reaches it through ANTHROPIC_BASE_URL with a placeholder token, and the
+proxy forwards only the documented Messages API routes to api.anthropic.com with the Run's short-lived credential,
+which is mounted into the proxy container alone (never into the Worker's). Every isolation gate (mounts, version,
+binary hash, sandbox posture, egress probes, credential-absence probe) is checked before the model starts; any gate
+that fails or cannot be confirmed stops the Run with modelLaunched false. Until the proxy authentication and billing
+path is confirmed (PROXY_AUTH_PATH), every real Run stops after the gates without launching the model.
+Grading reuses the fixture's verify (network denied by sandbox-exec).
 The Operator launches `run` without --dry-run; agents use --dry-run only.
 """
 from __future__ import annotations
@@ -25,7 +29,6 @@ import json
 import os
 import queue
 import re
-import select
 import shutil
 import socket
 import subprocess
@@ -58,13 +61,19 @@ LOCK_NAME = ".pilot.lock"
 TOOLS = ("Bash", "Read", "Edit", "Write", "Glob", "Grep")
 PERMISSION_MODE = "dontAsk"
 CONFIG_DIR = "/cc-home"
-CREDENTIALS = f"{CONFIG_DIR}/.credentials.json"
 TMPFS_ALLOWED = ("/tmp", CONFIG_DIR)
 API_HOST, API_PORT, PROXY_PORT = "api.anthropic.com", 443, 3128
-# The one known risk the Operator accepted (option D): the Worker uid can read the mounted credential file.
-# Exfiltration is bounded by the egress gate (only api.anthropic.com:443) and the saved-artifact secret scan.
-CREDENTIAL_READ_BLOCK = "BLOCK: worker uid can read the credential file"
-CREDENTIAL_RISK_APPROVAL = "https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6402829329"
+# The Run's credential exists only inside the proxy container, at this path.
+PROXY_SECRET = "/proxy-secret/key"
+PROXY_KIT = "/proxy/kit.py"
+# The Worker holds this placeholder; the proxy drops it and adds the real credential as x-api-key.
+PLACEHOLDER_TOKEN = "mrs-placeholder-not-a-credential"
+# Routes Claude Code calls on an Anthropic-format gateway (https://code.claude.com/docs/en/llm-gateway-protocol).
+ALLOWED_ROUTES = (("POST", "/v1/messages"), ("POST", "/v1/messages/count_tokens"), ("GET", "/v1/models"))
+CREDENTIAL_MAX_LIFETIME_H = 24
+# Whether Claude Code 2.1.310 authenticates and bills as expected through the proxy. Only a reviewed change with the
+# evidence (runbook §2.5) may set this to "PASS"; there is no flag to acknowledge NOT_TESTED.
+PROXY_AUTH_PATH = "NOT_TESTED"
 # Host variables that would open an API-key / third-party billing path (U4-1) or override the Effort.
 FORBIDDEN_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_BASE_URL",
                  "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
@@ -147,8 +156,9 @@ def claude_args(model: str, session_id: str) -> list[str]:
 
 
 def container_env(proxy: str) -> dict:
-    return {"HOME": "/tmp/home", "CLAUDE_CONFIG_DIR": CONFIG_DIR, "HTTPS_PROXY": f"http://{proxy}:{PROXY_PORT}",
-            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+    return {"HOME": "/tmp/home", "CLAUDE_CONFIG_DIR": CONFIG_DIR, "ANTHROPIC_BASE_URL": f"http://{proxy}:{PROXY_PORT}",
+            "ANTHROPIC_AUTH_TOKEN": PLACEHOLDER_TOKEN, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+            "PYTHONDONTWRITEBYTECODE": "1"}
 
 
 # ---------------------------------------------------------------- stream checks (early anomaly detection)
@@ -315,9 +325,14 @@ def bind_sources(args, rdir: Path) -> dict[str, tuple[str, bool]]:
     """The only host paths a Run's container may see: container path -> (realpath of host path, writable)."""
     return {"/work": (os.path.realpath(rdir / "workspace"), True),
             "/run-input": (os.path.realpath(rdir / "input"), False),
-            "/cc": (os.path.realpath(args.claude_dir) if args.claude_dir else "<claude-dir>", False),
-            CREDENTIALS: (os.path.realpath(Path(args.credentials_file).expanduser())
-                          if args.credentials_file else "<credentials-file>", False)}
+            "/cc": (os.path.realpath(args.claude_dir) if args.claude_dir else "<claude-dir>", False)}
+
+
+def proxy_bind_sources(args) -> dict[str, tuple[str, bool]]:
+    """The proxy container sees the kit and the Run's credential, nothing else."""
+    return {PROXY_KIT: (os.path.realpath(__file__), False),
+            PROXY_SECRET: (os.path.realpath(Path(args.credentials_file).expanduser())
+                           if args.credentials_file else "<credentials-file>", False)}
 
 
 def expected_mounts(args, rdir: Path) -> list[tuple[str, str, str, bool]]:
@@ -336,11 +351,24 @@ def docker_run_command(args, rdir: Path, name: str, network: str) -> list[str]:
 
 
 def proxy_run_command(args, name: str, network: str) -> list[str]:
-    script = os.path.realpath(__file__)
-    return ["docker", "run", "--rm", "-d", "--name", name, "--platform", "linux/arm64", "--network", network,
-            "--security-opt", "no-new-privileges", "--cap-drop", "ALL", "--user", f"{os.getuid()}:{os.getgid()}",
-            "--read-only", "--tmpfs", "/tmp", "-v", f"{script}:/proxy/kit.py:ro", args.image,
-            "python3", "-I", "/proxy/kit.py", "_proxy"]
+    cmd = ["docker", "run", "--rm", "-d", "--name", name, "--platform", "linux/arm64", "--network", network,
+           "--security-opt", "no-new-privileges", "--cap-drop", "ALL", "--user", f"{os.getuid()}:{os.getgid()}",
+           "--read-only", "--tmpfs", "/tmp"]
+    for target, (source, _) in proxy_bind_sources(args).items():
+        cmd += ["-v", f"{source}:{target}:ro"]
+    return cmd + [args.image, "python3", "-I", PROXY_KIT, "_proxy"]
+
+
+def check_proxy_container(inspect: dict, args) -> None:
+    """The proxy holds only the kit and the credential, and does not share a PID namespace with anything."""
+    binds = sorted(("bind", os.path.realpath(m.get("Source", "")), m.get("Destination"), bool(m.get("RW")))
+                   for m in inspect.get("Mounts", []) if m.get("Type") == "bind")
+    others = [m.get("Destination") for m in inspect.get("Mounts", []) if m.get("Type") not in ("bind", "tmpfs")]
+    expected = sorted(("bind", src, dest, rw) for dest, (src, rw) in proxy_bind_sources(args).items())
+    if binds != expected or others:
+        raise Stop(f"proxy mounts {binds} {others} != expected {expected}")
+    if (inspect.get("HostConfig") or {}).get("PidMode"):
+        raise Stop("proxy container shares a PID namespace")
 
 
 def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], work_root: Path,
@@ -370,6 +398,8 @@ def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], w
         p = Path(src)
         if p == work_root or (work_root in p.parents and rdir != p and rdir not in p.parents):
             raise Stop(f"bind {src} exposes another Run under the work root")
+    if host.get("PidMode"):
+        raise Stop(f"Run container shares a PID namespace ({host.get('PidMode')!r})")
     if host.get("Privileged") or host.get("CapAdd") or host.get("CapDrop") != ["ALL"] or not host.get("ReadonlyRootfs"):
         raise Stop("container constraints differ from EXP-001 (privileged / caps / read-only rootfs)")
     opts = host.get("SecurityOpt") or []
@@ -416,53 +446,89 @@ def tcp(host, port):
         s.connect((host, port)); s.close(); return "CONNECTED"
     except OSError as exc:
         return "ERRNO " + str(errno.errorcode.get(exc.errno, exc.errno))
-def connect_via_proxy(proxy, target):
+def ask_proxy(proxy, request_line):
     s = socket.create_connection((proxy, %d), timeout=10)
-    s.sendall(("CONNECT %%s HTTP/1.1\\r\\nHost: %%s\\r\\n\\r\\n" %% (target, target)).encode())
+    s.sendall((request_line + "\\r\\nHost: x\\r\\n\\r\\n").encode())
     line = s.recv(64).split(b"\\r\\n")[0].decode(); s.close(); return line
 print("PROBE_STARTED")
 l = socket.socket(); l.bind(("127.0.0.1", 0)); l.listen(1)
 print("LOOPBACK", tcp("127.0.0.1", l.getsockname()[1]))
 print("DIRECT", tcp("1.1.1.1", 443))
-print("PROXY_DENY", connect_via_proxy(sys.argv[1], "example.com:443"))
-print("PROXY_ALLOW", connect_via_proxy(sys.argv[1], "%s:%d"))
-""" % (PROXY_PORT, API_HOST, API_PORT)
+print("PROXY_REACHABLE", tcp(sys.argv[1], %d))
+print("PROXY_CONNECT_DENY", ask_proxy(sys.argv[1], "CONNECT %s:%d HTTP/1.1"))
+print("PROXY_ROUTE_DENY", ask_proxy(sys.argv[1], "GET / HTTP/1.1"))
+""" % (PROXY_PORT, PROXY_PORT, API_HOST, API_PORT)
 
 
 def check_egress(rc: int, output: str) -> dict:
-    """Loopback control connects; a direct external IP is unreachable; the proxy refuses other hosts and opens the API."""
+    """Loopback control connects; a direct external IP is unreachable; the proxy is reachable, refuses CONNECT
+    tunnels (even to the API host) and routes outside ALLOWED_ROUTES. No allowed route is probed (it would bill)."""
     found = dict(ln.split(" ", 1) for ln in output.splitlines() if " " in ln)
     if "PROBE_STARTED" not in output.splitlines():
         raise Stop("egress probe did not start in the Run container")
     expected = {"LOOPBACK": lambda v: v == "CONNECTED",
                 "DIRECT": lambda v: v in ("ERRNO ENETUNREACH", "ERRNO EHOSTUNREACH"),
-                "PROXY_DENY": lambda v: v.split()[1:2] == ["403"],
-                "PROXY_ALLOW": lambda v: v.split()[1:2] == ["200"]}
+                "PROXY_REACHABLE": lambda v: v == "CONNECTED",
+                "PROXY_CONNECT_DENY": lambda v: v.split()[1:2] == ["403"],
+                "PROXY_ROUTE_DENY": lambda v: v.split()[1:2] == ["403"]}
     bad = {k: found.get(k) for k, ok in expected.items() if k not in found or not ok(found[k])}
     if bad or rc != 0:
         raise Stop(f"egress not confirmed (exit {rc}): {bad}")
     return {k: found[k] for k in expected}
 
 
-# Same shape as the #244 auth probe. Claude Code 2.1.310 has no model-free way to run a command inside its Bash
-# sandbox (`claude sandbox` only prints status), so the probe runs as the Run's uid outside that sandbox: the worst
-# case if the sandbox fails open. The credential file must not be readable there.
-AUTH_PROBE = f"""set -u
-echo PROBE_STARTED
-command -v cat >/dev/null || {{ echo "UNKNOWN: cat missing"; exit 4; }}
-if err=$(cat {CREDENTIALS} 2>&1 >/dev/null); then echo "{CREDENTIAL_READ_BLOCK}"; exit 3; fi
-case $err in *"Permission denied"*|*"No such file or directory"*) echo AUTH_DENIED ;; *) echo "UNKNOWN: unexpected error class"; exit 4 ;; esac
-"""
+# Run in the Run container as its uid with the Worker's environment, outside Claude Code's Bash sandbox (the worst
+# case). The credential must not exist there: no credential variable but the placeholder, no credential path, and no
+# visible proxy process (the proxy's /proc would expose its memory to the same uid).
+AUTH_PROBE = """import os, sys
+print("PROBE_STARTED")
+found = []
+for k in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_CUSTOM_HEADERS"):
+    if os.environ.get(k):
+        found.append("env " + k)
+if os.environ.get("ANTHROPIC_AUTH_TOKEN") != sys.argv[1]:
+    found.append("env ANTHROPIC_AUTH_TOKEN is not the placeholder")
+for p in ("%s", "%s", "%s/.credentials.json", "/tmp/home/.claude"):
+    if os.path.lexists(p):
+        found.append("path " + p)
+for pid in os.listdir("/proc"):
+    if pid.isdigit():
+        try:
+            cmd = open("/proc/%%s/cmdline" %% pid, "rb").read()
+        except OSError:
+            continue
+        if b"_proxy" in cmd.split(b"\\0"):
+            found.append("proxy process visible")
+print("BLOCK: " + "; ".join(found) if found else "CREDENTIAL_ABSENT")
+sys.exit(3 if found else 0)
+""" % (os.path.dirname(PROXY_SECRET), PROXY_KIT, CONFIG_DIR)
 
 
 def check_auth_probe(rc: int, output: str) -> None:
     lines = output.splitlines()
     if "PROBE_STARTED" not in lines:
         raise Stop("credential probe did not start in the Run container")
-    if "AUTH_DENIED" not in lines:
-        raise Stop(f"credential probe did not report AUTH_DENIED: {[ln for ln in lines if ln != 'PROBE_STARTED'][:3]}")
+    if "CREDENTIAL_ABSENT" not in lines:
+        raise Stop(f"credential probe did not report CREDENTIAL_ABSENT: "
+                   f"{[ln for ln in lines if ln != 'PROBE_STARTED'][:3]}")
     if rc != 0:
         raise Stop(f"credential probe exited {rc}")
+
+
+def check_credential_record(expires_at: str | None, limit: str | None) -> dict:
+    """The Operator-created Run credential: an expiry within CREDENTIAL_MAX_LIFETIME_H and a stated usage limit."""
+    try:
+        when = dt.datetime.fromisoformat(expires_at or "")
+    except ValueError:
+        raise Stop(f"--credential-expires-at must be an ISO 8601 time with a UTC offset (got {expires_at!r})")
+    if when.tzinfo is None:
+        raise Stop("--credential-expires-at needs a UTC offset")
+    left = when - dt.datetime.now(dt.timezone.utc)
+    if left <= dt.timedelta(0) or left > dt.timedelta(hours=CREDENTIAL_MAX_LIFETIME_H):
+        raise Stop(f"credential expiry {expires_at} is not within the next {CREDENTIAL_MAX_LIFETIME_H} h")
+    if not (limit or "").strip():
+        raise Stop("--credential-limit must state the credential's usage limit (as set by the Operator)")
+    return {"expiresAt": when.isoformat(), "limit": limit.strip()}
 
 
 def docker(*args: str, stdin: str | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -499,6 +565,7 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict)
     check_network(json.loads(docker("network", "inspect", names["network"]).stdout)[0])
     docker(*proxy_run_command(args, names["proxy"], names["network"])[1:])
     names["proxyStarted"] = True
+    check_proxy_container(json.loads(docker("inspect", names["proxy"]).stdout)[0], args)
     docker("network", "connect", "bridge", names["proxy"])
     docker(*docker_run_command(args, rdir, names["container"], names["network"])[1:])
     names["containerStarted"] = True
@@ -516,32 +583,17 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict)
     evidence["sandboxStatus"] = check_sandbox_status(status.stdout)
     egress = docker("exec", names["container"], "python3", "-I", "-c", EGRESS_PROBE, names["proxy"], check=False)
     evidence["egress"] = check_egress(egress.returncode, egress.stdout)
-    probe = docker("exec", names["container"], "bash", "-c", AUTH_PROBE, check=False)
+    env = [a for k, v in container_env(names["proxy"]).items() for a in ("-e", f"{k}={v}")]
+    probe = docker("exec", *env, names["container"], "python3", "-I", "-c", AUTH_PROBE, PLACEHOLDER_TOKEN,
+                   check=False)
     evidence["authProbe"] = {"exitCode": probe.returncode, "lines": probe.stdout.splitlines()[:3]}
-    evidence["authProbe"]["acceptedRisk"] = credential_probe_outcome(probe.returncode, probe.stdout,
-                                                                     args.accept_credential_read_risk)
+    check_auth_probe(probe.returncode, probe.stdout)
     names["proxyLogLinesBeforeLaunch"] = len(docker("logs", names["proxy"], check=False).stdout.splitlines())
 
 
-def credential_probe_outcome(rc: int, output: str, accepted_url: str | None) -> str | None:
-    """Only the known risk (the Worker uid can read the credential file) may pass, and only with the approval URL.
-
-    Returns the approval URL when that risk was observed and accepted, None when the probe passed outright.
-    Any other outcome (probe not started, unknown error class, other exit code) stops.
-    """
-    lines = output.splitlines()
-    if "PROBE_STARTED" in lines and rc == 3 and CREDENTIAL_READ_BLOCK in lines:
-        if accepted_url != CREDENTIAL_RISK_APPROVAL:
-            raise Stop(f"credential probe: {CREDENTIAL_READ_BLOCK!r}; pass --accept-credential-read-risk "
-                       f"{CREDENTIAL_RISK_APPROVAL} only if the Operator approval still applies")
-        return accepted_url
-    check_auth_probe(rc, output)
-    return None
-
-
-def proxy_connects(log_text: str, skip_lines: int) -> dict:
-    """CONNECT requests the proxy saw after the gates (the Run's own traffic)."""
-    allowed, denied, bad = [], [], 0
+def proxy_requests(log_text: str, skip_lines: int) -> dict:
+    """Requests the proxy saw after the gates (the Run's own traffic), with the upstream status of each."""
+    allowed, denied, statuses, bad = [], [], {}, 0
     for line in log_text.splitlines()[skip_lines:]:
         try:
             entry = json.loads(line)
@@ -550,7 +602,16 @@ def proxy_connects(log_text: str, skip_lines: int) -> dict:
             continue
         target = " ".join(entry.get("request") or [])
         (allowed if entry.get("allowed") else denied).append(target)
-    return {"allowed": allowed, "denied": denied, "unparsed": bad}
+        key = str(entry.get("status"))
+        statuses[key] = statuses.get(key, 0) + 1
+    return {"allowed": allowed, "denied": denied, "statuses": statuses, "unparsed": bad}
+
+
+def egress_anomaly(seen: dict) -> bool:
+    """Anything denied or unreadable, no Messages call at all, or an allowed entry outside ALLOWED_ROUTES."""
+    routes = {" ".join(r) for r in ALLOWED_ROUTES}
+    return bool(seen["denied"] or seen["unparsed"] or "POST /v1/messages" not in seen["allowed"]
+                or not set(seen["allowed"]) <= routes)
 
 
 def teardown(names: dict) -> None:
@@ -562,56 +623,61 @@ def teardown(names: dict) -> None:
 
 
 def proxy_main() -> int:
-    """Allowlist CONNECT proxy (runs in its own container): only api.anthropic.com:443, every request logged."""
-    srv = socket.socket()
-    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(("0.0.0.0", PROXY_PORT))
-    srv.listen(16)
+    """Authenticating reverse proxy (its own container): forwards ALLOWED_ROUTES to the API over TLS, replacing the
+    Worker's placeholder with the Run credential as x-api-key. Logs method, path, and status only (no headers/bodies)."""
+    import http.client
+    import http.server
+    import ssl
 
-    def pipe(a: socket.socket, b: socket.socket) -> None:
-        try:
-            while True:
-                r, _, _ = select.select([a, b], [], [], 300)
-                if not r:
-                    return
-                for s in r:
-                    data = s.recv(65536)
-                    if not data:
-                        return
-                    (b if s is a else a).sendall(data)
-        except OSError:
-            return
-        finally:
-            a.close()
-            b.close()
+    key = Path(PROXY_SECRET).read_text(encoding="utf-8").strip()
+    drop = {"host", "authorization", "x-api-key", "connection", "proxy-connection", "keep-alive",
+            "content-length", "transfer-encoding", "accept-encoding"}
 
-    def handle(c: socket.socket) -> None:
-        head = b""
-        while b"\r\n\r\n" not in head and len(head) < 8192:
-            chunk = c.recv(1024)
-            if not chunk:
-                break
-            head += chunk
-        parts = head.split(b"\r\n", 1)[0].decode("latin-1").split()
-        target = parts[1] if len(parts) >= 2 and parts[0] == "CONNECT" else None
-        allowed = target == f"{API_HOST}:{API_PORT}"
-        print(json.dumps({"at": now(), "request": parts[:2], "allowed": allowed}), flush=True)
-        if not allowed:
-            c.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\n")
-            c.close()
-            return
-        try:
-            up = socket.create_connection((API_HOST, API_PORT), timeout=30)
-        except OSError:
-            c.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
-            c.close()
-            return
-        c.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-        pipe(c, up)
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
 
-    while True:
-        conn, _ = srv.accept()
-        threading.Thread(target=handle, args=(conn,), daemon=True).start()
+        def record(self, allowed: bool, status: int) -> None:
+            print(json.dumps({"at": now(), "request": [self.command, self.path.split("?", 1)[0]],
+                              "allowed": allowed, "status": status}), flush=True)
+
+        def relay(self) -> None:
+            if (self.command, self.path.split("?", 1)[0]) not in ALLOWED_ROUTES:
+                self.record(False, 403)
+                self.send_error(403)
+                return
+            length = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(length) if length else None
+            headers = {k: v for k, v in self.headers.items() if k.lower() not in drop}
+            headers["x-api-key"] = key
+            try:
+                up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=600,
+                                                 context=ssl.create_default_context())
+                up.request(self.command, self.path, body=body, headers=headers)
+                resp = up.getresponse()
+            except OSError:
+                self.record(True, 502)
+                self.send_error(502)
+                return
+            self.record(True, resp.status)
+            self.send_response(resp.status)
+            for k, v in resp.getheaders():
+                if k.lower() not in drop:
+                    self.send_header(k, v)
+            self.end_headers()
+            try:
+                while chunk := resp.read1(65536):
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+            except OSError:
+                pass
+            finally:
+                up.close()
+
+        do_GET = do_POST = do_CONNECT = do_PUT = do_DELETE = relay
+
+    http.server.ThreadingHTTPServer(("0.0.0.0", PROXY_PORT), Handler).serve_forever()
+    return 0
 
 
 # ---------------------------------------------------------------- launching
@@ -753,10 +819,8 @@ def preflight(args, runs: list[dict]) -> dict:
     evidence["forbiddenEnvAbsent"] = list(FORBIDDEN_ENV)
     if args.dry_run:
         return evidence
-    if args.accept_credential_read_risk != CREDENTIAL_RISK_APPROVAL:
-        raise Stop(f"--accept-credential-read-risk must be the Operator approval {CREDENTIAL_RISK_APPROVAL} "
-                   f"(got {args.accept_credential_read_risk!r})")
-    evidence["credentialReadRiskApproval"] = args.accept_credential_read_risk
+    evidence["runCredential"] = check_credential_record(args.credential_expires_at, args.credential_limit)
+    evidence["proxyAuthPath"] = PROXY_AUTH_PATH
     evidence.update(preflight_container(args))
     evidence["gradingProbe"] = probe_grading_sandbox(args.ac_python)
     return evidence
@@ -870,6 +934,9 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
             record["isolation"] = {}
             try:
                 isolate_and_check(args, rdir, names, record["isolation"], cand)
+                if PROXY_AUTH_PATH != "PASS":
+                    raise Stop(f"proxy authentication / billing path is {PROXY_AUTH_PATH} for Claude Code "
+                               f"{RUNTIME_VERSION} (runbook §2.5); the model is not launched")
             except (Stop, subprocess.CalledProcessError, OSError, ValueError, IndexError) as exc:
                 record.update(status="isolation-stop", stopReason=str(exc))
                 write_record(rdir, record)
@@ -892,11 +959,12 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
         record["wallClockMs"] = int((time.monotonic() - started) * 1000)
         if args.dry_run:
             denied = ["CONNECT example.com:443"] if args.dry_run_scenario == "proxy-denied" else []
-            record["proxyConnects"] = {"allowed": [f"CONNECT {API_HOST}:{API_PORT}"], "denied": denied, "unparsed": 0}
+            record["proxyRequests"] = {"allowed": ["POST /v1/messages"], "denied": denied,
+                                       "statuses": {"200": 1}, "unparsed": 0}
         else:
             log_text = docker("logs", names["proxy"], check=False).stdout
             (rdir / "proxy.log").write_text(log_text, encoding="utf-8")
-            record["proxyConnects"] = proxy_connects(log_text, names["proxyLogLinesBeforeLaunch"])
+            record["proxyRequests"] = proxy_requests(log_text, names["proxyLogLinesBeforeLaunch"])
     finally:
         if not args.dry_run:
             teardown(names)
@@ -909,10 +977,9 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
         record.update(status=stop_status, stopReason=reason)
     elif rc != 0 or not trace["complete"] or trace["resultIsError"]:
         record.update(status="runtime-error", stopReason=f"exit {rc}, problems {trace['problems']}")
-    elif (record["proxyConnects"]["denied"] or record["proxyConnects"]["unparsed"]
-          or set(record["proxyConnects"]["allowed"]) != {f"CONNECT {API_HOST}:{API_PORT}"}):
-        record.update(status="egress-anomaly", stopReason=f"proxy saw {record['proxyConnects']} (expected only "
-                                                          f"allowed CONNECT {API_HOST}:{API_PORT})")
+    elif egress_anomaly(record["proxyRequests"]):
+        record.update(status="egress-anomaly", stopReason=f"proxy saw {record['proxyRequests']} (expected only "
+                                                          f"{[' '.join(r) for r in ALLOWED_ROUTES]})")
     elif not will_grade(args):
         record["status"] = "dry-run-ungraded"
     else:
@@ -1064,9 +1131,11 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--budget-tokens", type=int, required=True, help="approved pilot budget (no default)")
     r.add_argument("--image", help="Run image pinned by digest (python 3.12 + bubblewrap + socat; see the runbook)")
     r.add_argument("--claude-dir", help="directory with the Linux `claude` 2.1.310 binary (mounted read-only at /cc)")
-    r.add_argument("--credentials-file", help="Linux Claude Code .credentials.json (mounted read-only; not read)")
-    r.add_argument("--accept-credential-read-risk", metavar="URL",
-                   help=f"the Operator approval of the one known risk (must be {CREDENTIAL_RISK_APPROVAL})")
+    r.add_argument("--credentials-file",
+                   help="the Run's short-lived credential (mounted read-only into the proxy container only)")
+    r.add_argument("--credential-expires-at", metavar="ISO8601",
+                   help=f"expiry the Operator set on that credential (within {CREDENTIAL_MAX_LIFETIME_H} h)")
+    r.add_argument("--credential-limit", help="usage limit the Operator set on that credential (recorded as given)")
     r.add_argument("--cache", default=str(Path(tempfile.gettempdir()) / "mrs-cache"),
                    help="git cache for the fixture (outside the work root)")
     r.add_argument("--ac-python", default="python3.12")

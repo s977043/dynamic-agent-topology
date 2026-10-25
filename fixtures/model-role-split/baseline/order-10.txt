@@ -1,0 +1,6 @@
+testWithStatement (test.test_wsgi.TestAppShortcuts.testWithStatement)
+test_autoroute (test.test_wsgi.TestDecorators.test_autoroute)
+test_module_shortcuts (test.test_wsgi.TestAppShortcuts.test_module_shortcuts)
+test_module_shortcuts_with_different_name (test.test_wsgi.TestAppShortcuts.test_module_shortcuts_with_different_name)
+test_name (test.test_wsgi.TestRouteDecorator.test_name)
+test_routebuild (test.test_wsgi.TestDecorators.test_routebuild)

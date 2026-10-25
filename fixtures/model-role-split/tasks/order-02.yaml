@@ -1,0 +1,50 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
+order: 2
+orderKey: https://github.com/rthalley/dnspython@af21b39addc69ff9b414d3d61f347af13682fdd0
+difficulty: easy
+knownDefect: false
+pilot: true
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: af21b39addc69ff9b414d3d61f347af13682fdd0
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
+  overlayFromFixCommit:
+  - tests/test_svcb.py
+readOnlyBlobs:
+  tests/test_svcb.py: ee04ba8d89aeb62ea0041437fd00533be14b7920
+baselinePassing:
+  path: baseline/order-02.txt
+  count: 16
+statement: |
+  ## 症状
+
+  SVCB / HTTPS レコードの文字列リスト型パラメータ（`alpn`、`docpath`）で、印字できないバイトや `"` を含む値を `to_text()` すると、エスケープの `\` がさらにエスケープされて二重になります。出力したテキストを読み直しても、元の値に戻りません。
+
+  ## 再現手順
+
+  ```python
+  import dns.rdata
+
+  rr = dns.rdata.from_text("IN", "SVCB", '1 . alpn="h\\0002,h3"')
+  print(rr.to_text())
+  ```
+
+  ## 期待結果
+
+  `1 . alpn="h\0002,h3"`（入力と同じ表記）。印字できないバイト・0x80 以上のバイト・`"` は、文字列のレベルで 1 回だけエスケープする。`to_text()` の出力をテキストとして読み直しても、generic 形式（wire）から読み直しても、同じ値になる。`docpath` も同じ
+
+  ## 実際の結果
+
+  `1 . alpn="h\\0002,h3"`（`\` が二重になる）
+
+  ## 作業の条件
+
+  - 変更してはいけないファイル: `tests/test_svcb.py`
+  - テストの削除・skip・期待値の書き換えをしない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/test_svcb.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

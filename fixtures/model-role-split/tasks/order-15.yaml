@@ -1,0 +1,51 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
+order: 15
+orderKey: https://github.com/tobymao/sqlglot@b184687587a2e8d451d9af575ba1746c3d55c4ab
+difficulty: multi-file
+knownDefect: false
+pilot: false
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: b184687587a2e8d451d9af575ba1746c3d55c4ab
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
+  overlayFromFixCommit:
+  - tests/dialects/test_clickhouse.py
+readOnlyBlobs:
+  tests/dialects/test_clickhouse.py: 4071ec1d76dc1f343f5ea407ffc287212d0499dd
+baselinePassing:
+  path: baseline/order-15.txt
+  count: 33
+statement: |
+  ## 症状
+
+  ClickHouse で、引用符付きの識別子の中のバックスラッシュが、生成時にエスケープされません。
+
+  ## 再現手順
+
+  ```python
+  import sqlglot
+
+  print(sqlglot.transpile(r'SELECT "a\\"', read="clickhouse", write="clickhouse")[0])
+  ```
+
+  ## 期待結果
+
+  - `SELECT "a\\"`（入力と同じ）。`SELECT "a\\""b"` も入力と同じ
+  - `` SELECT `a\\b` `` は `SELECT "a\\b"`
+  - PostgreSQL の `SELECT "a\b"` は ClickHouse で `SELECT "a\\b"`。逆に ClickHouse の `SELECT "a\\b"` は PostgreSQL で `SELECT "a\b"`
+
+  ## 実際の結果
+
+  `SELECT "a\"`（バックスラッシュが 1 つになり、識別子が壊れる）
+
+  ## 作業の条件
+
+  - 変更してはいけないファイル: `tests/dialects/test_clickhouse.py`
+  - テストの削除・skip・期待値の書き換えをしない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/dialects/test_clickhouse.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

@@ -1,0 +1,51 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
+order: 6
+orderKey: https://github.com/kjd/idna@62f30346a210028aa37b9002c3e4814a2c06416a
+difficulty: easy
+knownDefect: false
+pilot: false
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: 62f30346a210028aa37b9002c3e4814a2c06416a
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
+  overlayFromFixCommit:
+  - tests/test_idna.py
+readOnlyBlobs:
+  tests/test_idna.py: 53f0e90642b9b5f4b19ba7464675fc01afb6d7c0
+baselinePassing:
+  path: baseline/order-06.txt
+  count: 17
+statement: |
+  ## 症状
+
+  CONTEXTJ の規則に反するラベル（前に Virama がない ZWNJ / ZWJ を含むラベル）を検査すると、`InvalidCodepointContext` ではなく、一般の `IDNAError`（「Unknown codepoint adjacent to joiner」）が返ります。
+
+  ## 再現手順
+
+  ```python
+  import idna
+
+  idna.check_label("a‌a")
+  ```
+
+  ## 期待結果
+
+  - `idna.InvalidCodepointContext` が発生し、メッセージに `not allowed at position 2` を含む。ZWJ（`"a‍a"`）でも同じ。`idna.encode` でも `InvalidCodepointContext` になる
+  - 正しい文脈（`"a्‍a"`、`"a्‌a"`）は従来どおり受理される
+  - 隣の codepoint が unicodedata で引けない場合は、従来どおり `InvalidCodepointContext` ではない `IDNAError`（「Unknown codepoint adjacent to joiner」）になる
+
+  ## 実際の結果
+
+  `idna.core.IDNAError: Unknown codepoint adjacent to joiner U+200C at position 2 in 'a‌a'`
+
+  ## 作業の条件
+
+  - 変更してはいけないファイル: `tests/test_idna.py`
+  - テストの削除・skip・期待値の書き換えをしない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/test_idna.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

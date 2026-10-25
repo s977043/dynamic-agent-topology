@@ -1,0 +1,51 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
+order: 18
+orderKey: https://github.com/tobymao/sqlglot@ac084c5bdb2f188ff878687000273ae2247db24b
+difficulty: multi-file
+knownDefect: false
+pilot: false
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: ac084c5bdb2f188ff878687000273ae2247db24b
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
+  overlayFromFixCommit:
+  - tests/dialects/test_mysql.py
+readOnlyBlobs:
+  tests/dialects/test_mysql.py: 6d6dc421705c55aa39b27d2f5bad51d4d1111d7e
+baselinePassing:
+  path: baseline/order-18.txt
+  count: 56
+statement: |
+  ## 症状
+
+  MySQL で、キーワードと同じ名前の index や列を `DROP` する文を正しく parse できません。
+
+  ## 再現手順
+
+  ```python
+  import sqlglot
+
+  sqlglot.parse_one("DROP INDEX concurrently ON t", read="mysql")
+  ```
+
+  ## 期待結果
+
+  - `DROP INDEX concurrently ON t` は同じ SQL に戻る
+  - `ALTER TABLE t DROP INDEX concurrently` の action は `exp.Drop` で、`tables[0].name` が `"concurrently"`、`args["concurrently"]` が `False`
+  - `ALTER TABLE t DROP temporary` は `ALTER TABLE t DROP COLUMN temporary`、`ALTER TABLE t DROP iceberg` は `ALTER TABLE t DROP COLUMN iceberg`
+
+  ## 実際の結果
+
+  `ParseError: Expected table name but got <Token token_type: TokenType.ON ...>`
+
+  ## 作業の条件
+
+  - 変更してはいけないファイル: `tests/dialects/test_mysql.py`
+  - テストの削除・skip・期待値の書き換えをしない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/dialects/test_mysql.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

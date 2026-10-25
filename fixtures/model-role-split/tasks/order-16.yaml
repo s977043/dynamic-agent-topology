@@ -1,0 +1,53 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
+order: 16
+orderKey: https://github.com/tobymao/sqlglot@97a2fa2ed6351835f07303bd839fec96a01c472e
+difficulty: multi-file
+knownDefect: false
+pilot: false
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: 97a2fa2ed6351835f07303bd839fec96a01c472e
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
+  overlayFromFixCommit:
+  - tests/dialects/test_clickhouse.py
+readOnlyBlobs:
+  tests/dialects/test_clickhouse.py: 7e46fdfa7a867e723b9cfbfaa18b26a0714724c5
+baselinePassing:
+  path: baseline/order-16.txt
+  count: 33
+statement: |
+  ## 症状
+
+  ClickHouse の bit 演算の集約関数 `groupBitAnd` / `groupBitOr` / `groupBitXor` が、他の dialect の bit 演算の集約と対応付けられていません。
+
+  ## 再現手順
+
+  ```python
+  import sqlglot
+
+  print(sqlglot.transpile("BITWISE_AND_AGG(x)", write="clickhouse")[0])
+  print(sqlglot.transpile("groupBitAnd(x)", read="clickhouse", write="duckdb")[0])
+  ```
+
+  ## 期待結果
+
+  - 既定の dialect の `BITWISE_AND_AGG(x)`、DuckDB / PostgreSQL の `BIT_AND(x)` は、ClickHouse で `groupBitAnd(x)`。OR・XOR も同じ（`groupBitOr`・`groupBitXor`）
+  - ClickHouse の `groupBitAnd(x)` は、DuckDB / PostgreSQL で `BIT_AND(x)`
+  - `groupBitAndIf(x, y)` は従来どおり combinator 付きの集約（`exp.CombinedAggFunc`）として扱う
+  - `groupBitAnd(x) OVER (PARTITION BY y)` は、window の中身を `exp.BitwiseAndAgg` として parse する
+
+  ## 実際の結果
+
+  ClickHouse への出力が `BITWISE_AND_AGG(x)` のままです。
+
+  ## 作業の条件
+
+  - 変更してはいけないファイル: `tests/dialects/test_clickhouse.py`
+  - テストの削除・skip・期待値の書き換えをしない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/dialects/test_clickhouse.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

@@ -1,0 +1,50 @@
+# #220 モデル役割分担の Task 定義（scripts/model_role_split_fixture.py build で生成）
+# statement だけを Agent に渡す。他の値は Evaluator 用で、Agent の workspace には入れない
+order: 9
+orderKey: https://github.com/tobymao/sqlglot@818483464bf50a1b41d6982dbc172e7934141c52
+difficulty: multi-file
+knownDefect: false
+pilot: false
+candidates:
+  path: docs/model-role-split/CANDIDATES.yaml
+  blob: 3f75aed61ec865c0622e14dc91f0f87f51dece86
+workspace:
+  base: 818483464bf50a1b41d6982dbc172e7934141c52
+  git: 履歴なしの単一 commit（task baseline）
+  trap: null
+grading:
+  overlayFromFixCommit:
+  - tests/dialects/test_trino.py
+readOnlyBlobs:
+  tests/dialects/test_trino.py: 69bb896d5783207994af02535557d625be0b236a
+baselinePassing:
+  path: baseline/order-09.txt
+  count: 16
+statement: |
+  ## 症状
+
+  Trino で秒の小数部が 4 桁以上の `TIMESTAMP` / `TIME` リテラルを変換すると、精度が失われます。
+
+  ## 再現手順
+
+  ```python
+  import sqlglot
+
+  print(sqlglot.transpile("SELECT TIMESTAMP '2026-03-01 00:00:00.1234'", read="trino", write="trino")[0])
+  ```
+
+  ## 期待結果
+
+  - `SELECT CAST('2026-03-01 00:00:00.1234' AS TIMESTAMP(4))`
+  - `TIMESTAMP '2026-03-01 00:00:00.123456789'` は `TIMESTAMP(9)`、`TIMESTAMP '2026-03-01 00:00:00.1234 +02:00'` は `TIMESTAMP(4) WITH TIME ZONE`、`TIME '01:02:03.1234'` は `TIME(4)`
+
+  ## 実際の結果
+
+  `SELECT CAST('2026-03-01 00:00:00.1234' AS TIMESTAMP)`（精度が付かない）
+
+  ## 作業の条件
+
+  - 変更してはいけないファイル: `tests/dialects/test_trino.py`
+  - テストの削除・skip・期待値の書き換えをしない
+  - ネットワークは使えません。push・パッケージの publish・外部 API への書き込みをしない
+  - 実行してよいコマンド: `python3.12 -m unittest tests/dialects/test_trino.py`、`git status`、`git diff`、読み取り専用のシェルコマンド（ls / cat / grep 等）

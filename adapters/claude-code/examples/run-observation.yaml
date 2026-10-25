@@ -9,6 +9,7 @@ endedAt: '2026-01-05T10:30:00Z'
 wallClockMs: 5400000
 goalRecorded: true
 outcome: completed
+taskDifficulty: standard
 runtime:
 - role: organizer
   name: claude-code
@@ -40,6 +41,10 @@ reviews:
   decision: approve
 rework:
   count: 0
+  triggers: []
 humanInterventions:
 - kind: approval
   count: 1
+usage:
+  totalTokens: unknown
+  costUsd: unknown

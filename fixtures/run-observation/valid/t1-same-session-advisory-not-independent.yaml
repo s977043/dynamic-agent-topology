@@ -1,0 +1,60 @@
+agentInvocations: 3
+apiVersion: dat/v1alpha1
+artifacts:
+- ref: pr-1
+  state: merged
+endedAt: '2026-01-05T10:30:00Z'
+goalRecorded: true
+humanInterventions:
+- count: 1
+  kind: approval
+kind: RunObservation
+metadata:
+  datVersion: 0.3.0
+  observationId: obs-0001
+  project: project-a
+model:
+- effort: high
+  id: model-x
+  role: organizer
+- effort: medium
+  id: model-y
+  role: worker
+outcome: completed
+reviews:
+- target: pr-1
+  reviewerKind: same-session
+  role: advisory
+  findings:
+    blocking: 0
+    nonBlocking: 1
+  decision: comment
+- decision: merge-ok
+  findings:
+    blocking: 0
+    nonBlocking: 1
+  reviewerKind: separate-session
+  role: verifier
+  target: pr-1
+rework:
+  count: 0
+runtime:
+- name: runtime-a
+  role: organizer
+  version: '1.0'
+- name: runtime-a
+  role: worker
+  version: '1.0'
+startedAt: '2026-01-05T09:00:00Z'
+tasks:
+  delegated: 2
+  total: 2
+topologyBasis:
+  agentInvolved: 'yes'
+  delegated: 'yes'
+  independentReview: 'no'
+  specialistRole: 'no'
+  verification: 'yes'
+  verifierKind: separate-session
+topologyEquivalent: T1
+wallClockMs: 5400000

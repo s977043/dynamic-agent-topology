@@ -3,7 +3,8 @@
 
 With paths, every file must pass. Without paths, the committed fixtures are
 checked: fixtures/run-observation/valid/ must pass and
-fixtures/run-observation/invalid/ must fail.
+fixtures/run-observation/invalid/ must fail. Warnings (for example an
+interrupted outcome without interruptionKind) are printed but do not fail.
 """
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +32,24 @@ VERIFIER_KIND_BY_REVIEWER = {
     "separate-model": "separate-model",
     "human": "human",
 }
+
+# reviews[].decision stays a free string so existing records remain valid;
+# aggregation maps known aliases onto these canonical values.
+DECISION_ALIASES = {
+    "approve": "approve",
+    "approved": "approve",
+    "merge-ok": "approve",
+    "changes-requested": "changes-requested",
+    "changes-required": "changes-requested",
+    "request-changes": "changes-requested",
+    "comment": "comment",
+    "comments": "comment",
+    "unknown": "unknown",
+}
+
+
+def normalize_decision(value):
+    return DECISION_ALIASES.get(value, "other")
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
@@ -182,10 +201,29 @@ def check_basis(record):
         errors.append("reviews: same-session review cannot have role verifier")
     if any(r["role"] == "verifier" for r in reviews) and verification != "yes":
         errors.append("topologyBasis.verification: must be yes when a role: verifier review exists")
-    has_advisory = any(r["role"] == "advisory" for r in reviews)
-    if basis["independentReview"] != ("yes" if has_advisory else "no"):
-        errors.append("topologyBasis.independentReview: does not match role: advisory reviews")
+    has_independent_advisory = any(
+        r["role"] == "advisory" and r["reviewerKind"] in VERIFIER_KIND_BY_REVIEWER for r in reviews
+    )
+    if basis["independentReview"] == "yes" and not has_independent_advisory:
+        errors.append(
+            "topologyBasis.independentReview: 'yes' requires a role: advisory review by "
+            "separate-session, separate-model, or human"
+        )
+    elif basis["independentReview"] != ("yes" if has_independent_advisory else "no"):
+        errors.append("topologyBasis.independentReview: does not match independent role: advisory reviews")
     return errors
+
+
+def record_warnings(record):
+    """Return non-blocking findings for a record that already passed validation."""
+    warnings = []
+    if record["outcome"] == "interrupted" and "interruptionKind" not in record:
+        warnings.append("interruptionKind: missing for an interrupted outcome")
+    if record["reviews"] != "unknown":
+        for index, review in enumerate(record["reviews"]):
+            if normalize_decision(review["decision"]) == "other":
+                warnings.append(f"reviews[{index}].decision: {review['decision']!r} is not a known decision")
+    return warnings
 
 
 def allowed_topologies(basis):
@@ -250,9 +288,12 @@ def main(argv):
     failed = False
     if argv:
         for path in argv:
-            errors = validate_file(path, validator)
+            record, errors = load_record(path, validator)
             for error in errors:
                 print(f"{path}: {error}")
+            if record is not None and not errors:
+                for warning in record_warnings(record):
+                    print(f"{path}: warning: {warning}")
             failed = failed or bool(errors)
         if failed:
             return 1

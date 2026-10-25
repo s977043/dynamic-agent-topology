@@ -350,13 +350,13 @@ def docker_run_command(args, rdir: Path, name: str, network: str) -> list[str]:
     return cmd + ["-w", "/work", args.image, "sleep", "infinity"]
 
 
-def proxy_run_command(args, name: str, network: str) -> list[str]:
+def proxy_run_command(args, name: str, network: str, model: str) -> list[str]:
     cmd = ["docker", "run", "--rm", "-d", "--name", name, "--platform", "linux/arm64", "--network", network,
            "--security-opt", "no-new-privileges", "--cap-drop", "ALL", "--user", f"{os.getuid()}:{os.getgid()}",
            "--read-only", "--tmpfs", "/tmp"]
     for target, (source, _) in proxy_bind_sources(args).items():
         cmd += ["-v", f"{source}:{target}:ro"]
-    return cmd + [args.image, "python3", "-I", PROXY_KIT, "_proxy"]
+    return cmd + [args.image, "python3", "-I", PROXY_KIT, "_proxy", model, str(args.max_run_tokens)]
 
 
 def check_proxy_container(inspect: dict, args) -> None:
@@ -454,6 +454,13 @@ print("PROBE_STARTED")
 l = socket.socket(); l.bind(("127.0.0.1", 0)); l.listen(1)
 print("LOOPBACK", tcp("127.0.0.1", l.getsockname()[1]))
 print("DIRECT", tcp("1.1.1.1", 443))
+print("GATEWAY", tcp(sys.argv[2], 443))
+try:
+    hdi = socket.gethostbyname("host.docker.internal")
+except OSError:
+    print("HOST_DOCKER_INTERNAL NORESOLVE")
+else:
+    print("HOST_DOCKER_INTERNAL", tcp(hdi, 443))
 print("PROXY_REACHABLE", tcp(sys.argv[1], %d))
 print("PROXY_CONNECT_DENY", ask_proxy(sys.argv[1], "CONNECT %s:%d HTTP/1.1"))
 print("PROXY_ROUTE_DENY", ask_proxy(sys.argv[1], "GET / HTTP/1.1"))
@@ -461,13 +468,17 @@ print("PROXY_ROUTE_DENY", ask_proxy(sys.argv[1], "GET / HTTP/1.1"))
 
 
 def check_egress(rc: int, output: str) -> dict:
-    """Loopback control connects; a direct external IP is unreachable; the proxy is reachable, refuses CONNECT
+    """Loopback control connects; a direct external IP, the network's IPAM gateway, and host.docker.internal (if it
+    resolves) are unreachable; the proxy is reachable, refuses CONNECT
     tunnels (even to the API host) and routes outside ALLOWED_ROUTES. No allowed route is probed (it would bill)."""
     found = dict(ln.split(" ", 1) for ln in output.splitlines() if " " in ln)
     if "PROBE_STARTED" not in output.splitlines():
         raise Stop("egress probe did not start in the Run container")
+    unreachable = ("ERRNO ENETUNREACH", "ERRNO EHOSTUNREACH")
     expected = {"LOOPBACK": lambda v: v == "CONNECTED",
-                "DIRECT": lambda v: v in ("ERRNO ENETUNREACH", "ERRNO EHOSTUNREACH"),
+                "DIRECT": lambda v: v in unreachable,
+                "GATEWAY": lambda v: v in unreachable,
+                "HOST_DOCKER_INTERNAL": lambda v: v in unreachable or v == "NORESOLVE",
                 "PROXY_REACHABLE": lambda v: v == "CONNECTED",
                 "PROXY_CONNECT_DENY": lambda v: v.split()[1:2] == ["403"],
                 "PROXY_ROUTE_DENY": lambda v: v.split()[1:2] == ["403"]}
@@ -483,6 +494,9 @@ def check_egress(rc: int, output: str) -> dict:
 AUTH_PROBE = """import os, sys
 print("PROBE_STARTED")
 found = []
+extra = sorted(set(os.environ) - set(sys.argv[2].split(",")))
+if extra:
+    found.append("env not in image ENV + Worker env: " + ",".join(extra))
 for k in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_CUSTOM_HEADERS"):
     if os.environ.get(k):
         found.append("env " + k)
@@ -502,6 +516,20 @@ for pid in os.listdir("/proc"):
 print("BLOCK: " + "; ".join(found) if found else "CREDENTIAL_ABSENT")
 sys.exit(3 if found else 0)
 """ % (os.path.dirname(PROXY_SECRET), PROXY_KIT, CONFIG_DIR)
+
+
+def network_gateway(inspect: dict) -> str:
+    gateways = [c.get("Gateway") for c in ((inspect.get("IPAM") or {}).get("Config") or []) if c.get("Gateway")]
+    if len(gateways) != 1:
+        raise Stop(f"network IPAM gateway is not exactly one address: {gateways}")
+    return gateways[0]
+
+
+def check_container_env(container_env_list: list | None, image_env_list: list | None) -> None:
+    """The Run container starts with the image's ENV and nothing more (the Worker env is added per exec)."""
+    if sorted(container_env_list or []) != sorted(image_env_list or []):
+        extra = sorted({e.split("=", 1)[0] for e in set(container_env_list or []) ^ set(image_env_list or [])})
+        raise Stop(f"container Config.Env differs from the image ENV in {extra}")
 
 
 def check_auth_probe(rc: int, output: str) -> None:
@@ -558,12 +586,14 @@ def preflight_container(args) -> dict:
     return {"image": args.image, "claudeSha256": digest}
 
 
-def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict) -> None:
+def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict, model: str) -> None:
     """Create the network, proxy, and Run container, then every gate; fills `evidence` as gates pass."""
     docker("network", "create", "--internal", names["network"])
     names["networkCreated"] = True
-    check_network(json.loads(docker("network", "inspect", names["network"]).stdout)[0])
-    docker(*proxy_run_command(args, names["proxy"], names["network"])[1:])
+    net = json.loads(docker("network", "inspect", names["network"]).stdout)[0]
+    check_network(net)
+    gateway = network_gateway(net)
+    docker(*proxy_run_command(args, names["proxy"], names["network"], model)[1:])
     names["proxyStarted"] = True
     check_proxy_container(json.loads(docker("inspect", names["proxy"]).stdout)[0], args)
     docker("network", "connect", "bridge", names["proxy"])
@@ -572,6 +602,9 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict)
     inspect = json.loads(docker("inspect", names["container"]).stdout)[0]
     evidence.update(check_container(inspect, expected_mounts(args, rdir), Path(args.work_root).resolve(),
                                     names["network"]))
+    image_env = json.loads(docker("image", "inspect", args.image).stdout)[0].get("Config", {}).get("Env") or []
+    check_container_env((inspect.get("Config") or {}).get("Env"), image_env)
+    evidence["containerEnvMatchesImage"] = True
     docker("exec", "-i", names["container"], "sh", "-c", f'mkdir -p /tmp/home && cat > "{CONFIG_DIR}/settings.json"',
            stdin=json.dumps(settings(cand), indent=2))
     version = docker("exec", names["container"], "/cc/claude", "--version").stdout.strip()
@@ -581,19 +614,25 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict)
     status = docker("exec", "-e", f"CLAUDE_CONFIG_DIR={CONFIG_DIR}", "-e", "HOME=/tmp/home", names["container"],
                     "/cc/claude", "sandbox", "status", check=False)
     evidence["sandboxStatus"] = check_sandbox_status(status.stdout)
-    egress = docker("exec", names["container"], "python3", "-I", "-c", EGRESS_PROBE, names["proxy"], check=False)
+    egress = docker("exec", names["container"], "python3", "-I", "-c", EGRESS_PROBE, names["proxy"], gateway,
+                    check=False)
     evidence["egress"] = check_egress(egress.returncode, egress.stdout)
     env = [a for k, v in container_env(names["proxy"]).items() for a in ("-e", f"{k}={v}")]
+    allowed_keys = sorted({e.split("=", 1)[0] for e in image_env} | set(container_env(names["proxy"])) | {"HOSTNAME"})
     probe = docker("exec", *env, names["container"], "python3", "-I", "-c", AUTH_PROBE, PLACEHOLDER_TOKEN,
-                   check=False)
+                   ",".join(allowed_keys), check=False)
     evidence["authProbe"] = {"exitCode": probe.returncode, "lines": probe.stdout.splitlines()[:3]}
     check_auth_probe(probe.returncode, probe.stdout)
-    names["proxyLogLinesBeforeLaunch"] = len(docker("logs", names["proxy"], check=False).stdout.splitlines())
+    logs = docker("logs", names["proxy"], check=False)
+    if logs.stderr:
+        raise Stop("proxy wrote to stderr before the launch")
+    names["proxyLogLinesBeforeLaunch"] = len(logs.stdout.splitlines())
 
 
-def proxy_requests(log_text: str, skip_lines: int) -> dict:
-    """Requests the proxy saw after the gates (the Run's own traffic), with the upstream status of each."""
-    allowed, denied, statuses, bad = [], [], {}, 0
+def proxy_requests(log_text: str, skip_lines: int, stderr_text: str = "") -> dict:
+    """Requests the proxy saw after the gates (the Run's own traffic): upstream status, refusal reasons, and the
+    usage the proxy measured."""
+    allowed, denied, statuses, bad, reasons, tokens = [], [], {}, 0, [], 0
     for line in log_text.splitlines()[skip_lines:]:
         try:
             entry = json.loads(line)
@@ -602,15 +641,21 @@ def proxy_requests(log_text: str, skip_lines: int) -> dict:
             continue
         target = " ".join(entry.get("request") or [])
         (allowed if entry.get("allowed") else denied).append(target)
+        if entry.get("reason"):
+            reasons.append(entry["reason"])
+        if isinstance(entry.get("usage"), int):
+            tokens += entry["usage"]
         key = str(entry.get("status"))
         statuses[key] = statuses.get(key, 0) + 1
-    return {"allowed": allowed, "denied": denied, "statuses": statuses, "unparsed": bad}
+    return {"allowed": allowed, "denied": denied, "statuses": statuses, "unparsed": bad, "reasons": reasons,
+            "usageTokens": tokens, "limitRefused": any(r.startswith("token-limit") for r in reasons),
+            "stderrBytes": len(stderr_text)}
 
 
 def egress_anomaly(seen: dict) -> bool:
-    """Anything denied or unreadable, no Messages call at all, or an allowed entry outside ALLOWED_ROUTES."""
+    """Anything denied or unreadable, proxy stderr, no Messages call, or an allowed entry outside ALLOWED_ROUTES."""
     routes = {" ".join(r) for r in ALLOWED_ROUTES}
-    return bool(seen["denied"] or seen["unparsed"] or "POST /v1/messages" not in seen["allowed"]
+    return bool(seen["denied"] or seen["unparsed"] or seen.get("stderrBytes") or "POST /v1/messages" not in seen["allowed"]
                 or not set(seen["allowed"]) <= routes)
 
 
@@ -622,57 +667,163 @@ def teardown(names: dict) -> None:
             docker(*cmd, check=False)
 
 
-def proxy_main() -> int:
-    """Authenticating reverse proxy (its own container): forwards ALLOWED_ROUTES to the API over TLS, replacing the
-    Worker's placeholder with the Run credential as x-api-key. Logs method, path, and status only (no headers/bodies)."""
+# Request headers never forwarded upstream: credentials, hop-by-hop, and client-identity / proxy-chain headers.
+DROP_HEADERS = {"host", "authorization", "x-api-key", "proxy-authorization", "connection", "proxy-connection",
+                "keep-alive", "te", "trailer", "upgrade", "content-length", "transfer-encoding", "accept-encoding",
+                "forwarded", "via", "cookie", "x-real-ip"}
+DROP_HEADER_PREFIXES = ("x-forwarded-",)
+# Routes whose body names a model; it must be the Run's declared model.
+MODEL_ROUTES = (("POST", "/v1/messages"), ("POST", "/v1/messages/count_tokens"))
+
+
+def forward_headers(items, key: str) -> dict:
+    headers = {k: v for k, v in items if k.lower() not in DROP_HEADERS
+               and not k.lower().startswith(DROP_HEADER_PREFIXES)}
+    headers["x-api-key"] = key
+    return headers
+
+
+class SseUsage:
+    """Usage of one streamed Message: message_start carries message.usage, each message_delta carries cumulative
+    counts (https://platform.claude.com/docs/en/build-with-claude/streaming), so later fields replace earlier ones."""
+
+    def __init__(self):
+        self.buf, self.usage, self.seen = b"", {}, False
+
+    def feed(self, chunk: bytes) -> None:
+        self.buf += chunk
+        *lines, self.buf = self.buf.split(b"\n")
+        for line in lines:
+            line = line.rstrip(b"\r")
+            if not line.startswith(b"data:"):
+                continue
+            try:
+                ev = json.loads(line[5:])
+            except ValueError:
+                continue
+            if not isinstance(ev, dict):
+                continue
+            usage = (ev.get("message") or {}).get("usage") if ev.get("type") == "message_start" else \
+                ev.get("usage") if ev.get("type") == "message_delta" else None
+            if isinstance(usage, dict):
+                self.seen = True
+                self.usage.update({k: v for k, v in usage.items() if isinstance(v, int)})
+
+    def total(self) -> int | None:
+        return usage_total(self.usage) if self.seen else None
+
+
+def json_usage(body: bytes) -> int | None:
+    try:
+        usage = json.loads(body).get("usage")
+    except (ValueError, AttributeError):
+        return None
+    return usage_total(usage) if isinstance(usage, dict) else None
+
+
+class ProxyLedger:
+    """The Run's usage as the proxy measured it; once over the limit (or unmeasurable), every later request is refused."""
+
+    def __init__(self, model: str, max_tokens: int):
+        self.model, self.max_tokens = model, max_tokens
+        self.total, self.closed = 0, None
+        self.lock = threading.Lock()
+
+    def refuse(self, command: str, path: str, headers, body: bytes | None) -> tuple[int, str] | None:
+        """(status, reason) when the request must not be forwarded."""
+        if (command, path) not in ALLOWED_ROUTES:
+            return 403, "route"
+        if "chunked" in (headers.get("Transfer-Encoding") or "").lower():
+            return 411, "chunked request body"
+        with self.lock:
+            if self.closed:
+                return 403, self.closed
+        if (command, path) in MODEL_ROUTES:
+            try:
+                model = json.loads(body or b"").get("model")
+            except (ValueError, AttributeError):
+                return 403, "unreadable body"
+            if model != self.model:
+                return 403, f"model {str(model)[:60]!r} != declared"
+        return None
+
+    def add(self, tokens: int | None, billable: bool) -> None:
+        with self.lock:
+            if tokens is None:
+                if billable:
+                    self.closed = "usage not measurable"
+                return
+            self.total += tokens
+            if self.total > self.max_tokens:
+                self.closed = f"token-limit {self.total} > {self.max_tokens}"
+
+
+def proxy_main(argv: list[str]) -> int:
+    """Authenticating reverse proxy (its own container): forwards ALLOWED_ROUTES for the declared model to the API over
+    TLS, replacing the Worker's placeholder with the Run credential as x-api-key, and enforces --max-run-tokens on the
+    usage it reads from the responses. Logs method, path, status, reason, and usage only (no headers/bodies)."""
     import http.client
     import http.server
     import ssl
 
     key = Path(PROXY_SECRET).read_text(encoding="utf-8").strip()
-    drop = {"host", "authorization", "x-api-key", "connection", "proxy-connection", "keep-alive",
-            "content-length", "transfer-encoding", "accept-encoding"}
+    ledger = ProxyLedger(argv[0], int(argv[1]))
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, *_):
             pass
 
-        def record(self, allowed: bool, status: int) -> None:
+        def record(self, allowed: bool, status: int, reason: str | None = None, usage: int | None = None) -> None:
             print(json.dumps({"at": now(), "request": [self.command, self.path.split("?", 1)[0]],
-                              "allowed": allowed, "status": status}), flush=True)
+                              "allowed": allowed, "status": status, "reason": reason, "usage": usage,
+                              "proxyTotal": ledger.total}), flush=True)
 
         def relay(self) -> None:
-            if (self.command, self.path.split("?", 1)[0]) not in ALLOWED_ROUTES:
-                self.record(False, 403)
-                self.send_error(403)
-                return
+            route = self.path.split("?", 1)[0]
             length = int(self.headers.get("Content-Length") or 0)
-            body = self.rfile.read(length) if length else None
-            headers = {k: v for k, v in self.headers.items() if k.lower() not in drop}
-            headers["x-api-key"] = key
+            chunked = "chunked" in (self.headers.get("Transfer-Encoding") or "").lower()
+            body = self.rfile.read(length) if length and not chunked else None
+            refused = ledger.refuse(self.command, route, self.headers, body)
+            if refused:
+                self.record(False, refused[0], refused[1])
+                self.close_connection = True
+                try:
+                    self.send_error(refused[0])
+                except OSError:
+                    pass
+                return
+            billable = (self.command, route) == ("POST", "/v1/messages")
             try:
                 up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=600,
                                                  context=ssl.create_default_context())
-                up.request(self.command, self.path, body=body, headers=headers)
+                up.request(self.command, self.path, body=body, headers=forward_headers(self.headers.items(), key))
                 resp = up.getresponse()
             except OSError:
                 self.record(True, 502)
                 self.send_error(502)
                 return
-            self.record(True, resp.status)
             self.send_response(resp.status)
             for k, v in resp.getheaders():
-                if k.lower() not in drop:
+                if k.lower() not in DROP_HEADERS:
                     self.send_header(k, v)
             self.end_headers()
+            sse = SseUsage() if "text/event-stream" in (resp.getheader("Content-Type") or "") else None
+            kept = b""
             try:
                 while chunk := resp.read1(65536):
+                    if sse:
+                        sse.feed(chunk)
+                    elif billable:
+                        kept += chunk
                     self.wfile.write(chunk)
                     self.wfile.flush()
             except OSError:
                 pass
             finally:
                 up.close()
+            tokens = sse.total() if sse else json_usage(kept) if billable else None
+            ledger.add(tokens, billable and resp.status == 200)
+            self.record(True, resp.status, None, tokens)
 
         do_GET = do_POST = do_CONNECT = do_PUT = do_DELETE = relay
 
@@ -933,7 +1084,7 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
             launched, env = exec_cmd, None
             record["isolation"] = {}
             try:
-                isolate_and_check(args, rdir, names, record["isolation"], cand)
+                isolate_and_check(args, rdir, names, record["isolation"], cand, run["model"])
                 if PROXY_AUTH_PATH != "PASS":
                     raise Stop(f"proxy authentication / billing path is {PROXY_AUTH_PATH} for Claude Code "
                                f"{RUNTIME_VERSION} (runbook §2.5); the model is not launched")
@@ -959,12 +1110,15 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
         record["wallClockMs"] = int((time.monotonic() - started) * 1000)
         if args.dry_run:
             denied = ["CONNECT example.com:443"] if args.dry_run_scenario == "proxy-denied" else []
+            usage = args.dry_run_tokens + (1 if args.dry_run_scenario == "usage-mismatch" else 0)
             record["proxyRequests"] = {"allowed": ["POST /v1/messages"], "denied": denied,
-                                       "statuses": {"200": 1}, "unparsed": 0}
+                                       "statuses": {"200": 1}, "unparsed": 0, "reasons": [], "usageTokens": usage,
+                                       "limitRefused": False, "stderrBytes": 0}
         else:
-            log_text = docker("logs", names["proxy"], check=False).stdout
-            (rdir / "proxy.log").write_text(log_text, encoding="utf-8")
-            record["proxyRequests"] = proxy_requests(log_text, names["proxyLogLinesBeforeLaunch"])
+            logs = docker("logs", names["proxy"], check=False)
+            (rdir / "proxy.log").write_text(logs.stdout, encoding="utf-8")
+            (rdir / "proxy.stderr.log").write_text(logs.stderr, encoding="utf-8")
+            record["proxyRequests"] = proxy_requests(logs.stdout, names["proxyLogLinesBeforeLaunch"], logs.stderr)
     finally:
         if not args.dry_run:
             teardown(names)
@@ -973,8 +1127,14 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
     record["trace"] = trace
     record["totalTokens"] = trace["totalTokens"]
     record["runningTotalTokens"] = sum(monitor.usage_by_message.values())
+    seen = record["proxyRequests"]
     if stop_status:
         record.update(status=stop_status, stopReason=reason)
+    elif seen["limitRefused"]:
+        record.update(status="token-limit", stopReason=f"proxy refused after {seen['usageTokens']} tokens")
+    elif isinstance(trace["totalTokens"], int) and seen["usageTokens"] != trace["totalTokens"]:
+        record.update(status="usage-mismatch", stopReason=f"proxy measured {seen['usageTokens']} tokens, stream "
+                                                          f"result.usage {trace['totalTokens']}")
     elif rc != 0 or not trace["complete"] or trace["resultIsError"]:
         record.update(status="runtime-error", stopReason=f"exit {rc}, problems {trace['problems']}")
     elif egress_anomaly(record["proxyRequests"]):
@@ -1127,7 +1287,7 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--work-root", required=True, help="results directory outside the DAT repo")
     r.add_argument("--timeout-s", type=int, required=True, help="per-Run wall clock hard limit (no default)")
     r.add_argument("--max-run-tokens", type=int, required=True,
-                   help="per-Run token limit, checked on every assistant message (no default)")
+                   help="per-Run token limit, enforced by the proxy and checked on every assistant message")
     r.add_argument("--budget-tokens", type=int, required=True, help="approved pilot budget (no default)")
     r.add_argument("--image", help="Run image pinned by digest (python 3.12 + bubblewrap + socat; see the runbook)")
     r.add_argument("--claude-dir", help="directory with the Linux `claude` 2.1.310 binary (mounted read-only at /cc)")
@@ -1148,7 +1308,7 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--dry-run-effort", default="", help="dry-run: effort value placed in the init event")
     r.add_argument("--dry-run-tokens", type=int, default=68022)
     r.add_argument("--dry-run-scenario", default="ok",
-                   choices=["ok", "credential", "missing-result", "sleep", "secret", "proxy-denied"],
+                   choices=["ok", "credential", "missing-result", "sleep", "secret", "proxy-denied", "usage-mismatch"],
                    help=argparse.SUPPRESS)
     r.set_defaults(func=cmd_run)
     s = sub.add_parser("summarize")
@@ -1163,7 +1323,7 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["_fake_claude"]:
         return fake_claude()
     if argv[:1] == ["_proxy"]:
-        return proxy_main()
+        return proxy_main(argv[1:])
     args = parser().parse_args(argv)
     try:
         return args.func(args)

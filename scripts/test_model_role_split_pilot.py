@@ -65,6 +65,7 @@ def test_plan_and_settings() -> None:
 
 class Args:
     image = "img@sha256:" + "0" * 64
+    max_run_tokens = 300000
     claude_dir = "/opt/cc"
     credentials_file = "/home/op/mrs-auth/.credentials.json"
 
@@ -76,7 +77,8 @@ def test_container_isolation(tmp: Path) -> None:
     binds = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
     check(len(binds) == 3 and not any(".credentials" in b for b in binds),
           "three bind mounts, no credential in the Run container")
-    pcmd = mp.proxy_run_command(Args, "p", "net")
+    pcmd = mp.proxy_run_command(Args, "p", "net", "claude-opus-5-5")
+    check(pcmd[-3:] == ["_proxy", "claude-opus-5-5", "300000"], "proxy gets the declared model and the Run limit")
     pbinds = [pcmd[i + 1] for i, a in enumerate(pcmd) if a == "-v"]
     check(any(b.startswith(os.path.realpath(Args.credentials_file) + ":") and b.endswith(f"{mp.PROXY_SECRET}:ro") for b in pbinds)
           and len(pbinds) == 2, "credential mounted read-only into the proxy only")
@@ -144,9 +146,21 @@ def test_gates() -> None:
     expect_stop(mp.check_sandbox_status, ok.replace('"unavailableReason":null', '"unavailableReason":"bwrap missing"'))
     expect_stop(mp.check_sandbox_status, ok.replace('"enabledSource":"settings"', '"enabledSource":"default"'))
     expect_stop(mp.check_sandbox_status, "not json")
-    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nDIRECT ERRNO ENETUNREACH\nPROXY_REACHABLE CONNECTED\n"
+    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nDIRECT ERRNO ENETUNREACH\nGATEWAY ERRNO EHOSTUNREACH\n"
+            "HOST_DOCKER_INTERNAL NORESOLVE\nPROXY_REACHABLE CONNECTED\n"
             "PROXY_CONNECT_DENY HTTP/1.0 403 Forbidden\nPROXY_ROUTE_DENY HTTP/1.0 403 Forbidden\n")
     mp.check_egress(0, good)
+    mp.check_egress(0, good.replace("HOST_DOCKER_INTERNAL NORESOLVE", "HOST_DOCKER_INTERNAL ERRNO ENETUNREACH"))
+    expect_stop(mp.check_egress, 0, good.replace("GATEWAY ERRNO EHOSTUNREACH", "GATEWAY ERRNO ECONNREFUSED"))
+    expect_stop(mp.check_egress, 0, good.replace("HOST_DOCKER_INTERNAL NORESOLVE", "HOST_DOCKER_INTERNAL CONNECTED"))
+    expect_stop(mp.check_egress, 0, good.replace("GATEWAY ERRNO EHOSTUNREACH\n", ""))
+    check(mp.network_gateway({"IPAM": {"Config": [{"Subnet": "172.30.0.0/16", "Gateway": "172.30.0.1"}]}})
+          == "172.30.0.1", "gateway read from IPAM")
+    expect_stop(mp.network_gateway, {"IPAM": {"Config": []}})
+    image_env = ["PATH=/usr/bin", "LANG=C.UTF-8"]
+    mp.check_container_env(list(reversed(image_env)), image_env)
+    expect_stop(mp.check_container_env, image_env + ["ANTHROPIC_API_KEY=x"], image_env)
+    expect_stop(mp.check_container_env, image_env[:1], image_env)
     expect_stop(mp.check_egress, 0, good.replace("ERRNO ENETUNREACH", "CONNECTED"))
     expect_stop(mp.check_egress, 0, good.replace("ERRNO ENETUNREACH", "ERRNO ETIMEDOUT"))
     expect_stop(mp.check_egress, 0, good.replace("LOOPBACK CONNECTED", "LOOPBACK ERRNO ECONNREFUSED"))
@@ -169,12 +183,72 @@ def test_gates() -> None:
                      (["POST", "/v1/messages"], True, 200), (["POST", "/v1/messages"], True, 429),
                      (["GET", "/v2/x"], False, 403))) + "\nnot json\n"
     got = mp.proxy_requests(log, 2)
-    check(got == {"allowed": ["POST /v1/messages"] * 2, "denied": ["GET /v2/x"], "statuses": {"200": 1, "429": 1, "403": 1},
-                  "unparsed": 1}, f"only post-gate proxy entries are counted: {got}")
+    check({k: got[k] for k in ("allowed", "denied", "statuses", "unparsed")} ==
+          {"allowed": ["POST /v1/messages"] * 2, "denied": ["GET /v2/x"], "statuses": {"200": 1, "429": 1, "403": 1},
+           "unparsed": 1}, f"only post-gate proxy entries are counted: {got}")
     check(mp.egress_anomaly(got), "denied request is an anomaly")
     ok = {"allowed": ["GET /v1/models", "POST /v1/messages"], "denied": [], "statuses": {}, "unparsed": 0}
     check(not mp.egress_anomaly(ok), "documented routes only")
     check(mp.egress_anomaly({**ok, "allowed": ["GET /v1/models"]}), "no Messages call is an anomaly")
+    check(mp.egress_anomaly({**ok, "stderrBytes": 5}), "proxy stderr is an anomaly")
+    log = "\n".join(json.dumps(e) for e in (
+        {"request": ["POST", "/v1/messages"], "allowed": True, "status": 200, "reason": None, "usage": 100},
+        {"request": ["POST", "/v1/messages/count_tokens"], "allowed": True, "status": 200, "reason": None,
+         "usage": None},
+        {"request": ["POST", "/v1/messages"], "allowed": False, "status": 403, "reason": "token-limit 101 > 100"}))
+    got = mp.proxy_requests(log, 0, "boom")
+    check(got["usageTokens"] == 100 and got["limitRefused"] and got["stderrBytes"] == 4, f"proxy ledger read: {got}")
+
+
+class Headers(dict):
+    def get(self, k, default=None):
+        return next((v for key, v in self.items() if key.lower() == k.lower()), default)
+
+
+def test_proxy() -> None:
+    body = json.dumps({"model": "claude-opus-5-5", "messages": []}).encode()
+    ledger = mp.ProxyLedger("claude-opus-5-5", 1000)
+    check(ledger.refuse("POST", "/v1/messages", Headers(), body) is None, "declared model forwarded")
+    check(ledger.refuse("GET", "/v1/models", Headers(), None) is None, "models list forwarded")
+    check(ledger.refuse("GET", "/", Headers(), None) == (403, "route"), "other route refused")
+    check(ledger.refuse("CONNECT", "api.anthropic.com:443", Headers(), None)[0] == 403, "CONNECT refused")
+    other = json.dumps({"model": "claude-haiku-5-5"}).encode()
+    check(ledger.refuse("POST", "/v1/messages", Headers(), other)[0] == 403, "other model refused")
+    check(ledger.refuse("POST", "/v1/messages/count_tokens", Headers(), other)[0] == 403, "count_tokens model checked")
+    check(ledger.refuse("POST", "/v1/messages", Headers(), b"not json")[0] == 403, "unreadable body refused")
+    check(ledger.refuse("POST", "/v1/messages", Headers({"Transfer-Encoding": "chunked"}), body)[0] == 411,
+          "chunked request refused")
+    sse = mp.SseUsage()
+    stream = (b'event: message_start\ndata: {"type":"message_start","message":{"id":"m","usage":{"input_tokens":20,'
+              b'"cache_creation_input_tokens":300,"cache_read_input_tokens":400,"output_tokens":1}}}\n\n'
+              b'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"text":"hi"}}\n\n'
+              b'event: message_delta\r\ndata: {"type":"message_delta","usage":{"output_tokens":15}}\r\n\r\n'
+              b'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":80}}\n\n')
+    for i in range(0, len(stream), 7):
+        sse.feed(stream[i:i + 7])
+    check(sse.total() == 20 + 300 + 400 + 80, f"SSE usage: start fields + cumulative delta ({sse.total()})")
+    check(mp.SseUsage().total() is None, "no usage event is unmeasurable, not 0")
+    check(mp.json_usage(json.dumps({"usage": {"input_tokens": 5, "cache_read_input_tokens": 7,
+                                              "output_tokens": 3}}).encode()) == 15, "JSON usage")
+    check(mp.json_usage(b"{}") is None and mp.json_usage(b"<html>") is None, "missing usage is None")
+    ledger.add(600, True)
+    check(ledger.refuse("POST", "/v1/messages", Headers(), body) is None, "under the limit")
+    ledger.add(500, True)
+    refused = ledger.refuse("POST", "/v1/messages", Headers(), body)
+    check(refused == (403, "token-limit 1100 > 1000"), f"over the limit refuses later requests: {refused}")
+    check(ledger.refuse("GET", "/v1/models", Headers(), None)[0] == 403, "closed for every route")
+    blind = mp.ProxyLedger("claude-opus-5-5", 1000)
+    blind.add(None, False)
+    check(blind.refuse("POST", "/v1/messages", Headers(), body) is None, "non-billable without usage is fine")
+    blind.add(None, True)
+    check(blind.refuse("POST", "/v1/messages", Headers(), body) == (403, "usage not measurable"),
+          "a billed response without usage closes the proxy")
+    fwd = mp.forward_headers([("Authorization", "Bearer p"), ("x-api-key", "w"), ("Proxy-Authorization", "x"),
+                              ("X-Forwarded-For", "1.2.3.4"), ("Forwarded", "for=x"), ("Transfer-Encoding", "chunked"),
+                              ("Host", "p"), ("anthropic-version", "2023-06-01"), ("Content-Type", "application/json")],
+                             "real")
+    check(fwd == {"anthropic-version": "2023-06-01", "Content-Type": "application/json", "x-api-key": "real"},
+          f"only safe headers forwarded, credential replaced: {fwd}")
 
 
 def test_secret_quarantine(tmp: Path) -> None:
@@ -260,6 +334,8 @@ def test_incomplete_trace(tmp: Path) -> None:
 def test_egress_anomaly(tmp: Path) -> None:
     rc, _, err = run_cli(dry_args(tmp / "egress", "--dry-run-scenario", "proxy-denied"))
     check(rc == 2 and "egress-anomaly" in err, f"proxy denial during the Run stops: {err}")
+    rc, _, err = run_cli(dry_args(tmp / "usage", "--dry-run-scenario", "usage-mismatch"))
+    check(rc == 2 and "usage-mismatch" in err, f"proxy usage differing from the stream stops: {err}")
 
 
 def test_timeout(tmp: Path) -> None:
@@ -303,7 +379,7 @@ def test_never_launched_retry(tmp: Path) -> None:
 
 
 def main() -> int:
-    tests = [test_plan_and_settings, test_policy, test_gates]
+    tests = [test_plan_and_settings, test_policy, test_gates, test_proxy]
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
                  test_guards, test_never_launched_retry]

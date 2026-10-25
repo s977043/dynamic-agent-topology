@@ -54,12 +54,105 @@ def test_plan_and_settings() -> None:
     s = mp.settings(cand)
     check("Bash(python3.12 -m unittest tests/test_svcb.py)" in s["permissions"]["allow"], "AC command allowed")
     check(s["sandbox"]["enabled"] and s["sandbox"]["network"]["allowedDomains"] == [], "sandbox, no domains")
-    a = mp.claude_command("claude", "claude-opus-5-5", Path("/x/settings.json"), "sid")
-    b = mp.claude_command("claude", "claude-sonnet-5-5", Path("/x/settings.json"), "sid")
+    check(s["sandbox"]["filesystem"]["denyRead"] == [mp.CONFIG_DIR], "config dir denied to the Bash sandbox")
+    a = mp.claude_args("claude-opus-5-5", "sid")
+    b = mp.claude_args("claude-sonnet-5-5", "sid")
     diff = [(x, y) for x, y in zip(a, b) if x != y]
     check(len(a) == len(b) and diff == [("claude-opus-5-5", "claude-sonnet-5-5")], "arms differ only in model")
-    check(a[a.index("--effort") + 1] == "high" and "--restricted" in a and "--no-session-persistence" in a,
-          "effort high, restricted, fresh session")
+    check(a[a.index("--effort") + 1] == "high" and a[a.index("--setting-sources") + 1] == "user"
+          and "--no-session-persistence" in a, "effort high, fresh config only, fresh session")
+
+
+class Args:
+    image = "img@sha256:" + "0" * 64
+    claude_dir = "/opt/cc"
+    credentials_file = "/home/op/mrs-auth/.credentials.json"
+
+
+def test_container_isolation(tmp: Path) -> None:
+    work = tmp / "iso"
+    rdir = work / "MRS-P02-A"
+    cmd = mp.docker_run_command(Args, rdir, "c", "net")
+    binds = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
+    check(len(binds) == 4, "four bind mounts")
+    check(cmd[cmd.index("--network") + 1] == "net" and "--cap-drop" in cmd and "--read-only" in cmd
+          and f"seccomp={mp.SECCOMP}" in cmd, "internal network and EXP-001 constraints")
+    check(any(b.endswith(":/work") for b in binds) and all(b.endswith(":ro") for b in binds if not b.endswith(":/work")),
+          "only /work is writable")
+    expected = mp.expected_mounts(Args, rdir)
+    compact = json.dumps(json.loads(mp.SECCOMP.read_text(encoding="utf-8")), separators=(",", ":"))
+
+    def inspect(mounts, **host):
+        base = {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True, "NetworkMode": "net",
+                "Tmpfs": {"/tmp": "", mp.CONFIG_DIR: "uid=1"}, "SecurityOpt": [f"seccomp={compact}", "no-new-privileges"]}
+        return {"Mounts": [{"Type": t, "Source": s, "Destination": d, "RW": rw} for t, s, d, rw in mounts],
+                "HostConfig": {**base, **host}}
+
+    evidence = mp.check_container(inspect(expected), expected, work.resolve(), "net")
+    check(evidence["seccompMatchesLaunchedProfile"], "seccomp matches")
+    rw_cred = [(t, s, d, True if d == mp.CREDENTIALS else rw) for t, s, d, rw in expected]
+    bad_cases = [
+        inspect(expected + [("bind", str(work / "MRS-P02-B"), "/past", False)]),
+        inspect(expected + [("volume", "v", "/data", True)]),
+        inspect(rw_cred),
+        inspect(expected, Tmpfs={"/tmp": ""}),
+        inspect(expected, NetworkMode="bridge"),
+        inspect(expected, Privileged=True),
+        inspect(expected, SecurityOpt=["seccomp=unconfined", "no-new-privileges"]),
+    ]
+    for bad in bad_cases:
+        try:
+            mp.check_container(bad, expected, work.resolve(), "net")
+        except mp.Stop:
+            continue
+        raise AssertionError(f"container check accepted {bad}")
+    for net in ({"Name": "n", "Internal": False}, {"Name": "n"}):
+        try:
+            mp.check_network(net)
+        except mp.Stop:
+            continue
+        raise AssertionError("non-internal network accepted")
+
+
+def expect_stop(fn, *a) -> None:
+    try:
+        fn(*a)
+    except mp.Stop:
+        return
+    raise AssertionError(f"{fn.__name__}{a} did not stop")
+
+
+def test_gates() -> None:
+    ok = ('{"enabled":true,"enabledSource":"settings","unavailableReason":null,"strictMode":true,'
+          '"filesystemPolicy":"strict","autoAllowBashIfSandboxed":false}')
+    mp.check_sandbox_status(ok)
+    expect_stop(mp.check_sandbox_status, ok.replace('"unavailableReason":null', '"unavailableReason":"bwrap missing"'))
+    expect_stop(mp.check_sandbox_status, ok.replace('"enabledSource":"settings"', '"enabledSource":"default"'))
+    expect_stop(mp.check_sandbox_status, "not json")
+    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nDIRECT ERRNO ENETUNREACH\nPROXY_DENY HTTP/1.1 403 Forbidden\n"
+            "PROXY_ALLOW HTTP/1.1 200 Connection Established\n")
+    mp.check_egress(0, good)
+    expect_stop(mp.check_egress, 0, good.replace("ERRNO ENETUNREACH", "CONNECTED"))
+    expect_stop(mp.check_egress, 0, good.replace("ERRNO ENETUNREACH", "ERRNO ETIMEDOUT"))
+    expect_stop(mp.check_egress, 0, good.replace("LOOPBACK CONNECTED", "LOOPBACK ERRNO ECONNREFUSED"))
+    expect_stop(mp.check_egress, 0, good.replace("403 Forbidden", "200 Connection Established"))
+    expect_stop(mp.check_egress, 1, good)
+    expect_stop(mp.check_egress, 0, good.replace("PROBE_STARTED\n", ""))
+    mp.check_auth_probe(0, "PROBE_STARTED\nAUTH_DENIED\n")
+    expect_stop(mp.check_auth_probe, 3, "PROBE_STARTED\nBLOCK: worker uid can read the credential file\n")
+    expect_stop(mp.check_auth_probe, 0, "AUTH_DENIED\n")
+    expect_stop(mp.check_auth_probe, 4, "PROBE_STARTED\nAUTH_DENIED\n")
+
+
+def test_secret_quarantine(tmp: Path) -> None:
+    work = tmp / "secret"
+    rc, _, err = run_cli(dry_args(work, "--dry-run-scenario", "secret"))
+    check(rc == 2 and "credential-shaped" in err and "Bearer" not in err.split("credential-shaped", 1)[1],
+          f"secret quarantined without echoing it: {err}")
+    check(not (work / "MRS-P02-A").exists() and len(list((work / "quarantine").iterdir())) == 1, "moved to quarantine")
+    check(mp.summarize(work)["quarantined"], "summary lists the quarantined Run")
+    rc, _, err = run_cli(dry_args(work, "--skip-existing"))
+    check(rc == 2 and "quarantined Runs exist" in err, "resume refused while quarantined")
 
 
 def test_policy() -> None:
@@ -151,8 +244,8 @@ def test_guards(tmp: Path) -> None:
         del os.environ["ANTHROPIC_API_KEY"]
     check(rc == 2 and "ANTHROPIC_API_KEY" in err, "API key path refused")
     rc, _, err = run_cli(["run", "--work-root", str(tmp / "real"), "--timeout-s", "1800", "--max-run-tokens",
-                          "300000", "--budget-tokens", "600000", "--claude-bin", "/nonexistent/claude"])
-    check(rc == 2 and "--acknowledge-not-tested" in err, "real Run needs the NOT_TESTED acknowledgement")
+                          "300000", "--budget-tokens", "600000", "--image", "python:3.12"])
+    check(rc == 2 and "STOP:" in err, f"real Run without pinned image / binary / credentials stops: {err}")
     check(not (tmp / "real").exists(), "nothing created before preflight passes")
 
 
@@ -167,8 +260,8 @@ def test_never_launched_retry(tmp: Path) -> None:
 
 
 def main() -> int:
-    tests = [test_plan_and_settings, test_policy]
-    tmp_tests = [test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
+    tests = [test_plan_and_settings, test_policy, test_gates]
+    tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_timeout,
                  test_guards, test_never_launched_retry]
     for t in tests:

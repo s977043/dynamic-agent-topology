@@ -1,8 +1,8 @@
 # モデル役割分担の予備検証 手順書（#220、2 Run）
 
-状態: **実行キットの起案（未実行、現状では起動前に必ず止まる）**。本書とキットは model 起動の許可ではありません。予備検証の起動は Operator（Human）が行います。承認範囲は [Issue #220 の 2026-10-25 の記録](https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6386579854)どおり「予備検証 2 Run（order 2 を arm A / B で 1 回ずつ）」に限ります。現時点の実測は 0 件です。
+状態: **実行キットの起案（未実行）**。本書とキットは model 起動の許可ではありません。予備検証の起動は Operator（Human）が行います。承認範囲は [Issue #220 の 2026-10-25 の記録](https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6386579854)どおり「予備検証 2 Run（order 2 を arm A / B で 1 回ずつ）」に限ります。現時点の実測は 0 件です。
 
-**現状の結論**: 隔離の確認（§2.3）のうち、資格情報を Worker から読めないことの確認（確認 6）が通らないため、キットは起動前に止まります（2026-10-26 に model を起動せずに実測、§2.4）。この確認を通す方式は Human の判断が要ります（§6）。
+**資格情報の扱い（案 D、[Operator 承認 2026-10-26](https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6402829329)）**: 隔離の確認（§2.3）のうち確認 6（Worker の uid から資格情報ファイルを読めないこと）は FAIL です（§2.4）。この 1 項目だけを「既知のリスク（Operator 承認済み）」として扱い、承認コメントの URL を `--accept-credential-read-risk` で渡したときに限り起動を止めません。境界と根拠は §2.5 です。他の確認は従来どおり 1 つでも FAIL なら起動しません。
 
 - 正本: [MODEL_ROLE_SPLIT_PREREGISTRATION.md](../MODEL_ROLE_SPLIT_PREREGISTRATION.md)（blob `5e757639…`）§4・§6・§7・§8、[CANDIDATES.yaml](CANDIDATES.yaml)（blob `3f75aed6…`）の order 2、[MODEL_ROLE_SPLIT_RUNBOOK.md](../MODEL_ROLE_SPLIT_RUNBOOK.md) の手順 11・12 と Gate 2
 - キット: [`scripts/model_role_split_pilot.py`](../../scripts/model_role_split_pilot.py)、テスト [`scripts/test_model_role_split_pilot.py`](../../scripts/test_model_role_split_pilot.py)。workspace の作成と採点は fixture の [`scripts/model_role_split_fixture.py`](../../scripts/model_role_split_fixture.py)（`prepare` / `verify`）をそのまま使う
@@ -55,7 +55,7 @@
 | 3 | Runtime | container 内の `claude --version` が `2.1.310` |
 | 4 | settings の適用と sandbox の可用性 | container 内の `claude sandbox status`（2.1.310 の隠しサブコマンド。posture を JSON で出すだけで model を起動しない）が `enabled: true`・`enabledSource: settings`・`unavailableReason: null`・`strictMode: true`・`filesystemPolicy: strict`・`autoAllowBashIfSandboxed: false` |
 | 5 | 外向き通信の遮断（対照つき） | Run の container の中で: loopback の listen ソケットには接続できる（probe が動く対照）、`1.1.1.1:443` への直接接続が `ENETUNREACH` / `EHOSTUNREACH`、proxy 経由の `example.com:443` が 403、proxy 経由の `api.anthropic.com:443` が 200（TCP の接続だけで HTTP の要求は送らない）。timeout・別の errno・probe の異常終了は確認できないとして止める |
-| 6 | 資格情報を Worker から読めない | #244 の auth probe と同じ形: 開始の印 `PROBE_STARTED`、`cat /cc-home/.credentials.json` の失敗が既知の拒否（`Permission denied` / `No such file or directory`）で `AUTH_DENIED`、probe の exit 0 を別々に確かめる。Claude Code 2.1.310 には model を起動せずに Bash sandbox の中でコマンドを動かす手段がない（`claude sandbox` は status だけ）ため、probe は Run の uid で sandbox の外から実行する（sandbox が効かなかった場合の最悪条件） |
+| 6 | 資格情報を Worker から読めない | #244 の auth probe と同じ形: 開始の印 `PROBE_STARTED`、`cat /cc-home/.credentials.json` の失敗が既知の拒否（`Permission denied` / `No such file or directory`）で `AUTH_DENIED`、probe の exit 0 を別々に確かめる。Claude Code 2.1.310 には model を起動せずに Bash sandbox の中でコマンドを動かす手段がない（`claude sandbox` は status だけ）ため、probe は Run の uid で sandbox の外から実行する（sandbox が効かなかった場合の最悪条件）。結果が `BLOCK: worker uid can read the credential file`（exit 3）のときだけ、§2.5 の既知のリスクとして、承認 URL があれば `isolation.authProbe.acceptedRisk` に URL を記録して進む。probe が始まらない・未知のエラー・他の exit code は止める |
 
 確認結果は各 `run.json` の `isolation` に残る。model を起動する前に止まった Run は消化済みにせず、`--skip-existing` での再開時に `<work-root>/attempts/<runId>/attempt-<N>/` へ退避（上書きしない）してやり直す。
 
@@ -73,6 +73,19 @@
 
 補足（観測）: 同じ制約の container の中で、同じ uid の別プロセスの `/proc/<pid>/mem` を開けた（`ptrace_scope` は読めない）。資格情報をファイルではなく file descriptor で渡しても、同じ uid の Worker からプロセスのメモリを読める可能性が残るため、その方式でも確認 6 に相当する確認は通らない見込み（未実装、**NOT_TESTED**）。
 
+2026-10-26 の再実行（承認 URL あり、ダミーの資格情報、model 不起動）では、確認 1〜5 が PASS、確認 6 は `BLOCK` を既知のリスクとして記録し、全確認を通過した（起動の関数は呼んでいない）。
+
+### 2.5 案 D の境界と既知のリスク
+
+| 区分 | 内容 |
+|---|---|
+| 境界 1（毎 Run 必須） | container からの外向き通信は allowlist proxy 経由の `api.anthropic.com:443` だけ。§2.3 確認 5（直接接続が ENETUNREACH、proxy 経由の他の宛先が 403、対照の loopback は接続可）を Run ごとに確かめ、FAIL なら起動しない。Run 後に `proxy.log` の確認後の CONNECT がすべて許可済みの `api.anthropic.com:443` で、拒否・読めない行が 0 件であることを照合し、違えば `egress-anomaly` で止める |
+| 境界 2（毎 Run 必須） | Run の保存物に資格情報の形の文字列があれば quarantine（mode 700）に移して停止し、commit しない（§3.2） |
+| 既知のリスク（Operator 承認済み） | Worker の uid から、mount した Claude Code の資格情報ファイルを読めることがある（§2.4 確認 6。同じ uid の別プロセスのメモリも開けた） |
+| 持ち出し経路が限られる根拠 | (1) Run の container は internal network にだけつながり、外への経路は proxy だけ（確認 1・5 の実測）。(2) proxy は `api.anthropic.com:443` 以外の CONNECT を拒否し、全要求を記録する（確認 5 と Run 後の照合）。(3) この宛先は Claude Code がもともと同じ資格情報を送る相手。(4) host の他の資格情報（`~/.claude`、`~/.ssh`、Keychain 等）は mount しない（確認 2 の mount の完全一致）。(5) 手元の保存物に写った場合は quarantine される |
+| 残る限界 | 境界 2 は形で検出するため、形を変えて保存物に書かれた資格情報は検出できない。proxy は宛先だけを見て中身は見ない |
+| 承認の扱い | キットはこの 1 項目だけを名前で固定し、`--accept-credential-read-risk` に承認コメントの URL（`…/issues/220#issuecomment-6402829329`）がちょうど渡されたときだけ進む。他の URL・未指定は起動前に止まる。URL は各 `run.json` の `preflight.credentialReadRiskApproval` と `isolation.authProbe.acceptedRisk` に残る。任意の項目を ack して進める仕組みはない |
+
 ## 3. 止める条件（キットが自動で止める）
 
 | 条件 | 動作 |
@@ -81,6 +94,7 @@
 | §2.3 の確認のいずれかを満たさない | その Run を `isolation-stop`（`modelLaunched: false`）として残し、バッチを停止 |
 | 実行中の stream の異常（§3.1） | その Run を停止して記録し、バッチを停止 |
 | exit code が 0 以外、stream が result event で終わらない、tool_use と tool_result が対応しない、`is_error` | `runtime-error` として記録し、バッチを停止 |
+| Run 中の proxy の記録に、拒否された CONNECT・読めない行がある、または許可された CONNECT が `api.anthropic.com:443` だけでない（0 件を含む） | `egress-anomaly` として記録し、バッチを停止 |
 | result event がなく使用量が分からないまま止まった | `totalTokens` を記録しない（0 で埋めない。観測した累計は `runningTotalTokens`）。再開は Operator が使用量を `totalTokens` に記録してから |
 | Run の保存物（stream・stderr・proxy.log・workspace など）に資格情報の形の文字列（`sk-ant-…`、`"accessToken"` / `"refreshToken"`、`Bearer …`、`CLAUDE_CODE_OAUTH_TOKEN=…`） | Run のディレクトリを `<work-root>/quarantine/<runId>-<時刻>/`（mode 700）へ移し、`secret-quarantined` として停止。該当ファイル名だけを表示し、文字列は表示しない |
 | `--skip-existing` で再開し、既存 Run に `totalTokens` がない、または quarantine に Run がある | 停止 |
@@ -108,7 +122,7 @@ event ごとに次を検査し、当たればその Run の container を kill �
 
 ## 4. Operator の手順
 
-前提: 事前登録の成立（Gate 4）と予備検証 2 Run の予算は Issue #220 に記録済み。キットは上限の既定値を持たず、毎回コマンドで渡す。**§2.4 の確認 6 が FAIL の間は、手順 4 のコマンドは起動前に止まる。**
+前提: 事前登録の成立（Gate 4）と予備検証 2 Run の予算、案 D の承認は Issue #220 に記録済み。キットは上限の既定値を持たず、毎回コマンドで渡す。
 
 1. 準備（model は起動しない）:
    - Linux 版 Claude Code の取得とハッシュの記録:
@@ -145,8 +159,12 @@ event ごとに次を検査し、当たればその Run の container を kill �
    ```bash
    python3.12 scripts/model_role_split_pilot.py run --work-root ~/dat-runs/mrs-pilot-1 --cache ~/dat-runs/mrs-cache \
      --image mrs-pilot-sandbox@sha256:<digest> --claude-dir ~/dat-runs/cc-linux/package \
-     --credentials-file <資格情報ファイル> --timeout-s <秒> --max-run-tokens <tokens> --budget-tokens <tokens>
+     --credentials-file <資格情報ファイル> \
+     --accept-credential-read-risk https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6402829329 \
+     --timeout-s <秒> --max-run-tokens <tokens> --budget-tokens <tokens>
    ```
+
+   `--accept-credential-read-risk` は、案 D の承認がいまも有効だと Operator が確かめたときだけ付ける（資格情報や境界の条件が変わったら付けずに、Issue #220 で判断し直す）。
 
    上限は Issue #220 の承認値を渡す（§6 のとおり見直しの見込みがあるため本書に固定しない）。起動時に表示される prompt の SHA-256 が dry-run と同じことを確かめる。
 5. exit code が 0 なら 2 Run 完了。2 なら標準エラーの `STOP:` の理由を Issue #220 に記録する。再開は理由を解消し、同じ上限で `--skip-existing` を付けて行う。
@@ -169,11 +187,11 @@ event ごとに次を検査し、当たればその Run の container を kill �
 
 | 項目 | 状態 |
 |---|---|
-| 資格情報を Worker から読めないこと（§2.3 確認 6） | **FAIL（2026-10-26 実測）**。キットは起動前に止まる。通す方式の候補（いずれも未実装・**NOT_TESTED**、Human の判断が要る）: (a) 資格情報を Run の container に入れず、container の外の proxy が認証ヘッダを付ける方式（Claude Code が `ANTHROPIC_BASE_URL` 等でその経路を使えるか、subscription の利用条件に合うか、U4 の課金経路が変わらないかは未確認）。(b) Claude Code の Bash sandbox を確認 6 の代わりの境界として認める（model を起動せずに sandbox 内の probe を動かす手段がないため、認めるなら Human の判断として記録する必要がある） |
+| 資格情報を Worker から読めないこと（§2.3 確認 6） | **FAIL（2026-10-26 実測）**。案 D により既知のリスク（Operator 承認済み）として扱う（§2.5）。Claude Code の Bash sandbox が実際に読み取りを防ぐかは **NOT_TESTED** |
 | 資格情報ファイルの作り方 | Linux 版の `.credentials.json` の形式と、`claude auth login` を container 内で行う手順は未確認（**NOT_TESTED**）。ro mount のため、Run 中の token 更新が失敗する可能性がある |
 | Claude Code の Bash sandbox が container 内で動くか | `sandbox status` は PASS だが、実際のコマンドが bubblewrap の中で動くかは未確認（**NOT_TESTED**）。同じ制約で `bwrap --unshare-user --unshare-net --unshare-pid` は動き、`--proc /proc` の mount は `Operation not permitted` だった。sandbox が動かなければ Bash が失敗し、Run は `runtime-error` などで止まる見込み |
 | settings の deny・denyRead が実際に効いていること | `sandbox status` は enabled・strict を返すが、個々のルールの適用は出力に出ない（**NOT_TESTED**） |
-| proxy 経由で Claude Code が API に届くか | `HTTPS_PROXY` の扱いと、`api.anthropic.com` 以外の宛先（token 更新など）が要るかは未確認（**NOT_TESTED**）。要る場合は proxy で拒否され、Run が止まる |
+| proxy 経由で Claude Code が API に届くか | `HTTPS_PROXY` の扱いと、`api.anthropic.com` 以外の宛先（token 更新など）が要るかは未確認（**NOT_TESTED**）。要る場合は proxy で拒否され、Run 後の照合で `egress-anomaly` になる |
 | 1 Run・合計の上限（`--timeout-s`・`--max-run-tokens`・`--budget-tokens`） | 承認値は 1 Run 300,000 tokens・30 分、合計 600,000 tokens。**#244 の実測から上限の見直しが要る見込み**（#244 では本物の repo の Task で 1 Run 1M〜3.2M tokens、95% 以上がキャッシュ入力。Runtime・model は異なる）。値は本書で決めず、Operator が Issue #220 で決めた値をコマンドで渡す |
 | stream-json の形式 | init の各キー、assistant の `message.model`・`usage`、result の `usage`・`modelUsage` は Source claim による想定で **NOT_TESTED**。キーが違えば `control-deviation` で止まる（安全側） |
 | 実効 Effort が trace に出るか | **NOT_TESTED**。出なければ `activationEffort` は NOT_TESTED になり、予備検証を PASS にしない |

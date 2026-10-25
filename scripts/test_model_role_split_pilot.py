@@ -142,6 +142,21 @@ def test_gates() -> None:
     expect_stop(mp.check_auth_probe, 3, "PROBE_STARTED\nBLOCK: worker uid can read the credential file\n")
     expect_stop(mp.check_auth_probe, 0, "AUTH_DENIED\n")
     expect_stop(mp.check_auth_probe, 4, "PROBE_STARTED\nAUTH_DENIED\n")
+    url = mp.CREDENTIAL_RISK_APPROVAL
+    block = f"PROBE_STARTED\n{mp.CREDENTIAL_READ_BLOCK}\n"
+    check(mp.credential_probe_outcome(3, block, url) == url, "known risk accepted only with the approval URL")
+    check(mp.credential_probe_outcome(0, "PROBE_STARTED\nAUTH_DENIED\n", url) is None, "denied probe passes outright")
+    expect_stop(mp.credential_probe_outcome, 3, block, None)
+    expect_stop(mp.credential_probe_outcome, 3, block, url.replace("6402829329", "1"))
+    expect_stop(mp.credential_probe_outcome, 3, f"{mp.CREDENTIAL_READ_BLOCK}\n", url)
+    expect_stop(mp.credential_probe_outcome, 4, "PROBE_STARTED\nUNKNOWN: unexpected error class\n", url)
+    expect_stop(mp.credential_probe_outcome, 4, block, url)
+    log = "\n".join(json.dumps({"request": ["CONNECT", t], "allowed": a}) for t, a in
+                    (("example.com:443", False), ("api.anthropic.com:443", True), ("api.anthropic.com:443", True),
+                     ("evil.example:443", False))) + "\nnot json\n"
+    got = mp.proxy_connects(log, 2)
+    check(got == {"allowed": ["CONNECT api.anthropic.com:443"], "denied": ["CONNECT evil.example:443"], "unparsed": 1},
+          f"only post-gate proxy entries are counted: {got}")
 
 
 def test_secret_quarantine(tmp: Path) -> None:
@@ -224,6 +239,11 @@ def test_incomplete_trace(tmp: Path) -> None:
     check(not rec["trace"]["complete"], "trace marked incomplete")
 
 
+def test_egress_anomaly(tmp: Path) -> None:
+    rc, _, err = run_cli(dry_args(tmp / "egress", "--dry-run-scenario", "proxy-denied"))
+    check(rc == 2 and "egress-anomaly" in err, f"proxy denial during the Run stops: {err}")
+
+
 def test_timeout(tmp: Path) -> None:
     rc, _, err = run_cli(dry_args(tmp / "slow", "--dry-run-scenario", "sleep", "--timeout-s", "1"))
     check(rc == 2 and "aborted-timeout" in err, f"timeout stops: {err}")
@@ -243,9 +263,14 @@ def test_guards(tmp: Path) -> None:
     finally:
         del os.environ["ANTHROPIC_API_KEY"]
     check(rc == 2 and "ANTHROPIC_API_KEY" in err, "API key path refused")
-    rc, _, err = run_cli(["run", "--work-root", str(tmp / "real"), "--timeout-s", "1800", "--max-run-tokens",
-                          "300000", "--budget-tokens", "600000", "--image", "python:3.12"])
-    check(rc == 2 and "STOP:" in err, f"real Run without pinned image / binary / credentials stops: {err}")
+    real = ["run", "--work-root", str(tmp / "real"), "--timeout-s", "1800", "--max-run-tokens", "300000",
+            "--budget-tokens", "600000", "--image", "python:3.12"]
+    rc, _, err = run_cli(real)
+    check(rc == 2 and "--accept-credential-read-risk" in err, f"real Run needs the approval URL: {err}")
+    rc, _, err = run_cli(real + ["--accept-credential-read-risk", "https://example.com/approval"])
+    check(rc == 2 and "--accept-credential-read-risk" in err, "any other URL is refused")
+    rc, _, err = run_cli(real + ["--accept-credential-read-risk", mp.CREDENTIAL_RISK_APPROVAL])
+    check(rc == 2 and "STOP:" in err and "--accept" not in err, f"then the container preflight stops: {err}")
     check(not (tmp / "real").exists(), "nothing created before preflight passes")
 
 
@@ -262,7 +287,7 @@ def test_never_launched_retry(tmp: Path) -> None:
 def main() -> int:
     tests = [test_plan_and_settings, test_policy, test_gates]
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
-                 test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_timeout,
+                 test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
                  test_guards, test_never_launched_retry]
     for t in tests:
         t()

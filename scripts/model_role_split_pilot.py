@@ -61,6 +61,10 @@ CONFIG_DIR = "/cc-home"
 CREDENTIALS = f"{CONFIG_DIR}/.credentials.json"
 TMPFS_ALLOWED = ("/tmp", CONFIG_DIR)
 API_HOST, API_PORT, PROXY_PORT = "api.anthropic.com", 443, 3128
+# The one known risk the Operator accepted (option D): the Worker uid can read the mounted credential file.
+# Exfiltration is bounded by the egress gate (only api.anthropic.com:443) and the saved-artifact secret scan.
+CREDENTIAL_READ_BLOCK = "BLOCK: worker uid can read the credential file"
+CREDENTIAL_RISK_APPROVAL = "https://github.com/s977043/dynamic-agent-topology/issues/220#issuecomment-6402829329"
 # Host variables that would open an API-key / third-party billing path (U4-1) or override the Effort.
 FORBIDDEN_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_BASE_URL",
                  "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
@@ -446,7 +450,7 @@ def check_egress(rc: int, output: str) -> dict:
 AUTH_PROBE = f"""set -u
 echo PROBE_STARTED
 command -v cat >/dev/null || {{ echo "UNKNOWN: cat missing"; exit 4; }}
-if err=$(cat {CREDENTIALS} 2>&1 >/dev/null); then echo "BLOCK: worker uid can read the credential file"; exit 3; fi
+if err=$(cat {CREDENTIALS} 2>&1 >/dev/null); then echo "{CREDENTIAL_READ_BLOCK}"; exit 3; fi
 case $err in *"Permission denied"*|*"No such file or directory"*) echo AUTH_DENIED ;; *) echo "UNKNOWN: unexpected error class"; exit 4 ;; esac
 """
 
@@ -514,7 +518,39 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict)
     evidence["egress"] = check_egress(egress.returncode, egress.stdout)
     probe = docker("exec", names["container"], "bash", "-c", AUTH_PROBE, check=False)
     evidence["authProbe"] = {"exitCode": probe.returncode, "lines": probe.stdout.splitlines()[:3]}
-    check_auth_probe(probe.returncode, probe.stdout)
+    evidence["authProbe"]["acceptedRisk"] = credential_probe_outcome(probe.returncode, probe.stdout,
+                                                                     args.accept_credential_read_risk)
+    names["proxyLogLinesBeforeLaunch"] = len(docker("logs", names["proxy"], check=False).stdout.splitlines())
+
+
+def credential_probe_outcome(rc: int, output: str, accepted_url: str | None) -> str | None:
+    """Only the known risk (the Worker uid can read the credential file) may pass, and only with the approval URL.
+
+    Returns the approval URL when that risk was observed and accepted, None when the probe passed outright.
+    Any other outcome (probe not started, unknown error class, other exit code) stops.
+    """
+    lines = output.splitlines()
+    if "PROBE_STARTED" in lines and rc == 3 and CREDENTIAL_READ_BLOCK in lines:
+        if accepted_url != CREDENTIAL_RISK_APPROVAL:
+            raise Stop(f"credential probe: {CREDENTIAL_READ_BLOCK!r}; pass --accept-credential-read-risk "
+                       f"{CREDENTIAL_RISK_APPROVAL} only if the Operator approval still applies")
+        return accepted_url
+    check_auth_probe(rc, output)
+    return None
+
+
+def proxy_connects(log_text: str, skip_lines: int) -> dict:
+    """CONNECT requests the proxy saw after the gates (the Run's own traffic)."""
+    allowed, denied, bad = [], [], 0
+    for line in log_text.splitlines()[skip_lines:]:
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            bad += 1
+            continue
+        target = " ".join(entry.get("request") or [])
+        (allowed if entry.get("allowed") else denied).append(target)
+    return {"allowed": allowed, "denied": denied, "unparsed": bad}
 
 
 def teardown(names: dict) -> None:
@@ -717,6 +753,10 @@ def preflight(args, runs: list[dict]) -> dict:
     evidence["forbiddenEnvAbsent"] = list(FORBIDDEN_ENV)
     if args.dry_run:
         return evidence
+    if args.accept_credential_read_risk != CREDENTIAL_RISK_APPROVAL:
+        raise Stop(f"--accept-credential-read-risk must be the Operator approval {CREDENTIAL_RISK_APPROVAL} "
+                   f"(got {args.accept_credential_read_risk!r})")
+    evidence["credentialReadRiskApproval"] = args.accept_credential_read_risk
     evidence.update(preflight_container(args))
     evidence["gradingProbe"] = probe_grading_sandbox(args.ac_python)
     return evidence
@@ -850,8 +890,13 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
             write_record(rdir, record)
             raise Stop(f"{run['runId']}: launch failed: {exc}")
         record["wallClockMs"] = int((time.monotonic() - started) * 1000)
-        if not args.dry_run:
-            (rdir / "proxy.log").write_text(docker("logs", names["proxy"], check=False).stdout, encoding="utf-8")
+        if args.dry_run:
+            denied = ["CONNECT example.com:443"] if args.dry_run_scenario == "proxy-denied" else []
+            record["proxyConnects"] = {"allowed": [f"CONNECT {API_HOST}:{API_PORT}"], "denied": denied, "unparsed": 0}
+        else:
+            log_text = docker("logs", names["proxy"], check=False).stdout
+            (rdir / "proxy.log").write_text(log_text, encoding="utf-8")
+            record["proxyConnects"] = proxy_connects(log_text, names["proxyLogLinesBeforeLaunch"])
     finally:
         if not args.dry_run:
             teardown(names)
@@ -864,6 +909,10 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
         record.update(status=stop_status, stopReason=reason)
     elif rc != 0 or not trace["complete"] or trace["resultIsError"]:
         record.update(status="runtime-error", stopReason=f"exit {rc}, problems {trace['problems']}")
+    elif (record["proxyConnects"]["denied"] or record["proxyConnects"]["unparsed"]
+          or set(record["proxyConnects"]["allowed"]) != {f"CONNECT {API_HOST}:{API_PORT}"}):
+        record.update(status="egress-anomaly", stopReason=f"proxy saw {record['proxyConnects']} (expected only "
+                                                          f"allowed CONNECT {API_HOST}:{API_PORT})")
     elif not will_grade(args):
         record["status"] = "dry-run-ungraded"
     else:
@@ -1016,6 +1065,8 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--image", help="Run image pinned by digest (python 3.12 + bubblewrap + socat; see the runbook)")
     r.add_argument("--claude-dir", help="directory with the Linux `claude` 2.1.310 binary (mounted read-only at /cc)")
     r.add_argument("--credentials-file", help="Linux Claude Code .credentials.json (mounted read-only; not read)")
+    r.add_argument("--accept-credential-read-risk", metavar="URL",
+                   help=f"the Operator approval of the one known risk (must be {CREDENTIAL_RISK_APPROVAL})")
     r.add_argument("--cache", default=str(Path(tempfile.gettempdir()) / "mrs-cache"),
                    help="git cache for the fixture (outside the work root)")
     r.add_argument("--ac-python", default="python3.12")
@@ -1028,7 +1079,8 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--dry-run-effort", default="", help="dry-run: effort value placed in the init event")
     r.add_argument("--dry-run-tokens", type=int, default=68022)
     r.add_argument("--dry-run-scenario", default="ok",
-                   choices=["ok", "credential", "missing-result", "sleep", "secret"], help=argparse.SUPPRESS)
+                   choices=["ok", "credential", "missing-result", "sleep", "secret", "proxy-denied"],
+                   help=argparse.SUPPRESS)
     r.set_defaults(func=cmd_run)
     s = sub.add_parser("summarize")
     s.add_argument("--work-root", required=True)

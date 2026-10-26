@@ -76,62 +76,76 @@ class Args:
 def test_container_isolation(tmp: Path) -> None:
     work = tmp / "iso"
     rdir = work / "MRS-P02-A"
-    cmd = mp.docker_run_command(Args, rdir, "c", "net")
+    cmd = mp.docker_run_command(Args, rdir, "c", "vol")
     binds = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-v"]
-    check(len(binds) == 3 and not any(".credentials" in b for b in binds),
-          "three bind mounts, no credential in the Run container")
-    pcmd = mp.proxy_run_command(Args, "p", "net", "claude-opus-5-5")
+    check(len(binds) == 4 and binds[-1] == f"vol:{mp.PROXY_SOCKET_DIR}:ro" and not any(".credentials" in b for b in binds),
+          "three bind mounts and the socket volume (ro), no credential in the Run container")
+    check(cmd[-4:] == ["python3", "-I", "-c", mp.RELAY], "Run container's main process is the loopback relay")
+    pcmd = mp.proxy_run_command(Args, "p", "vol", "claude-opus-5-5")
     check(pcmd[-3:] == ["_proxy", "claude-opus-5-5", "300000"], "proxy gets the declared model and the Run limit")
     pbinds = [pcmd[i + 1] for i, a in enumerate(pcmd) if a == "-v"]
     check(any(b.startswith(os.path.realpath(Args.credentials_file) + ":") and b.endswith(f"{mp.PROXY_SECRET}:ro") for b in pbinds)
-          and len(pbinds) == 2, "credential mounted read-only into the proxy only")
-    env = mp.container_env("p")
-    check(env["ANTHROPIC_AUTH_TOKEN"] == mp.PLACEHOLDER_TOKEN and env["ANTHROPIC_BASE_URL"] == "http://p:3128",
-          "Worker gets the proxy URL and a placeholder")
+          and len(pbinds) == 3 and pbinds[-1] == f"vol:{mp.PROXY_SOCKET_DIR}", "credential mounted read-only into the proxy only")
+    env = mp.container_env()
+    check(env["ANTHROPIC_AUTH_TOKEN"] == mp.PLACEHOLDER_TOKEN and env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:3128",
+          "Worker gets the relay URL and a placeholder")
     pexp = sorted(("bind", s, d, rw) for d, (s, rw) in mp.proxy_bind_sources(Args).items())
-    pins = {"Mounts": [{"Type": t, "Source": s, "Destination": d, "RW": rw} for t, s, d, rw in pexp], "HostConfig": {}}
-    mp.check_proxy_container(pins, Args)
-    expect_stop(mp.check_proxy_container, {**pins, "HostConfig": {"PidMode": "host"}}, Args)
-    expect_stop(mp.check_proxy_container, {**pins, "Mounts": pins["Mounts"][:1]}, Args)
-    check(cmd[cmd.index("--network") + 1] == "net" and "--cap-drop" in cmd and "--read-only" in cmd
-          and f"seccomp={mp.SECCOMP}" in cmd, "internal network and EXP-001 constraints")
-    check(any(b.endswith(":/work") for b in binds) and all(b.endswith(":ro") for b in binds if not b.endswith(":/work")),
+    pvol = {"Type": "volume", "Name": "vol", "Destination": mp.PROXY_SOCKET_DIR, "RW": True}
+    pins = {"Mounts": [{"Type": t, "Source": s, "Destination": d, "RW": rw} for t, s, d, rw in pexp] + [pvol],
+            "HostConfig": {}}
+    mp.check_proxy_container(pins, Args, "vol")
+    expect_stop(mp.check_proxy_container, {**pins, "HostConfig": {"PidMode": "host"}}, Args, "vol")
+    expect_stop(mp.check_proxy_container, {**pins, "Mounts": pins["Mounts"][:1] + [pvol]}, Args, "vol")
+    expect_stop(mp.check_proxy_container, {**pins, "Mounts": pins["Mounts"][:2]}, Args, "vol")
+    expect_stop(mp.check_proxy_container, pins, Args, "other")
+    check(cmd[cmd.index("--network") + 1] == "none" and "--cap-drop" in cmd and "--read-only" in cmd
+          and f"seccomp={mp.SECCOMP}" in cmd, "no network and EXP-001 constraints")
+    check(pcmd[pcmd.index("--network") + 1] == "bridge", "proxy alone has the outside route")
+    check(any(b.endswith(":/work") for b in binds[:3]) and all(b.endswith(":ro") for b in binds if not b.endswith(":/work")),
           "only /work is writable")
     expected = mp.expected_mounts(Args, rdir)
     compact = json.dumps(json.loads(mp.SECCOMP.read_text(encoding="utf-8")), separators=(",", ":"))
+    vol = ("volume", "vol", mp.PROXY_SOCKET_DIR, False)
 
     def inspect(mounts, **host):
-        base = {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True, "NetworkMode": "net",
+        base = {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True, "NetworkMode": "none",
                 "Tmpfs": {"/tmp": "", mp.CONFIG_DIR: "uid=1"}, "SecurityOpt": [f"seccomp={compact}", "no-new-privileges"]}
-        return {"Mounts": [{"Type": t, "Source": s, "Destination": d, "RW": rw} for t, s, d, rw in mounts],
+        return {"Mounts": [{"Type": t, "Source" if t == "bind" else "Name": s, "Destination": d, "RW": rw}
+                           for t, s, d, rw in mounts],
                 "HostConfig": {**base, **host}}
 
-    evidence = mp.check_container(inspect(expected), expected, work.resolve(), "net")
+    evidence = mp.check_container(inspect(expected + [vol]), expected, work.resolve(), "vol")
     check(evidence["seccompMatchesLaunchedProfile"], "seccomp matches")
     rw_cc = [(t, s, d, True if d == "/cc" else rw) for t, s, d, rw in expected]
     bad_cases = [
-        inspect(expected + [("bind", str(work / "MRS-P02-B"), "/past", False)]),
-        inspect(expected + [("bind", Args.credentials_file, "/cc-home/.credentials.json", False)]),
-        inspect(expected + [("volume", "v", "/data", True)]),
-        inspect(rw_cc),
-        inspect(expected, PidMode="container:p"),
-        inspect(expected, Tmpfs={"/tmp": ""}),
-        inspect(expected, NetworkMode="bridge"),
-        inspect(expected, Privileged=True),
-        inspect(expected, SecurityOpt=["seccomp=unconfined", "no-new-privileges"]),
+        inspect(expected + [vol, ("bind", str(work / "MRS-P02-B"), "/past", False)]),
+        inspect(expected + [vol, ("bind", Args.credentials_file, "/cc-home/.credentials.json", False)]),
+        inspect(expected + [vol, ("volume", "v", "/data", True)]),
+        inspect(expected),
+        inspect(expected + [("volume", "vol", mp.PROXY_SOCKET_DIR, True)]),
+        inspect(rw_cc + [vol]),
+        inspect(expected + [vol], PidMode="container:p"),
+        inspect(expected + [vol], Tmpfs={"/tmp": ""}),
+        inspect(expected + [vol], NetworkMode="bridge"),
+        inspect(expected + [vol], NetworkMode="container:p"),
+        inspect(expected + [vol], Privileged=True),
+        inspect(expected + [vol], SecurityOpt=["seccomp=unconfined", "no-new-privileges"]),
     ]
     for bad in bad_cases:
         try:
-            mp.check_container(bad, expected, work.resolve(), "net")
+            mp.check_container(bad, expected, work.resolve(), "vol")
         except mp.Stop:
             continue
         raise AssertionError(f"container check accepted {bad}")
-    for net in ({"Name": "n", "Internal": False}, {"Name": "n"}):
-        try:
-            mp.check_network(net)
-        except mp.Stop:
-            continue
-        raise AssertionError("non-internal network accepted")
+    mp.check_no_network({"NetworkSettings": {"Networks": {"none": {"IPAddress": "", "Gateway": ""}}}})
+    for nets in ({"bridge": {"IPAddress": "172.17.0.3"}}, {"none": {}, "bridge": {}}, {}, {"none": {"IPAddress": "10.0.0.2"}}):
+        expect_stop(mp.check_no_network, {"NetworkSettings": {"Networks": nets}})
+    opts = {"type": "tmpfs", "device": "tmpfs", "o": mp.volume_mount_options()}
+    mp.check_volume({"Name": "vol", "Driver": "local", "Options": opts}, "vol")
+    expect_stop(mp.check_volume, {"Name": "vol", "Driver": "local", "Options": None}, "vol")
+    expect_stop(mp.check_volume, {"Name": "vol", "Driver": "local", "Options": {**opts, "o": "mode=0777"}}, "vol")
+    check(mp.volume_create_command("vol")[-1] == "vol" and "type=tmpfs" in mp.volume_create_command("vol"),
+          "socket volume is tmpfs")
 
 
 def expect_stop(fn, *a) -> None:
@@ -149,7 +163,8 @@ def test_gates() -> None:
     expect_stop(mp.check_sandbox_status, ok.replace('"unavailableReason":null', '"unavailableReason":"bwrap missing"'))
     expect_stop(mp.check_sandbox_status, ok.replace('"enabledSource":"settings"', '"enabledSource":"default"'))
     expect_stop(mp.check_sandbox_status, "not json")
-    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nDIRECT ERRNO ENETUNREACH\nGATEWAY ERRNO EHOSTUNREACH\n"
+    good = ("PROBE_STARTED\nLOOPBACK CONNECTED\nROUTES v4=0 v6=0\nDIRECT ERRNO ENETUNREACH\nDIRECT_UDP ERRNO ENETUNREACH\n"
+            "GATEWAY ERRNO EHOSTUNREACH\nGATEWAY_UDP ERRNO ENETUNREACH\nPROXY_IP ERRNO ENETUNREACH\n"
             "HOST_DOCKER_INTERNAL NORESOLVE\nPROXY_REACHABLE CONNECTED\n"
             "PROXY_CONNECT_DENY HTTP/1.0 403 Forbidden\nPROXY_ROUTE_DENY HTTP/1.0 403 Forbidden\n")
     mp.check_egress(0, good)
@@ -157,6 +172,9 @@ def test_gates() -> None:
     expect_stop(mp.check_egress, 0, good.replace("GATEWAY ERRNO EHOSTUNREACH", "GATEWAY ERRNO ECONNREFUSED"))
     expect_stop(mp.check_egress, 0, good.replace("HOST_DOCKER_INTERNAL NORESOLVE", "HOST_DOCKER_INTERNAL CONNECTED"))
     expect_stop(mp.check_egress, 0, good.replace("GATEWAY ERRNO EHOSTUNREACH\n", ""))
+    expect_stop(mp.check_egress, 0, good.replace("ROUTES v4=0 v6=0", "ROUTES v4=1 v6=0"))
+    expect_stop(mp.check_egress, 0, good.replace("GATEWAY_UDP ERRNO ENETUNREACH", "GATEWAY_UDP SENT"))
+    expect_stop(mp.check_egress, 0, good.replace("PROXY_IP ERRNO ENETUNREACH", "PROXY_IP ERRNO ECONNREFUSED"))
     check(mp.network_gateway({"IPAM": {"Config": [{"Subnet": "172.30.0.0/16", "Gateway": "172.30.0.1"}]}})
           == "172.30.0.1", "gateway read from IPAM")
     expect_stop(mp.network_gateway, {"IPAM": {"Config": []}})
@@ -458,20 +476,23 @@ class FakeUpstream:
 
 @contextlib.contextmanager
 def live_proxy(tmp: Path):
-    """proxy_main on 127.0.0.1 with FakeUpstream (no external network); yields (port, log)."""
+    """proxy_main on a Unix socket with FakeUpstream (no external network); yields (socket path, log)."""
     import http.client
-    import http.server
+    import socketserver
     servers = []
-    real_server, real_conn, real_secret = http.server.ThreadingHTTPServer, http.client.HTTPSConnection, mp.PROXY_SECRET
+    real_server, real_conn = socketserver.UnixStreamServer, http.client.HTTPSConnection
+    real_secret, real_socket = mp.PROXY_SECRET, mp.PROXY_SOCKET
 
     class LocalServer(real_server):
-        def __init__(self, _addr, handler):
-            super().__init__(("127.0.0.1", 0), handler)
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
             servers.append(self)
 
     (tmp / "key").write_text("sk-test")
+    sock_dir = tempfile.mkdtemp(dir="/tmp")  # AF_UNIX paths are limited to ~104 bytes
     log = io.StringIO()
-    http.server.ThreadingHTTPServer, http.client.HTTPSConnection, mp.PROXY_SECRET = LocalServer, FakeUpstream, str(tmp / "key")
+    socketserver.UnixStreamServer, http.client.HTTPSConnection = LocalServer, FakeUpstream
+    mp.PROXY_SECRET, mp.PROXY_SOCKET = str(tmp / "key"), os.path.join(sock_dir, "p.sock")
     try:
         with contextlib.redirect_stdout(log):
             threading.Thread(target=mp.proxy_main, args=(["m", "1000"],), daemon=True).start()
@@ -479,15 +500,26 @@ def live_proxy(tmp: Path):
                 if servers:
                     break
                 time.sleep(0.01)
-            yield servers[0].server_address[1], log
+            yield mp.PROXY_SOCKET, log
             servers[0].shutdown()
             servers[0].server_close()
     finally:
-        http.server.ThreadingHTTPServer, http.client.HTTPSConnection, mp.PROXY_SECRET = real_server, real_conn, real_secret
+        socketserver.UnixStreamServer, http.client.HTTPSConnection = real_server, real_conn
+        with contextlib.suppress(OSError):
+            os.unlink(mp.PROXY_SOCKET)
+        os.rmdir(sock_dir)
+        mp.PROXY_SECRET, mp.PROXY_SOCKET = real_secret, real_socket
 
 
-def post(port: int, body: bytes = b'{"model":"m"}', length: int | None = None) -> int:
-    with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+def unix_connect(path: str) -> socket.socket:
+    s = socket.socket(socket.AF_UNIX)
+    s.settimeout(10)
+    s.connect(path)
+    return s
+
+
+def post(path: str, body: bytes = b'{"model":"m"}', length: int | None = None) -> int:
+    with unix_connect(path) as s:
         s.sendall(b"POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: %d\r\n\r\n"
                   % (len(body) if length is None else length) + body)
         return int(s.recv(64).split(b" ")[1])
@@ -528,7 +560,7 @@ def test_proxy_handler(tmp: Path) -> None:
     check(json.loads(log.getvalue().splitlines()[1])["reason"] == "body too large", "413 recorded")
     FakeUpstream.mode = "split"
     with live_proxy(tmp) as (port, log):
-        with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+        with unix_connect(port) as s:
             s.sendall(b'POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n{"model":"m"}')
             raw = b""
             while chunk := s.recv(4096):

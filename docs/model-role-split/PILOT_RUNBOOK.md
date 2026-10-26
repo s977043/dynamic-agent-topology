@@ -36,16 +36,16 @@
 
 ### 2.1 方式（Run ごとの container）
 
-- Run ごとに、internal の Docker network（外への経路なし）、proxy の container、Run の container を作り、Run の終わりに消す
+- Run ごとに、proxy との間の Unix ドメインソケットを置く tmpfs の volume（Run の uid の所有、mode 0700）、proxy の container、Run の container を作り、Run の終わりに消す
 - Run の container: #244 と同じ制約（`--cap-drop ALL`、`--read-only`、`--security-opt no-new-privileges`、EXP-001 の seccomp profile、`--user <uid>:<gid>`、tmpfs は `/tmp` と `/cc-home` だけ）。image は digest で固定した派生 image（§4 の 1）
 - bind mount は **その Run の** `workspace`（`/work`、RW）、`input`（`/run-input`、ro、prompt）、Linux 版 Claude Code のディレクトリ（`/cc`、ro）の 3 つだけ。資格情報は mount しない
-- 外向き通信と認証: Run の container は internal network にだけつながる。出口は proxy の container（同じ image、キット自身と Run 専用の資格情報だけを ro で mount、別の PID namespace）だけ。proxy は平文 HTTP の reverse proxy で、[Anthropic 形式の gateway として Claude Code が呼ぶ経路](https://code.claude.com/docs/en/llm-gateway-protocol)（`POST /v1/messages`、`POST /v1/messages/count_tokens`、`GET /v1/models`）だけを TLS で `api.anthropic.com` へ転送する。そのとき Worker が送る `Authorization` / `x-api-key` / `Proxy-Authorization`・hop-by-hop の header・`X-Forwarded-*` / `Forwarded` / `Via` / `Cookie` / `X-Real-IP` を捨て、資格情報を `x-api-key` として付ける（許可リストではなく削除リスト。必要な header を確定できないため）。CONNECT と他の経路は 403。`Transfer-Encoding: chunked` の要求は本文を読まずに 411 で拒否する。`POST /v1/messages` と `count_tokens` は body の `model` が宣言 model と一致しなければ 403
+- 外向き通信と認証: Run の container は `--network none`（loopback だけで、どの Docker network にもつながらず、経路が 1 つもない）。出口は proxy の container（同じ image、キット自身と Run 専用の資格情報だけを ro で mount、socket の volume を RW で mount、別の PID namespace、default の bridge network）だけ。proxy は TCP では待ち受けず、volume 上の `/proxy-sock/proxy.sock` だけで待ち受ける。Run の container は同じ volume を ro で mount し（ro でも Unix ソケットへの接続はできる）、container の主プロセスの relay（キットの `RELAY`、資格情報を持たない）が `127.0.0.1:3128` をその socket へバイト単位でつなぐ。proxy は平文 HTTP の reverse proxy で、[Anthropic 形式の gateway として Claude Code が呼ぶ経路](https://code.claude.com/docs/en/llm-gateway-protocol)（`POST /v1/messages`、`POST /v1/messages/count_tokens`、`GET /v1/models`）だけを TLS で `api.anthropic.com` へ転送する。そのとき Worker が送る `Authorization` / `x-api-key` / `Proxy-Authorization`・hop-by-hop の header・`X-Forwarded-*` / `Forwarded` / `Via` / `Cookie` / `X-Real-IP` を捨て、資格情報を `x-api-key` として付ける（許可リストではなく削除リスト。必要な header を確定できないため）。CONNECT と他の経路は 403。`Transfer-Encoding: chunked` の要求は本文を読まずに 411 で拒否する。`POST /v1/messages` と `count_tokens` は body の `model` が宣言 model と一致しなければ 403
 - proxy での使用量の強制: proxy は `POST /v1/messages` の応答から usage を読み、§1 の token の定義（`input_tokens + cache_creation_input_tokens + cache_read_input_tokens + output_tokens`）で Run の累計を取る。非 stream の JSON は応答の `usage`、SSE は `message_start` の `message.usage` に、`message_delta` の `usage`（公式 docs で累計値と明記: [Streaming messages](https://platform.claude.com/docs/en/build-with-claude/streaming)、2026-10-26 参照）を項目ごとに上書きした値。SSE が `message_stop` を受け取らずに終わった場合（途中切断）は usage が読めないものとして扱う。累計が `--max-run-tokens` を超えたら、以降の要求はすべて 403（理由 `token-limit`）で拒否する。`POST /v1/messages` の応答から usage が読めなければ、status が 200 以外（upstream への接続失敗を含む）でも以降をすべて拒否する（理由 `usage not measurable`。200 以外は課金されないというのは Source claim で未確認のため、安全側に倒す）。`POST /v1/messages` は同時に 1 本だけ転送し、転送中に届いた 2 本目は 429（理由 `concurrent billable request`）で拒否して記録する。上限の判定は転送前に行い、加算は応答の後なので、上限を超えうるのは最後に転送した 1 要求分まで。body の JSON に重複したキーがあれば 403（理由 `unreadable body`）、`Content-Length` が負・数字以外なら 400 で拒否する
 - 全要求の method・path・status・拒否の理由・proxy が測った usage だけを `proxy.log` に残す（header と body は残さない）。proxy の stderr は `proxy.stderr.log` に残す
-- Claude Code には `ANTHROPIC_BASE_URL=http://<proxy>:3128` と、資格情報ではない固定の placeholder の `ANTHROPIC_AUTH_TOKEN` を渡し、`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` を付ける（[gateway への接続](https://code.claude.com/docs/en/llm-gateway-connect)）
+- Claude Code には `ANTHROPIC_BASE_URL=http://127.0.0.1:3128`（relay） と、資格情報ではない固定の placeholder の `ANTHROPIC_AUTH_TOKEN` を渡し、`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` を付ける（[gateway への接続](https://code.claude.com/docs/en/llm-gateway-connect)）
 - 資格情報: Operator が作る Run 専用の短命・低上限の API 資格情報（§4 の 1）。proxy の container の `/proxy-secret/key` にだけ置く
 
-採らなかった案: (1) host の macOS で Claude Code 自身の制限だけに頼る案（初版）。Read / Edit / Write が作業ディレクトリ外にも及びうる、Write したスクリプトの実行で監視をすり抜けられる、確認を model なしでできない、の理由で独立レビューで差し戻された。(2) 長期 token を環境変数で渡す案。Worker のプロセスから環境変数を読める可能性があるため。(3) 資格情報ファイルを Run の container に ro で mount し、読めるリスクを承認して進む案（案 D）。Worker の uid から読めることを実測した（§2.4 の旧方式）ため、資格情報を Worker に置かない本方式に替えた。
+採らなかった案: (1) host の macOS で Claude Code 自身の制限だけに頼る案（初版）。Read / Edit / Write が作業ディレクトリ外にも及びうる、Write したスクリプトの実行で監視をすり抜けられる、確認を model なしでできない、の理由で独立レビューで差し戻された。(2) 長期 token を環境変数で渡す案。Worker のプロセスから環境変数を読める可能性があるため。(3) 資格情報ファイルを Run の container に ro で mount し、読めるリスクを承認して進む案（案 D）。Worker の uid から読めることを実測した（§2.4 の旧方式）ため、資格情報を Worker に置かない本方式に替えた。(4) Run の container を internal の Docker network につなぐ案（#254 の版）。Docker Desktop では internal network の IPAM Gateway に Worker から到達できた（§2.4、`ECONNREFUSED`）ため、network を持たない本方式に替えた。(5) `--network container:<proxy>` で proxy の network namespace に Worker を入れる案。proxy は外へ出る経路を持つため、Worker も同じ経路を持ってしまう。(6) iptables で Gateway への通信を落とす案。container の中で `NET_ADMIN` を足す必要があり（cap の追加はセキュリティ上の後退）、Docker Desktop の VM 側の規則は host から管理できず Run ごとに確かめにくい。
 
 ### 2.2 起動前の確認（バッチ開始時、1 つでも満たさなければ止める）
 
@@ -60,11 +60,11 @@
 
 | # | 確認 | 方法（model を起動しない） |
 |---|---|---|
-| 1 | network が internal | `docker network inspect` の `Internal` が true |
-| 2 | mount と制約 | proxy の container: bind mount がキットと資格情報の 2 つ（ro）と完全一致し、`PidMode` が空（PID namespace を共有しない）。Run の container: `docker inspect` の `Config.Env` が image の `Config.Env` と完全一致（Worker の環境変数は exec ごとに渡す）。`docker inspect` の全 mount を type・source（realpath）・destination・RW で 3 つと完全一致。`PidMode` が空。`HostConfig.Tmpfs` が `/tmp`・`/cc-home` と完全一致。`NetworkMode` が internal network。Privileged=false、CapAdd なし、CapDrop=ALL、ReadonlyRootfs=true、no-new-privileges、seccomp が起動時の profile と JSON として一致 |
+| 1 | Run の container が network を持たない | socket の volume の `docker volume inspect` が driver `local`・options `type=tmpfs,device=tmpfs,o=uid=<uid>,gid=<gid>,mode=0700` と完全一致（同名の既存 volume を `volume create` が黙って再利用するため）。Run の container の `NetworkSettings.Networks` が `none` だけで、IP アドレス・Gateway が空 |
+| 2 | mount と制約 | proxy の container: bind mount がキットと資格情報の 2 つ（ro）と完全一致し、volume の mount が socket の volume（`/proxy-sock`、RW）だけ、`PidMode` が空（PID namespace を共有しない）。Run の container: `docker inspect` の `Config.Env` が image の `Config.Env` と完全一致（Worker の環境変数は exec ごとに渡す）。`docker inspect` の全 bind mount を type・source（realpath）・destination・RW で 3 つと完全一致し、volume の mount が socket の volume（`/proxy-sock`、ro）だけ。`PidMode` が空。`HostConfig.Tmpfs` が `/tmp`・`/cc-home` と完全一致。`NetworkMode` が `none`。Privileged=false、CapAdd なし、CapDrop=ALL、ReadonlyRootfs=true、no-new-privileges、seccomp が起動時の profile と JSON として一致 |
 | 3 | Runtime | container 内の `claude --version` が `2.1.310` |
 | 4 | settings の適用と sandbox の可用性 | container 内の `claude sandbox status`（2.1.310 の隠しサブコマンド。posture を JSON で出すだけで model を起動しない）が `enabled: true`・`enabledSource: settings`・`unavailableReason: null`・`strictMode: true`・`filesystemPolicy: strict`・`autoAllowBashIfSandboxed: false` |
-| 5 | 外向き通信の遮断（対照つき） | Run の container の中で: loopback の listen ソケットには接続できる（probe が動く対照）、`1.1.1.1:443`・internal network の IPAM Gateway の 443 への直接接続が `ENETUNREACH` / `EHOSTUNREACH`、`host.docker.internal` は名前解決できないか同じ errno、proxy の port には接続できる、proxy への `CONNECT api.anthropic.com:443` が 403（tunnel で認証を迂回できない）、許可外の経路 `GET /` が 403。許可された経路は課金が起きうるため probe しない。timeout・別の errno・probe の異常終了は確認できないとして止める |
+| 5 | 外向き通信の遮断（対照つき） | Run の container の中で、relay と proxy の socket が応答するのを待った後（30 秒で止める）: loopback の listen ソケットには接続できる（probe が動く対照）、IPv4 の経路（`/proc/net/route`）と loopback 以外の IPv6 の経路（`/proc/net/ipv6_route`）が 0 件（どの IP にも届かない）、`1.1.1.1` と default bridge network の IPAM Gateway への TCP 443・UDP 53、proxy の bridge の IP への TCP 443 が `ENETUNREACH` / `EHOSTUNREACH`、`host.docker.internal` は名前解決できないか同じ errno、relay（`127.0.0.1:3128`）には接続できる、proxy への `CONNECT api.anthropic.com:443` が 403（tunnel で認証を迂回できない）、許可外の経路 `GET /` が 403。許可された経路は課金が起きうるため probe しない。timeout・別の errno・probe の異常終了は確認できないとして止める |
 | 6 | 資格情報が Worker の container にない | Run の uid・Worker と同じ環境変数で、Claude Code の Bash sandbox の外から実行する（sandbox が効かなかった場合の最悪条件。2.1.310 には model なしで sandbox の中でコマンドを動かす手段がない）。開始の印 `PROBE_STARTED` の後、`ANTHROPIC_API_KEY`・`CLAUDE_CODE_OAUTH_TOKEN`・`ANTHROPIC_CUSTOM_HEADERS` がない、`ANTHROPIC_AUTH_TOKEN` が placeholder と一致、環境変数の名前が image の ENV・Worker に渡す環境変数・`HOSTNAME` の和に収まる、`/proxy-secret`・`/proxy/kit.py`・`/cc-home/.credentials.json`・`/tmp/home/.claude` がない、`/proc` に proxy のプロセスが見えない、をすべて満たせば `CREDENTIAL_ABSENT`・exit 0。1 つでも当たれば `BLOCK: …`（exit 3）で止める。probe が始まらない・他の exit code も止める。承認で通す例外はない |
 | 7 | 認証・課金経路・proxy の使用量の強制 | キットの定数 `PROXY_AUTH_PATH` が `PASS` であること。現在は `NOT_TESTED` のため、確認 1〜6 の後に必ず `isolation-stop`（`modelLaunched: false`）で止まる（§2.5） |
 
@@ -105,7 +105,22 @@
 | 5 のその他・proxy の stderr | PASS（従来どおり。proxy.log に理由 `route` で 2 件、stderr は空） |
 | 6 の環境変数の名前の検査 | PASS（`CREDENTIAL_ABSENT`）。対照: 余分な環境変数を 1 つ足すと `BLOCK`・exit 3 |
 
-確認 5 の Gateway の FAIL は未解決で、解消（Gateway への経路を塞ぐ方式の追加など）まで、確認 7 と別に、キットは model を起動しない。
+この Gateway の FAIL は、Run の container を network なし（`--network none`）にし、proxy へ Unix ドメインソケットでつなぐ方式（§2.1）で解消した（下の実測）。
+
+**2026-10-27 の実測（network なしの方式、model は起動していない）**: キットの関数（`volume_create_command`・`check_volume`・`proxy_run_command`・`check_proxy_container`・`docker_run_command`・`check_no_network`・`check_container`・`check_container_env`・`READY_PROBE`・`EGRESS_PROBE`・`AUTH_PROBE`・`teardown`）を呼ぶ検査用のスクリプトを、ダミーの資格情報ファイルと派生 image（`mrs-pilot-sandbox@sha256:c8d259e6…`）で Docker Desktop 29.9.1 に対して実行した。Linux 版 `claude` は手元になく、確認 3・4 は実行していない。container・volume は毎回 `teardown` で消え、残りがないことを `docker ps -a`・`docker volume ls` で確かめた。
+
+| # | 結果 |
+|---|---|
+| 1 | PASS（volume の options 一致、`Networks` は `none` だけで address なし） |
+| 2 | 5 回中 1 回 PASS（mount 3 つと volume の完全一致・seccomp 一致・`Config.Env` 一致）。**4 回は FAIL**: Docker Desktop が `docker inspect` の bind mount の `Source` を、mount ごとに不定に `/host_mnt/private/var/…` の形（host の realpath に `/host_mnt` を前置した形）で返し、realpath の完全一致に失敗した（安全側に止まる）。本 PR の変更とは独立の挙動で、扱いは別途決める（下記） |
+| 3・4 | 未実行（NOT_TESTED） |
+| 5 | **PASS**（確認 2 を通った回。LOOPBACK CONNECTED / ROUTES v4=0 v6=0 / `1.1.1.1` TCP・UDP ENETUNREACH / bridge Gateway `172.17.0.1` TCP・UDP ENETUNREACH / proxy の bridge の IP TCP ENETUNREACH / `host.docker.internal` NORESOLVE / relay 経由で PROXY_REACHABLE CONNECTED・`CONNECT api.anthropic.com:443` 403・`GET /` 403。proxy.log に理由 `route` の 2 件、proxy の stderr は空、ダミーの資格情報の文字列は proxy.log に出ない） |
+| 6 | PASS（`CREDENTIAL_ABSENT`、exit 0）。対照: proxy の container で同じ probe は exit 3（`BLOCK: env ANTHROPIC_AUTH_TOKEN is not the placeholder; path /proxy-secret; path /proxy/kit.py; proxy process visible`） |
+| 7 | NOT_TESTED（変更なし） |
+
+補足（観測）: network なしの container にも `tunl0`・`gre0`・`sit0` などの tunnel の既定 device が `/proc/net/dev` に見える（VM の kernel が module を読み込んでいるため。down で address・経路なし）。このため確認 5 は device の一覧ではなく経路の件数で判定する。
+
+確認 2 の `/host_mnt` の FAIL が残るため、確認 7 と別に、キットは多くの Run で確認 2 で止まる（安全側）。`/host_mnt` を取り除いて比較するかどうかは、確認 2 の判定を変えるため本 PR では扱わない。
 
 ### 2.5 proxy 方式の境界と、起動前に確かめること
 
@@ -217,7 +232,7 @@ event ごとに次を検査し、当たればその Run の container を kill �
 
 | ファイル | 内容 |
 |---|---|
-| `run.json` | 宣言値、起動コマンド、上限、prompt と settings の SHA-256、session ID、container・proxy・network の名前、起動前の確認結果、`isolation`（§2.3 の結果）、trace から読んだ値（init、応答 model、effort の値、tool call と tool result の件数、完全性、usage、modelUsage）、totalTokens、runningTotalTokens、wallClockMs、exit code、採点結果、status、`modelLaunched` |
+| `run.json` | 宣言値、起動コマンド、上限、prompt と settings の SHA-256、session ID、container・proxy・socket の volume の名前、起動前の確認結果、`isolation`（§2.3 の結果）、trace から読んだ値（init、応答 model、effort の値、tool call と tool result の件数、完全性、usage、modelUsage）、totalTokens、runningTotalTokens、wallClockMs、exit code、採点結果、status、`modelLaunched` |
 | `input/prompt.md` | 実際に渡した prompt |
 | `stream.jsonl` / `stderr.log` | stream-json の出力（実効値の照合元） |
 | `proxy.log` | proxy が受けた要求の method・path・許可・status・拒否の理由・usage（header・body・資格情報は残さない） |
@@ -233,8 +248,9 @@ event ごとに次を検査し、当たればその Run の container を kill �
 | Run 専用の短命・低上限の資格情報の作り方 | Console で期限・利用上限をどう付けられるか、上限超過がどの status で拒否されるかは未確認（**NOT_TESTED**）。Operator が作成時に確かめ、Issue #220 に記録する |
 | Claude Code の Bash sandbox が container 内で動くか | `sandbox status` は PASS だが、実際のコマンドが bubblewrap の中で動くかは未確認（**NOT_TESTED**）。同じ制約で `bwrap --unshare-user --unshare-net --unshare-pid` は動き、`--proc /proc` の mount は `Operation not permitted` だった。sandbox が動かなければ Bash が失敗し、Run は `runtime-error` などで止まる見込み |
 | settings の deny・denyRead が実際に効いていること | `sandbox status` は enabled・strict を返すが、個々のルールの適用は出力に出ない（**NOT_TESTED**） |
-| proxy の usage の集計と上限の強制 | handler の部品（SSE・JSON の usage の読み取り、途中切断の SSE、上限・model・重複キー・chunked・不正な Content-Length の拒否、並行要求の 429、header の削除、本文サイズの上限の 413）はネットワークなしのテストで確認。handler 全体も、偽の upstream と 127.0.0.1 の実ソケットで結合テスト済み（途中切断の SSE・200 以外・例外での閉鎖、並行の 429、413）。実際の API の応答での集計は **NOT_TESTED**（確認 7） |
-| 確認 5 の IPAM Gateway | Docker Desktop で **FAIL**（§2.4）。解消するまでキットは model を起動しない |
+| proxy の usage の集計と上限の強制 | handler の部品（SSE・JSON の usage の読み取り、途中切断の SSE、上限・model・重複キー・chunked・不正な Content-Length の拒否、並行要求の 429、header の削除、本文サイズの上限の 413）はネットワークなしのテストで確認。handler 全体も、偽の upstream と実際の Unix ドメインソケットで結合テスト済み（途中切断の SSE・200 以外・例外での閉鎖、並行の 429、413）。実際の API の応答での集計は **NOT_TESTED**（確認 7） |
+| 確認 5 の IPAM Gateway | network なしの方式で **PASS**（2026-10-27 実測、§2.4）。internal network の方式では FAIL だった |
+| 確認 2 の bind mount の `Source` | Docker Desktop 29.9.1 で 5 回中 4 回、`Source` が `/host_mnt` を前置した形で返り **FAIL**（§2.4）。扱いが決まるまでキットはそこで止まる |
 | proxy の許可経路で足りるか | 公式 docs の 3 経路以外が要るか、SSE の stream を proxy がそのまま中継できるかは未確認（**NOT_TESTED**）。要る場合は proxy で拒否され、Run 後の照合で `egress-anomaly` になる |
 | 1 Run・合計の上限（`--timeout-s`・`--max-run-tokens`・`--budget-tokens`） | 承認値は 1 Run 300,000 tokens・30 分、合計 600,000 tokens。**#244 の実測から上限の見直しが要る見込み**（#244 では本物の repo の Task で 1 Run 1M〜3.2M tokens、95% 以上がキャッシュ入力。Runtime・model は異なる）。値は本書で決めず、Operator が Issue #220 で決めた値をコマンドで渡す |
 | stream-json の形式 | init の各キー、assistant の `message.model`・`usage`、result の `usage`・`modelUsage` は Source claim による想定で **NOT_TESTED**。キーが違えば `control-deviation` で止まる（安全側） |

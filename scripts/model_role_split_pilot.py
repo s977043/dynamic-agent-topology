@@ -70,6 +70,8 @@ PROXY_KIT = "/proxy/kit.py"
 PLACEHOLDER_TOKEN = "mrs-placeholder-not-a-credential"
 # Routes Claude Code calls on an Anthropic-format gateway (https://code.claude.com/docs/en/llm-gateway-protocol).
 ALLOWED_ROUTES = (("POST", "/v1/messages"), ("POST", "/v1/messages/count_tokens"), ("GET", "/v1/models"))
+# The proxy refuses (413) a request body larger than this before reading it (runbook §2.5 gives the basis).
+MAX_BODY_BYTES = 32 * 1024 * 1024
 CREDENTIAL_MAX_LIFETIME_H = 24
 # Whether Claude Code 2.1.310 authenticates and bills as expected through the proxy. Only a reviewed change with the
 # evidence (runbook §2.5) may set this to "PASS"; there is no flag to acknowledge NOT_TESTED.
@@ -774,14 +776,15 @@ class ProxyLedger:
                 self.in_flight = True
         return None
 
-    def add(self, tokens: int | None, billable: bool) -> None:
-        """Record a forwarded request's usage; `billable` is the billable route whatever the status, and frees its slot."""
+    def add(self, tokens: int | None, billable: bool, unmeasured: str = "usage not measurable") -> None:
+        """Record a forwarded request's usage; `billable` is the billable route whatever the status, and frees its slot.
+        A billable request without usage closes the proxy with `unmeasured` as the reason."""
         with self.lock:
             if billable:
                 self.in_flight = False
             if tokens is None:
                 if billable:
-                    self.closed = "usage not measurable"
+                    self.closed = unmeasured
                 return
             self.total += tokens
             if self.total > self.max_tokens:
@@ -816,6 +819,11 @@ def proxy_main(argv: list[str]) -> int:
                 self.close_connection = True
                 self.send_error(400)
                 return
+            if length > MAX_BODY_BYTES:
+                self.record(False, 413, "body too large")
+                self.close_connection = True
+                self.send_error(413)
+                return
             chunked = "chunked" in (self.headers.get("Transfer-Encoding") or "").lower()
             body = self.rfile.read(length) if length and not chunked else None
             refused = ledger.refuse(self.command, route, self.headers, body)
@@ -828,38 +836,46 @@ def proxy_main(argv: list[str]) -> int:
                     pass
                 return
             billable = (self.command, route) == BILLABLE_ROUTE
+            up = resp = tokens = failure = None
             try:
                 up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=600,
                                                  context=ssl.create_default_context())
                 up.request(self.command, self.path, body=body, headers=forward_headers(self.headers.items(), key))
                 resp = up.getresponse()
-            except OSError:
-                ledger.add(None, billable)
-                self.record(True, 502)
-                self.send_error(502)
-                return
-            self.send_response(resp.status)
-            for k, v in resp.getheaders():
-                if k.lower() not in DROP_HEADERS:
-                    self.send_header(k, v)
-            self.end_headers()
-            sse = SseUsage() if "text/event-stream" in (resp.getheader("Content-Type") or "") else None
-            kept = b""
-            try:
-                while chunk := resp.read1(65536):
-                    if sse:
-                        sse.feed(chunk)
-                    elif billable:
-                        kept += chunk
-                    self.wfile.write(chunk)
-                    self.wfile.flush()
-            except OSError:
-                pass
+                self.send_response(resp.status)
+                for k, v in resp.getheaders():
+                    if k.lower() not in DROP_HEADERS:
+                        self.send_header(k, v)
+                self.end_headers()
+                sse = SseUsage() if "text/event-stream" in (resp.getheader("Content-Type") or "") else None
+                kept = b""
+                try:
+                    while chunk := resp.read1(65536):
+                        if sse:
+                            sse.feed(chunk)
+                        elif billable:
+                            kept += chunk
+                        self.wfile.write(chunk)
+                        self.wfile.flush()
+                except OSError:
+                    pass
+                tokens = sse.total() if sse else json_usage(kept) if billable else None
+            except Exception as exc:
+                failure = f"proxy error {type(exc).__name__}"
             finally:
-                up.close()
-            tokens = sse.total() if sse else json_usage(kept) if billable else None
-            ledger.add(tokens, billable)
-            self.record(True, resp.status, None, tokens)
+                # Always free the billable slot; a request whose usage is unknown closes the proxy.
+                if up:
+                    up.close()
+                ledger.add(tokens, billable, failure or "usage not measurable")
+                reason = failure or (f"closed: {ledger.closed}" if billable and tokens is None else None)
+                self.record(True, resp.status if resp else 502, reason, tokens)
+            if failure:
+                self.close_connection = True
+                if resp is None:
+                    try:
+                        self.send_error(502)
+                    except OSError:
+                        pass
 
         do_GET = do_POST = do_CONNECT = do_PUT = do_DELETE = relay
 

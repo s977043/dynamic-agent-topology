@@ -7,9 +7,11 @@ import contextlib
 import io
 import json
 import os
+import socket
 import sys
 import tempfile
 import threading
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -417,11 +419,119 @@ def test_proxy_concurrency() -> None:
     check(ledger.refuse("POST", "/v1/messages", Headers(), body)[0] == 403, "next request sees the earlier usage")
 
 
+class FakeUpstream:
+    """Stands in for http.client.HTTPSConnection; `mode` picks the response."""
+    mode = "json"
+
+    def __init__(self, *_a, **_k):
+        self.chunks: list[bytes] = []
+
+    def request(self, *_a, **_k) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def getheaders(self) -> list:
+        return [("Content-Type", self.ctype)]
+
+    def getheader(self, name: str, default=None):
+        return self.ctype if name == "Content-Type" else default
+
+    def read1(self, _n: int) -> bytes:
+        return self.chunks.pop(0) if self.chunks else b""
+
+    def getresponse(self):
+        mode = FakeUpstream.mode
+        if mode == "error":
+            raise ValueError("unexpected")
+        if mode == "slow":
+            time.sleep(0.5)
+        self.status, self.ctype = (429, "application/json") if mode == "429" else (200, "application/json")
+        self.chunks = [b'{"usage":{"input_tokens":100,"output_tokens":10}}'] if self.status == 200 else [b"{}"]
+        if mode == "sse_cut":
+            self.ctype = "text/event-stream"
+            self.chunks = [b'data: {"type":"message_start","message":{"usage":{"input_tokens":5}}}\n\n']
+        return self
+
+
+@contextlib.contextmanager
+def live_proxy(tmp: Path):
+    """proxy_main on 127.0.0.1 with FakeUpstream (no external network); yields (port, log)."""
+    import http.client
+    import http.server
+    servers = []
+    real_server, real_conn, real_secret = http.server.ThreadingHTTPServer, http.client.HTTPSConnection, mp.PROXY_SECRET
+
+    class LocalServer(real_server):
+        def __init__(self, _addr, handler):
+            super().__init__(("127.0.0.1", 0), handler)
+            servers.append(self)
+
+    (tmp / "key").write_text("sk-test")
+    log = io.StringIO()
+    http.server.ThreadingHTTPServer, http.client.HTTPSConnection, mp.PROXY_SECRET = LocalServer, FakeUpstream, str(tmp / "key")
+    try:
+        with contextlib.redirect_stdout(log):
+            threading.Thread(target=mp.proxy_main, args=(["m", "1000"],), daemon=True).start()
+            for _ in range(200):
+                if servers:
+                    break
+                time.sleep(0.01)
+            yield servers[0].server_address[1], log
+            servers[0].shutdown()
+            servers[0].server_close()
+    finally:
+        http.server.ThreadingHTTPServer, http.client.HTTPSConnection, mp.PROXY_SECRET = real_server, real_conn, real_secret
+
+
+def post(port: int, body: bytes = b'{"model":"m"}', length: int | None = None) -> int:
+    with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+        s.sendall(b"POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: %d\r\n\r\n"
+                  % (len(body) if length is None else length) + body)
+        return int(s.recv(64).split(b" ")[1])
+
+
+def test_proxy_handler(tmp: Path) -> None:
+    for mode, first in (("sse_cut", 200), ("429", 429), ("error", 502)):
+        FakeUpstream.mode = mode
+        with live_proxy(tmp) as (port, log):
+            check(post(port) == first, f"{mode}: relayed status")
+            check(post(port) == 403, f"{mode}: proxy closed (slot freed, not 429)")
+        reasons = [json.loads(line)["reason"] for line in log.getvalue().splitlines()]
+        expected = "proxy error ValueError" if mode == "error" else "closed: usage not measurable"
+        check(reasons[0] == expected and reasons[1] == expected.removeprefix("closed: "),
+              f"{mode}: closure reason recorded: {reasons}")
+    FakeUpstream.mode = "slow"
+    with live_proxy(tmp) as (port, _log):
+        start = threading.Barrier(5)
+        statuses = []
+
+        def send() -> None:
+            start.wait()
+            statuses.append(post(port))
+
+        threads = [threading.Thread(target=send) for _ in range(5)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        check(sorted(statuses) == [200, 429, 429, 429, 429], f"one billable request at a time: {statuses}")
+    FakeUpstream.mode = "json"
+    with live_proxy(tmp) as (port, log):
+        head = b'{"model":"m","pad":"'
+        exact = head + b"x" * (mp.MAX_BODY_BYTES - len(head) - 2) + b'"}'
+        check(post(port, exact) == 200, "body of exactly MAX_BODY_BYTES forwarded")
+        check(post(port, b"", mp.MAX_BODY_BYTES + 1) == 413, "larger body refused before it is read")
+        check(post(port) == 200, "proxy still serves after a 413")
+    check(json.loads(log.getvalue().splitlines()[1])["reason"] == "body too large", "413 recorded")
+
+
 def main() -> int:
     tests = [test_plan_and_settings, test_policy, test_gates, test_proxy, test_proxy_concurrency]
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
-                 test_guards, test_never_launched_retry]
+                 test_guards, test_never_launched_retry, test_proxy_handler]
     for t in tests:
         t()
         print(f"ok {t.__name__}")

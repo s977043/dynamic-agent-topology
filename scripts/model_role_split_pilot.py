@@ -71,6 +71,8 @@ PROXY_KIT = "/proxy/kit.py"
 # per-Run tmpfs volume (RW in the proxy, ro in the Run container); a relay in the Run container joins loopback to it.
 PROXY_SOCKET_DIR = "/proxy-sock"
 PROXY_SOCKET = f"{PROXY_SOCKET_DIR}/proxy.sock"
+RELAY_MAX_CONNECTIONS = 8  # concurrent Worker connections the relay serves; further ones wait in the backlog
+HOST_MNT = "/host_mnt"  # Docker Desktop reports some bind sources as this prefix + the host realpath
 # The Worker holds this placeholder; the proxy drops it and adds the real credential as x-api-key.
 PLACEHOLDER_TOKEN = "mrs-placeholder-not-a-credential"
 # Routes Claude Code calls on an Anthropic-format gateway (https://code.claude.com/docs/en/llm-gateway-protocol).
@@ -391,26 +393,43 @@ def volume_mounts(inspect: dict) -> list[tuple[str, str, bool]]:
                   for m in inspect.get("Mounts", []) if m.get("Type") == "volume")
 
 
-def check_proxy_container(inspect: dict, args, volume: str) -> None:
+def bind_source(source: str, expected: set[str], desktop: bool) -> str:
+    """The inspected `Source` as the expected realpath when it is exactly that path, or (Docker Desktop only) exactly
+    HOST_MNT + that path; otherwise the raw string, which then fails the exact comparison. No normalization."""
+    for want in expected:
+        if source == want or (desktop and source == HOST_MNT + want):
+            return want
+    return source
+
+
+def is_docker_desktop() -> bool:
+    return docker("info", "--format", "{{.OperatingSystem}}", check=False).stdout.strip() == "Docker Desktop"
+
+
+def check_proxy_container(inspect: dict, args, volume: str, desktop: bool = False) -> None:
     """The proxy holds only the kit, the credential, and the socket volume, and does not share a PID namespace."""
-    binds = sorted(("bind", os.path.realpath(m.get("Source", "")), m.get("Destination"), bool(m.get("RW")))
+    expected = sorted(("bind", src, dest, rw) for dest, (src, rw) in proxy_bind_sources(args).items())
+    sources = {src for _, src, _, _ in expected}
+    binds = sorted(("bind", bind_source(m.get("Source", ""), sources, desktop), m.get("Destination"), bool(m.get("RW")))
                    for m in inspect.get("Mounts", []) if m.get("Type") == "bind")
     others = [m.get("Destination") for m in inspect.get("Mounts", []) if m.get("Type") not in ("bind", "tmpfs", "volume")]
-    expected = sorted(("bind", src, dest, rw) for dest, (src, rw) in proxy_bind_sources(args).items())
     if binds != expected or others or volume_mounts(inspect) != [(volume, PROXY_SOCKET_DIR, True)]:
         raise Stop(f"proxy mounts {binds} {volume_mounts(inspect)} {others} != expected {expected} + {volume}")
     if (inspect.get("HostConfig") or {}).get("PidMode"):
         raise Stop("proxy container shares a PID namespace")
 
 
-def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], work_root: Path, volume: str) -> dict:
+def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], work_root: Path, volume: str,
+                    desktop: bool = False) -> dict:
     """Stop unless every mount, the tmpfs set, the network, and the EXP-001 constraints match exactly."""
     host = inspect.get("HostConfig", {})
     binds, tmpfs = [], []
+    sources = {src for _, src, _, _ in expected}
     for m in inspect.get("Mounts", []):
         kind = m.get("Type")
         if kind == "bind":
-            binds.append(("bind", os.path.realpath(m.get("Source", "")), m.get("Destination"), bool(m.get("RW"))))
+            binds.append(("bind", bind_source(m.get("Source", ""), sources, desktop), m.get("Destination"),
+                          bool(m.get("RW"))))
         elif kind == "tmpfs":
             tmpfs.append(m.get("Destination"))
         elif kind != "volume":
@@ -444,6 +463,7 @@ def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], w
     except ValueError:
         matches = False
     evidence = {"mounts": [list(b) for b in sorted(binds)], "hostTmpfs": host_tmpfs, "network": "none",
+                "inspectedSources": sorted(m.get("Source", "") for m in inspect.get("Mounts", []) if m.get("Type") == "bind"),
                 "socketVolume": volume,
                 "seccompLaunchedSha256": sha256_file(SECCOMP),
                 "seccompInspectSha256": hashlib.sha256(seccomp[0].encode()).hexdigest(),
@@ -544,6 +564,7 @@ def check_egress(rc: int, output: str) -> dict:
 # The Run container's main process: joins 127.0.0.1:PROXY_PORT to the proxy's Unix socket, byte for byte (the proxy
 # does every check). It holds no credential; the Worker reaching it is the same as reaching the proxy.
 RELAY = """import socket, threading
+slots = threading.BoundedSemaphore(%d)
 def pipe(a, b):
     try:
         while data := a.recv(65536):
@@ -562,11 +583,17 @@ def serve(c):
         c.close(); u.close(); return
     t = threading.Thread(target=pipe, args=(u, c), daemon=True); t.start()
     pipe(c, u); t.join(); c.close(); u.close()
+def run(c):
+    try:
+        serve(c)
+    finally:
+        slots.release()
 l = socket.socket(); l.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 l.bind(("127.0.0.1", %d)); l.listen(16)
 while True:
-    threading.Thread(target=serve, args=(l.accept()[0],), daemon=True).start()
-""" % (PROXY_SOCKET, PROXY_PORT)
+    slots.acquire()
+    threading.Thread(target=run, args=(l.accept()[0],), daemon=True).start()
+""" % (RELAY_MAX_CONNECTIONS, PROXY_SOCKET, PROXY_PORT)
 
 # Run in the Run container: waits until the relay listens and the proxy's socket accepts.
 READY_PROBE = """import socket, sys, time
@@ -686,10 +713,11 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict,
     names["volumeCreated"] = True
     check_volume(json.loads(docker("volume", "inspect", names["volume"]).stdout)[0], names["volume"])
     gateway = network_gateway(json.loads(docker("network", "inspect", "bridge").stdout)[0])
+    desktop = evidence["dockerDesktop"] = is_docker_desktop()
     docker(*proxy_run_command(args, names["proxy"], names["volume"], model)[1:])
     names["proxyStarted"] = True
     proxy_inspect = json.loads(docker("inspect", names["proxy"]).stdout)[0]
-    check_proxy_container(proxy_inspect, args, names["volume"])
+    check_proxy_container(proxy_inspect, args, names["volume"], desktop)
     proxy_ip = ((proxy_inspect.get("NetworkSettings") or {}).get("Networks") or {}).get("bridge", {}).get("IPAddress")
     if not proxy_ip:
         raise Stop("proxy container has no bridge address")
@@ -698,7 +726,7 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict,
     inspect = json.loads(docker("inspect", names["container"]).stdout)[0]
     check_no_network(inspect)
     evidence.update(check_container(inspect, expected_mounts(args, rdir), Path(args.work_root).resolve(),
-                                    names["volume"]))
+                                    names["volume"], desktop))
     image_env = json.loads(docker("image", "inspect", args.image).stdout)[0].get("Config", {}).get("Env") or []
     check_container_env((inspect.get("Config") or {}).get("Env"), image_env)
     evidence["containerEnvMatchesImage"] = True
@@ -759,14 +787,36 @@ def egress_anomaly(seen: dict) -> bool:
                 or not set(seen["allowed"]) <= routes)
 
 
-def teardown(names: dict) -> None:
-    for key, cmd in (("containerStarted", ["stop", "-t", "5", names["container"]]),
-                     ("proxyStarted", ["stop", "-t", "5", names["proxy"]]),
-                     # `--rm` removes a stopped container asynchronously; the volume is in use until it is gone.
-                     ("volumeCreated", ["rm", "-f", names["container"], names["proxy"]]),
-                     ("volumeCreated", ["volume", "rm", names["volume"]])):
-        if names.get(key):
-            docker(*cmd, check=False)
+def leftovers(names: dict) -> list[dict]:
+    """Containers and the volume of this Run that still exist (name and state), or a failed lookup."""
+    left = []
+    for key in ("container", "proxy"):
+        ps = docker("ps", "-a", "--filter", f"name=^/{names[key]}$", "--format", "{{.Names}} {{.State}}", check=False)
+        if ps.returncode != 0:
+            left.append({"name": names[key], "state": f"lookup failed (exit {ps.returncode})"})
+        left += [{"name": n, "state": st} for n, _, st in (ln.partition(" ") for ln in ps.stdout.splitlines() if ln)]
+    vols = docker("volume", "ls", "-q", "--filter", f"name=^{names['volume']}$", check=False)
+    if vols.returncode != 0:
+        left.append({"name": names["volume"], "state": f"lookup failed (exit {vols.returncode})"})
+    left += [{"name": n, "state": "volume"} for n in vols.stdout.split() if n == names["volume"]]
+    return left
+
+
+def teardown(names: dict, attempts: int = 20) -> list[dict]:
+    """Stop and remove the Run's containers and volume; returns what is left (empty on success)."""
+    if not any(names.get(k) for k in ("containerStarted", "proxyStarted", "volumeCreated")):
+        return []
+    docker("stop", "-t", "5", names["container"], names["proxy"], check=False)
+    left = []
+    for _ in range(attempts):
+        # `--rm` removes a stopped container asynchronously; the volume is in use until both are gone.
+        docker("rm", "-f", names["container"], names["proxy"], check=False)
+        docker("volume", "rm", names["volume"], check=False)
+        left = leftovers(names)
+        if not left:
+            return []
+        time.sleep(0.5)
+    return left
 
 
 # Request headers never forwarded upstream: credentials, hop-by-hop, and client-identity / proxy-chain headers.
@@ -992,6 +1042,10 @@ def proxy_main(argv: list[str]) -> int:
 
     class Server(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
         daemon_threads = True
+
+        def server_bind(self) -> None:
+            super().server_bind()
+            os.chmod(self.server_address, 0o600)
 
     Server(PROXY_SOCKET, Handler).serve_forever()
     return 0
@@ -1287,7 +1341,13 @@ def run_one(args, run: dict, cand: dict, work_root: Path, prompt: str, evidence:
             record["proxyRequests"] = proxy_requests(logs.stdout, names["proxyLogLinesBeforeLaunch"], logs.stderr)
     finally:
         if not args.dry_run:
-            teardown(names)
+            left = teardown(names)
+            if left:
+                record.update(status="teardown-failed", stopReasonBeforeTeardown=record.get("stopReason"),
+                              stopReason="containers or volume left after teardown", teardownLeftovers=left)
+                write_record(rdir, record)
+                raise Stop(f"{run['runId']}: teardown left {left} (remove them before any further Run; the proxy "
+                           f"container holds the Run credential)")
     record["exitCode"] = rc
     trace = read_stream(rdir / "stream.jsonl")
     record["trace"] = trace

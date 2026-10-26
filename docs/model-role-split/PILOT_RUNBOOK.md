@@ -61,7 +61,7 @@
 | # | 確認 | 方法（model を起動しない） |
 |---|---|---|
 | 1 | Run の container が network を持たない | socket の volume の `docker volume inspect` が driver `local`・options `type=tmpfs,device=tmpfs,o=uid=<uid>,gid=<gid>,mode=0700` と完全一致（同名の既存 volume を `volume create` が黙って再利用するため）。Run の container の `NetworkSettings.Networks` が `none` だけで、IP アドレス・Gateway が空 |
-| 2 | mount と制約 | proxy の container: bind mount がキットと資格情報の 2 つ（ro）と完全一致し、volume の mount が socket の volume（`/proxy-sock`、RW）だけ、`PidMode` が空（PID namespace を共有しない）。Run の container: `docker inspect` の `Config.Env` が image の `Config.Env` と完全一致（Worker の環境変数は exec ごとに渡す）。`docker inspect` の全 bind mount を type・source（realpath）・destination・RW で 3 つと完全一致し、volume の mount が socket の volume（`/proxy-sock`、ro）だけ。`PidMode` が空。`HostConfig.Tmpfs` が `/tmp`・`/cc-home` と完全一致。`NetworkMode` が `none`。Privileged=false、CapAdd なし、CapDrop=ALL、ReadonlyRootfs=true、no-new-privileges、seccomp が起動時の profile と JSON として一致 |
+| 2 | mount と制約 | proxy の container: bind mount がキットと資格情報の 2 つ（ro）と完全一致し、volume の mount が socket の volume（`/proxy-sock`、RW）だけ、`PidMode` が空（PID namespace を共有しない）。Run の container: `docker inspect` の `Config.Env` が image の `Config.Env` と完全一致（Worker の環境変数は exec ごとに渡す）。`docker inspect` の全 bind mount を type・source（realpath）・destination・RW で 3 つと完全一致し（source は §2.4 の方針 (b) で生の文字列を比べる）、volume の mount が socket の volume（`/proxy-sock`、ro）だけ。`PidMode` が空。`HostConfig.Tmpfs` が `/tmp`・`/cc-home` と完全一致。`NetworkMode` が `none`。Privileged=false、CapAdd なし、CapDrop=ALL、ReadonlyRootfs=true、no-new-privileges、seccomp が起動時の profile と JSON として一致 |
 | 3 | Runtime | container 内の `claude --version` が `2.1.310` |
 | 4 | settings の適用と sandbox の可用性 | container 内の `claude sandbox status`（2.1.310 の隠しサブコマンド。posture を JSON で出すだけで model を起動しない）が `enabled: true`・`enabledSource: settings`・`unavailableReason: null`・`strictMode: true`・`filesystemPolicy: strict`・`autoAllowBashIfSandboxed: false` |
 | 5 | 外向き通信の遮断（対照つき） | Run の container の中で、relay と proxy の socket が応答するのを待った後（readiness probe は最大100回の再試行。Docker呼出し全体・Unix socket接続の30秒終了は保証されない。応答が得られなければ確認未了のまま停止し、Operatorが待機プロセスとcontainer/volumeを点検・後片付けする）: loopback の listen ソケットには接続できる（probe が動く対照）、IPv4 の経路（`/proc/net/route`）と loopback 以外の IPv6 の経路（`/proc/net/ipv6_route`）が 0 件（どの IP にも届かない）、`1.1.1.1` と default bridge network の IPAM Gateway への TCP 443・UDP 53、proxy の bridge の IP への TCP 443 が `ENETUNREACH` / `EHOSTUNREACH`、`host.docker.internal` は名前解決できないか同じ errno、relay（`127.0.0.1:3128`）には接続できる、proxy への `CONNECT api.anthropic.com:443` が 403（tunnel で認証を迂回できない）、許可外の経路 `GET /` が 403。許可された経路は課金が起きうるため probe しない。timeout・別の errno・probe の異常終了は確認できないとして止める |
@@ -120,7 +120,13 @@
 
 補足（観測）: network なしの container にも `tunl0`・`gre0`・`sit0` などの tunnel の既定 device が `/proc/net/dev` に見える（VM の kernel が module を読み込んでいるため。down で address・経路なし）。このため確認 5 は device の一覧ではなく経路の件数で判定する。
 
-確認 2 の `/host_mnt` の FAIL が残るため、確認 7 と別に、キットは多くの Run で確認 2 で止まる（安全側）。`/host_mnt` を取り除いて比較するかどうかは、確認 2 の判定を変えるため本 PR では扱わない。
+**確認 2 の `Source` の判定（#257 の独立レビュー後、方針 (b)）**: `Source` は生の文字列のまま比べ、realpath・prefix の除去・前方一致はかけない。許すのは「期待する realpath と完全一致」と、`docker info` の `OperatingSystem` が `Docker Desktop` のときに限り「`/host_mnt` + 期待する realpath と完全一致」の 2 つだけ。`/host_mnt/other`、`/host_mnt` + 期待値 + `/x`、末尾の `/`、`.` を含む形、Docker Desktop 以外での `/host_mnt` の形は FAIL。inspect した生の `Source` は `run.json` の `isolation.inspectedSources` に残す。
+
+**2026-10-27 の再実測（方針 (b) と以下の変更の後、model は起動していない）**: 同じ image・ダミーの資格情報で Docker Desktop に対して 6 回実行した。確認 1・2（proxy と Run の container の両方）・5・6 は **6 回とも PASS**。6 回のうち `Source` が `/host_mnt` の形で返った mount を含む回があり、(b) で通った。proxy の Unix ソケットは `600`（Run の uid）、proxy のログにダミーの資格情報の文字列は出ず、`teardown` の残存の検査は 6 回とも空で、別に `docker ps -a`・`docker volume ls` でも残りがないことを確かめた。
+
+**後片付けの検査**: `teardown` は停止・削除・volume 削除の後に `docker ps -a`・`docker volume ls` で残りを確かめ、消えるまで再試行する。残ったリソース（特に資格情報を mount した proxy の container）があれば、Run を `teardown-failed` とし、残ったリソース名と状態を `run.json` の `teardownLeftovers` に記録して batch を止める（自動の再試行はしない）。Operator は残りを消してから次へ進む。
+
+**その他（同じ変更）**: proxy の Unix ソケットは bind 直後に `0600` にする（umask 任せでは `0755` だった）。relay の同時接続数は `RELAY_MAX_CONNECTIONS`（8）までで、それを超える接続は空きが出るまで待つ。
 
 ### 2.5 proxy 方式の境界と、起動前に確かめること
 
@@ -250,7 +256,7 @@ event ごとに次を検査し、当たればその Run の container を kill �
 | settings の deny・denyRead が実際に効いていること | `sandbox status` は enabled・strict を返すが、個々のルールの適用は出力に出ない（**NOT_TESTED**） |
 | proxy の usage の集計と上限の強制 | handler の部品（SSE・JSON の usage の読み取り、途中切断の SSE、上限・model・重複キー・chunked・不正な Content-Length の拒否、並行要求の 429、header の削除、本文サイズの上限の 413）はネットワークなしのテストで確認。handler 全体も、偽の upstream と実際の Unix ドメインソケットで結合テスト済み（途中切断の SSE・200 以外・例外での閉鎖、並行の 429、413）。実際の API の応答での集計は **NOT_TESTED**（確認 7） |
 | 確認 5 の IPAM Gateway | network なしの方式で **PASS**（2026-10-27 実測、§2.4）。internal network の方式では FAIL だった |
-| 確認 2 の bind mount の `Source` | Docker Desktop 29.9.1 で 5 回中 4 回、`Source` が `/host_mnt` を前置した形で返り **FAIL**（§2.4）。扱いが決まるまでキットはそこで止まる |
+| 確認 2 の bind mount の `Source` | 方針 (b)（realpath か、Docker Desktop のときだけ `/host_mnt` + realpath との完全一致）で **PASS**（2026-10-27 再実測 6 回、§2.4）。方針 (b) 以前は Docker Desktop 29.9.1 で 5 回中 4 回 FAIL だった |
 | proxy の許可経路で足りるか | 公式 docs の 3 経路以外が要るか、SSE の stream を proxy がそのまま中継できるかは未確認（**NOT_TESTED**）。要る場合は proxy で拒否され、Run 後の照合で `egress-anomaly` になる |
 | 1 Run・合計の上限（`--timeout-s`・`--max-run-tokens`・`--budget-tokens`） | 承認値は 1 Run 300,000 tokens・30 分、合計 600,000 tokens。**#244 の実測から上限の見直しが要る見込み**（#244 では本物の repo の Task で 1 Run 1M〜3.2M tokens、95% 以上がキャッシュ入力。Runtime・model は異なる）。値は本書で決めず、Operator が Issue #220 で決めた値をコマンドで渡す |
 | stream-json の形式 | init の各キー、assistant の `message.model`・`usage`、result の `usage`・`modelUsage` は Source claim による想定で **NOT_TESTED**。キーが違えば `control-deviation` で止まる（安全側） |

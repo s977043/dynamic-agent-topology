@@ -135,6 +135,7 @@ Codexにはローカルの Frozen file guardがありません（`workspace-writ
 | L-019 | エージェント（ワーカー）による `AGENTS.md` の編集が auto mode の分類器に Self-Modification として拒否され、PR の途中で Human による適用に切り替えた | 2026-10-22 merge の PR #230。`AGENTS.md` の追記は Human が commit `852aab7` で適用した | 1 | candidate | 規則変更 PR（`AGENTS.md` / `CLAUDE.md` / `.claude/` など）は Agent が起案と別モデルの独立レビューまで行い、merge は Human が行う。`AGENTS.md` などの編集や push が拒否されたら回避せず STOP し、適用すべき差分を残して Human に依頼する（STOP 条件「ツールや permission による拒否」） |
 | L-020 | RunObservation の H1（取得率）で `endedAt` だけが 80% に届かず、判定が INCONCLUSIVE（中間）になった（他の 5 項目は 95% 以上）。未取得の主因は推測・未確認 | 2026-10-23 の測定。21 件・6 リポジトリで `endedAt` 13/21（61.9%）、`model` 20/21、他 4 項目 21/21。`docs/DOGFOODING.md` の OBS-H1 | 1 | candidate | 候補: dat-observe の記録手順で `endedAt` に記録時刻を入れ、変更後の新しい記録で H1 を判定し直す |
 | L-021 | RunObservation の集計が再現できなかった: 期間の件数をファイル mtime で数えた、入れ子ディレクトリや重複 observationId を検出しなかった、same-session の助言だけで `independentReview: 'yes'` とした自己矛盾の記録が保存できた | 2026-10-25 の観測記録 45 件に対する 4 本の独立レビュー。対策は PR #250 | 1 | candidate | `docs/OBSERVATION_MEASUREMENT.md` の集計規則（endedAt 基準・store 直下のみ）、validator の independentReview 整合検査、`run_observation.py` の重複・入れ子検出 |
+| L-022 | GitHub自動観測（ci、原因未分類） | 2026-10-26 CI conclusion=failure; run_id=40287306161; run_attempt=1; final job completed_at; source timestamp=2026-10-26T07:41:25+00:00 | 1 | candidate | 原因確認と改善案の検討待ち |
 <!-- learning-ledger:generated:end -->
 
 状態は `candidate` / `promoted` / `rejected` のいずれかです。回数1件でも、Frozen artifactやEvidenceの完全性に関わるものは先行して対策してかまいません（L-002、L-004、L-006。L-006 は検証結果の報告が実態とずれたEvidence完全性の問題）。昇格には原則2回以上の観測が必要で、これらはその例外です。

@@ -37,7 +37,7 @@ Docker Desktopのnetwork隔離・mountの実測、Claude認証経路、契約/�
 
 ### 今回の対応結果（同日追記）
 
-- #257: head `55003a6`、独立レビュー3ループ・必須0・CI3件成功でmerge（`e7c605ea448f79a9a20342beaaf246dd3376621d`）。18回帰成功。Docker確認2/3/4/7の未達を解消したことにはしません。readinessの「30秒」表現と実装のtimeout保証の差は非blocking推奨として残ります。
+- #257: head `55003a6`、独立レビュー3ループ・必須0・CI3件成功でmerge（`e7c605ea448f79a9a20342beaaf246dd3376621d`）。18回帰成功。Docker確認2/3/4/7の未達を解消したことにはしません。readinessの「30秒」表現と実装のtimeout保証の差は本計画PRで文書を訂正。実装にdeadlineを追加したものではありません。
 - #258: 許容予算を実消費の保証上界とする必須指摘1件を修正。head `557e7cc`、独立3ループ・必須0・CI3件成功でmerge（`0760b1b40767cec9622415c9aabd90f803dd8b93`）。計算表18セル・離散性2例・誤棄却0.087を再現。
 - [#244の確定blob記録](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6428095927): main `0760b1b` の文書blob `57007effd1fd502c86ea7e63029352df902670d0`、計算script blob `6199f01ce4982133658bb2f87fcb36a42e271a81`を記録し、§7の事前登録成立手順を完了。成立後も§5.1bのOperator判断まで起動停止。
 - 上記merge後のOpen PRは本計画PRだけ（#259）。冒頭の8 Issue/2 PRは作業前snapshotとして保持します。

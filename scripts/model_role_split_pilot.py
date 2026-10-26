@@ -733,6 +733,11 @@ def content_length(raw: str | None) -> int | None:
     return int(raw) if re.fullmatch(r"[0-9]{1,12}", raw) else None
 
 
+def header_safe(name: str, value: str) -> bool:
+    """False when an upstream header could split the response relayed to the Worker (CR, LF, or NUL)."""
+    return not re.search(r"[\r\n\x00]", name + value)
+
+
 def json_usage(body: bytes) -> int | None:
     try:
         usage = json.loads(body).get("usage")
@@ -837,6 +842,7 @@ def proxy_main(argv: list[str]) -> int:
                 return
             billable = (self.command, route) == BILLABLE_ROUTE
             up = resp = tokens = failure = None
+            dropped: list[str] = []
             try:
                 up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=600,
                                                  context=ssl.create_default_context())
@@ -844,7 +850,9 @@ def proxy_main(argv: list[str]) -> int:
                 resp = up.getresponse()
                 self.send_response(resp.status)
                 for k, v in resp.getheaders():
-                    if k.lower() not in DROP_HEADERS:
+                    if not header_safe(k, v):
+                        dropped.append(k[:60])
+                    elif k.lower() not in DROP_HEADERS:
                         self.send_header(k, v)
                 self.end_headers()
                 sse = SseUsage() if "text/event-stream" in (resp.getheader("Content-Type") or "") else None
@@ -868,6 +876,8 @@ def proxy_main(argv: list[str]) -> int:
                     up.close()
                 ledger.add(tokens, billable, failure or "usage not measurable")
                 reason = failure or (f"closed: {ledger.closed}" if billable and tokens is None else None)
+                if dropped:
+                    reason = f"{reason or ''}; dropped unsafe headers {dropped!r}".lstrip("; ")
                 self.record(True, resp.status if resp else 502, reason, tokens)
             if failure:
                 self.close_connection = True

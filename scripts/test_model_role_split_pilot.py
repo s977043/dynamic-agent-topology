@@ -433,7 +433,8 @@ class FakeUpstream:
         pass
 
     def getheaders(self) -> list:
-        return [("Content-Type", self.ctype)]
+        extra = [("X-Split", "a\r\nSet-Cookie: injected"), ("X-Nul\x00", "b")] if FakeUpstream.mode == "split" else []
+        return [("Content-Type", self.ctype), *extra]
 
     def getheader(self, name: str, default=None):
         return self.ctype if name == "Content-Type" else default
@@ -525,6 +526,17 @@ def test_proxy_handler(tmp: Path) -> None:
         check(post(port, b"", mp.MAX_BODY_BYTES + 1) == 413, "larger body refused before it is read")
         check(post(port) == 200, "proxy still serves after a 413")
     check(json.loads(log.getvalue().splitlines()[1])["reason"] == "body too large", "413 recorded")
+    FakeUpstream.mode = "split"
+    with live_proxy(tmp) as (port, log):
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+            s.sendall(b'POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n{"model":"m"}')
+            raw = b""
+            while chunk := s.recv(4096):
+                raw += chunk
+    check(raw.startswith(b"HTTP/1.0 200") and b"Set-Cookie" not in raw and b"X-Split" not in raw,
+          f"headers with CR/LF/NUL not relayed: {raw[:200]!r}")
+    check("dropped unsafe headers ['X-Split', 'X-Nul\\x00']" in json.loads(log.getvalue())["reason"],
+          "dropped headers recorded")
 
 
 def main() -> int:

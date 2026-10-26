@@ -674,6 +674,7 @@ DROP_HEADERS = {"host", "authorization", "x-api-key", "proxy-authorization", "co
 DROP_HEADER_PREFIXES = ("x-forwarded-",)
 # Routes whose body names a model; it must be the Run's declared model.
 MODEL_ROUTES = (("POST", "/v1/messages"), ("POST", "/v1/messages/count_tokens"))
+BILLABLE_ROUTE = ("POST", "/v1/messages")
 
 
 def forward_headers(items, key: str) -> dict:
@@ -685,10 +686,11 @@ def forward_headers(items, key: str) -> dict:
 
 class SseUsage:
     """Usage of one streamed Message: message_start carries message.usage, each message_delta carries cumulative
-    counts (https://platform.claude.com/docs/en/build-with-claude/streaming), so later fields replace earlier ones."""
+    counts (https://platform.claude.com/docs/en/build-with-claude/streaming), so later fields replace earlier ones.
+    A stream that ends before message_stop is unmeasurable: its final counts were never seen."""
 
     def __init__(self):
-        self.buf, self.usage, self.seen = b"", {}, False
+        self.buf, self.usage, self.seen, self.stopped = b"", {}, False, False
 
     def feed(self, chunk: bytes) -> None:
         self.buf += chunk
@@ -703,6 +705,8 @@ class SseUsage:
                 continue
             if not isinstance(ev, dict):
                 continue
+            if ev.get("type") == "message_stop":
+                self.stopped = True
             usage = (ev.get("message") or {}).get("usage") if ev.get("type") == "message_start" else \
                 ev.get("usage") if ev.get("type") == "message_delta" else None
             if isinstance(usage, dict):
@@ -710,7 +714,21 @@ class SseUsage:
                 self.usage.update({k: v for k, v in usage.items() if isinstance(v, int)})
 
     def total(self) -> int | None:
-        return usage_total(self.usage) if self.seen else None
+        return usage_total(self.usage) if self.seen and self.stopped else None
+
+
+def unique_keys(pairs: list) -> dict:
+    keys = [k for k, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError("duplicate key")
+    return dict(pairs)
+
+
+def content_length(raw: str | None) -> int | None:
+    """Content-Length as a non-negative integer; None when it is negative, non-numeric, or absurdly long."""
+    if raw is None:
+        return 0
+    return int(raw) if re.fullmatch(r"[0-9]{1,12}", raw) else None
 
 
 def json_usage(body: bytes) -> int | None:
@@ -722,12 +740,14 @@ def json_usage(body: bytes) -> int | None:
 
 
 class ProxyLedger:
-    """The Run's usage as the proxy measured it; once over the limit (or unmeasurable), every later request is refused."""
+    """The Run's usage as the proxy measured it; once over the limit (or unmeasurable), every later request is refused.
+    Only one billable request is in flight at a time, so the limit check always sees every earlier request's usage."""
 
     def __init__(self, model: str, max_tokens: int):
         self.model, self.max_tokens = model, max_tokens
         self.total, self.closed = 0, None
         self.lock = threading.Lock()
+        self.in_flight = False
 
     def refuse(self, command: str, path: str, headers, body: bytes | None) -> tuple[int, str] | None:
         """(status, reason) when the request must not be forwarded."""
@@ -740,15 +760,25 @@ class ProxyLedger:
                 return 403, self.closed
         if (command, path) in MODEL_ROUTES:
             try:
-                model = json.loads(body or b"").get("model")
+                model = json.loads(body or b"", object_pairs_hook=unique_keys).get("model")
             except (ValueError, AttributeError):
                 return 403, "unreadable body"
             if model != self.model:
                 return 403, f"model {str(model)[:60]!r} != declared"
+        if (command, path) == BILLABLE_ROUTE:
+            with self.lock:
+                if self.closed:
+                    return 403, self.closed
+                if self.in_flight:
+                    return 429, "concurrent billable request"
+                self.in_flight = True
         return None
 
     def add(self, tokens: int | None, billable: bool) -> None:
+        """Record a forwarded request's usage; `billable` is the billable route whatever the status, and frees its slot."""
         with self.lock:
+            if billable:
+                self.in_flight = False
             if tokens is None:
                 if billable:
                     self.closed = "usage not measurable"
@@ -780,7 +810,12 @@ def proxy_main(argv: list[str]) -> int:
 
         def relay(self) -> None:
             route = self.path.split("?", 1)[0]
-            length = int(self.headers.get("Content-Length") or 0)
+            length = content_length(self.headers.get("Content-Length"))
+            if length is None:
+                self.record(False, 400, "bad content-length")
+                self.close_connection = True
+                self.send_error(400)
+                return
             chunked = "chunked" in (self.headers.get("Transfer-Encoding") or "").lower()
             body = self.rfile.read(length) if length and not chunked else None
             refused = ledger.refuse(self.command, route, self.headers, body)
@@ -792,13 +827,14 @@ def proxy_main(argv: list[str]) -> int:
                 except OSError:
                     pass
                 return
-            billable = (self.command, route) == ("POST", "/v1/messages")
+            billable = (self.command, route) == BILLABLE_ROUTE
             try:
                 up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=600,
                                                  context=ssl.create_default_context())
                 up.request(self.command, self.path, body=body, headers=forward_headers(self.headers.items(), key))
                 resp = up.getresponse()
             except OSError:
+                ledger.add(None, billable)
                 self.record(True, 502)
                 self.send_error(502)
                 return
@@ -822,7 +858,7 @@ def proxy_main(argv: list[str]) -> int:
             finally:
                 up.close()
             tokens = sse.total() if sse else json_usage(kept) if billable else None
-            ledger.add(tokens, billable and resp.status == 200)
+            ledger.add(tokens, billable)
             self.record(True, resp.status, None, tokens)
 
         do_GET = do_POST = do_CONNECT = do_PUT = do_DELETE = relay

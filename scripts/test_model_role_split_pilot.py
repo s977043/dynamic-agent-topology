@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -216,6 +217,11 @@ def test_proxy() -> None:
     check(ledger.refuse("POST", "/v1/messages", Headers(), other)[0] == 403, "other model refused")
     check(ledger.refuse("POST", "/v1/messages/count_tokens", Headers(), other)[0] == 403, "count_tokens model checked")
     check(ledger.refuse("POST", "/v1/messages", Headers(), b"not json")[0] == 403, "unreadable body refused")
+    dup = b'{"model":"claude-haiku-5-5","model":"claude-opus-5-5"}'
+    check(ledger.refuse("POST", "/v1/messages", Headers(), dup) == (403, "unreadable body"), "duplicate keys refused")
+    check([mp.content_length(v) for v in (None, "0", "12")] == [0, 0, 12], "valid Content-Length")
+    check(all(mp.content_length(v) is None for v in ("-1", "abc", "1e3", " 5", "\uff11", "9" * 13)),
+          "negative or non-numeric Content-Length rejected")
     check(ledger.refuse("POST", "/v1/messages", Headers({"Transfer-Encoding": "chunked"}), body)[0] == 411,
           "chunked request refused")
     sse = mp.SseUsage()
@@ -223,11 +229,17 @@ def test_proxy() -> None:
               b'"cache_creation_input_tokens":300,"cache_read_input_tokens":400,"output_tokens":1}}}\n\n'
               b'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"text":"hi"}}\n\n'
               b'event: message_delta\r\ndata: {"type":"message_delta","usage":{"output_tokens":15}}\r\n\r\n'
-              b'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":80}}\n\n')
+              b'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":80}}\n\n'
+              b'event: message_stop\ndata: {"type":"message_stop"}\n\n')
     for i in range(0, len(stream), 7):
         sse.feed(stream[i:i + 7])
     check(sse.total() == 20 + 300 + 400 + 80, f"SSE usage: start fields + cumulative delta ({sse.total()})")
     check(mp.SseUsage().total() is None, "no usage event is unmeasurable, not 0")
+    cut = mp.SseUsage()
+    cut.feed(stream[:stream.index(b"event: message_delta")])
+    check(cut.total() is None, "a stream cut before message_stop is unmeasurable")
+    cut.feed(stream[stream.index(b"event: message_delta"):stream.index(b"event: message_stop")])
+    check(cut.total() is None, "message_delta without message_stop is still unmeasurable")
     check(mp.json_usage(json.dumps({"usage": {"input_tokens": 5, "cache_read_input_tokens": 7,
                                               "output_tokens": 3}}).encode()) == 15, "JSON usage")
     check(mp.json_usage(b"{}") is None and mp.json_usage(b"<html>") is None, "missing usage is None")
@@ -237,6 +249,10 @@ def test_proxy() -> None:
     refused = ledger.refuse("POST", "/v1/messages", Headers(), body)
     check(refused == (403, "token-limit 1100 > 1000"), f"over the limit refuses later requests: {refused}")
     check(ledger.refuse("GET", "/v1/models", Headers(), None)[0] == 403, "closed for every route")
+    blind = mp.ProxyLedger("claude-opus-5-5", 1000)
+    check(blind.refuse("POST", "/v1/messages", Headers(), body) is None, "first billable request admitted")
+    blind.add(None, True)
+    check(blind.closed == "usage not measurable", "a billable response without usage (any status) closes the proxy")
     blind = mp.ProxyLedger("claude-opus-5-5", 1000)
     blind.add(None, False)
     check(blind.refuse("POST", "/v1/messages", Headers(), body) is None, "non-billable without usage is fine")
@@ -378,8 +394,31 @@ def test_never_launched_retry(tmp: Path) -> None:
     check((work / "attempts/MRS-P02-A/attempt-1/run.json").exists(), "previous attempt preserved")
 
 
+def test_proxy_concurrency() -> None:
+    body = json.dumps({"model": "m"}).encode()
+    ledger = mp.ProxyLedger("m", 1000)
+    start = threading.Barrier(20)
+    results = []
+
+    def send() -> None:
+        start.wait()
+        results.append(ledger.refuse("POST", "/v1/messages", Headers(), body))
+
+    threads = [threading.Thread(target=send) for _ in range(20)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    admitted = [r for r in results if r is None]
+    check(len(admitted) == 1 and all(r == (429, "concurrent billable request") for r in results if r),
+          f"one billable request in flight at a time: {results}")
+    check(ledger.refuse("GET", "/v1/models", Headers(), None) is None, "non-billable route not serialized")
+    ledger.add(1100, True)
+    check(ledger.refuse("POST", "/v1/messages", Headers(), body)[0] == 403, "next request sees the earlier usage")
+
+
 def main() -> int:
-    tests = [test_plan_and_settings, test_policy, test_gates, test_proxy]
+    tests = [test_plan_and_settings, test_policy, test_gates, test_proxy, test_proxy_concurrency]
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
                  test_guards, test_never_launched_retry]

@@ -3,13 +3,13 @@
 状態: **確定版（事前登録は未成立）**。本書は、merge 後の main で計算した blob hash を #244 に記録するまで事前登録として成立していません（本書の merge は成立ではない）。実験開始・model 起動（スクリーニング Run を含む）・予算消費・experiment Artifact や Task / fixture の追加の許可ではありません。予算の承認と、課金が発生する model 起動は Human（Operator）専権で、Agent は代行しません（[AGENT_HARNESS.md](AGENT_HARNESS.md) の自律境界）。現時点の効果は **INCONCLUSIVE**（評価 Run 0 件）です。
 
 - 起案日: 2026-10-26（下書き、#255）/ 確定日: 2026-10-27 / 基準: origin/main `66f1683`
-- 経緯: 下書き（#255、merge commit `f80c342`）の §5.2 の `<Human 確定>` を、[#244 の Operator による上限の確定記録（2026-10-27）](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6426773345)の値で埋めて確定版にした。判定規則・閾値・N・k・予算の構造など、下書きで独立レビュー（#255、5 回目で MERGE_OK）を通った内容は変えていない。§2.3 の数値は [scripts/hard_task_power_sim.py](../scripts/hard_task_power_sim.py)（本書と同じ PR）で再現できる
+- 経緯: 下書き（#255、merge commit `f80c342`）の §5.2 の `<Human 確定>` を、[#244 の Operator による上限の確定記録（2026-10-27）](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6426773345)の値で埋めて確定版にした。予算については§5.1bに実効上限の未確認と起動停止条件を明記した。判定規則・閾値・N・k・予算額など、下書きで独立レビュー（#255、5 回目で MERGE_OK）を通った内容は変えていない。§2.3 の数値は [scripts/hard_task_power_sim.py](../scripts/hard_task_power_sim.py)（本書と同じ PR）で再現できる
 - 対象 Issue: [#244](https://github.com/s977043/dynamic-agent-topology/issues/244)
 - 旧版: [HARD_TASK_T0_T1_PREREGISTRATION.md](HARD_TASK_T0_T1_PREREGISTRATION.md)（第 1 版。本書は旧版を書き換えない）
 - 一次ソース: 旧版、[HARD_TASK_T0_T1_DESIGN.md](HARD_TASK_T0_T1_DESIGN.md)（以下「設計案」）、[hard-task/CANDIDATES.yaml](hard-task/CANDIDATES.yaml)（以下「候補表」）、[hard-task/CALIBRATION_RUNBOOK.md](hard-task/CALIBRATION_RUNBOOK.md)（以下「較正手順書」）、#244 の 2026-10-26 の 25 Run 結果コメントと新版の方向（Operator 承認、issuecomment-6402567719）、[AGENT_HARNESS.md](AGENT_HARNESS.md)、AGENTS.md
 - 形式の先例: [MODEL_ROLE_SPLIT_PREREGISTRATION.md](MODEL_ROLE_SPLIT_PREREGISTRATION.md)（下書き → 確定版）
 
-**事前登録の成立条件**: 本書の `Human 確定` の項目を Human が確定し（2026-10-27 に確定済み）、確定版を 1 ファイルに固定して独立レビューを受け、merge 後の main で計算した blob hash を #244 に記録した時点で成立する（§7）。**hash は本書（確定版）で記録し、下書き（#255）の hash は記録しない**。成立前はスクリーニングも含めて model を起動しない。成立後に結果を見て本書と候補表を書き換えない。
+**事前登録の成立条件**: 本書の `Human 確定` の項目を Human が確定し（2026-10-27 に確定済み）、確定版を 1 ファイルに固定して独立レビューを受け、merge 後の main で計算した blob hash を #244 に記録した時点で成立する（§7）。**hash は本書（確定版）で記録し、下書き（#255）の hash は記録しない**。成立前はスクリーニングも含めて model を起動しない。成立後も起動には§5.1bの停止条件の解消とOperator判断が必要。成立後に結果を見て本書と候補表を書き換えない。
 
 ## 0. Source claim・Evidence・解釈・Judgment の区別
 
@@ -126,10 +126,11 @@ d_i の分布の仮定（推測、観測なし）: 完了 Task のうち割合 �
 - **評価**: N × rep × (t_T0 + t_T1) × m = 12 × 3 × (68,022 + 150,080.67) × 13.51 ≒ **106.1M tokens**（T1 / T0 = 2.206 が hard Task でも保たれるという仮定は推測）。
 - **計画値の合計**: 約 **147.4M tokens**。これは見込みで、上限ではない。旧版の較正 25 Run の 22,977,578 tokens は支出済みで含めない。
 
-### 5.1b (b) 最大許容費用（上限に達した場合）
+### 5.1b (b) 最大許容費用（承認額、実消費の保証上界ではない）
 
 - **全体上限を置かない場合の構造上の最大**（参考）: スクリーニング（44 − 5 =）39 候補 × 1 候補上限 10M = 390M、評価 12 Task × 1 Task 上限 39M = 468M、合計 **約 858M tokens**。平均ではなく上限どおりに消費した場合の値。
-- **推奨**: スクリーニング全体 50M、評価全体 130M の全体上限を置く。キットは「消費済み + 1 Run の上限 > 全体上限」なら次の Run を始めない（較正手順書の既存の動作）ため、消費は全体上限を超えない。したがって今後の追加分の最大許容費用は **180M tokens**（50M + 130M）で、Operator が承認する額はこの 180M とする（(a) の 147.4M を覆う）。支出済みの較正 25 Run（22,977,578 tokens）を含む実験全体の累計の最大は約 **203.0M tokens**。
+- **Human が確定した許容予算**: スクリーニング全体 50M、評価全体 130M、追加分 **180M tokens**（(a) の 147.4M を覆う）。支出済み較正 25 Run（22,977,578 tokens）を含む許容予算の累計は約 **203.0M tokens**。これは承認額であり、実消費の保証上界ではない。
+- **実装の限界と起動停止条件**: 既存キットは「消費済み + 1 Run の上限 > 全体上限」なら次の Run を始めないが、Run の token 超過は終了後に検知する（`hard_task_calibrate.py` の `--max-run-tokens`）。そのため最後の Run の超過により、1 Run・候補・全体の許容予算を超え得る。実効 hard cap は未確認。Operator が実効上限の成立を確認するか、超過可能性と処置を明示的に判断するまで、スクリーニングを起動しない。Agent はこの判断を代行しない。
 - 全体上限で止まった場合: スクリーニングで 12 件に届かなければ feasibility-only、評価が途中なら計測不成立で INCONCLUSIVE とし、上限を上げるかは Operator が改めて判断する（結果を見て判定規則は変えない）。
 - **候補による偏り**: 0/5 だった候補 2 は 1 Run 2.21M〜3.23M、候補 3 は 0.29M〜0.38M で、平均 m は候補ごとの消費を代表しない。評価費用は選ばれた Task 次第で上下する（候補 2 のような Task だけなら T0 1 Run ≒ 2.6M、T1 ≒ 5.8M と推測）。そのため合計だけでなく候補ごとの上限で管理する。
 
@@ -146,7 +147,7 @@ Operator が 2026-10-27 に推奨どおり確定した（[#244 の確定記録](
 | 評価の 1 Task | 39,000,000 tokens（= 3 × 4M + 3 × 9M） | 1 Task の全 Run が上限に当たる場合の値 |
 | 評価全体 | 130,000,000 tokens（スクリーニング完了後に、選ばれた Task の実測消費で更新した見積もりと照らして改めて承認する） | 計画値 106.1M に余裕を持たせた値。旧版 §6 と同じく較正と評価を別予算にする |
 
-- 上限の確定は、事前登録の成立・model 起動の許可ではない。スクリーニングの起動は事前登録の成立後に Operator が行う。
+- §5.1bの実効上限の確認または超過可能性と処置に対するOperator判断が未達なら起動しない。上限の確定は、事前登録の成立・model 起動の許可ではない。スクリーニングの起動は事前登録の成立後に Operator が行う。
 
 - 上限で止まった Run は中止として残し、作り直さない。予算の承認と model 起動は Operator が行う。
 

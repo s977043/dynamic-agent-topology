@@ -242,3 +242,6 @@ jobs:
 
       - name: Test Promote draft proposals
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_harness_promote.py
+
+      - name: Test model role split pilot kit
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_model_role_split_pilot.py

@@ -196,6 +196,8 @@ adapter は値の取り方だけを持ち、項目や判定基準を追加・変
 | 4 | 2 リポジトリ以上で dogfooding、`DOGFOODING.md` と Learning ledger に記録 | 20 件以上で H1・H2 を判定し、棄却・INCONCLUSIVE を含めて記録する | 対象リポジトリと期間の選定 |
 | 5 | 次の版の候補として公開 | `RELEASE_READINESS.md` のゲートを通る | release / tag は Human のみ |
 
+段階 4 の判定結果: H1・H2 とも支持（どちらも 23 件・7 project）。記録は #223 の [H1](https://github.com/s977043/dynamic-agent-topology/issues/223#issuecomment-6391127012)・[H2](https://github.com/s977043/dynamic-agent-topology/issues/223#issuecomment-6426770476) のコメント。H2 の判定で見つかった見直し候補は §10 の U4・U5。
+
 ## 9. やらないこと
 
 - 観察記録から構成の優劣を結論づけない。比較は事前登録した実験（`experiments/`）だけで行う
@@ -209,3 +211,19 @@ adapter は値の取り方だけを持ち、項目や判定基準を追加・変
 - U1: `outcome` に `handed-off`（別ウェーブへ引き継ぎ）を独立値として持たせるか
 - U2: `.dat/state/` 以外に、集計用の共有先（例: サニタイズ済み JSONL）を DAT 側で定義するか
 - U3: 委託なしで `role: advisory` のレビューだけを T0 とする規則で H2 の一致率が下がるかは、段階 4 で確認する
+- U4: merge した artifact が複数ある記録で、検証の記録（`role: verifier`）をすべての merge 済み artifact に求めるか
+  - 観測: H2 の判定（23 件）で、判定者 B が 1 件（T2）について迷った。根拠レビューの `target` は merge 済み artifact の 1 件だけで、同じ記録の他の merge 済み artifact には `role: verifier` のレビューがない。それでも validator は通る。2 判定者の分類は一致した（A は迷った点なし）
+  - 論点: §5.2 は「受け入れた `artifacts[].ref` を `target` に持つ最後の 1 件」を根拠レビューとし、`scripts/validate_run_observation.py` も merge 済み artifact のどれか 1 件を `target` に持つレビューがあれば通す。このため、一部の artifact だけを検証した記録も `verification: yes` として T1 以上に分類される
+  - 選択肢と影響:
+    - (a) 現状維持: validator・既存記録・H2 の結果は変わらない。一部だけ検証した記録と全件を検証した記録を区別できないまま
+    - (b) merge 済み artifact すべてに `role: verifier` のレビューを求める: validator に拒否の条件と負例を足す。該当する既存記録は validator を通らなくなり、記録の書き直しか集計からの除外が要る。分類が変わる記録があれば H2 を再判定する
+    - (c) 拒否はせず、検証していない merge 済み artifact の件数を項目として残す: schema に項目を足すため `apiVersion` を上げる（§5.4 の enum 拡張と同じ扱い）。既存記録はそのまま通り、分類は変わらないので H2 の再判定は不要
+  - 判断者と時期: Agent が案を作り独立レビューを経て、段階 2 と同じく判定基準・新項目の採否は Human が判断する。段階 5（次版公開）の前に決める
+- U5: `specialistRole: yes` の根拠を、`topologyBasis` 以外の記録から確かめられるようにするか
+  - 観測: H2 の判定で、判定者 B が 2 件（T3）について迷った。`specialistRole: yes` の根拠は `topologyBasis` の値にしかなく、`reviews[]` などから確かめられない。2 判定者の分類は一致した
+  - 論点: §5.2 で `reviews[]` を正とするのは `verification`・`verifierKind`・`independentReview` だけで、`specialistRole` には導出元の記録がない。T3 と T2 の区別は記録者（Organizer）の判断に依り、判定者はその値を引き継ぐしかない。H2 の一致率は分類規則の明確さを示すが、この値の正しさは確かめていない
+  - 選択肢と影響:
+    - (a) 現状維持: validator・既存記録・H2 の結果は変わらない。T3 の判定は記録者の自己申告のまま
+    - (b) 専門役割の実施を記録する項目（例: 役割名とタスク数）を足し、`specialistRole` をそこから導く: schema に項目を足し `apiVersion` を上げ、validator に食い違いの拒否を足す。既存記録は旧版として扱い、`specialistRole: yes` の記録（H2 では 2 件）は新しい項目がないため確かめられない。H2 の再判定は新版の記録で行う
+    - (c) 項目は足さず、`specialistRole: yes` のときの根拠を adapter の記録手順に書くだけにする: schema・validator は変わらない。記録から確かめられない点は残る
+  - 判断者と時期: U4 と同じ

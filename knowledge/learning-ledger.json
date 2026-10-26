@@ -135,7 +135,9 @@
       "count": 4,
       "state": "candidate",
       "countermeasure": "判断材料（基準文書・関連 Issue コメント・PR 本文と diff・Artifact）を 1 ディレクトリにまとめ依頼書と共に渡す。作業ディレクトリの確認は許可し、禁止範囲はその外とする。材料欠落だけを理由とする判定は、材料の実在を確認し、実在すれば同一材料の新規セッションで再実行して両結果を記録する",
-      "observedDates": ["2026-10-15"]
+      "observedDates": [
+        "2026-10-15"
+      ]
     },
     {
       "id": "L-010",
@@ -332,6 +334,22 @@
       "countermeasure": "`docs/OBSERVATION_MEASUREMENT.md` の集計規則（endedAt 基準・store 直下のみ）、validator の independentReview 整合検査、`run_observation.py` の重複・入れ子検出",
       "observedDates": [
         "2026-10-25"
+      ]
+    },
+    {
+      "id": "L-022",
+      "observation": "GitHub自動観測（ci、原因未分類）",
+      "evidence": {
+        "description": "2026-10-19 CI conclusion=failure; run_id=39217402283; run_attempt=1; final job completed_at; source timestamp=2026-10-19T07:39:53+00:00",
+        "urls": [
+          "https://github.com/s977043/dynamic-agent-topology/actions/runs/39217402283/attempts/1"
+        ]
+      },
+      "count": 1,
+      "state": "candidate",
+      "countermeasure": "原因確認と改善案の検討待ち",
+      "observedDates": [
+        "2026-10-19"
       ]
     }
   ]

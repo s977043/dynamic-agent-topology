@@ -8,6 +8,7 @@ import io
 import json
 import os
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -571,11 +572,174 @@ def test_proxy_handler(tmp: Path) -> None:
           "dropped headers recorded")
 
 
+def test_relay_to_proxy(tmp: Path) -> None:
+    FakeUpstream.mode = "json"
+    with live_proxy(tmp) as (path, _log):
+        check(os.stat(path).st_mode & 0o777 == 0o600, f"proxy socket mode {oct(os.stat(path).st_mode & 0o777)}")
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        relay = mp.RELAY.replace(repr(mp.PROXY_SOCKET_DIR + "/proxy.sock"), repr(path)).replace(
+            f'("127.0.0.1", {mp.PROXY_PORT})', f'("127.0.0.1", {port})')
+        proc = subprocess.Popen([sys.executable, "-I", "-c", relay])
+        try:
+            for _ in range(100):
+                try:
+                    socket.create_connection(("127.0.0.1", port), timeout=1).close()
+                    break
+                except OSError:
+                    time.sleep(0.05)
+
+            def relay_post(timeout: float = 10) -> bytes:
+                with socket.create_connection(("127.0.0.1", port), timeout=timeout) as s:
+                    s.sendall(b'POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n{"model":"m"}')
+                    raw = b""
+                    while chunk := s.recv(4096):
+                        raw += chunk
+                    return raw
+
+            raw = relay_post()
+            check(raw.startswith(b"HTTP/1.0 200") and b"sk-test" not in raw, f"relayed through the proxy: {raw[:80]!r}")
+            time.sleep(0.2)  # the slot of the probe connection above is released asynchronously
+            idle = [socket.create_connection(("127.0.0.1", port), timeout=5) for _ in range(mp.RELAY_MAX_CONNECTIONS)]
+            time.sleep(0.3)
+            try:
+                relay_post(timeout=1)
+            except socket.timeout:
+                pass
+            else:
+                raise AssertionError("relay served more than RELAY_MAX_CONNECTIONS connections at once")
+            for s in idle:
+                s.close()
+            time.sleep(0.5)  # the queued request above is relayed (and answered) once a slot frees
+            raw = relay_post()
+            check(raw.startswith(b"HTTP/1.0 200"), f"relay serves again once slots are free: {raw[:80]!r}")
+        finally:
+            proc.kill()
+            proc.wait()
+
+
+def test_bind_source(tmp: Path) -> None:
+    rdir = tmp / "iso" / "MRS-P02-A"
+    expected = mp.expected_mounts(Args, rdir)
+    compact = json.dumps(json.loads(mp.SECCOMP.read_text(encoding="utf-8")), separators=(",", ":"))
+    host = {"Privileged": False, "CapAdd": None, "CapDrop": ["ALL"], "ReadonlyRootfs": True, "NetworkMode": "none",
+            "Tmpfs": {"/tmp": "", mp.CONFIG_DIR: "uid=1"}, "SecurityOpt": [f"seccomp={compact}", "no-new-privileges"]}
+    vol = {"Type": "volume", "Name": "vol", "Destination": mp.PROXY_SOCKET_DIR, "RW": False}
+
+    def inspect(fn):
+        return {"Mounts": [{"Type": "bind", "Source": fn(s, d), "Destination": d, "RW": rw} for _, s, d, rw in expected]
+                + [vol], "HostConfig": host}
+
+    work_root = (tmp / "iso").resolve()
+    for desktop in (False, True):
+        mp.check_container(inspect(lambda s, d: s), expected, work_root, "vol", desktop)
+    mp.check_container(inspect(lambda s, d: mp.HOST_MNT + s), expected, work_root, "vol", True)
+    mp.check_container(inspect(lambda s, d: mp.HOST_MNT + s if d == "/work" else s), expected, work_root, "vol", True)
+    work = next(s for _, s, d, _ in expected if d == "/work")
+    for desktop, fn in ((False, lambda s, d: mp.HOST_MNT + s),
+                        (True, lambda s, d: "/host_mnt/other" if d == "/work" else s),
+                        (True, lambda s, d: mp.HOST_MNT + s + "/x" if d == "/work" else s),
+                        (True, lambda s, d: s + "/x" if d == "/work" else s),
+                        (True, lambda s, d: mp.HOST_MNT + "/" + s if d == "/work" else s),
+                        (True, lambda s, d: "/host_mnt/host_mnt" + s if d == "/work" else s),
+                        (True, lambda s, d: s + "/" if d == "/work" else s),
+                        (True, lambda s, d: s.replace("/MRS-P02-A/", "/MRS-P02-A/./") if d == "/work" else s),
+                        (True, lambda s, d: work if d == "/run-input" else s)):
+        expect_stop(mp.check_container, inspect(fn), expected, work_root, "vol", desktop)
+    pexp = sorted(("bind", s, d, rw) for d, (s, rw) in mp.proxy_bind_sources(Args).items())
+    pvol = {"Type": "volume", "Name": "vol", "Destination": mp.PROXY_SOCKET_DIR, "RW": True}
+
+    def pins(fn):
+        return {"Mounts": [{"Type": "bind", "Source": fn(s), "Destination": d, "RW": rw} for _, s, d, rw in pexp] + [pvol],
+                "HostConfig": {}}
+
+    mp.check_proxy_container(pins(lambda s: mp.HOST_MNT + s), Args, "vol", True)
+    expect_stop(mp.check_proxy_container, pins(lambda s: mp.HOST_MNT + s), Args, "vol", False)
+    expect_stop(mp.check_proxy_container, pins(lambda s: mp.HOST_MNT + s + "/x"), Args, "vol", True)
+
+
+class FakeDocker:
+    """Stands in for mp.docker in teardown: `stuck` names survive every removal."""
+
+    def __init__(self, names: dict, stuck: set[str]):
+        self.alive = {names["container"]: "running", names["proxy"]: "running", names["volume"]: "volume"}
+        self.stuck, self.calls = stuck, []
+
+    def __call__(self, *args, stdin=None, check=True):
+        self.calls.append(args)
+        out = ""
+        if args[0] == "stop":
+            for n in args[3:]:
+                if n in self.alive:
+                    self.alive[n] = "exited"
+        elif args[0] == "rm" or args[:2] == ("volume", "rm"):
+            for n in args[2:]:
+                if n in self.alive and n not in self.stuck:
+                    del self.alive[n]
+        elif args[0] == "ps":
+            name = args[args.index("--filter") + 1].removeprefix("name=^/").removesuffix("$")
+            out = f"{name} {self.alive[name]}\n" if name in self.alive else ""
+        elif args[:2] == ("volume", "ls"):
+            name = args[args.index("--filter") + 1].removeprefix("name=^").removesuffix("$")
+            out = f"{name}\n" if name in self.alive else ""
+        return subprocess.CompletedProcess(args, 0, out, "")
+
+
+def test_teardown(tmp: Path) -> None:
+    names = {"container": "mrs-c", "proxy": "mrs-proxy-c", "volume": "mrs-sock-c", "containerStarted": True,
+             "proxyStarted": True, "volumeCreated": True}
+    real_docker, real_sleep = mp.docker, mp.time.sleep
+    mp.time.sleep = lambda _s: None
+    try:
+        mp.docker = FakeDocker(names, set())
+        check(mp.teardown(names) == [], "clean teardown leaves nothing")
+        mp.docker = FakeDocker(names, {"mrs-proxy-c", "mrs-sock-c"})
+        left = mp.teardown(names, attempts=3)
+        check(left == [{"name": "mrs-proxy-c", "state": "exited"}, {"name": "mrs-sock-c", "state": "volume"}],
+              f"leftover proxy and volume reported: {left}")
+        mp.docker = FakeDocker(names, set())
+        check(mp.teardown({**names, "containerStarted": False, "proxyStarted": False, "volumeCreated": False}) == []
+              and mp.docker.calls == [], "nothing created, nothing removed")
+        # run_one: an isolation stop followed by a failed teardown is recorded as teardown-failed with the leftovers.
+        real_isolate, real_prepare = mp.isolate_and_check, mp.fx.prepare
+        mp.docker = FakeDocker({"container": "", "proxy": "", "volume": ""}, set())
+
+        def isolate(_args, _rdir, nm, _ev, _cand, _model):
+            nm.update(proxyStarted=True)
+            mp.docker = FakeDocker(nm, {nm["proxy"]})
+            raise mp.Stop("gate failed")
+
+        mp.isolate_and_check = isolate
+        mp.fx.prepare = lambda _cand, ws, _cache: ws.mkdir()
+        try:
+            args = mp.parser().parse_args(["run", "--work-root", str(tmp), "--timeout-s", "60", "--max-run-tokens",
+                                           "300000", "--budget-tokens", "600000"])
+            run = mp.plan()[0]
+            try:
+                mp.run_one(args, run, mp.load_pilot(), tmp, "prompt", {})
+            except mp.Stop as exc:
+                check("teardown left" in str(exc), f"teardown failure stops the batch: {exc}")
+            else:
+                raise AssertionError("run_one succeeded with a leftover proxy")
+            rec = json.loads((tmp / run["runId"] / "run.json").read_text())
+            check(rec["status"] == "teardown-failed" and rec["modelLaunched"] is False
+                  and rec["stopReasonBeforeTeardown"] == "gate failed"
+                  and [x["name"] for x in rec["teardownLeftovers"]] == [rec["names"]["proxy"]],
+                  f"leftovers recorded: {rec.get('status')} {rec.get('teardownLeftovers')}")
+            check(not mp.never_launched(rec), "a Run with leftovers is not retried automatically")
+        finally:
+            mp.isolate_and_check, mp.fx.prepare = real_isolate, real_prepare
+    finally:
+        mp.docker, mp.time.sleep = real_docker, real_sleep
+
+
 def main() -> int:
     tests = [test_plan_and_settings, test_policy, test_gates, test_proxy, test_proxy_concurrency]
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
-                 test_guards, test_never_launched_retry, test_proxy_handler]
+                 test_guards, test_never_launched_retry, test_proxy_handler, test_relay_to_proxy, test_bind_source,
+                 test_teardown]
     for t in tests:
         t()
         print(f"ok {t.__name__}")

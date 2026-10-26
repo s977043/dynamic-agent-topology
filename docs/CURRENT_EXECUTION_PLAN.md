@@ -27,7 +27,7 @@ main `48421fc387ecd6a7ccbf453336208b15c5a73052`（#215/#229/#230/#231まで統�
 
 [#223のOwner方針](https://github.com/s977043/dynamic-agent-topology/issues/223#issuecomment-6327826768)どおり、仕様＋2 Skillsを維持し、CLIは裏方の任意検証道具として機能拡張しません。dat-observeでの保存前validator実行とrepo外保存の条件は維持します。
 
-[#244の上限確定](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6426773345)はscreening50M・評価1 Task39M・評価全体130M tokens。追加分の許容予算180M（支出済み較正を含め約203M）という上限の記録であり、事前登録成立・起動許可ではありません。確定版は#258でレビュー対象です。
+[#244の上限確定](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6426773345)はscreening50M・評価1 Task39M・評価全体130M tokens。追加分の許容予算180M（支出済み較正を含め約203M）という上限の記録であり、事前登録成立・起動許可ではありません。確定版は#258でmerge済み。以下の完了追記と起動停止条件を参照してください。
 
 ### 今回Cloudで可能な検証
 
@@ -35,12 +35,19 @@ Python3.12の既存validator・回帰、Unix socketを使うローカル結合�
 
 Docker Desktopのnetwork隔離・mountの実測、Claude認証経路、契約/追加課金境界、Mac/ThinkPadの実環境、非公開storeはこの確認だけでは検証済みにしません。予備キットのFAIL/NOT_TESTEDが残る間、モデルを起動しません。
 
+### 今回の対応結果（同日追記）
+
+- #257: head `55003a6`、独立レビュー3ループ・必須0・CI3件成功でmerge（`e7c605ea448f79a9a20342beaaf246dd3376621d`）。18回帰成功。Docker確認2/3/4/7の未達を解消したことにはしません。readinessの「30秒」表現と実装のtimeout保証の差は非blocking推奨として残ります。
+- #258: 許容予算を実消費の保証上界とする必須指摘1件を修正。head `557e7cc`、独立3ループ・必須0・CI3件成功でmerge（`0760b1b40767cec9622415c9aabd90f803dd8b93`）。計算表18セル・離散性2例・誤棄却0.087を再現。
+- [#244の確定blob記録](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6428095927): main `0760b1b` の文書blob `57007effd1fd502c86ea7e63029352df902670d0`、計算script blob `6199f01ce4982133658bb2f87fcb36a42e271a81`を記録し、§7の事前登録成立手順を完了。成立後も§5.1bのOperator判断まで起動停止。
+- 上記merge後のOpen PRは本計画PRだけ（#259）。冒頭の8 Issue/2 PRは作業前snapshotとして保持します。
+
 ## 次の実行順序
 
 | 順位 | 対象 | 次の具体的な作業・成果物 | 完了・停止条件 |
 |---|---|---|---|
-| P0 | [#257](https://github.com/s977043/dynamic-agent-topology/pull/257) | network none / Unix socket relayの差分、ローカル結合テスト、最終head CIを独立レビュー | 通常PRのmerge条件を満たした場合だけ統合。Docker実測・認証経路の未達を解消したことにはしない |
-| P0 | [#258](https://github.com/s977043/dynamic-agent-topology/pull/258) | hard Task事前登録v2の確定値・統計計算の再現・独立レビュー | merge後、§7どおりmainの確定blob hashを#244へ記録して成立。モデル起動はOperator |
+| 完了 | [#257](https://github.com/s977043/dynamic-agent-topology/pull/257) | network none / Unix socket relayの差分、ローカル結合テスト、最終head CIを独立レビュー | 通常PRのmerge条件を満たした場合だけ統合。Docker実測・認証経路の未達を解消したことにはしない |
+| 完了 | [#258](https://github.com/s977043/dynamic-agent-topology/pull/258) | hard Task事前登録v2の確定値・統計計算の再現・独立レビュー | merge後、§7どおりmainの確定blob hashを#244へ記録して成立。モデル起動はOperator |
 | P0 | 本計画の更新PR | 8 IssueとOpen PRの原本照合、別セッション3ループ、最新head CI | 通常文書PRの必須指摘0・必須CI成功・up-to-dateを満たしてmerge |
 | P1 | #223 | 最新H1/H2報告と未決事項候補2件を照合し、必要なら独立レビューを経た最小提案を作る | 判定規則・schemaの変更と次版公開を混同しない。公開転記は設計§6の確認後 |
 | P1 | #220 / #244 | 承認済み手順・予算・実行主体と、実測未達のpreflightを切り分ける | FAIL / UNKNOWNが残ればモデルを起動しない。Operatorの実行を代行しない |
@@ -57,7 +64,7 @@ Docker Desktopのnetwork隔離・mountの実測、Claude認証経路、契約/�
 | [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | Observe39214997427 / Promote39217402283のAPI_HTTP_403と#216のoffline安全停止回帰を区別 | Actions PR作成許可・上位policyの管理者確認後、正規Draft/no-op/CI/独立レビューを実測。規則・Guard変更のmergeはHuman |
 | [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) | #249事前登録、#252の18 Task fixture、#254予備2 Runキットを再利用し、#257を検証 | PR報告ではDocker確認2が5回中4回FAIL、3/4/7はNOT_TESTED。Gate4の事前登録は成立済み。現行はproxy方式で、旧案Dは廃止済み。実効permission・認証・課金境界の実測PASSに置き換えない。/host_mntの許容は別判断 |
 | [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | 段階1〜3・CLI/Plugin実装済み。最新報告はH1支持23件/7project、H2支持23/23。複数artifactのverification根拠とspecialistRole根拠の見直し候補を整理 | 原store・ログはこのCloudで未監査。H2のB独立性はOrganizer確認依存。公開転記は§6、段階5のrelease/tagはHuman専権 |
-| [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) | 旧版較正25 RunのOperator報告は22,977,578 tokens・hard帯0候補。v2の予算確定値と#258を照合し、merge後のhash記録を準備 | 旧版の残39候補は開始しない。上限確定は実効hard capや起動許可ではない。#258の予算保証の独立レビュー指摘を解消し、成立後も超過可能性に対するOperator判断を経てscreening、評価予算は選定後の見積もりで再承認 |
+| [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) | 旧版較正25 RunのOperator報告は22,977,578 tokens・hard帯0候補。v2確定版#258をmergeし、上記hash記録で成立。統計模擬は効果実測ではない | 旧版の残39候補は開始しない。上限確定は実効hard capや起動許可ではない。予算保証の独立レビュー指摘は修正済み。成立後も超過可能性に対するOperator判断を経てscreening、評価予算は選定後の見積もりで再承認 |
 | [#248](https://github.com/s977043/dynamic-agent-topology/issues/248) | Subagent foldingの候補を同一model/effort・paired E2E評価へ具体化 | 外部記事の速度逸話をDATの効果にしない。独立評価・Human承認はfold対象外、事前登録・oracle・費用・Operator条件を満たしてから実行 |
 
 ## 変更ごとの3ループ

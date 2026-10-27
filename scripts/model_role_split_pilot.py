@@ -76,6 +76,9 @@ UPSTREAM_TIMEOUT_S = 600  # the proxy's socket timeout toward api.anthropic.com
 # The relay closes a connection with no bytes either way for this long; longer than the proxy's upstream timeout so
 # it never cuts a request the proxy still waits on (runbook §2.5 gives the basis).
 RELAY_IDLE_TIMEOUT_S = UPSTREAM_TIMEOUT_S + 60
+# Bytes the relay holds per direction before it stops reading that side (16 reads of 64 KiB). It bounds memory to
+# 2 x 8 connections x 1 MiB = 16 MiB; a reader that takes nothing for RELAY_IDLE_TIMEOUT_S is closed.
+RELAY_BUFFER_MAX = 1024 * 1024
 HOST_MNT = "/host_mnt"  # Docker Desktop reports some bind sources as this prefix + the host realpath
 # The Worker holds this placeholder; the proxy drops it and adds the real credential as x-api-key.
 PLACEHOLDER_TOKEN = "mrs-placeholder-not-a-credential"
@@ -568,25 +571,50 @@ def check_egress(rc: int, output: str) -> dict:
 
 
 # The Run container's main process: joins 127.0.0.1:PROXY_PORT to the proxy's Unix socket, byte for byte (the proxy
-# does every check). It holds no credential; the Worker reaching it is the same as reaching the proxy.
-RELAY = """import select, socket, threading
+# does every check). It holds no credential; the Worker reaching it is the same as reaching the proxy. Sockets are
+# non-blocking and each direction has its own buffer, written only when select reports the side writable, so a slow
+# reader never stalls the other direction. A direction stops reading once its buffer holds RELAY_BUFFER_MAX bytes.
+RELAY = """import select, socket, threading, time
 slots = threading.BoundedSemaphore(%d)
 IDLE = %d
+CAP = %d
 def serve(c):
     u = socket.socket(socket.AF_UNIX)
     try:
+        u.settimeout(IDLE)
         u.connect(%r)
-        c.settimeout(IDLE); u.settimeout(IDLE)
+        c.setblocking(False); u.setblocking(False)
         peer = {c: u, u: c}
-        while peer:
-            ready = select.select(list(peer), [], [], IDLE)[0]
-            if not ready:
+        out = {c: bytearray(), u: bytearray()}
+        wrote = {c: 0.0, u: 0.0}
+        live = {c, u}
+        last = time.monotonic()
+        while live or out[c] or out[u]:
+            now = time.monotonic()
+            due = [last + IDLE] + [wrote[a] + IDLE for a in out if out[a]]
+            if now >= min(due):
                 break
-            for a in ready:
-                if data := a.recv(65536):
-                    peer[a].sendall(data)
+            r, w, _ = select.select([a for a in live if len(out[peer[a]]) < CAP], [a for a in out if out[a]], [],
+                                    min(due) - now)
+            now = time.monotonic()
+            for a in w:
+                n = a.send(out[a])
+                del out[a][:n]
+                last = wrote[a] = now
+                if not out[a] and peer[a] not in live:
+                    a.shutdown(socket.SHUT_WR)
+            for a in r:
+                data = a.recv(65536)
+                b = peer[a]
+                if data:
+                    if not out[b]:
+                        wrote[b] = now
+                    out[b] += data
+                    last = now
                 else:
-                    peer.pop(a).shutdown(socket.SHUT_WR)
+                    live.discard(a)
+                    if not out[b]:
+                        b.shutdown(socket.SHUT_WR)
     except OSError:
         pass
     finally:
@@ -601,7 +629,7 @@ l.bind(("127.0.0.1", %d)); l.listen(16)
 while True:
     slots.acquire()
     threading.Thread(target=run, args=(l.accept()[0],), daemon=True).start()
-""" % (RELAY_MAX_CONNECTIONS, RELAY_IDLE_TIMEOUT_S, PROXY_SOCKET, PROXY_PORT)
+""" % (RELAY_MAX_CONNECTIONS, RELAY_IDLE_TIMEOUT_S, RELAY_BUFFER_MAX, PROXY_SOCKET, PROXY_PORT)
 
 # Run in the Run container: waits until the relay listens and the proxy's socket accepts.
 READY_PROBE = """import socket, sys, time

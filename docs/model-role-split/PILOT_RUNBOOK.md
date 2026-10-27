@@ -126,7 +126,7 @@
 
 **後片付けの検査**: `teardown` は停止・削除・volume 削除の後に `docker ps -a`・`docker volume ls` で残りを確かめ、消えるまで再試行する。残ったリソース（特に資格情報を mount した proxy の container）があれば、Run を `teardown-failed` とし、残ったリソース名と状態を `run.json` の `teardownLeftovers` に記録して batch を止める（自動の再試行はしない）。Operator は `teardownLeftovers`（残ったリソースの名前と最終状態）を追跡 Issue（#220）に転記し、残りを消してから次へ進む。
 
-**その他（同じ変更）**: proxy の Unix ソケットは bind 直後に `0600` にする（umask 任せでは `0755` だった）。relay の同時接続数は `RELAY_MAX_CONNECTIONS`（8）までで、それを超える接続は空きが出るまで待つ。relay は両方向とも無通信が `RELAY_IDLE_TIMEOUT_S`（660 秒）続いた接続を閉じ、枠を解放する（Worker が開いたまま放置した接続で枠が埋まり続けないため）。値の根拠: proxy の upstream への socket の timeout（`UPSTREAM_TIMEOUT_S`、600 秒）より長くし、proxy がまだ upstream の応答を待っている要求を relay が先に切らないようにした。Run 全体は `--timeout-s`（承認値 30 分）の wall clock 上限で止まるので、それより長く残る接続はない。`--timeout-s` が 660 秒以下なら、relay の timeout より先に wall clock 上限が効く。
+**その他（同じ変更）**: proxy の Unix ソケットは bind 直後に `0600` にする（umask 任せでは `0755` だった）。relay の同時接続数は `RELAY_MAX_CONNECTIONS`（8）までで、それを超える接続は空きが出るまで待つ。relay は両方向とも最後にデータを転送してから `RELAY_IDLE_TIMEOUT_S`（660 秒）経った接続を閉じ、枠を解放する（Worker が開いたまま放置した接続で枠が埋まり続けないため）。送信は非ブロッキングで方向ごとのバッファから書くので、片側の遅い受信で反対方向は止まらない。バッファが `RELAY_BUFFER_MAX`（1 MiB、8 接続 × 2 方向で最大 16 MiB）に達した方向は読み止め、`RELAY_IDLE_TIMEOUT_S` の間 1 バイトも書けなければ接続を閉じる。値の根拠: proxy の upstream への socket の timeout（`UPSTREAM_TIMEOUT_S`、600 秒）より長くし、proxy がまだ upstream の応答を待っている要求を relay が先に切らないようにした。Run 全体は `--timeout-s`（承認値 30 分）の wall clock 上限で止まるので、それより長く残る接続はない。`--timeout-s` が 660 秒以下なら、relay の timeout より先に wall clock 上限が効く。
 
 ### 2.5 proxy 方式の境界と、起動前に確かめること
 

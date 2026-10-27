@@ -441,6 +441,7 @@ def test_proxy_concurrency() -> None:
 class FakeUpstream:
     """Stands in for http.client.HTTPSConnection; `mode` picks the response."""
     mode = "json"
+    release = threading.Event()  # "slow" holds the response until the test sets it
 
     def __init__(self, *_a, **_k):
         self.chunks: list[bytes] = []
@@ -466,7 +467,7 @@ class FakeUpstream:
         if mode == "error":
             raise ValueError("unexpected")
         if mode == "slow":
-            time.sleep(0.5)
+            FakeUpstream.release.wait(10)
         self.status, self.ctype = (429, "application/json") if mode == "429" else (200, "application/json")
         self.chunks = [b'{"usage":{"input_tokens":100,"output_tokens":10}}'] if self.status == 200 else [b"{}"]
         if mode == "sse_cut":
@@ -497,9 +498,9 @@ def live_proxy(tmp: Path):
     try:
         with contextlib.redirect_stdout(log):
             threading.Thread(target=mp.proxy_main, args=(["m", "1000"],), daemon=True).start()
-            for _ in range(200):
-                if servers:
-                    break
+            end = time.monotonic() + 10
+            while not servers:
+                check(time.monotonic() < end, "proxy started")
                 time.sleep(0.01)
             yield mp.PROXY_SOCKET, log
             servers[0].shutdown()
@@ -526,12 +527,23 @@ def post(path: str, body: bytes = b'{"model":"m"}', length: int | None = None) -
         return int(s.recv(64).split(b" ")[1])
 
 
+def wait_logged(log: io.StringIO, n: int, deadline_s: float = 10) -> None:
+    """Wait until the proxy has recorded n requests; it records after freeing the billable slot."""
+    end = time.monotonic() + deadline_s
+    while len(log.getvalue().splitlines()) < n:
+        if time.monotonic() > end:
+            raise AssertionError(f"proxy did not record {n} requests: {log.getvalue()!r}")
+        time.sleep(0.01)
+
+
 def test_proxy_handler(tmp: Path) -> None:
     for mode, first in (("sse_cut", 200), ("429", 429), ("error", 502)):
         FakeUpstream.mode = mode
         with live_proxy(tmp) as (port, log):
             check(post(port) == first, f"{mode}: relayed status")
+            wait_logged(log, 1)
             check(post(port) == 403, f"{mode}: proxy closed (slot freed, not 429)")
+            wait_logged(log, 2)
         reasons = [json.loads(line)["reason"] for line in log.getvalue().splitlines()]
         expected = "proxy error ValueError" if mode == "error" else "closed: usage not measurable"
         check(reasons[0] == expected and reasons[1] == expected.removeprefix("closed: "),
@@ -544,6 +556,8 @@ def test_proxy_handler(tmp: Path) -> None:
         def send() -> None:
             start.wait()
             statuses.append(post(port))
+            if statuses.count(429) == 4:
+                FakeUpstream.release.set()
 
         threads = [threading.Thread(target=send) for _ in range(5)]
         for th in threads:
@@ -556,7 +570,9 @@ def test_proxy_handler(tmp: Path) -> None:
         head = b'{"model":"m","pad":"'
         exact = head + b"x" * (mp.MAX_BODY_BYTES - len(head) - 2) + b'"}'
         check(post(port, exact) == 200, "body of exactly MAX_BODY_BYTES forwarded")
+        wait_logged(log, 1)
         check(post(port, b"", mp.MAX_BODY_BYTES + 1) == 413, "larger body refused before it is read")
+        wait_logged(log, 2)
         check(post(port) == 200, "proxy still serves after a 413")
     check(json.loads(log.getvalue().splitlines()[1])["reason"] == "body too large", "413 recorded")
     FakeUpstream.mode = "split"
@@ -566,6 +582,7 @@ def test_proxy_handler(tmp: Path) -> None:
             raw = b""
             while chunk := s.recv(4096):
                 raw += chunk
+        wait_logged(log, 1)
     check(raw.startswith(b"HTTP/1.0 200") and b"Set-Cookie" not in raw and b"X-Split" not in raw,
           f"headers with CR/LF/NUL not relayed: {raw[:200]!r}")
     check("dropped unsafe headers ['X-Split', 'X-Nul\\x00']" in json.loads(log.getvalue())["reason"],
@@ -574,22 +591,19 @@ def test_proxy_handler(tmp: Path) -> None:
 
 def test_relay_to_proxy(tmp: Path) -> None:
     FakeUpstream.mode = "json"
-    with live_proxy(tmp) as (path, _log):
+    with live_proxy(tmp) as (path, log):
         check(os.stat(path).st_mode & 0o777 == 0o600, f"proxy socket mode {oct(os.stat(path).st_mode & 0o777)}")
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(16)
+        port = listener.getsockname()[1]
+        bind_line = f'l = socket.socket(); l.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\nl.bind(("127.0.0.1", {mp.PROXY_PORT})); l.listen(16)'
+        check(bind_line in mp.RELAY, "relay binds the fixed loopback port")
         relay = mp.RELAY.replace(repr(mp.PROXY_SOCKET_DIR + "/proxy.sock"), repr(path)).replace(
-            f'("127.0.0.1", {mp.PROXY_PORT})', f'("127.0.0.1", {port})')
-        proc = subprocess.Popen([sys.executable, "-I", "-c", relay])
+            bind_line, f"l = socket.socket(fileno={listener.fileno()})")  # already listening: no port race, no wait
+        proc = subprocess.Popen([sys.executable, "-I", "-c", relay], pass_fds=(listener.fileno(),))
+        listener.close()
         try:
-            for _ in range(100):
-                try:
-                    socket.create_connection(("127.0.0.1", port), timeout=1).close()
-                    break
-                except OSError:
-                    time.sleep(0.05)
-
             def relay_post(timeout: float = 10) -> bytes:
                 with socket.create_connection(("127.0.0.1", port), timeout=timeout) as s:
                     s.sendall(b'POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n{"model":"m"}')
@@ -600,9 +614,7 @@ def test_relay_to_proxy(tmp: Path) -> None:
 
             raw = relay_post()
             check(raw.startswith(b"HTTP/1.0 200") and b"sk-test" not in raw, f"relayed through the proxy: {raw[:80]!r}")
-            time.sleep(0.2)  # the slot of the probe connection above is released asynchronously
             idle = [socket.create_connection(("127.0.0.1", port), timeout=5) for _ in range(mp.RELAY_MAX_CONNECTIONS)]
-            time.sleep(0.3)
             try:
                 relay_post(timeout=1)
             except socket.timeout:
@@ -611,7 +623,7 @@ def test_relay_to_proxy(tmp: Path) -> None:
                 raise AssertionError("relay served more than RELAY_MAX_CONNECTIONS connections at once")
             for s in idle:
                 s.close()
-            time.sleep(0.5)  # the queued request above is relayed (and answered) once a slot frees
+            wait_logged(log, 2)  # the queued request above is relayed (and answered) once a slot frees
             raw = relay_post()
             check(raw.startswith(b"HTTP/1.0 200"), f"relay serves again once slots are free: {raw[:80]!r}")
         finally:

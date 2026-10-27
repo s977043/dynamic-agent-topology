@@ -72,6 +72,10 @@ PROXY_KIT = "/proxy/kit.py"
 PROXY_SOCKET_DIR = "/proxy-sock"
 PROXY_SOCKET = f"{PROXY_SOCKET_DIR}/proxy.sock"
 RELAY_MAX_CONNECTIONS = 8  # concurrent Worker connections the relay serves; further ones wait in the backlog
+UPSTREAM_TIMEOUT_S = 600  # the proxy's socket timeout toward api.anthropic.com
+# The relay closes a connection with no bytes either way for this long; longer than the proxy's upstream timeout so
+# it never cuts a request the proxy still waits on (runbook §2.5 gives the basis).
+RELAY_IDLE_TIMEOUT_S = UPSTREAM_TIMEOUT_S + 60
 HOST_MNT = "/host_mnt"  # Docker Desktop reports some bind sources as this prefix + the host realpath
 # The Worker holds this placeholder; the proxy drops it and adds the real credential as x-api-key.
 PLACEHOLDER_TOKEN = "mrs-placeholder-not-a-credential"
@@ -406,7 +410,7 @@ def is_docker_desktop() -> bool:
     return docker("info", "--format", "{{.OperatingSystem}}", check=False).stdout.strip() == "Docker Desktop"
 
 
-def check_proxy_container(inspect: dict, args, volume: str, desktop: bool = False) -> None:
+def check_proxy_container(inspect: dict, args, volume: str, desktop: bool = False) -> dict:
     """The proxy holds only the kit, the credential, and the socket volume, and does not share a PID namespace."""
     expected = sorted(("bind", src, dest, rw) for dest, (src, rw) in proxy_bind_sources(args).items())
     sources = {src for _, src, _, _ in expected}
@@ -417,6 +421,8 @@ def check_proxy_container(inspect: dict, args, volume: str, desktop: bool = Fals
         raise Stop(f"proxy mounts {binds} {volume_mounts(inspect)} {others} != expected {expected} + {volume}")
     if (inspect.get("HostConfig") or {}).get("PidMode"):
         raise Stop("proxy container shares a PID namespace")
+    return {"proxyInspectedSources": sorted(m.get("Source", "") for m in inspect.get("Mounts", [])
+                                            if m.get("Type") == "bind")}
 
 
 def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], work_root: Path, volume: str,
@@ -563,26 +569,28 @@ def check_egress(rc: int, output: str) -> dict:
 
 # The Run container's main process: joins 127.0.0.1:PROXY_PORT to the proxy's Unix socket, byte for byte (the proxy
 # does every check). It holds no credential; the Worker reaching it is the same as reaching the proxy.
-RELAY = """import socket, threading
+RELAY = """import select, socket, threading
 slots = threading.BoundedSemaphore(%d)
-def pipe(a, b):
-    try:
-        while data := a.recv(65536):
-            b.sendall(data)
-    except OSError:
-        pass
-    try:
-        b.shutdown(socket.SHUT_WR)
-    except OSError:
-        pass
+IDLE = %d
 def serve(c):
     u = socket.socket(socket.AF_UNIX)
     try:
         u.connect(%r)
+        c.settimeout(IDLE); u.settimeout(IDLE)
+        peer = {c: u, u: c}
+        while peer:
+            ready = select.select(list(peer), [], [], IDLE)[0]
+            if not ready:
+                break
+            for a in ready:
+                if data := a.recv(65536):
+                    peer[a].sendall(data)
+                else:
+                    peer.pop(a).shutdown(socket.SHUT_WR)
     except OSError:
-        c.close(); u.close(); return
-    t = threading.Thread(target=pipe, args=(u, c), daemon=True); t.start()
-    pipe(c, u); t.join(); c.close(); u.close()
+        pass
+    finally:
+        c.close(); u.close()
 def run(c):
     try:
         serve(c)
@@ -593,7 +601,7 @@ l.bind(("127.0.0.1", %d)); l.listen(16)
 while True:
     slots.acquire()
     threading.Thread(target=run, args=(l.accept()[0],), daemon=True).start()
-""" % (RELAY_MAX_CONNECTIONS, PROXY_SOCKET, PROXY_PORT)
+""" % (RELAY_MAX_CONNECTIONS, RELAY_IDLE_TIMEOUT_S, PROXY_SOCKET, PROXY_PORT)
 
 # Run in the Run container: waits until the relay listens and the proxy's socket accepts.
 READY_PROBE = """import socket, sys, time
@@ -717,7 +725,7 @@ def isolate_and_check(args, rdir: Path, names: dict, evidence: dict, cand: dict,
     docker(*proxy_run_command(args, names["proxy"], names["volume"], model)[1:])
     names["proxyStarted"] = True
     proxy_inspect = json.loads(docker("inspect", names["proxy"]).stdout)[0]
-    check_proxy_container(proxy_inspect, args, names["volume"], desktop)
+    evidence.update(check_proxy_container(proxy_inspect, args, names["volume"], desktop))
     proxy_ip = ((proxy_inspect.get("NetworkSettings") or {}).get("Networks") or {}).get("bridge", {}).get("IPAddress")
     if not proxy_ip:
         raise Stop("proxy container has no bridge address")
@@ -995,7 +1003,7 @@ def proxy_main(argv: list[str]) -> int:
             up = resp = tokens = failure = None
             dropped: list[str] = []
             try:
-                up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=600,
+                up = http.client.HTTPSConnection(API_HOST, API_PORT, timeout=UPSTREAM_TIMEOUT_S,
                                                  context=ssl.create_default_context())
                 up.request(self.command, self.path, body=body, headers=forward_headers(self.headers.items(), key))
                 resp = up.getresponse()
@@ -1004,7 +1012,8 @@ def proxy_main(argv: list[str]) -> int:
                     if not header_safe(k, v):
                         dropped.append(k[:60])
                     elif k.lower() not in DROP_HEADERS:
-                        self.send_header(k, v)
+                        # no-op after header_safe; the form CodeQL's py/http-response-splitting accepts as a sanitizer
+                        self.send_header(k.replace("\n", ""), v.replace("\n", ""))
                 self.end_headers()
                 sse = SseUsage() if "text/event-stream" in (resp.getheader("Content-Type") or "") else None
                 kept = b""

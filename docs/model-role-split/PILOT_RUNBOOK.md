@@ -120,13 +120,13 @@
 
 補足（観測）: network なしの container にも `tunl0`・`gre0`・`sit0` などの tunnel の既定 device が `/proc/net/dev` に見える（VM の kernel が module を読み込んでいるため。down で address・経路なし）。このため確認 5 は device の一覧ではなく経路の件数で判定する。
 
-**確認 2 の `Source` の判定（#257 の独立レビュー後、方針 (b)）**: `Source` は生の文字列のまま比べ、realpath・prefix の除去・前方一致はかけない。許すのは「期待する realpath と完全一致」と、`docker info` の `OperatingSystem` が `Docker Desktop` のときに限り「`/host_mnt` + 期待する realpath と完全一致」の 2 つだけ。`/host_mnt/other`、`/host_mnt` + 期待値 + `/x`、末尾の `/`、`.` を含む形、Docker Desktop 以外での `/host_mnt` の形は FAIL。inspect した生の `Source` は `run.json` の `isolation.inspectedSources` に残す。
+**確認 2 の `Source` の判定（#257 の独立レビュー後、方針 (b)）**: `Source` は生の文字列のまま比べ、realpath・prefix の除去・前方一致はかけない。許すのは「期待する realpath と完全一致」と、`docker info` の `OperatingSystem` が `Docker Desktop` のときに限り「`/host_mnt` + 期待する realpath と完全一致」の 2 つだけ。`/host_mnt/other`、`/host_mnt` + 期待値 + `/x`、末尾の `/`、`.` を含む形、Docker Desktop 以外での `/host_mnt` の形は FAIL。inspect した生の `Source` は、Run の container の分を `run.json` の `isolation.inspectedSources` に、proxy の container の分を `isolation.proxyInspectedSources` に残す（判定は上のとおりで、記録を足すだけ）。
 
 **2026-10-27 の再実測（方針 (b) と以下の変更の後、model は起動していない）**: 同じ image・ダミーの資格情報で Docker Desktop に対して 6 回実行した。確認 1・2（proxy と Run の container の両方）・5・6 は **6 回とも PASS**。6 回のうち `Source` が `/host_mnt` の形で返った mount を含む回があり、(b) で通った。proxy の Unix ソケットは `600`（Run の uid）、proxy のログにダミーの資格情報の文字列は出ず、`teardown` の残存の検査は 6 回とも空で、別に `docker ps -a`・`docker volume ls` でも残りがないことを確かめた。
 
-**後片付けの検査**: `teardown` は停止・削除・volume 削除の後に `docker ps -a`・`docker volume ls` で残りを確かめ、消えるまで再試行する。残ったリソース（特に資格情報を mount した proxy の container）があれば、Run を `teardown-failed` とし、残ったリソース名と状態を `run.json` の `teardownLeftovers` に記録して batch を止める（自動の再試行はしない）。Operator は残りを消してから次へ進む。
+**後片付けの検査**: `teardown` は停止・削除・volume 削除の後に `docker ps -a`・`docker volume ls` で残りを確かめ、消えるまで再試行する。残ったリソース（特に資格情報を mount した proxy の container）があれば、Run を `teardown-failed` とし、残ったリソース名と状態を `run.json` の `teardownLeftovers` に記録して batch を止める（自動の再試行はしない）。Operator は `teardownLeftovers`（残ったリソースの名前と最終状態）を追跡 Issue（#220）に転記し、残りを消してから次へ進む。
 
-**その他（同じ変更）**: proxy の Unix ソケットは bind 直後に `0600` にする（umask 任せでは `0755` だった）。relay の同時接続数は `RELAY_MAX_CONNECTIONS`（8）までで、それを超える接続は空きが出るまで待つ。
+**その他（同じ変更）**: proxy の Unix ソケットは bind 直後に `0600` にする（umask 任せでは `0755` だった）。relay の同時接続数は `RELAY_MAX_CONNECTIONS`（8）までで、それを超える接続は空きが出るまで待つ。relay は両方向とも無通信が `RELAY_IDLE_TIMEOUT_S`（660 秒）続いた接続を閉じ、枠を解放する（Worker が開いたまま放置した接続で枠が埋まり続けないため）。値の根拠: proxy の upstream への socket の timeout（`UPSTREAM_TIMEOUT_S`、600 秒）より長くし、proxy がまだ upstream の応答を待っている要求を relay が先に切らないようにした。Run 全体は `--timeout-s`（承認値 30 分）の wall clock 上限で止まるので、それより長く残る接続はない。`--timeout-s` が 660 秒以下なら、relay の timeout より先に wall clock 上限が効く。
 
 ### 2.5 proxy 方式の境界と、起動前に確かめること
 

@@ -654,9 +654,44 @@ def test_bind_source(tmp: Path) -> None:
         return {"Mounts": [{"Type": "bind", "Source": fn(s), "Destination": d, "RW": rw} for _, s, d, rw in pexp] + [pvol],
                 "HostConfig": {}}
 
-    mp.check_proxy_container(pins(lambda s: mp.HOST_MNT + s), Args, "vol", True)
+    ev = mp.check_proxy_container(pins(lambda s: mp.HOST_MNT + s), Args, "vol", True)
+    check(ev == {"proxyInspectedSources": sorted(mp.HOST_MNT + s for _, s, _, _ in pexp)},
+          f"raw proxy bind sources recorded: {ev}")
     expect_stop(mp.check_proxy_container, pins(lambda s: mp.HOST_MNT + s), Args, "vol", False)
     expect_stop(mp.check_proxy_container, pins(lambda s: mp.HOST_MNT + s + "/x"), Args, "vol", True)
+
+
+def test_relay_idle_timeout(tmp: Path) -> None:
+    check(mp.RELAY_IDLE_TIMEOUT_S > mp.UPSTREAM_TIMEOUT_S, "relay never cuts before the proxy's upstream timeout")
+    FakeUpstream.mode = "json"
+    with live_proxy(tmp) as (path, _log):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(16)
+        port = listener.getsockname()[1]
+        bind_line = ('l = socket.socket(); l.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n'
+                     f'l.bind(("127.0.0.1", {mp.PROXY_PORT})); l.listen(16)')
+        relay = mp.RELAY
+        for old, new in ((bind_line, f"l = socket.socket(fileno={listener.fileno()})"),
+                         (f"BoundedSemaphore({mp.RELAY_MAX_CONNECTIONS})", "BoundedSemaphore(1)"),
+                         (f"IDLE = {mp.RELAY_IDLE_TIMEOUT_S}\n", "IDLE = 0.5\n"),
+                         (repr(mp.PROXY_SOCKET_DIR + "/proxy.sock"), repr(path))):
+            check(old in relay, f"relay contains {old!r}")
+            relay = relay.replace(old, new)
+        proc = subprocess.Popen([sys.executable, "-I", "-c", relay], pass_fds=(listener.fileno(),))
+        listener.close()
+        try:
+            idle = socket.create_connection(("127.0.0.1", port), timeout=10)  # takes the only slot, sends nothing
+            with idle, socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+                s.sendall(b'POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n{"model":"m"}')
+                check(idle.recv(1) == b"", "relay closed the idle connection")
+                raw = b""
+                while chunk := s.recv(4096):
+                    raw += chunk
+            check(raw.startswith(b"HTTP/1.0 200"), f"slot freed by the timeout serves the next one: {raw[:80]!r}")
+        finally:
+            proc.kill()
+            proc.wait()
 
 
 class FakeDocker:
@@ -739,7 +774,7 @@ def main() -> int:
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
                  test_guards, test_never_launched_retry, test_proxy_handler, test_relay_to_proxy, test_bind_source,
-                 test_teardown]
+                 test_relay_idle_timeout, test_teardown]
     for t in tests:
         t()
         print(f"ok {t.__name__}")

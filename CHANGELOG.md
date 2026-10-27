@@ -6,13 +6,35 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.4.0 — 2026-10-28
+
+Content candidate: `9bf2c5a3e18756e8b35b06c6fe700d64ebe06b46`.
+
+Previous boundary: tag `v0.3.0` (`0dd236ee1bc5e69b5620af151e93537e32a987dc`).
+
+### Added
+
+- RunObservation: `schemas/run-observation.schema.json`, `scripts/validate_run_observation.py`, valid / invalid fixtures, and Claude Code / Codex adapter recording guides (#226, #227). None of these existed in 0.3.0.
+- RunObservation save / summarize CLI `scripts/run_observation.py` (#229). `save` refuses an `observationId` already stored anywhere in the store (by file name or by `metadata.observationId`) and refuses, without writing, while any YAML file in the store cannot be read or parsed; `sum` exits 1 without tables when counted records share an `observationId` and reports invalid records as `skipped invalid` (#229, #232, #234, #250). `save` also refuses a destination inside a nested Git working tree (#234).
+- The Claude Code / Codex adapter recording guides put the recording time in `endedAt` when no other reliable end time exists (#240).
+- The validator and CLI share one YAML loading rule: records with duplicate mapping keys or YAML merge keys (`<<:`) are rejected, and unreadable records report `cannot read: ...` with exit 1 (#235; `docs/RUN_OBSERVATION_DESIGN.md` §6).
+- `topologyBasis.independentReview: 'yes'` is accepted only when a `role: advisory` review has `reviewerKind` `separate-session`, `separate-model`, or `human`; same-session advisory reviews alone do not count (#226, #250).
+- Optional RunObservation fields `interruptionKind`, `rework.triggers`, `taskDifficulty`, and `usage`, plus aggregation rules in `docs/OBSERVATION_MEASUREMENT.md` (#250).
+- RunObservation H1 / H2 judgment records and open questions U4 (verifier coverage when several artifacts are merged) and U5 (grounding `specialistRole: yes` outside `topologyBasis`) in `docs/RUN_OBSERVATION_DESIGN.md` §10 (#238, #260). U4 / U5 are undecided review candidates, not rule changes.
+- DAT plugin packaging (`.claude-plugin/`, `.codex-plugin/`) with the `dat-select` and `dat-observe` skills and `scripts/validate_plugin.py` (#230). The plugin manifest `version` is managed separately from the DAT specification version (`skills/dat-observe/SKILL.md`).
+- Hard-task T0/T1 comparison: evaluation design, preregistration (final second edition), candidate table, calibration runbook and kit (`scripts/hard_task_calibrate.py`, `scripts/hard_task_power_sim.py`), and task descriptions for the first five candidates (#237, #241, #243, #245, #251, #253, #255, #258).
+- Model role split comparison: evaluation design, preregistration, candidate table, runbook, 18-task fixtures (`fixtures/model-role-split/`), and a two-run pilot kit (`scripts/model_role_split_pilot.py`) with proxy, relay, and teardown handling; Run containers have no network, and teardown stops on leftovers (#236, #246, #247, #249, #252, #254, #257, #261, #263).
+- spec-lint now runs RunObservation fixture / validator / CLI tests, plugin validation, and the model role split pilot kit tests (#226, #229, #230, #262).
+- Evaluation design notes for post-EXP-001 evaluation and elapsed-time signals, and further deferred research notes; these remain candidates, not adopted contracts (#194, #200, #202, #204, #205, #206, #207, #208, #211, #214, #219).
+
 ### Changed
 
-- Compatibility: `scripts/validate_run_observation.py` now rejects RunObservation records with duplicate mapping keys or YAML merge keys (`<<:`), matching `scripts/run_observation.py`; unreadable records report `cannot read: ...` with exit 1 instead of a traceback. Rewrite merge-key records as plain YAML with each key written out (`docs/RUN_OBSERVATION_DESIGN.md` §6).
+- Agent operation rules move toward HOTL and widen the scope of agent merges (#242).
+- GitHub Actions dependencies are bumped (#256).
 
-- Compatibility: `scripts/validate_run_observation.py` now accepts `topologyBasis.independentReview: 'yes'` only when a `role: advisory` review has `reviewerKind` `separate-session`, `separate-model`, or `human`; records whose only advisory reviews are `same-session` are rejected. Fix such a record by setting `independentReview: 'no'` and re-deriving `topologyEquivalent` with `docs/RUN_OBSERVATION_DESIGN.md` §5.2. Until fixed, `scripts/run_observation.py sum` reports it as `skipped invalid` and exits 1. `sum` also exits 1 without tables when counted records share an `observationId`, and `save` refuses an `observationId` already stored anywhere in the store (by file name or by `metadata.observationId`). `save` also refuses, without writing, while any YAML file in the store cannot be read or parsed; fix or move that file first.
+### Experiment status
 
-- Compatibility: RunObservation gains optional `interruptionKind`, `rework.triggers`, `taskDifficulty`, and `usage`. Records that use them are rejected by the 0.3.0 CLI and validator (`additionalProperties: false`); save and summarize them with this version. Aggregation rules are in `docs/OBSERVATION_MEASUREMENT.md`.
+- No EXP-001 frozen input or evaluation semantic changed. Hard-task and model role split work is preregistration and preparation; no comparison result is claimed in this release.
 
 ## 0.3.0 — 2026-10-21
 

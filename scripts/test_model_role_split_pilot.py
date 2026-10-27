@@ -666,9 +666,200 @@ def test_bind_source(tmp: Path) -> None:
         return {"Mounts": [{"Type": "bind", "Source": fn(s), "Destination": d, "RW": rw} for _, s, d, rw in pexp] + [pvol],
                 "HostConfig": {}}
 
-    mp.check_proxy_container(pins(lambda s: mp.HOST_MNT + s), Args, "vol", True)
+    ev = mp.check_proxy_container(pins(lambda s: mp.HOST_MNT + s), Args, "vol", True)
+    check(ev == {"proxyInspectedSources": sorted(mp.HOST_MNT + s for _, s, _, _ in pexp)},
+          f"raw proxy bind sources recorded: {ev}")
     expect_stop(mp.check_proxy_container, pins(lambda s: mp.HOST_MNT + s), Args, "vol", False)
     expect_stop(mp.check_proxy_container, pins(lambda s: mp.HOST_MNT + s + "/x"), Args, "vol", True)
+
+
+def test_relay_idle_timeout(tmp: Path) -> None:
+    check(mp.RELAY_IDLE_TIMEOUT_S > mp.UPSTREAM_TIMEOUT_S, "relay never cuts before the proxy's upstream timeout")
+    FakeUpstream.mode = "json"
+    with live_proxy(tmp) as (path, _log):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(16)
+        port = listener.getsockname()[1]
+        bind_line = ('l = socket.socket(); l.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n'
+                     f'l.bind(("127.0.0.1", {mp.PROXY_PORT})); l.listen(16)')
+        relay = mp.RELAY
+        for old, new in ((bind_line, f"l = socket.socket(fileno={listener.fileno()})"),
+                         (f"BoundedSemaphore({mp.RELAY_MAX_CONNECTIONS})", "BoundedSemaphore(1)"),
+                         (f"IDLE = {mp.RELAY_IDLE_TIMEOUT_S}\n", "IDLE = 0.5\n"),
+                         (repr(mp.PROXY_SOCKET_DIR + "/proxy.sock"), repr(path))):
+            check(old in relay, f"relay contains {old!r}")
+            relay = relay.replace(old, new)
+        proc = subprocess.Popen([sys.executable, "-I", "-c", relay], pass_fds=(listener.fileno(),))
+        listener.close()
+        try:
+            idle = socket.create_connection(("127.0.0.1", port), timeout=10)  # takes the only slot, sends nothing
+            with idle, socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+                s.sendall(b'POST /v1/messages HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n{"model":"m"}')
+                check(idle.recv(1) == b"", "relay closed the idle connection")
+                raw = b""
+                while chunk := s.recv(4096):
+                    raw += chunk
+            check(raw.startswith(b"HTTP/1.0 200"), f"slot freed by the timeout serves the next one: {raw[:80]!r}")
+        finally:
+            proc.kill()
+            proc.wait()
+
+
+@contextlib.contextmanager
+def relay_to(tmp: Path, handle, idle: float = 1.0, slots: int = 1, prefix: str = ""):
+    """The real RELAY (IDLE and slots replaced, `prefix` run first) in front of a Unix server that runs `handle(sock)`."""
+    path = str(tmp / "u.sock")
+    server = socket.socket(socket.AF_UNIX)
+    server.bind(path)
+    server.listen(8)
+
+    def accept() -> None:
+        while True:
+            try:
+                s = server.accept()[0]
+            except OSError:
+                return
+            threading.Thread(target=handle, args=(s,), daemon=True).start()
+
+    threading.Thread(target=accept, daemon=True).start()
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(16)
+    port = listener.getsockname()[1]
+    bind_line = ('l = socket.socket(); l.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n'
+                 f'l.bind(("127.0.0.1", {mp.PROXY_PORT})); l.listen(16)')
+    relay = mp.RELAY
+    for old, new in ((bind_line, f"l = socket.socket(fileno={listener.fileno()})"),
+                     (f"BoundedSemaphore({mp.RELAY_MAX_CONNECTIONS})", f"BoundedSemaphore({slots})"),
+                     (f"IDLE = {mp.RELAY_IDLE_TIMEOUT_S}\n", f"IDLE = {idle}\n"),
+                     (repr(mp.PROXY_SOCKET), repr(path))):
+        check(old in relay, f"relay contains {old!r}")
+        relay = relay.replace(old, new)
+    proc = subprocess.Popen([sys.executable, "-I", "-c", prefix + relay], pass_fds=(listener.fileno(),))
+    listener.close()
+    try:
+        yield port
+    finally:
+        proc.kill()
+        proc.wait()
+        server.close()
+
+
+def read_all(s: socket.socket) -> bytes:
+    raw = bytearray()
+    while chunk := s.recv(65536):
+        raw += chunk
+    return bytes(raw)
+
+
+def test_relay_flow(tmp: Path) -> None:
+    check(mp.RELAY_BUFFER_MAX >= 65536, "the relay buffers at least one read per direction")
+    big = os.urandom(8 * 1024 * 1024)
+    upload = os.urandom(1024 * 1024)
+    got: dict[str, bytes] = {}
+    done = threading.Event()
+
+    def echo_big(s: socket.socket) -> None:
+        with s:
+            got["request"] = read_all(s)  # returns once the client's half-close reaches the server
+            s.sendall(big)
+        done.set()
+
+    with relay_to(tmp, echo_big, idle=10.0) as port:
+        # (c) + (d): a large upload, then a half-close, then a 4 MiB answer arrives whole and ends with EOF
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+            s.sendall(upload)
+            s.shutdown(socket.SHUT_WR)
+            raw = read_all(s)
+        check(done.wait(10) and got["request"] == upload,
+              f"half-closed request reached the server whole ({len(got.get('request', b''))} bytes, {len(raw)} back)")
+        check(raw == big, f"large answer relayed whole ({len(raw)} of {len(big)} bytes)")
+    (tmp / "u.sock").unlink()
+    with relay_to(tmp, echo_big, idle=1.0) as port:
+        # (a): a reader that keeps reading for longer than IDLE in total is not cut. Its pace (64 KiB per 10 ms) is
+        # far above the IDLE limit; it does not show where a slow reader starts being cut
+        done.clear()
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
+            s.sendall(b"x")
+            s.shutdown(socket.SHUT_WR)
+            raw = bytearray()
+            start = time.monotonic()
+            while chunk := s.recv(65536):
+                raw += chunk
+                done.wait(0.01)  # pacing of the slow reader, not a synchronisation
+            took = time.monotonic() - start
+        check(raw == big, f"slow reader got the whole answer ({len(raw)} bytes, {took:.1f}s)")
+        check(took > 1.0, f"the paced read outlasted IDLE ({took:.1f}s), so it shows reads keep the link alive")
+
+
+def test_relay_eagain(tmp: Path) -> None:
+    """send / recv raising BlockingIOError once per socket leaves the connection open and loses no byte."""
+    log = tmp / "eagain.log"
+    prefix = f"""import socket as _s
+_orig = {{"send": _s.socket.send, "recv": _s.socket.recv}}
+_seen = set()
+def _once(op):
+    def f(self, *a):
+        if (op, id(self)) not in _seen:
+            _seen.add((op, id(self)))
+            open({str(log)!r}, "a").write(op + "\\n")
+            raise BlockingIOError
+        return _orig[op](self, *a)
+    return f
+_s.socket.send, _s.socket.recv = _once("send"), _once("recv")
+"""
+    body = os.urandom(512 * 1024)
+    got: dict[str, bytes] = {}
+
+    def echo(s: socket.socket) -> None:
+        with s:
+            got["request"] = read_all(s)
+            s.sendall(body)
+
+    with relay_to(tmp, echo, idle=5.0, prefix=prefix) as port:
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+            s.sendall(body)
+            s.shutdown(socket.SHUT_WR)
+            raw = read_all(s)
+    check(got.get("request") == body, "request crossed the relay whole despite EAGAIN")
+    check(raw == body, f"answer crossed the relay whole despite EAGAIN ({len(raw)} bytes)")
+    ops = log.read_text().split()
+    check(ops.count("send") >= 2 and ops.count("recv") >= 2, f"EAGAIN was raised on both sockets: {ops}")
+
+
+def test_relay_stalled_reader(tmp: Path) -> None:
+    ended = threading.Event()
+    sent = []
+
+    def flood(s: socket.socket) -> None:
+        with s:
+            s.settimeout(30)
+            data = b"x" * 65536
+            try:
+                if s.recv(5) != b"flood":
+                    s.sendall(b"served")
+                    return
+                while True:
+                    s.sendall(data)
+                    sent.append(len(data))
+            except OSError:
+                ended.set()
+
+    with relay_to(tmp, flood, idle=3.0) as port:
+        stalled = socket.create_connection(("127.0.0.1", port), timeout=10)
+        stalled.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+        with stalled:
+            stalled.sendall(b"flood")  # (b): never reads again
+            check(ended.wait(15), "relay closed the connection whose reader stopped")
+            check(sum(sent) < mp.RELAY_BUFFER_MAX + 16 * 1024 * 1024,
+                  f"relay stopped reading at its buffer bound ({sum(sent)} bytes taken)")
+            with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+                s.sendall(b"other")
+                s.shutdown(socket.SHUT_WR)
+                raw = read_all(s)
+                check(raw == b"served", f"the freed slot serves the next connection: {raw!r}")
 
 
 class FakeDocker:
@@ -751,7 +942,7 @@ def main() -> int:
     tmp_tests = [test_container_isolation, test_secret_quarantine, test_dry_run_and_summary, test_effort_not_visible, test_model_mismatch_stops,
                  test_credential_access_stops, test_token_limit_and_budget, test_incomplete_trace, test_egress_anomaly, test_timeout,
                  test_guards, test_never_launched_retry, test_proxy_handler, test_relay_to_proxy, test_bind_source,
-                 test_teardown]
+                 test_relay_idle_timeout, test_relay_flow, test_relay_eagain, test_relay_stalled_reader, test_teardown]
     for t in tests:
         t()
         print(f"ok {t.__name__}")

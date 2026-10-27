@@ -40,6 +40,7 @@
 | Learning ledger・Issue への記録、draft PR、validator / test、自分の branch への push | Agent | 記録と通知を残す |
 | 規則変更 PR 以外の PR の merge（docs・実験・コード・依存の追加を含む） | Agent | 次をすべて満たす: 必須 CI 全 pass、PR 作成セッションと別セッション（別モデル推奨）の独立レビューで未解決の必須指摘 0、Human 専権の対象を含まない。依存を追加する PR は別モデルの独立レビューが必須。レビュー対象の head・差分・判定・CI 結果を PR に記録する |
 | 規則変更 PR（`AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則、`scripts/validate_agent_guidance.py`、Guard の hook や検査スクリプトを変える PR）の起案とレビュー | Agent | 別モデルの独立レビューまで行い、レビュー対象の head・差分・判定・CI 結果を PR に記録する。検査を弱める変更（validator・Guard の判定を緩める、必須チェックを外す）はその旨を PR 本文に明記する。起案したら Issue #159 にその PR のリンクを残す。merge は Human 専権 |
+| リリースの公開（release PR の merge、新しい version tag の作成、GitHub Release の公開） | Agent | `docs/RELEASE_READINESS.md` の手順に従い、次をすべて満たす: release PR の最終 head で必須 CI 全 pass。PR 作成セッションと別セッションの独立レビューを 2 本（記載の網羅性と公開可否。少なくとも 1 本は別モデル）行い、どちらも未解決の必須指摘 0。レビュー済み head から最終 head までの差分が公開日の記入だけ。release commit で main の必須 CI と Scorecard が success。新しい tag だけを作り、既存の tag は動かさない。release PR が open の間は他の PR を merge しない。Publication gate の各項目を PR に記録する。release PR が規則変更 PR に当たる変更や下の Human 専権の対象を含むときは対象外。異常時は停止し、公開済みと主張しない（Publication failure 節） |
 | Reviewer Judgment（Run acceptance、disposition の ACCEPT 等） | 独立 Agent Reviewer または人間 | 作成者と別セッション。Frozen 例外など高リスクの判断は別モデルも用いる（例: Codex（GPT 系）、Antigravity CLI（`agy`、Gemini 系）。下記）。記録には runtime・model・session ID・根拠リンクを書く |
 | EXP-001 の一回限りの model 起動（retry allowance の消費） | Agent（文書化された retry 手順の範囲に限る: `AGENTS.md`、`docs/EXP-001_RETRY_51.md`、`docs/EXP-001_RETRY_T1_R01.md`、本書の HOTL 条件） | 手順書の全 Gate と preflight を機械的に検査して合格、Reviewer Judgment が記録済み、retry 未消費、Runtime/Model/Effort が固定、重複起動を防止、attestation・trace・Evidence を保存。異常時は停止し、追加起動はしない |
 | Human 専権（下表） | 人間 | Agent は起案と材料の準備まで |
@@ -50,7 +51,9 @@ Human 専権として残す操作と理由:
 | --- | --- |
 | 規則変更 PR の merge | 作成者と同じ主体がレビューを手配して merge できるため、自己承認を文書だけでは防げない。GitHub の保護ルールで別主体のレビューを強制できるようになったら見直す |
 | Feature Freeze の改訂、Frozen artifact の変更 | 実験条件を固定した前提が崩れ、EXP-001 の結果の比較可能性を失う。上記の EXP-001 retry 例外はそのまま |
-| release / tag の作成 | 公開した tag は動かさない規則で、公開後に取り消せない |
+| 既存 tag の移動・削除、GitHub Release の削除 | 公開した境界を書き換え、利用者が参照した版と食い違う。取り消せない |
+| 破壊的変更を含む版の公開（1.0.0 以降の major 版、1.0.0 の初公開、0.x で互換性を壊す版） | 互換性の方針を決めるのは人間のため。新しい tag は動かせないので公開後に取り消せない |
+| Feature Freeze に関わる版の公開（Frozen artifact や評価 semantics の変更・例外を含む版） | 上の Feature Freeze の行と同じ |
 | force push | 他者の commit を消すおそれがあり、取り消せない |
 | ブランチ・ファイル・issue などの削除 | 取り消せない、または復元に人手が要る |
 | 予算の承認と、課金が発生する model 起動（Operator） | 費用の責任者が人間のため。上記の EXP-001 retry 例外はそのまま |

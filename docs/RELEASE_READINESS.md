@@ -10,6 +10,19 @@ This document is the operational release checklist. `CHANGELOG.md` records user-
 
 If these sources disagree, stop publication and reconcile them before creating or moving any release reference.
 
+## Who publishes
+
+An agent may merge the release PR, create the new version tag, and publish the GitHub Release under the HOTL conditions in `docs/AGENT_HARNESS.md` (the source of truth). In terms of this checklist:
+
+- the final release PR head passes the Evidence gate;
+- two independent reviews, in sessions other than the one that created the PR and at least one by a different model, cover completeness (records match the candidate diff) and publish-readiness; neither has unresolved required findings;
+- after the reviewed head, the only change is filling in the actual publication date (`CHANGELOG.md` heading and `CITATION.cff` `date-released`), confirmed with `git diff <reviewed head>..<final head>`;
+- no other PR is merged while the release PR is open;
+- the release commit's required `main` checks and Scorecard succeed before the tag is created;
+- only a new tag is created; every Publication gate item is recorded in the release PR.
+
+A human publishes instead when the release contains breaking changes (a major version from 1.0.0 on, the first 1.0.0, or a compatibility-breaking 0.x version), involves the Feature Freeze, or the release PR is a rule-change PR. Moving or deleting an existing tag and deleting a GitHub Release stay human-only. On any anomaly, follow Publication failure.
+
 ## Release identities
 
 Keep two revisions distinct:
@@ -29,9 +42,9 @@ Before opening a release PR:
 - confirm `CHANGELOG.md` accurately describes the candidate;
 - confirm no frozen experiment input or evaluation semantic was changed unintentionally.
 
-### Current post-0.2.1 line
+### Current release line
 
-`0.3.0` is a **working candidate**, not a default or published version. The current line contains material additive changes beyond the historical unpublished `0.2.1` content point, including experiment-execution / attestation tooling and public-repository capabilities. The final version must still be decided in the release PR from the actual candidate diff and the project's evolving compatibility policy.
+`v0.3.0` and `v0.4.0` are published; `v0.4.0` points to release commit `f43e83e` (PR #264). The previous boundary for the next release is `v0.4.0`. The next version must be decided in the release PR from the actual candidate diff and the project's evolving compatibility policy; no next version is pre-selected.
 
 Do not publish `v0.2.1` from current `main`. If the historical `0.2.1` release is ever published, its tag must point to the historical content point documented in `CHANGELOG.md`.
 

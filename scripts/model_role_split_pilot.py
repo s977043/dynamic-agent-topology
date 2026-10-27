@@ -574,6 +574,7 @@ def check_egress(rc: int, output: str) -> dict:
 # does every check). It holds no credential; the Worker reaching it is the same as reaching the proxy. Sockets are
 # non-blocking and each direction has its own buffer, written only when select reports the side writable, so a slow
 # reader never stalls the other direction. A direction stops reading once its buffer holds RELAY_BUFFER_MAX bytes.
+# EAGAIN / EINTR leave the socket for the next select and do not count as activity; other errors end the connection.
 RELAY = """import select, socket, threading, time
 slots = threading.BoundedSemaphore(%d)
 IDLE = %d
@@ -598,13 +599,19 @@ def serve(c):
                                     min(due) - now)
             now = time.monotonic()
             for a in w:
-                n = a.send(out[a])
+                try:
+                    n = a.send(out[a])
+                except (BlockingIOError, InterruptedError):
+                    continue
                 del out[a][:n]
                 last = wrote[a] = now
                 if not out[a] and peer[a] not in live:
                     a.shutdown(socket.SHUT_WR)
             for a in r:
-                data = a.recv(65536)
+                try:
+                    data = a.recv(65536)
+                except (BlockingIOError, InterruptedError):
+                    continue
                 b = peer[a]
                 if data:
                     if not out[b]:

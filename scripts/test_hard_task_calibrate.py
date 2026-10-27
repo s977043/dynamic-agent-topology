@@ -272,6 +272,15 @@ def test_workspace_and_grade(tmp: Path) -> None:
     check(subprocess.run(["git", "-C", str(ws), "cat-file", "-e", fix + "^{commit}"], capture_output=True).returncode != 0, "fix unreachable")
     ac_files = htc.load_ac_files([cand], mirror)[1]
     py = sys.executable
+    if not Path("/usr/bin/sandbox-exec").exists():
+        try:
+            htc.probe_ac_sandbox(py)
+        except htc.Stop:
+            pass
+        else:
+            raise AssertionError("probe ran without sandbox-exec")
+        print("skip: /usr/bin/sandbox-exec not found; grade and AC sandbox probe checks skipped")
+        return
     check(not htc.grade(cand, ws, tmp / "run1" / "grade", ac_files, py)["verifiedSuccess"], "unfixed fails")
     (ws / "toy.py").write_text("def add(a, b):\n    return a + b\n")
     result = htc.grade(cand, ws, tmp / "run1" / "grade2", ac_files, py)

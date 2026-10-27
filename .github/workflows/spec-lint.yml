@@ -245,3 +245,6 @@ jobs:
 
       - name: Test model role split pilot kit
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_model_role_split_pilot.py
+
+      - name: Test hard task calibration
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_hard_task_calibrate.py

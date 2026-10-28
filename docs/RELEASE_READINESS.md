@@ -23,13 +23,15 @@ An agent may fill in the publication date, merge the release PR, create the new 
 - two independent reviews, in sessions other than the one that created the PR and at least one by a different model, cover completeness (records match the candidate diff) and publish-readiness; neither has unresolved required findings;
 - after the reviewed head, the only change is filling in the actual publication date (`CHANGELOG.md` heading and `CITATION.cff` `date-released`), confirmed with `git diff <reviewed head>..<final head>`;
 - no other PR is merged while the release PR is open;
+- the release PR base has not moved from the content candidate (or from a later commit included in what was approved);
 - the Compatibility boundary check finds no breaking change.
 
 **Before creating the tag:**
 
 - the release commit's required `main` checks succeed;
 - a Scorecard run on the release commit itself succeeds (an agent may not use an earlier Scorecard result; see Scorecard evidence);
-- the tag to create is new and no existing tag is moved.
+- the tag to create is new and no existing tag is moved;
+- `git diff <approved head> <release commit>` shows that the release commit's tree differs from the approved head's tree only in the publication date (`CHANGELOG.md` heading and `CITATION.cff` `date-released`), and the result is recorded in the release PR. With a squash merge the trees still match when the base has not moved. On any other difference, STOP: create neither the tag nor the GitHub Release, and do not publish until a new review and a new human approval; follow Publication failure.
 
 **After publication:**
 

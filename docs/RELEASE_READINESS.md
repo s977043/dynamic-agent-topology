@@ -12,16 +12,51 @@ If these sources disagree, stop publication and reconcile them before creating o
 
 ## Who publishes
 
-An agent may merge the release PR, create the new version tag, and publish the GitHub Release under the HOTL conditions in `docs/AGENT_HARNESS.md` (the source of truth). In terms of this checklist:
+An agent may fill in the publication date, merge the release PR, create the new version tag, publish the GitHub Release, and verify the result under the HOTL conditions in `docs/AGENT_HARNESS.md` (the source of truth), but only after a human approves that version.
 
+**Per-version approval.** The agent asks a y/N question that shows the version and the release PR head SHA; a human answers y. The agent records the approval (version, head SHA, time, who answered) in the release PR before merging. If the head changes after approval with anything other than the publication date, the approval is void and must be obtained again. This approval exists because GitHub protection cannot yet enforce approval by another actor (the current plan cannot evaluate rulesets), so the same actor could otherwise arrange its own reviews and publish. Revisit it when protection can enforce that.
+
+**Before merge:**
+
+- the per-version approval is valid and recorded in the release PR;
 - the final release PR head passes the Evidence gate;
 - two independent reviews, in sessions other than the one that created the PR and at least one by a different model, cover completeness (records match the candidate diff) and publish-readiness; neither has unresolved required findings;
 - after the reviewed head, the only change is filling in the actual publication date (`CHANGELOG.md` heading and `CITATION.cff` `date-released`), confirmed with `git diff <reviewed head>..<final head>`;
 - no other PR is merged while the release PR is open;
-- the release commit's required `main` checks and Scorecard succeed before the tag is created;
-- only a new tag is created; every Publication gate item is recorded in the release PR.
+- the Compatibility boundary check finds no breaking change.
 
-A human publishes instead when the release contains breaking changes (a major version from 1.0.0 on, the first 1.0.0, or a compatibility-breaking 0.x version), involves the Feature Freeze, or the release PR is a rule-change PR. Moving or deleting an existing tag and deleting a GitHub Release stay human-only. On any anomaly, follow Publication failure.
+**Before creating the tag:**
+
+- the release commit's required `main` checks succeed;
+- a Scorecard run on the release commit itself succeeds (an agent may not use an earlier Scorecard result; see Scorecard evidence);
+- the tag to create is new and no existing tag is moved.
+
+**After publication:**
+
+- the tag and GitHub Release point to the release commit, and README, `CHANGELOG.md`, and `CITATION.cff` describe the same version;
+- every Publication gate item is recorded in the release PR.
+
+A human publishes instead when the release contains breaking changes (a major version from 1.0.0 on, the first 1.0.0, or a 0.x version with breaking changes), involves the Feature Freeze, or the release PR is a rule-change PR. Moving or deleting an existing tag and deleting a GitHub Release stay human-only. On any anomaly, follow Publication failure.
+
+Changing the authority rules (this section and Compatibility boundary), Evidence gate, Publication gate, or Publication failure in this document is a rule change: a human merges it, as defined in `docs/AGENT_HARNESS.md`.
+
+## Compatibility boundary
+
+The public contract of a release is:
+
+- the JSON Schemas in `schemas/`;
+- the inputs, outputs, and exit codes of the validators and CLIs in `scripts/`;
+- the specification: `topologies/`, `roles/`, `policies/`, `baselines/`, and the RunObservation decision rules in `docs/RUN_OBSERVATION_DESIGN.md` (including the `topologyEquivalent` criteria);
+- the distributed skills in `skills/` and the plugin packaging in `.claude-plugin/` and `.codex-plugin/`.
+
+A change to the public contract is breaking when, for example, it:
+
+- rejects input that was previously accepted (a new required field, a narrower enum or pattern, a new validator rejection);
+- removes or renames a field, file, skill, command, or option;
+- changes the meaning of an existing field, value, topology, role, or decision rule, so the same record or spec is classified or interpreted differently;
+- changes an exit code or output that callers may depend on.
+
+Additive changes that keep every previously valid input valid with the same meaning are not breaking. Record the judgement and its basis in the release PR. When it cannot be determined whether a change is breaking, STOP and let a human decide.
 
 ## Release identities
 
@@ -69,7 +104,7 @@ After merge, wait for the release commit's required `main` checks to complete su
 
 ### Scorecard evidence
 
-Review OpenSSF Scorecard as supply-chain evidence. If the candidate or release PR changes workflows, dependencies, permissions, or other supply-chain posture, require a successful Scorecard run for the release commit before publication. Otherwise, a recent successful scheduled/main result may be used when its revision and freshness are recorded in the release review.
+Review OpenSSF Scorecard as supply-chain evidence. If the candidate or release PR changes workflows, dependencies, permissions, or other supply-chain posture, require a successful Scorecard run for the release commit before publication. Otherwise, when a human publishes, a recent successful scheduled/main result may be used when its revision and freshness are recorded in the release review. When an agent publishes, this option does not apply: a successful Scorecard run on the release commit is required.
 
 A reviewer must verify that failed, cancelled, skipped, stale, or superseded workflow runs are not being treated as successful evidence.
 

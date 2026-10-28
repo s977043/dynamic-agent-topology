@@ -8,7 +8,7 @@
 
 - **HOTL（Human-on-the-loop）で運用する。** 人間は事前承認したポリシー（下記の自律境界）の範囲で、監視・停止・事後受理を担います。範囲内の操作は Agent が機械ゲートを満たしたうえで実行し、各段階の結果を Issue / PR に記録します。人間だけが確認・判断する手順は減らし、基本は Agent が進めます（オーナー指示、2026-10-23）。
 - **人間への確認は Human 専権の操作と STOP 条件に限る。** それ以外は Agent が判断して進め、結果と根拠を報告します。
-- **規則変更 PR は Agent が起案とレビューまで、merge は人間が行う。** 規則変更 PR（`AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則、`scripts/validate_agent_guidance.py`、Guard の hook や検査スクリプトを変える PR）は、Agent が差分・理由・影響範囲・ロールバック案を PR に書き、別モデルの独立レビューまで行い、人間が merge します。作成者と同じ主体がレビューを手配して merge できる構造では、自己承認を文書だけでは防げないためです。GitHub の保護ルールで別主体のレビューを強制できるようになったら見直します。merge 後に Agent が設定と実効権限を再確認します。
+- **規則変更 PR は Agent が起案とレビューまで、merge は人間が行う。** 規則変更 PR（`AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則、`docs/RELEASE_READINESS.md` の権限・Evidence・Publication・failure の規則、`scripts/validate_agent_guidance.py`、Guard の hook や検査スクリプトを変える PR）は、Agent が差分・理由・影響範囲・ロールバック案を PR に書き、別モデルの独立レビューまで行い、人間が merge します。作成者と同じ主体がレビューを手配して merge できる構造では、自己承認を文書だけでは防げないためです。GitHub の保護ルールで別主体のレビューを強制できるようになったら見直します。merge 後に Agent が設定と実効権限を再確認します。
 - **自己承認をしない。** 判断材料・変更を作成または修正した Agent セッションは、それを承認しません。
 - **Evidenceのない学びは昇格しない。** PR / commit / CI run / Issueへのリンクがない記録は候補のままです。
 - **Proseより機械的なGuardを優先する。** 昇格先は CI・validator → hook → permission設定 → `AGENTS.md` の文章 → skill の順に検討します。
@@ -39,7 +39,9 @@
 | --- | --- | --- |
 | Learning ledger・Issue への記録、draft PR、validator / test、自分の branch への push | Agent | 記録と通知を残す |
 | 規則変更 PR 以外の PR の merge（docs・実験・コード・依存の追加を含む） | Agent | 次をすべて満たす: 必須 CI 全 pass、PR 作成セッションと別セッション（別モデル推奨）の独立レビューで未解決の必須指摘 0、Human 専権の対象を含まない。依存を追加する PR は別モデルの独立レビューが必須。レビュー対象の head・差分・判定・CI 結果を PR に記録する |
-| 規則変更 PR（`AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則、`scripts/validate_agent_guidance.py`、Guard の hook や検査スクリプトを変える PR）の起案とレビュー | Agent | 別モデルの独立レビューまで行い、レビュー対象の head・差分・判定・CI 結果を PR に記録する。検査を弱める変更（validator・Guard の判定を緩める、必須チェックを外す）はその旨を PR 本文に明記する。起案したら Issue #159 にその PR のリンクを残す。merge は Human 専権 |
+| 規則変更 PR（`AGENTS.md`、`CLAUDE.md`、`.claude/`、`.codex/`、本書の規則、`docs/RELEASE_READINESS.md` の権限・Evidence・Publication・failure の規則、`scripts/validate_agent_guidance.py`、Guard の hook や検査スクリプトを変える PR）の起案とレビュー | Agent | 別モデルの独立レビューまで行い、レビュー対象の head・差分・判定・CI 結果を PR に記録する。検査を弱める変更（validator・Guard の判定を緩める、必須チェックを外す）はその旨を PR 本文に明記する。起案したら Issue #159 にその PR のリンクを残す。merge は Human 専権 |
+| リリースの公開の承認（版ごと） | 人間 | Agent が版番号と release PR の head SHA を示して y/N で確認し、人間が y と答える。Agent はこの承認（版・head SHA・日時・回答者）を release PR に記録してから公開に進む。承認後に head が変わり、公開日の記入以外の差分が出たら承認は無効になり、もう一度承認を得る。GitHub の保護設定ではまだ別主体による承認を強制できない（ruleset の evaluate が使えないプランの制約）ため、同じ主体がレビューを手配して公開まで完結しないよう人間の承認を挟む。保護設定で別主体の承認を強制できるようになったら見直す |
+| リリースの公開（公開日の記入、release PR の merge、新しい version tag の作成、GitHub Release の公開、公開後の確認） | Agent | `docs/RELEASE_READINESS.md` の手順に従い、段階ごとに次をすべて満たす。**merge の前**: 上の版ごとの承認が有効で PR に記録済み。release PR の最終 head で必須 CI 全 pass。PR 作成セッションと別セッションの独立レビューを 2 本（記載の網羅性と公開可否。少なくとも 1 本は別モデル）行い、どちらも未解決の必須指摘 0。レビュー済み head から最終 head までの差分が公開日の記入だけ。release PR が open の間は他の PR を merge しない。release PR の base が content candidate（またはその後の、承認の対象に含まれる commit）から動いていない。`docs/RELEASE_READINESS.md` の Compatibility boundary で破壊的変更なしと判定済み。**tag を作る前**: release commit で main の必須 CI と Scorecard が success（過去の Scorecard 結果は使わない）。作る tag が新しく、既存の tag と重ならない。`git diff <承認済み head> <release commit>` で、release commit の tree と承認済み head の tree の差分が公開日の 2 か所（`CHANGELOG.md` の見出しと `CITATION.cff` の `date-released`）だけであることを確かめ、結果を PR に記録する（squash merge でも、base が動いていなければ tree は一致する）。それ以外の差分があれば STOP し、tag も GitHub Release も作らず、再レビューと Human の再承認を経るまで公開しない（Publication failure 節に従う）。**公開の後**: tag と GitHub Release が release commit を指し、README・`CHANGELOG.md`・`CITATION.cff` と版が一致することを確かめ、Publication gate の各項目を PR に記録する。release PR が規則変更 PR に当たる変更や下の Human 専権の対象を含むときは対象外。異常時は停止し、公開済みと主張しない（Publication failure 節） |
 | Reviewer Judgment（Run acceptance、disposition の ACCEPT 等） | 独立 Agent Reviewer または人間 | 作成者と別セッション。Frozen 例外など高リスクの判断は別モデルも用いる（例: Codex（GPT 系）、Antigravity CLI（`agy`、Gemini 系）。下記）。記録には runtime・model・session ID・根拠リンクを書く |
 | EXP-001 の一回限りの model 起動（retry allowance の消費） | Agent（文書化された retry 手順の範囲に限る: `AGENTS.md`、`docs/EXP-001_RETRY_51.md`、`docs/EXP-001_RETRY_T1_R01.md`、本書の HOTL 条件） | 手順書の全 Gate と preflight を機械的に検査して合格、Reviewer Judgment が記録済み、retry 未消費、Runtime/Model/Effort が固定、重複起動を防止、attestation・trace・Evidence を保存。異常時は停止し、追加起動はしない |
 | Human 専権（下表） | 人間 | Agent は起案と材料の準備まで |
@@ -50,7 +52,9 @@ Human 専権として残す操作と理由:
 | --- | --- |
 | 規則変更 PR の merge | 作成者と同じ主体がレビューを手配して merge できるため、自己承認を文書だけでは防げない。GitHub の保護ルールで別主体のレビューを強制できるようになったら見直す |
 | Feature Freeze の改訂、Frozen artifact の変更 | 実験条件を固定した前提が崩れ、EXP-001 の結果の比較可能性を失う。上記の EXP-001 retry 例外はそのまま |
-| release / tag の作成 | 公開した tag は動かさない規則で、公開後に取り消せない |
+| 既存 tag の移動・削除、GitHub Release の削除 | 公開した境界を書き換え、利用者が参照した版と食い違う。取り消せない |
+| 破壊的変更を含む版の公開（1.0.0 以降の major 版、1.0.0 の初公開、0.x で破壊的変更を含む版。公開契約と破壊的変更の定義は `docs/RELEASE_READINESS.md` の Compatibility boundary。判定できないときも Human が判断する） | 互換性の方針を決めるのは人間のため。新しい tag は動かせないので公開後に取り消せない |
+| Feature Freeze に関わる版の公開（Frozen artifact や評価 semantics の変更・例外を含む版） | 上の Feature Freeze の行と同じ |
 | force push | 他者の commit を消すおそれがあり、取り消せない |
 | ブランチ・ファイル・issue などの削除 | 取り消せない、または復元に人手が要る |
 | 予算の承認と、課金が発生する model 起動（Operator） | 費用の責任者が人間のため。上記の EXP-001 retry 例外はそのまま |

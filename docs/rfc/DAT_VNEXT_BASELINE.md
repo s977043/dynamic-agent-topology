@@ -80,10 +80,10 @@
 ### Journey D — Adopt new project（時間がある場合のみ）
 
 1. `examples/brownfield/.dat/`を使い捨てリポジトリへコピーし、Manual Adoptionする。必須Evidence commandは信頼されたRunnerだけで実行。
-2. **前提手順:** コピー先の `.dat/dat.lock.yaml` だけを pinned にし、検証に使うDAT checkoutと同じrevision（SHAまたはtag）を指定する（[QUICKSTART.md](../QUICKSTART.md)「5. DAT revisionを固定する」）。既存の `examples/brownfield/` は変更しない。
+2. **前提手順:** 検証に使うDAT checkoutのrevision（SHAまたはtag）を確認する。lockの編集は手順3.2で行う（[QUICKSTART.md](../QUICKSTART.md)「5. DAT revisionを固定する」）。編集するのはコピー先の `.dat/dat.lock.yaml` だけで、既存の `examples/brownfield/` は変更しない。
 3. `validate_project.py --project ... --dat-root ... --require-pinned`で静的整合を、次の順で2回検証し、両方の結果を記録する。
    1. コピー直後（`pinMode: floating` のまま）に1回実行する。期待結果: exit 1。
-   2. 手順2のとおりlockを pinned にし、DAT checkoutと同じrevisionを指定してからもう1回実行する。期待結果: exit 0。
+   2. コピー先のlockを pinned にし、手順2で確認したrevisionを指定してからもう1回実行する。期待結果: exit 0。
 4. 構成の提案、Runtime強制、導入の成功を混同しない。
 5. Config編集数、所要時間、誤設定を記録。実consumerには触れない。
 

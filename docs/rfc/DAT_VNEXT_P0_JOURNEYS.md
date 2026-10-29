@@ -37,7 +37,7 @@ R0 の分岐（上から順）: (1) `complexity: low, ambiguity: low` → T0、(
 観測した事実:
 - 4 件中 3 件で分岐が決まり、1 件は SKILL.md 手順 2 どおり「選択保留」になった。
 - R0 には `low` / `medium` / `strong` などの値の定義・判定基準がない。入力値は記録者が読み取った。
-- R0 には既定（fallback）分岐がない。例: risk medium かつ existingEvidence が weak/unknown の Task はどの分岐にも当たらず保留になる（追加の仮ケースとして手で確認）。
+- R0 には既定（fallback）分岐がない。例: complexity medium・risk medium かつ existingEvidence が weak/unknown の Task はどの分岐にも当たらず保留になる（追加の仮ケースとして手で確認）。complexity low・ambiguity low なら (1) で T0 になる。
 - 分岐は上から当てはめるため、complexity low・ambiguity low・risk high の Task は (1) で T0 になり、(3) に届かない（手で確認）。
 
 解釈（痛点の候補）:

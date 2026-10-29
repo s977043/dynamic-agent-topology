@@ -6,6 +6,10 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+### Changed
+
+- `skills/dat-observe/SKILL.md` now points to the design §5.4 rule for `verifierKind` when `verification` is not `yes`, and to the no-verification example; no rule or contract changed.
+
 ## 0.4.1 — 2026-10-29
 
 Content candidate: `dd785a17e0093314b1e59b98913105ba49363b04`.

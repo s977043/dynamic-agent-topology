@@ -2,19 +2,20 @@
 
 > **非規範的な設計案（未採用）。** 正本は既存文書（[RELEASE_READINESS.md](../RELEASE_READINESS.md)、[EXPERIMENTS.md](../EXPERIMENTS.md)、[METRICS.md](../METRICS.md)、[QUICKSTART.md](../QUICKSTART.md) など）で、矛盾する場合は正本が優先する。関係文書: [MAINTENANCE_COST_REVIEW.md](../MAINTENANCE_COST_REVIEW.md)、[POST_EXP001_EVALUATION_DESIGN.md](../POST_EXP001_EVALUATION_DESIGN.md)、[RESEARCH_AUTONOMOUS_CODING_LOOP_REFERENCES.md](../RESEARCH_AUTONOMOUS_CODING_LOOP_REFERENCES.md)、[CURRENT_EXECUTION_PLAN.md](../CURRENT_EXECUTION_PLAN.md)。
 
-- 状態: **PARTIAL P0 / STATIC INSPECTION ONLY**。実際の利用者作業時間・有料モデル・機能優位性は **NOT MEASURED**。
+- 状態: **PARTIAL P0 / STATIC INSPECTION + AGENT OFFLINE JOURNEYS**。実際の利用者作業時間・有料モデル・機能優位性は **NOT MEASURED**。
 - 親Issue: [#268](https://github.com/s977043/dynamic-agent-topology/issues/268)
 - 観測したsnapshot: `main` `4475b3004ecd07ae5da313121543067119a59479`（2026-10-29 00:28:47Z）
 - 公開済みの配布版: [v0.4.1](https://github.com/s977043/dynamic-agent-topology/releases/tag/v0.4.1)（2026-10-29。出典: [CHANGELOG.md](../../CHANGELOG.md)、[CITATION.cff](../../CITATION.cff)）
-- 関連文書: [RFC](DAT_VNEXT_RFC.md) / [Independent review protocol](DAT_VNEXT_REVIEW_RUNBOOK.md)
+- 関連文書: [RFC](DAT_VNEXT_RFC.md) / [Independent review protocol](DAT_VNEXT_REVIEW_RUNBOOK.md) / [P0 Journey 実行記録](DAT_VNEXT_P0_JOURNEYS.md)（`main` `257f836`、agent による offline 実行。人の計測は未実施）
 
-## 1. Evidence confidence and source discipline
+## 1. Evidenceの確度と出典の扱い
 
 凡例：
 - **STATIC VERIFIED** = 指定SHAのソースコード・公開メタデータの確認。実行成功や品質を意味しない。
 - **REPORTED** = リポジトリ内の既存実験レポート／検証記録の記載。今回独立再実行した結果ではない。
 - **NOT MEASURED** = 実測のデータなし。数値を推定で埋めない。
 - **PROPOSED** = 調査すべき仮説であり採用済み判断ではない。
+- **AGENT RUN** = agent がmodelを起動せずにコマンドを実行した計数（コマンド数・exit code・編集ファイル数・エラー）。人の操作時間や負荷ではない。
 
 | 観点 | 現在のEvidence | 状態 | 出典 |
 | --- | --- | --- | --- |
@@ -28,11 +29,12 @@
 | 日常観察の件数 | 構成別の観察件数は効果の証拠ではない。欠測をゼロにしない | STATIC VERIFIED | [Measurement](../OBSERVATION_MEASUREMENT.md) |
 | EXP-001 | 18 Run / 9 paired blocks。対象3 Scenario内でT0/T1成功100%。平均Token 68,022/150,080.67、pilot限定Keep T0 | REPORTED | [DECISION.md](../../experiments/EXP-001-t0-vs-t1/DECISION.md) |
 | 外部dogfood | `notionnext-blog`でA2/Codex/T0のManual導入記録あり | REPORTED | [DOGFOODING.md](../DOGFOODING.md) |
-| DX時間 / 中断 | 現行操作時間、設定負担、認知負荷、保守作業時間 | NOT MEASURED | 次のP0作業 |
+| Journey A〜D の offline 実行 | A: 手動解釈で4件中3件決定・1件保留。B: 3件保存、初回NG 6回（`verifierKind`）。C: DECISION.mdの数値と一致、paired blockは出力なし。D: floating+`--require-pinned` exit 1 → pinned exit 0 | AGENT RUN | [P0 Journey 実行記録](DAT_VNEXT_P0_JOURNEYS.md) |
+| DX時間 / 中断 | 現行操作時間、設定負担、認知負荷、保守作業時間（人の計測） | NOT MEASURED | 次のP0作業 |
 | Runtime権限 | このセッションでClaude/Codexの実効権限と認証・予算を独立検証したものではない | NOT MEASURED | Runtimeごとのpreflightが必要 |
 | CI head | 現行mainの最新必須CIを本Baseline作成時に実行していない | NOT MEASURED | PR headについて別途検証 |
 
-## 2. Public contract inventory (regression-sensitive)
+## 2. 公開契約の棚卸し（回帰に注意する箇所）
 
 出典：[Release Readiness — Compatibility Boundary](../RELEASE_READINESS.md)。以下は既存利用者が依存する可能性のある契約。**全ての利用箇所を確認したとの主張ではない**。
 
@@ -48,7 +50,9 @@
 | External adoption | `examples/brownfield/.dat/`, `docs/QUICKSTART.md` | `dat.lock.yaml`、revision pin、Runtime Binding |
 | Experiment integrity | `experiments/EXP-001-t0-vs-t1/`、`scripts/audit_exp001_completed_snapshot.py` | Frozen 33 original blob SHA、履歴とRunの不変性 |
 
-## 3. Current user journeys to reproduce BEFORE designing new APIs
+## 3. 新しいAPIを設計する前に再現する現行の利用者Journey
+
+実行記録: [DAT_VNEXT_P0_JOURNEYS.md](DAT_VNEXT_P0_JOURNEYS.md)（A〜Dを各1回、agentがoffline実行。人の計測は未実施）。
 
 ### Journey A — Assess / Select
 
@@ -77,43 +81,46 @@
 
 1. `examples/brownfield/.dat/`を使い捨てリポジトリへコピーし、Manual Adoptionする。必須Evidence commandは信頼されたRunnerだけで実行。
 2. **前提手順:** コピー先の `.dat/dat.lock.yaml` だけを pinned にし、検証に使うDAT checkoutと同じrevision（SHAまたはtag）を指定する（[QUICKSTART.md](../QUICKSTART.md)「5. DAT revisionを固定する」）。既存の `examples/brownfield/` は変更しない。
-3. `validate_project.py --project ... --dat-root ... --require-pinned`で静的整合を検証。期待結果: lockとDAT checkoutが同じrevisionで pinned なら exit 0。コピーしたlockが `pinMode: floating` のままなら exit 1。両方の結果を記録する。
+3. `validate_project.py --project ... --dat-root ... --require-pinned`で静的整合を、次の順で2回検証し、両方の結果を記録する。
+   1. コピー直後（`pinMode: floating` のまま）に1回実行する。期待結果: exit 1。
+   2. 手順2のとおりlockを pinned にし、DAT checkoutと同じrevisionを指定してからもう1回実行する。期待結果: exit 0。
 4. 構成の提案、Runtime強制、導入の成功を混同しない。
 5. Config編集数、所要時間、誤設定を記録。実consumerには触れない。
 
-## 4. Measurement record for fair A/B UX comparison
+## 4. A/BのUXを公平に比較するための計測記録
 
 同じ担当者が同じTaskを実施すると学習効果があるため、順序をcounterbalanceするか、結果の制限を明記する。初回はfeasibility-only。
 
 | 項目 | A（現行） | B（vNext spike） | 規則 |
 | --- | --- | --- | --- |
 | Task ID / AC | 未実施 | 未実施 | 同一Task/検証基準 |
-| Repo SHA / artifact SHA | `4475b300...`（参照元） | 未作成 | 実行時のSHAとFixtureを記録 |
-| Runtime / Model / Effort | 未測定 | 未測定 | Runtime条件を揃える |
+| Repo SHA / artifact SHA | `4475b300...`（参照元）。Journey実行は `257f836d`（[実行記録](DAT_VNEXT_P0_JOURNEYS.md)） | 未作成 | 実行時のSHAとFixtureを記録 |
+| Runtime / Model / Effort | Journey実行はmodel未使用（agentのoffline実行、Python 3.12.13）。Skill経由のRuntime条件は未測定 | 未測定 | Runtime条件を揃える |
 | attempt ID / block ID | unknown | unknown | 開始したattemptはすべて1行ずつ残す。完了したattemptだけを比較に使わない |
 | 完了 / 中断 / 環境障害 | unknown | unknown | attemptごとに区別して記録 |
-| 再試行理由 | unknown | unknown | 再試行したattemptごとに理由を記録 |
+| 再試行理由 | Journey B: 3記録とも1回再試行（`verifierKind: none` のschema NG）。他はunknown | unknown | 再試行したattemptごとに理由を記録 |
 | 判明した消費（時間・Token・cost） | unknown | unknown | 中断・再試行分も含めて残す。取得不能はunknown |
 | 開始/終了とactive作業時間 | unknown | unknown | active作業と待機を分離 |
 | 人の操作 / prompt数 | unknown | unknown | 操作定義を事前固定 |
-| 編集したファイル / 設定手順 | unknown | unknown | 実変更数。ファイル数単独で優劣判定しない |
-| Validation exit / negative cases | unknown | unknown | 同一testを実行 |
+| 編集したファイル / 設定手順 | agent実行による計数: B 3ファイル×1行の修正、D 1ファイル（lock 2行）・4手順。人の値はunknown | unknown | 実変更数。ファイル数単独で優劣判定しない |
+| Validation exit / negative cases | agent実行による計数: B 初回NG 6回→exit 0、負例2件（repo内store exit 2、重複ID exit 1）。C 5コマンドexit 0。D floating exit 1 → pinned exit 0 | unknown | 同一testを実行 |
 | Outcome / 回帰 | unknown | unknown | 独立ACで判定 |
 | Token / model起動 / cost | unknown | unknown | 取得不能はunknown |
 | Context / handoff / errors | unknown | unknown | 手戻りを記録 |
 | Reviewerの指摘 / 時間 | unknown | unknown | 独立/同一セッションを識別 |
 
-## 5. Known limitations / STOP conditions
+## 5. 既知の限界とSTOP条件
 
-- このInventoryはGitHubソースの**静的確認**。コマンド実行・利用者測定・最新PR CIは完了していない。
+- このInventoryはGitHubソースの**静的確認**。Journey A〜Dのagentによるoffline実行は[実行記録](DAT_VNEXT_P0_JOURNEYS.md)にあるが、利用者測定は完了していない。
 - EXP-001の成功率100%とToken比率は対象Pilotに限定。Hard-taskとfoldの有効性は#244/#248で別途研究。
 - 旧releaseの互換性は静的表だけで保証しない。破壊的変更が必要になった場合は別途Human判断。
 - 許可されていない有料モデル、追加課金、独立Reviewの捏造、本番Credential、Frozen Artifactへの書込みは禁止。
 
-## 6. P0 Exit / Next smallest action
+## 6. P0の完了条件と次の最小行動
 
 - [x] Source-of-truth paths・公開契約・既知結果・未知をInventory化。
-- [ ] 実際のJourney A/B/Cを**実行**し、操作数・人時・エラーとRuntimeを計測。
+- [x] Journey A〜Dをagentがmodelなしでoffline実行し、コマンド数・exit code・編集ファイル数・エラーを記録（[実行記録](DAT_VNEXT_P0_JOURNEYS.md)。Aは手動解釈）。
+- [ ] 実際のJourney A/B/Cを人が**実行**し、操作数・人時・認知負荷とRuntimeを計測。
 - [ ] 顕在化した痛点を、利用価値に関連付けた優先順位表にする。
 - [ ] 比較条件と候補Taskを事前登録してからBのoffline Spikeへ進む。
 - [ ] 独立Reviewerに現行Aを改善するだけで十分ではないかを確認させる。

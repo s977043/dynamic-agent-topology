@@ -8,7 +8,7 @@
 - 起案者とレビュー実行者は**別セッション**にする。少なくとも1本は**別モデル**が望ましい。6視点は、実際に隔離したcontextで実行しない限り6つの独立Agentではない。
 - 本runbookは**read-onlyレビュー**を依頼するもので、model sessionの起動や、承認・予算・mergeの許可を与えない。
 
-## 1. Objective and non-negotiable rules
+## 1. 目的と必ず守る規則
 
 問い: **DAT vNextは、ゼロから作るべきか、段階的に改善すべきか、選択的に再利用して再設計すべきか。** 初期推奨のBが正しいと仮定しない。
 
@@ -22,7 +22,7 @@ Reviewerは次を必ず守る:
 - 他のAgentやsessionに代わって承認を報告しない。
 - 静的レビューは、Runtime権限が有効であることや、vNextが開発者体験を改善することの証拠ではない。
 
-## 2. Suggested independent review split
+## 2. 独立レビューの分担案
 
 各セッションには、前のReviewerの結論ではなく、**PRの正確なhead SHAと実際のdiffへのリンク**を渡して、別々に実行する。
 
@@ -47,7 +47,7 @@ R-Cは6視点のどれかを新たに担当するのではなく、R-AとR-Bの�
 
 1つのcontextで2つのpersonaを演じても、独立Reviewerの代わりにはならない。Reviewerのidentity/session、model、実効的なtool accessはPRに記録する。レビューを実行できなかった場合は **NOT_RUN** とする。
 
-## 3. Exact review prompt — Claude Code (R-A)
+## 3. そのまま使うレビュー依頼文 — Claude Code（R-A）
 
 リポジトリにアクセスできる新しいClaude Code sessionに貼り付ける。できれば別のclean checkoutで実行する。`<PR_URL>` と `<HEAD_SHA>` をPRの実際の値に置き換える。
 
@@ -82,7 +82,7 @@ A現行局所改善、Bゼロベース設計+選択的再利用、C全面再構�
 最後に APPROVE / CHANGES_REQUIRED / INCONCLUSIVE と独立性を明記。
 ```
 
-## 4. Exact review prompt — Codex CLI (R-B)
+## 4. そのまま使うレビュー依頼文 — Codex CLI（R-B）
 
 別の新しいsessionで実行する。独立に判断する前に、R-Aの指摘を入力に使わない。
 
@@ -116,7 +116,7 @@ docs/RELEASE_READINESS.md、関連Issue #248/#244/#223を照合してくださ�
 自分で作成した変更を承認してはならない。
 ```
 
-## 5. Report template — MUST NOT fabricate
+## 5. 報告テンプレート（捏造しない）
 
 実際に実行したsessionごとに1件記録する:
 
@@ -147,7 +147,7 @@ Follow-up: <code/doc correction + re-review requirement>
 - 修正後、Reviewerは古い指摘だけでなく**更新後のhead**を確認する。未検証のcriticalな主張が残れば INCONCLUSIVE。
 - このdocs-only RFCがAPPROVEされても、実験の実行、権限変更、有料予算、公開Releaseは**許可されない**。
 
-## 6. PR readiness and stop rule
+## 6. PRの準備完了条件と停止規則
 
 レビュー完了とする前に:
 - [ ] R-Aを実際に実行し、head SHAとともに記録した

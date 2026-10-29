@@ -105,6 +105,14 @@ PASSすれば、SchemaとDAT参照の静的整合が確認できています。`
 
 CIではさらに`--require-pinned`を付け、floating revisionを拒否することを推奨します。
 
+`examples/brownfield/.dat` をコピーした直後は、次のWARNINGが出ても `DAT project validation passed` と表示され、exit codeは0です（`A4-canary` より前のstageでは失敗扱いになりません）。
+
+| WARNING | 消し方 |
+| --- | --- |
+| `runtimes.yaml: manual configPath does not exist: 'AGENTS.md'`（`CLAUDE.md`・`GEMINI.md` も同様） | `configPath` を実在する設定ファイルに直すか、使わないRuntimeのbindingを削除する。`A4-canary` 以降はerror |
+| `dat.lock.yaml: pinMode is floating; ...` | 5のとおり `pinMode: pinned` とrevisionを設定する。`--require-pinned` ではerror |
+| `.gitignore: file not found; ...` または `.gitignore: recommended entry is missing: ...` | Project rootの `.gitignore` に `.dat/generated/` と `.dat/state/` を追加する |
+
 ## 7. CIへ追加する
 
 [examples/github-actions/dat-validate.yml](../examples/github-actions/dat-validate.yml) を参考に、DATを固定revisionでcheckoutしてvalidatorを実行します。

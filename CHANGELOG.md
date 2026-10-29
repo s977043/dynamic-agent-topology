@@ -9,6 +9,8 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 ### Changed
 
 - `skills/dat-observe/SKILL.md` now points to the design §5.4 rule for `verifierKind` when `verification` is not `yes`, and to the no-verification example; no rule or contract changed.
+- `docs/QUICKSTART.md` now lists the validator warnings expected right after copying `examples/brownfield/.dat` and how to clear each; validator behavior is unchanged.
+- `skills/dat-select/SKILL.md` now points to the routing policy branch conditions (`when`), and to the escalation policy, when a selection is put on hold; no rule changed.
 - The plugin version in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` is now `0.3.1`, following the skill updates since `0.3.0` (this change and the `dat-observe` update in #250). The DAT spec version in `CITATION.cff` is unchanged.
 
 ## 0.4.1 — 2026-10-29

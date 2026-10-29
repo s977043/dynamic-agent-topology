@@ -8,7 +8,7 @@
 - 範囲: 新設計の仮説、代替案、検証条件、移行判断。**実装・実モデル起動・規則変更の承認ではない**
 - 関連文書: [Baseline inventory](DAT_VNEXT_BASELINE.md) / [Review runbook](DAT_VNEXT_REVIEW_RUNBOOK.md)
 
-## 1. Problem / Desired Outcome
+## 1. 問題と目指す成果
 
 DATのNorth Star「**Which agent topology works, under what conditions, and at what cost?**」は維持する。現在の課題はTopology表現能力の欠如ではなく、利用者が **Assess → Select → Observe → Compare → Decide** を安全・再現可能・少ない操作で行えるかという未検証の利用体験にある。
 
@@ -22,7 +22,7 @@ DATのNorth Star「**Which agent topology works, under what conditions, and at w
 
 **成功とは、ファイル数やAgent数の削減ではなく、独立に再現できる判断である。**
 
-## 2. Current facts vs unknowns
+## 2. 現在の事実と未知
 
 ### 観測済み（正本ファイルへのリンクはBaselineにある）
 
@@ -40,7 +40,7 @@ DATのNorth Star「**Which agent topology works, under what conditions, and at w
 - 外部利用者の入力互換要件、必要な移行期間。
 - vNextが現行Aより良いという実測Evidence。
 
-## 3. Alternatives (review independently, do not preselect)
+## 3. 代替案（独立にレビューし、事前に選ばない）
 
 | 案 | 内容 | 選ぶ理由 | 停止条件 |
 | --- | --- | --- | --- |
@@ -52,7 +52,7 @@ DATのNorth Star「**Which agent topology works, under what conditions, and at w
 
 **Bが新しく作る成果物の境界:** Bのvertical sliceがAに対して新しく作るのは、隔離Spike内の「候補→観測→比較→判定」を1本の手順でつなぐ導線（手順書と、必要なら既存validator・Skillを呼ぶ薄い補助）だけで、Schema・Skill・CLI・Topology定義は新設しない。
 
-## 4. Architecture: Topology-neutral core
+## 4. アーキテクチャ: Topologyに中立なコア
 
 ```text
                  Human-approved boundaries
@@ -79,7 +79,7 @@ Decision: keep / fold / expand / revert / inconclusive
 
 **Single-Agent-first**は新規Taskの低coordination-cost初期候補というPolicy仮説。DAT全体がSingle Agentに偏って評価する根拠ではない。独立Context、並列性、独立Verificationなどの限界価値は、task classごとのablationで判定する。
 
-## 5. Vertical slice / User journey
+## 5. 縦切りの範囲と利用者の流れ
 
 **MVP: 一つのタスクについて「候補→観測→比較→判定」を再現できること。Agentの実行は既存Runtimeに委ねる。**
 
@@ -91,7 +91,7 @@ Decision: keep / fold / expand / revert / inconclusive
 
 初期利用者体験は既存`dat-select` / `dat-observe`で再現できることが前提。**第三のSkillや新CLIを先に作らない。** 発見したgapを示してから最小変更する。Aと比べてBが新しく作る成果物は §3 の境界に限る。
 
-## 6. Scope / Non-goals
+## 6. 範囲と非目標
 
 ### 範囲内（設計またはoffline spikeのみ）
 - 現行公開契約と導線のInventory/measurement。
@@ -107,7 +107,7 @@ Decision: keep / fold / expand / revert / inconclusive
 - 有料モデル起動、追加課金、Runtime権限昇格、実ユーザー秘密・本番変更。
 - #248 folding試験、#244 hard-task試験、#93 selector/#88 escalation/#220 model splitを本RFCの設計実験へ混合すること。
 
-## 7. Validation protocol / Falsification
+## 7. 検証手順と反証条件
 
 ### H1: User friction
 同一代表タスクをAとBで実施し、操作数、経過時間（active vs wall timeを区別）、設定ファイル編集、失敗・リトライを同じ手順で記録する。改善が一回限りか判断できない少数標本は feasibility-only。**未測定の「30%短縮」を達成済みと主張しない**。
@@ -138,11 +138,11 @@ operator・reviewerが、結果閲覧前に以下を固定する。Offline Spike
 
 最初の1タスクによるoffline feasibilityはこの区分の前でも実施できるが、その結果はG3/G4の根拠にしない。
 
-## 8. Acceptance gates
+## 8. 受け入れGate
 
 | Gate | 通過の条件 | 失敗時 |
 | --- | --- | --- |
-| G0 Baseline | Consumer journeyを現行mainで再現。静的観測と実測を分離。公開契約表あり。**Journey A/Bの実測で痛点が観測されるまで、BのSpikeに着手しない** | Bの実装開始を保留 |
+| G0 Baseline | Consumer journeyを現行mainで再現。静的観測と実測を分離。公開契約表あり。**Journey A/B（[Baseline §3](DAT_VNEXT_BASELINE.md) の利用者Journey。§3のA/B/C案とは別）の実測で痛点が観測されるまで、BのSpikeに着手しない** | Bの実装開始を保留 |
 | G1 RFC | Architecture/Evaluation/Security/DX/Maintainability/OSSの6視点からcritical 0、独立レビュー証跡が必要 | RFC修正 |
 | G2 Offline | 既存validator通過、positive/negative fixture、変更対象外の差分0 | Revert spike |
 | G3 Compare | A/Bの同条件比較、n/欠測/限界・回帰・操作コストを明記。§7 Preregistrationのケース区分（train/test/regression）、Task class・difficulty、Oracle・ACの版、各armのfresh-stateが事前記録済みで、Bの調整に使ったケースがtestに含まれていない | Inconclusive or prefer A |
@@ -150,7 +150,7 @@ operator・reviewerが、結果閲覧前に以下を固定する。Offline Spike
 
 区分・Oracle版・開始状態が未記録なら、G3/G4の判定を保留する。判定候補は **A / B / C / INCONCLUSIVE**。Cは独立した承認なしに着工しない。重要な互換変更・HOTL規則変更・公開Releaseは各正本のHuman-owned境界に従う。
 
-## 9. Compatibility / Migration / Rollback
+## 9. 互換性・移行・ロールバック
 
 公開契約の正本は [Release readiness](../RELEASE_READINESS.md) のCompatibility boundary：
 - `schemas/`とvalidators/CLIの入力・出力・exit code
@@ -160,7 +160,7 @@ operator・reviewerが、結果閲覧前に以下を固定する。Offline Spike
 
 Bは最初**既存公開API/Skillの変更を伴わない分離Spike**に限定する。新規Interfaceの導入時は既存呼び出しを保ち、適用対象ごとにcompatibility testsを記録。旧コード削除は観測された利用状況と移行完了後に別Issue/PRで判断。RollbackはSpike差分をrevert（Frozen原本には触れない）。
 
-## 10. Work plan / Owners
+## 10. 作業計画と担当
 
 1. [P0 baseline](DAT_VNEXT_BASELINE.md)の未測定欄を、実際のworkflow計測で埋める（read-only）。
 2. 本RFCを6視点で独立レビューし、[review runbook](DAT_VNEXT_REVIEW_RUNBOOK.md)のフォーマットで findings / reviewed SHA / independence / blockersを記録。単一セッションの架空エージェント合議は不可。
@@ -168,7 +168,7 @@ Bは最初**既存公開API/Skillの変更を伴わない分離Spike**に限定�
 4. Spikeの実装は**別PR**で小さく行い、main/consumer/experiment contractsを変えない。
 5. #248/#244等の実モデル実験はそれぞれの既存承認Gateを通す。
 
-## Related work
+## 関連する作業
 
 - [#268](https://github.com/s977043/dynamic-agent-topology/issues/268) vNext RFCの親Issue
 - [#248](https://github.com/s977043/dynamic-agent-topology/issues/248) folding paired-E2E研究

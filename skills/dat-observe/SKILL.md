@@ -24,6 +24,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
    - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない
    - `topologyEquivalent` は設計 §5.2 の表を上から順に当てはめる。助言レビュー（`advisory`）と検証（`verifier`）を混ぜない。`same-session` の助言だけなら `independentReview: 'no'`
+   - `verification` が `yes` 以外のときの `verifierKind` の扱いは設計 §5.4 を読む（検証なしの形は [adapters/codex/examples/run-observation.yaml](../../adapters/codex/examples/run-observation.yaml)）
    - `taskDifficulty`（`trivial` / `standard` / `hard` / `unknown`）は構成を選ぶ前に決めた区分を書く。結果を見てから付けない
    - `outcome: interrupted` なら `interruptionKind`（`human-decision` / `ownership` / `environment` / `failure` / `unknown`）を書く
    - 手戻りがあれば `rework.triggers`（`review-finding` / `self-correction` / `spec-change` / `ci-failure` / `unknown`）を書く

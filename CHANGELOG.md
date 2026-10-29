@@ -6,6 +6,11 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+### Changed
+
+- `skills/dat-observe/SKILL.md` now points to the design §5.4 rule for `verifierKind` when `verification` is not `yes`, and to the no-verification example; no rule or contract changed.
+- The plugin version in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` is now `0.3.1`, following the skill updates since `0.3.0` (this change and the `dat-observe` update in #250). The DAT spec version in `CITATION.cff` is unchanged.
+
 ## 0.4.1 — 2026-10-29
 
 Content candidate: `dd785a17e0093314b1e59b98913105ba49363b04`.

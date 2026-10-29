@@ -109,7 +109,7 @@ CIではさらに`--require-pinned`を付け、floating revisionを拒否する�
 
 | WARNING | 消し方 |
 | --- | --- |
-| `runtimes.yaml: manual configPath does not exist: 'AGENTS.md'`（`CLAUDE.md`・`GEMINI.md` も同様） | `configPath` を実在する設定ファイルに直すか、使わないRuntimeのbindingを削除する。`A4-canary` 以降はerror |
+| `runtimes.yaml: manual configPath does not exist: 'AGENTS.md'`（`CLAUDE.md`・`GEMINI.md` も同様） | `configPath` を実在する設定ファイルに直すか、使わないRuntimeを `project.yaml` の `spec.runtimes` と `runtimes.yaml` の `spec.bindings` の両方から削除する（bindingだけを削除すると `missing bindings for project runtimes` のerrorになる）。`A4-canary` 以降はerror |
 | `dat.lock.yaml: pinMode is floating; ...` | 5のとおり `pinMode: pinned` とrevisionを設定する。`--require-pinned` ではerror |
 | `.gitignore: file not found; ...` または `.gitignore: recommended entry is missing: ...` | Project rootの `.gitignore` に `.dat/generated/` と `.dat/state/` を追加する |
 

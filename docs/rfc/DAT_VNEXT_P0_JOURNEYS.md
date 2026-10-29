@@ -144,6 +144,16 @@ R0 の分岐（上から順）: (1) `complexity: low, ambiguity: low` → T0、(
 
 優先順位付け（Baseline §6 の 3 つ目）は、人の計測と利用価値の確認を経てから行う。この表は vNext（B 案）の必要性を示すものではない。現行 A の局所改善（記録例の追加、エラー文、summarizer の出力追加）で足りる可能性も同じく未検証。
 
+### その後の対応（観測本文と件数は変更しない）
+
+上の観測は `257f836` 時点のもの。A 案の局所改善として次を行った。どれも改善効果（人の負担・再試行の減少）は未測定。暫定の優先順位付けは [#268 のコメント](https://github.com/s977043/dynamic-agent-topology/issues/268#issuecomment-6502290610)。
+
+| ID | 対応 | 状態 |
+| --- | --- | --- |
+| G-B1 | #272：dat-observe SKILL から設計 §5.4 の `verifierKind` 規則と、検証なしの既存の記録例へ案内 | 導線は追加。G-B3（エラー文が直し方を示さない）は未対応 |
+| G-A3 | #273：dat-select SKILL の保留時の手順で、確認する入力を routing policy の `when` から挙げるよう案内 | 一部対応。どの値なら分岐が決まるかの例・尺度（G-A1）は未追加 |
+| G-D1 | #273：QUICKSTART §6 に、コピー直後の WARNING の意味と消し方を追加 | 一部対応。WARNING 自体は出る |
+
 ## 6. 範囲外・未実施
 
 - 人の操作時間・active/wall time・認知負荷・操作数: NOT MEASURED。

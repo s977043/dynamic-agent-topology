@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dat",
   "displayName": "Dynamic Agent Topology",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Pick the simplest sufficient agent team structure (P0/T0/T1/T2/T3) before a task, and record what actually ran as a RunObservation after it. Runtime-agnostic specification plus two skills; it never applies runtime configuration.",
   "author": {
     "name": "dynamic-agent-topology maintainers",

@@ -1,10 +1,12 @@
 # RFC: DAT vNext — Evidence-first redesign
 
-- Status: **DRAFT / NOT ADOPTED**
-- Tracking: [Issue #268](https://github.com/s977043/dynamic-agent-topology/issues/268)
-- Baseline: `main` `4475b3004ecd07ae5da313121543067119a59479` (2026-10-29)
-- Scope: 新設計の仮説、代替案、検証条件、移行判断。**実装・実モデル起動・規則変更の承認ではない**
-- Companion: [Baseline inventory](DAT_VNEXT_BASELINE.md) / [Review runbook](DAT_VNEXT_REVIEW_RUNBOOK.md)
+> **非規範的な設計案（未採用）。** 正本は既存文書（[AGENTS.md](../../AGENTS.md)、[ARCHITECTURE.md](../ARCHITECTURE.md)、[EXPERIMENTS.md](../EXPERIMENTS.md)、[METRICS.md](../METRICS.md)、[RELEASE_READINESS.md](../RELEASE_READINESS.md) など）で、矛盾する場合は正本が優先する。関係文書: [MAINTENANCE_COST_REVIEW.md](../MAINTENANCE_COST_REVIEW.md)、[POST_EXP001_EVALUATION_DESIGN.md](../POST_EXP001_EVALUATION_DESIGN.md)、[RESEARCH_AUTONOMOUS_CODING_LOOP_REFERENCES.md](../RESEARCH_AUTONOMOUS_CODING_LOOP_REFERENCES.md)、[CURRENT_EXECUTION_PLAN.md](../CURRENT_EXECUTION_PLAN.md)。
+
+- 状態: **DRAFT / NOT ADOPTED**
+- 追跡: [Issue #268](https://github.com/s977043/dynamic-agent-topology/issues/268)
+- 基準: `main` `4475b3004ecd07ae5da313121543067119a59479`（2026-10-29）
+- 範囲: 新設計の仮説、代替案、検証条件、移行判断。**実装・実モデル起動・規則変更の承認ではない**
+- 関連文書: [Baseline inventory](DAT_VNEXT_BASELINE.md) / [Review runbook](DAT_VNEXT_REVIEW_RUNBOOK.md)
 
 ## 1. Problem / Desired Outcome
 
@@ -18,11 +20,11 @@ DATのNorth Star「**Which agent topology works, under what conditions, and at w
 4. Multi-Agentの追加だけでなくFold / Keep / Escalate / Revertを、別々のEvidenceから判断できるか。
 5. 新しい抽象化や互換レイヤーのコストが便益を上回らないか。
 
-**Success is an independently reproducible decision, not fewer files or agents.**
+**成功とは、ファイル数やAgent数の削減ではなく、独立に再現できる判断である。**
 
 ## 2. Current facts vs unknowns
 
-### Observed (source-of-truth files are linked in baseline)
+### 観測済み（正本ファイルへのリンクはBaselineにある）
 
 - DATはAgent Runtimeではなく仕様・実験・評価基盤。Runtime構成の自動適用はしない。
 - `dat-select`はRouting/Escalation Policyに基づく**提案**のみ。不明入力では選択保留。
@@ -30,7 +32,7 @@ DATのNorth Star「**Which agent topology works, under what conditions, and at w
 - EXP-001: 18/18 accepted、9/9 paired blocks、対象3 ScenarioでT0/T1成功率100%。T1の平均TokenはT0の約2.21倍。**Pilot条件ではKeep T0**。床効果・交絡のため一般化しない。
 - 2026-10-29時点の公開境界はv0.4.1。既存Schema、CLI、Skills、Plugin packagingは互換性の対象。
 
-### Unknown — must not be silently filled
+### 未知（推測で埋めない）
 
 - 初回利用者の設定時間、操作回数、選択保留率、導入失敗率。
 - 同等の機能変更時に必要なエンジニア時間・レビュー時間・CI負担。
@@ -40,13 +42,15 @@ DATのNorth Star「**Which agent topology works, under what conditions, and at w
 
 ## 3. Alternatives (review independently, do not preselect)
 
-| Option | Description | Reasons to choose | Stop conditions |
+| 案 | 内容 | 選ぶ理由 | 停止条件 |
 | --- | --- | --- | --- |
 | A — Incremental | 現行DATと公開契約を維持、観測されたボトルネックだけ修正 | 既存導線が実務上十分なら最少リスク | 実証済みの責務競合により局所改善不能 |
 | B — Evidence-first vNext | 利用体験・責務をゼロベースで再設計、比較可能な最小vertical sliceを隔離実装。既存Domain/評価を必要に応じて再利用 | 利用負担や変更コストの実測改善が見込める | 新規抽象化が増えても改善せず、移行負担を回収できない |
 | C — Full rebuild | Domain・Schema・Adapter・実験基盤を再構築 | 既存契約が検証可能な阻害要因で、Bで回避不可能 | 履歴/互換性/安全性の再構築コストが便益超過 |
 
 初期検証優先は**B vs A**。Cは比較する設計代替案として記録するが、着工には「Bでは解決できない再現可能な構造的障害」と新規判断が必要。
+
+**Bが新しく作る成果物の境界:** Bのvertical sliceがAに対して新しく作るのは、隔離Spike内の「候補→観測→比較→判定」を1本の手順でつなぐ導線（手順書と、必要なら既存validator・Skillを呼ぶ薄い補助）だけで、Schema・Skill・CLI・Topology定義は新設しない。
 
 ## 4. Architecture: Topology-neutral core
 
@@ -71,7 +75,7 @@ Independent Evaluation / paired blocks / regression
 Decision: keep / fold / expand / revert / inconclusive
 ```
 
-**Hard boundaries:** Topology ≠ Routing Policy; Role ≠ Permission; Role ≠ Model; Runtime ≠ Model Provider; Selection ≠ Permission; Observed Execution ≠ Attestation ≠ independent verification; Evidence ≠ Judgment.
+**越えない境界:** Topology ≠ Routing Policy; Role ≠ Permission; Role ≠ Model; Runtime ≠ Model Provider; Selection ≠ Permission; Observed Execution ≠ Attestation ≠ independent verification; Evidence ≠ Judgment。
 
 **Single-Agent-first**は新規Taskの低coordination-cost初期候補というPolicy仮説。DAT全体がSingle Agentに偏って評価する根拠ではない。独立Context、並列性、独立Verificationなどの限界価値は、task classごとのablationで判定する。
 
@@ -85,18 +89,18 @@ Decision: keep / fold / expand / revert / inconclusive
 4. 同条件のbaseline / candidate Runをpairedで評価。差分、欠測、n、不一致、回帰を出す。
 5. Reviewer/Operatorが実測範囲に限定してAdopt / Reject / Inconclusiveの判断を記録し、根拠リンクとrevisit triggerを残す。
 
-初期利用者体験は既存`dat-select` / `dat-observe`で再現できることが前提。**第三のSkillや新CLIを先に作らない。** 発見したgapを示してから最小変更する。
+初期利用者体験は既存`dat-select` / `dat-observe`で再現できることが前提。**第三のSkillや新CLIを先に作らない。** 発見したgapを示してから最小変更する。Aと比べてBが新しく作る成果物は §3 の境界に限る。
 
 ## 6. Scope / Non-goals
 
-### In scope (design or offline spike only)
+### 範囲内（設計またはoffline spikeのみ）
 - 現行公開契約と導線のInventory/measurement。
 - A/B/C案のADR、6視点レビュー、反証可能な仮説。
 - 一つのRuntime・一つのTaskでの非破壊的なoffline vertical slice。
 - 既存Schema / validators / skills の再利用可能性と変更負荷の評価。
 - Compatibility・Migration・Rollback計画。
 
-### Out of scope until separately authorized
+### 別途承認されるまで範囲外
 - 自作Agent Runtime / 強制的なSingle-Agent移行 / 新規Topologyの標準採用。
 - 既存SchemaやCLIの破壊的変更、Skill名変更、Plugin配送経路変更。
 - EXP-001 frozen artifacts / result / decisionの修正・再実行。
@@ -120,19 +124,31 @@ Permissionsは既存Runtime/Tool/CIで強制。拒否すべき操作が実際に
 ### H5: Maintainability
 同じ小変更要求をAとBへ適用する作業を比較し、レビュー含む実作業時間と契約影響面積を記録する。ファイル数減・コード行減のみを採用理由にしない。
 
-**Preregistration:** operator・reviewerがsample size / case registry / thresholds / failure budget / missingness policy / counterbalancing / scopeを結果閲覧前に固定。Offline SpikeのPASSは実モデルの有効性を意味しない。
+### Preregistration
+
+operator・reviewerが、結果閲覧前に以下を固定する。Offline SpikeのPASSは実モデルの有効性を意味しない。
+
+- sample size / case registry / thresholds / failure budget / missingness policy / counterbalancing / scope。
+- **ケースの区分**: Bの調整に使う調整用（train）、調整から分離した採否判定用（test）、既存能力を確認する回帰用（regression）を、ケースごとに事前に記録する（[EXPERIMENTS.md](../EXPERIMENTS.md)「Train / test / regression」）。調整に使ったケースはtestに入れない。
+- **Task class・difficulty・適用範囲**: 各ケースのTask class、difficulty、結論を適用する範囲を事前に記録する。
+- **Oracle・ACの版と変更責任者**: 判定に使うOracleとACの版（commit SHA等）と、それを変更できる責任者を記録する。
+- **test結果を見た調整の扱い**: test結果を見てBを調整した場合、その結果を採用根拠にしない。調整後は新しいtestケースで評価し直す。
+- **fresh-state**: 各armは新しいworkspace・新しいsessionから始め、arm間で状態・成果物・context・キャッシュを持ち越さない（[EXPERIMENTS.md](../EXPERIMENTS.md)「Cross-arm contamination」）。
+- **attempt台帳**: attempt ID、block ID、完了／中断／環境障害、再試行理由、判明した消費を記録し、中断や再試行の分も消さない。取得できない値はunknownとする（[METRICS.md](../METRICS.md)、[BASELINE §4](DAT_VNEXT_BASELINE.md)）。
+
+最初の1タスクによるoffline feasibilityはこの区分の前でも実施できるが、その結果はG3/G4の根拠にしない。
 
 ## 8. Acceptance gates
 
-| Gate | Exit signal | On failure |
+| Gate | 通過の条件 | 失敗時 |
 | --- | --- | --- |
-| G0 Baseline | Consumer journeyを現行mainで再現。静的観測と実測を分離。公開契約表あり | Bの実装開始を保留 |
+| G0 Baseline | Consumer journeyを現行mainで再現。静的観測と実測を分離。公開契約表あり。**Journey A/Bの実測で痛点が観測されるまで、BのSpikeに着手しない** | Bの実装開始を保留 |
 | G1 RFC | Architecture/Evaluation/Security/DX/Maintainability/OSSの6視点からcritical 0、独立レビュー証跡が必要 | RFC修正 |
 | G2 Offline | 既存validator通過、positive/negative fixture、変更対象外の差分0 | Revert spike |
-| G3 Compare | A/Bの同条件比較、n/欠測/限界・回帰・操作コストを明記 | Inconclusive or prefer A |
-| G4 Adoption | Bに実測優位・移行可能性・運用責任者の許可あり | Aの局所改善に戻る |
+| G3 Compare | A/Bの同条件比較、n/欠測/限界・回帰・操作コストを明記。§7 Preregistrationのケース区分（train/test/regression）、Task class・difficulty、Oracle・ACの版、各armのfresh-stateが事前記録済みで、Bの調整に使ったケースがtestに含まれていない | Inconclusive or prefer A |
+| G4 Adoption | Bに実測優位・移行可能性・運用責任者の許可あり。根拠のtest結果が、その結果を見た後の調整を経ていない（調整した場合は新しいtestで再評価済み） | Aの局所改善に戻る |
 
-判定候補は **A / B / C / INCONCLUSIVE**。Cは独立した承認なしに着工しない。重要な互換変更・HOTL規則変更・公開Releaseは各正本のHuman-owned境界に従う。
+区分・Oracle版・開始状態が未記録なら、G3/G4の判定を保留する。判定候補は **A / B / C / INCONCLUSIVE**。Cは独立した承認なしに着工しない。重要な互換変更・HOTL規則変更・公開Releaseは各正本のHuman-owned境界に従う。
 
 ## 9. Compatibility / Migration / Rollback
 
@@ -154,11 +170,11 @@ Bは最初**既存公開API/Skillの変更を伴わない分離Spike**に限定�
 
 ## Related work
 
-- [#268](https://github.com/s977043/dynamic-agent-topology/issues/268) vNext RFC parent
-- [#248](https://github.com/s977043/dynamic-agent-topology/issues/248) folding paired-E2E study
-- [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) hard-task T0/T1 experiment
-- [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) RunObservation & skills
-- [#93](https://github.com/s977043/dynamic-agent-topology/issues/93), [#88](https://github.com/s977043/dynamic-agent-topology/issues/88), [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) orthogonal model/routing studies
-- [Anthropic single-agent-loop-kit](https://github.com/anthropics/single-agent-loop-kit) reference only; maintenance and example generalization are limited
+- [#268](https://github.com/s977043/dynamic-agent-topology/issues/268) vNext RFCの親Issue
+- [#248](https://github.com/s977043/dynamic-agent-topology/issues/248) folding paired-E2E研究
+- [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) hard-task T0/T1実験
+- [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) RunObservationとskills
+- [#93](https://github.com/s977043/dynamic-agent-topology/issues/93), [#88](https://github.com/s977043/dynamic-agent-topology/issues/88), [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) 直交するmodel/routing研究
+- [Anthropic single-agent-loop-kit](https://github.com/anthropics/single-agent-loop-kit) 未採用の参考リンク（`knowledge/sources.yaml` 未登録）。保守とexampleの一般化は限定的
 
-**Open decision at RFC draft time:** Is redesign B measurably better than the smallest safe improvement A? **UNKNOWN**.
+**RFC起案時点の未決事項:** 再設計Bは、最小の安全な改善Aより測定可能な形で優れているか。**UNKNOWN**。

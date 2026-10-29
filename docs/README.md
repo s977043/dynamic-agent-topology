@@ -74,6 +74,7 @@
 | [HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md](HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md) | 上記の第2版。T0がスクリーニングで一度も解けなかったTaskをT1なら解けるかを比べる事前登録（#244） | 確定版（事前登録はblob hashのIssue記録で成立） |
 | [hard-task/CANDIDATES.yaml](hard-task/CANDIDATES.yaml) | 上記事前登録 §3 の手順で集めた候補表（初回44件・予備44件、SHA-256順。[#244](https://github.com/s977043/dynamic-agent-topology/issues/244)） | 第2版（§9手順3の固定は未実施） |
 | [hard-task/CALIBRATION_RUNBOOK.md](hard-task/CALIBRATION_RUNBOOK.md) | 上記事前登録 §9 手順 6 の最初の較正 25 Run（5候補×5回）を Operator が実行する手順と、実行・集計キット `scripts/hard_task_calibrate.py` | 起案（未実行。prompt と上限は未確定） |
+| [rfc/DAT_VNEXT_RFC.md](rfc/DAT_VNEXT_RFC.md) | DAT vNextの再設計案（A/B/C比較・検証Gate）と、付随するP0 Baseline・独立レビュー手順（[#268](https://github.com/s977043/dynamic-agent-topology/issues/268)） | 非規範的な設計案（未採用） |
 | [RUN_OBSERVATION_DESIGN.md](RUN_OBSERVATION_DESIGN.md) | 日常開発のウェーブ観察記録（RunObservation）の設計案（#223） | 非規範的な設計案（未採用） |
 | [OBSERVATION_MEASUREMENT.md](OBSERVATION_MEASUREMENT.md) | RunObservation の集計対象・期間の基準時刻・除外条件・記録単位の変化 | 計測の取り決め（構成の優劣の根拠にはしない） |
 | `PUBLIC_REPOSITORY_POLICY.md` | GitHub設定の目標状態 | 運用ポリシー |

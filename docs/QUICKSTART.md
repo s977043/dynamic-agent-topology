@@ -76,7 +76,7 @@ PoCでは`pinMode: floating`でも開始できますが、継続利用やCIで�
 ```yaml
 spec:
   dat:
-    version: "0.4.0"
+    version: "0.4.1"
     apiVersion: dat/v1alpha1
     source: https://github.com/s977043/dynamic-agent-topology
     pinMode: pinned

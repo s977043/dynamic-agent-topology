@@ -6,6 +6,21 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.4.1
+
+Content candidate: `dd785a17e0093314b1e59b98913105ba49363b04`.
+
+Previous boundary: tag `v0.4.0` (`f43e83e7b4b2bfd1be021a2405fc0b63855b4ed6`).
+
+### Changed
+
+- Release publication can be delegated to an agent under HOTL conditions after a per-version human approval; `docs/RELEASE_READINESS.md` adds the Who publishes and Compatibility boundary sections, and an agent-published release requires a Scorecard run on the release commit itself (#265).
+- spec-lint now runs `scripts/test_hard_task_calibrate.py`; where `/usr/bin/sandbox-exec` is unavailable (Linux), the grade and AC sandbox probe checks are skipped after confirming the probe stops (#266).
+
+### Experiment status
+
+- No EXP-001 frozen input or evaluation semantic changed. No public contract (schemas, validator / CLI behavior, specification, skills, plugin packaging) changed.
+
 ## 0.4.0 — 2026-10-28
 
 Content candidate: `9bf2c5a3e18756e8b35b06c6fe700d64ebe06b46`.

@@ -82,3 +82,11 @@ Capability contributionは単一RunのMetricではなく、paired blockのbaseli
 符号だけで自動採用しません。例えばTask Successが同等でもToken / Latency / coordination transitionが大きく増えるなら、追加Capabilityの正当化は弱くなります。一方、安全性に関わるcritical regression低減は単純なcost増より優先される場合があります。
 
 Capabilityがcandidate側で実際にactivationしていない、paired blockが成立していない、sampleが不足している場合は比較を`INCONCLUSIVE`とし、0 deltaとして補完しません。
+
+block別のdeltaと比、条件別平均の比は `python scripts/compare_paired_blocks.py --baseline <id> --candidate <id> [--exclude <blockId>=<理由>] <RunEvaluation...>` で出せます。出力はstdoutのJSONで、正式なArtifact種別ではありません。
+
+- 対: `(experiment, scenario, blockId)`。入力は`schemas/evaluation.schema.json`で検証します。
+- `pairedBlocks`: block別の`delta`（candidate − baseline）、`totalTokensRatio`・`wallClockMsRatio`、`nullReasons`。
+- `invalidBlocks`（条件の欠落・重複、Control不一致）と`excludedBlocks`（`--exclude`の理由）は理由付きで残し、集計に入れません。
+- `conditionMeans`: 成立blockのRunだけの平均。欠測は分母から外し、件数を`<metric>Runs`に出します。`meanTotalTokensRatio`・`meanWallClockMsRatio`は条件別平均同士の比で、`null`の理由は`ratioNullReasons`に出します。
+- `status`: `PAIRED`（全block成立）/ `PARTIAL`（不成立あり）/ `INCONCLUSIVE`（成立0）。いずれもexit 0です。入力・引数の誤りはstderrに理由を出し、stdoutは空でexit 2です。

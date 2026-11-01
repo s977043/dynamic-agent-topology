@@ -16,7 +16,8 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - `scripts/validate_run_observation.py` (and `run_observation.py save`) now adds a hint pointing to design §5.4 when a schema error comes with `verifierKind` written although `verification` is not `yes`; the existing error lines, exit codes, and checks are unchanged.
 - `docs/QUICKSTART.md` now lists the validator warnings expected right after copying `examples/brownfield/.dat` and how to clear each; validator behavior is unchanged.
 - `skills/dat-select/SKILL.md` now points to the routing policy branch conditions (`when`), and to the escalation policy, when a selection is put on hold; no rule changed.
-- The plugin version in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` is now `0.3.1`, following the skill updates since `0.3.0` (`dat-observe` in #250 and #272, and `dat-select` in #273). The DAT spec version in `CITATION.cff` is unchanged.
+- `docs/ARCHITECTURE.md` now describes the meaning of the four R0 routing inputs with non-binding examples, and the current behavior (first matching rule in the `dat-select` procedure, no fallback rule, rule (1) does not read `risk`), and `skills/dat-select/SKILL.md` links to it; R0, schemas, and validators are unchanged.
+- The plugin version in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` is now `0.3.1`, following the skill updates since `0.3.0` (`dat-observe` in #250 and #272, and `dat-select` in #273 and #277). The DAT spec version in `CITATION.cff` is unchanged.
 
 ## 0.4.1 — 2026-10-29
 

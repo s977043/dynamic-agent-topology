@@ -61,6 +61,25 @@ RoutingはTask条件に基づいてTopologyを選択します。Escalationは許
 
 どちらもTopology定義とは別のControl Planeであり、Topologyの構造そのものへPolicy判断を埋め込みません。
 
+### R0 の入力と現行の当てはめ方
+
+この節は、[`policies/routing/R0_dynamic.yaml`](../policies/routing/R0_dynamic.yaml) と `skills/dat-select` の現行の挙動を説明するものです。すべての RoutingPolicy に適用する新しい規範ではなく、R0・schema・validator の挙動も変えません（#277）。
+
+R0 の分岐が参照する入力は次の 4 つです。R0 と schema は値の列挙も判定基準も定めていないため、下の「判定例」は当てはめの手がかりとして示す例で、閾値ではありません。最終的な読み取りは記録者が行い、分からない入力は「分からない」とします。R0 が参照しない値（例: `complexity: medium`）の意味は、ここでは定めません。
+
+| 入力 | R0 が参照する値 | 値の意味 | 判定例（例であり閾値ではない） |
+| --- | --- | --- | --- |
+| `complexity` | `low` | Task を解くのに要る作業の込み入り具合が小さい | 例: 1 ファイルの誤字修正、手順の決まった定型の変更 |
+| `ambiguity` | `low` | 何をすれば完了かが Task から読み取れる | 例: 完了条件や期待する出力が依頼文に書かれている |
+| `risk` | `medium`、`high` | 誤ったときの影響の大きさ | 例: `high` は認可・secret・本番操作・データ削除に関わる変更、`medium` は影響範囲が限られるが誤りが利用者に届きうる変更 |
+| `existingEvidence` | `strong` | Task の正しさを確かめる既存の手段・証拠がある | 例: 既存のテスト・再現手順・過去の観測で結果を確かめられる |
+
+現行の挙動として、次の点を明記します。
+
+- 現行の `dat-select` の手順では、R0 の分岐を上から当てはめ、最初に合った分岐の構成を使います。この順序は R0 と `schemas/routing-policy.schema.json` には書かれておらず、他の RoutingPolicy に一般化するものではありません。
+- R0 には既定（fallback）の分岐がありません。どの分岐にも合わないとき、`dat-select` は構成を推測せず選択保留にします。
+- 分岐 (1) `{complexity: low, ambiguity: low}` は `risk` を参照しません。そのため `risk: high` の Task でも complexity・ambiguity が low なら (1) で T0 になり、(3) `{risk: high}` には届きません。これが意図した設計かどうかは不明です（G-A2、[P0 記録](rfc/DAT_VNEXT_P0_JOURNEYS.md)）。
+
 ## Runtime Adapter
 
 Runtime AdapterはDATの抽象CapabilityとRoleを、Claude Code / Codex / Gemini CLI / AntigravityなどRuntime固有のCapabilityへ写像します。

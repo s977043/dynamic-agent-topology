@@ -5,6 +5,7 @@ import contextlib
 import io
 import sys
 import tempfile
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -119,6 +120,30 @@ with tempfile.TemporaryDirectory() as tmp:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = main(["--baseline", "T0", "--candidate", "T1", str(path)])
         check(code == 2 and out.getvalue() == "" and str(path) in err.getvalue(), f"{name} input must exit 2")
+
+# CLI rejects an experiment spec whose controls are missing or not boolean.
+EXP_DIR = ROOT / "experiments" / "EXP-001-t0-vs-t1"
+RUN = EXP_DIR / "runs" / "pilot-codex" / "EXP-001-train-normalize-name-r02-T0" / "evaluation.yaml"
+with tempfile.TemporaryDirectory() as tmp:
+    for name, controls in (("empty-controls", {}), ("string-bool-control", {"sameModel": "false"})):
+        spec = yaml.safe_load((EXP_DIR / "experiment.yaml").read_text(encoding="utf-8"))
+        if controls:
+            spec["spec"]["controls"].update(controls)
+        else:
+            spec["spec"]["controls"] = controls
+        path = Path(tmp) / f"{name}.yaml"
+        path.write_text(yaml.safe_dump(spec), encoding="utf-8")
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["--baseline", "T0", "--candidate", "T1", "--experiment-spec", str(path), str(RUN)])
+        check(code == 2 and out.getvalue() == "" and str(path) in err.getvalue(), f"{name} must exit 2")
+
+# With three conditions, a block needs all of them; the chosen two are compared.
+SPEC3 = {**SPEC, "spec": {**SPEC["spec"], "conditions": [{"id": "T0"}, {"id": "T1"}, {"id": "T2"}]}}
+result = compare([run("T0", "a"), run("T1", "a"), run("T0", "b"), run("T1", "b"), run("T2", "b")],
+                 SPEC3, "T0", "T1", {})
+check([b["blockId"] for b in result["pairedBlocks"]] == ["b"], "three-condition block pairs only when complete")
+check([b["blockId"] for b in result["invalidBlocks"]] == ["a"], "missing third condition is invalid")
 
 # CLI rejects an exclusion without a reason.
 with contextlib.redirect_stderr(io.StringIO()):

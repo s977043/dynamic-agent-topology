@@ -15,6 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 EVALUATION_SCHEMA = ROOT / "schemas" / "evaluation.schema.json"
+EXPERIMENT_SCHEMA = ROOT / "schemas" / "experiment.schema.json"
 
 
 def load(path):
@@ -28,30 +29,18 @@ def load(path):
     return data
 
 
-def load_evaluation(path, validator):
+def load_validated(path, validator, kind):
     data = load(path)
     errors = sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))
     if errors:
         details = "; ".join(f"{'/'.join(map(str, e.absolute_path)) or '<root>'}: {e.message}" for e in errors)
-        raise ValueError(f"{path}: not a valid RunEvaluation: {details}")
+        raise ValueError(f"{path}: not a valid {kind}: {details}")
     return data
 
 
-def check_experiment_spec(spec, path):
-    try:
-        name = spec["metadata"]["name"]
-        ids = [item["id"] for item in spec["spec"]["conditions"]]
-        controls = spec["spec"]["controls"]
-    except (KeyError, TypeError) as error:
-        raise ValueError(f"{path}: missing experiment structure: {error!r}") from error
-    if not isinstance(name, str) or not isinstance(controls, dict) or not all(isinstance(i, str) for i in ids):
-        raise ValueError(f"{path}: invalid experiment metadata.name, spec.conditions, or spec.controls")
-    return spec
-
-
-def load_json_schema():
-    with EVALUATION_SCHEMA.open(encoding="utf-8") as f:
-        return json.load(f)
+def schema_validator(path):
+    with path.open(encoding="utf-8") as f:
+        return Draft202012Validator(json.load(f))
 
 
 def find_experiment_spec(name):
@@ -223,8 +212,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        validator = Draft202012Validator(load_json_schema())
-        evaluations = [load_evaluation(value, validator) for value in args.files]
+        validator = schema_validator(EVALUATION_SCHEMA)
+        evaluations = [load_validated(value, validator, "RunEvaluation") for value in args.files]
         names = {e["metadata"]["experiment"] for e in evaluations}
         if len(names) != 1:
             raise ValueError(f"input mixes experiments {sorted(names)}; compare one experiment at a time")
@@ -234,7 +223,7 @@ def main(argv=None):
         exclusions = dict(args.exclude)
         if len(exclusions) != len(args.exclude):
             raise ValueError("a block is excluded more than once")
-        spec = check_experiment_spec(load(spec_path), spec_path)
+        spec = load_validated(spec_path, schema_validator(EXPERIMENT_SCHEMA), "Experiment")
         result = compare(evaluations, spec, args.baseline, args.candidate, exclusions)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)

@@ -6,6 +6,10 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+### Added
+
+- `scripts/compare_paired_blocks.py` compares a baseline and a candidate condition per paired block `(experiment, scenario, blockId)`, reporting block deltas and ratios, condition-mean ratios, invalid blocks, and excluded blocks with reasons as JSON (null with a reason for missing values and zero denominators); `scripts/summarize_experiment.py` is unchanged.
+
 ### Changed
 
 - `skills/dat-observe/SKILL.md` now points to the design §5.4 rule for `verifierKind` when `verification` is not `yes`, and to the no-verification example; no rule or contract changed.

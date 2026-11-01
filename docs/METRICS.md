@@ -82,3 +82,5 @@ Capability contributionは単一RunのMetricではなく、paired blockのbaseli
 符号だけで自動採用しません。例えばTask Successが同等でもToken / Latency / coordination transitionが大きく増えるなら、追加Capabilityの正当化は弱くなります。一方、安全性に関わるcritical regression低減は単純なcost増より優先される場合があります。
 
 Capabilityがcandidate側で実際にactivationしていない、paired blockが成立していない、sampleが不足している場合は比較を`INCONCLUSIVE`とし、0 deltaとして補完しません。
+
+block別のdeltaと比、条件別平均の比は `scripts/compare_paired_blocks.py --baseline <id> --candidate <id> [--exclude <blockId>=<理由>] <RunEvaluation...>` で出せます。`(experiment, scenario, blockId)` で対を作り、条件の欠落・重複やControl不一致のblockは理由付きで`invalidBlocks`に、除外したblockは理由付きで`excludedBlocks`に残します。欠測とゼロ分母は`null`と`nullReasons`で示します。出力はstdoutのJSONで、正式なArtifact種別ではありません。

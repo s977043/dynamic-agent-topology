@@ -4,6 +4,7 @@ from pathlib import Path
 import contextlib
 import io
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -75,6 +76,49 @@ result = compare([run("T0", "a", tokens=(100, 0)), run("T1", "a", tokens=(300, 0
 check(result["excludedBlocks"][0]["blockId"] == "a" and result["excludedBlocks"][0]["reason"] == "confounded",
       "excluded block and reason must be in output")
 check(result["pairedBlockCount"] == 1 and result["meanTotalTokensRatio"] == 2.0, "excluded block is not aggregated")
+
+# Condition-mean ratio differs from block ratios; deltas are candidate - baseline.
+base_fail = run("T0", "a", tokens=(100, 0))
+base_fail["outcome"]["taskSuccess"] = False
+result = compare([base_fail, run("T1", "a", tokens=(200, 0)), run("T0", "b", tokens=(300, 0)),
+                  run("T1", "b", tokens=(300, 0))], SPEC, "T0", "T1", {})
+blocks = {b["blockId"]: b for b in result["pairedBlocks"]}
+check([blocks["a"]["totalTokensRatio"], blocks["b"]["totalTokensRatio"]] == [2.0, 1.0], "block ratios")
+check(result["meanTotalTokensRatio"] == 1.25, "mean ratio is mean(candidate) / mean(baseline)")
+check(blocks["a"]["delta"]["taskSuccess"] == 1 and blocks["a"]["delta"]["totalTokens"] == 100, "delta direction")
+
+# Runtime and effort mismatches are reported.
+other_runtime, missing_effort = run("T1", "rt"), run("T1", "ef")
+other_runtime["executionContext"]["runtime"] = "other"
+del missing_effort["executionContext"]["effort"]
+reasons = invalid_reasons(compare([run("T0", "rt"), other_runtime, run("T0", "ef"), missing_effort],
+                                  SPEC, "T0", "T1", {}))
+check(reasons[("s1", "rt")] == ["mixes runtimes"], "runtime mismatch must be reported")
+check(reasons[("s1", "ef")] == ["requires effort values"], "missing effort must be reported")
+
+# CLI input errors exit 2 with empty stdout.
+SAMPLE = ROOT / "examples" / "experiment-run" / "T0-evaluation.yaml"
+with tempfile.TemporaryDirectory() as tmp:
+    tmp = Path(tmp)
+    cases = {
+        "missing": tmp / "missing.yaml",
+        "empty": tmp / "empty.yaml",
+        "broken": tmp / "broken.yaml",
+        "list": tmp / "list.yaml",
+        "partial": tmp / "partial.yaml",
+        "string-bool": tmp / "string-bool.yaml",
+    }
+    cases["empty"].write_text("", encoding="utf-8")
+    cases["broken"].write_text("a: [\n", encoding="utf-8")
+    cases["list"].write_text("- 1\n", encoding="utf-8")
+    cases["partial"].write_text("kind: RunEvaluation\n", encoding="utf-8")
+    cases["string-bool"].write_text(
+        SAMPLE.read_text(encoding="utf-8").replace("taskSuccess: true", 'taskSuccess: "false"'), encoding="utf-8")
+    for name, path in cases.items():
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["--baseline", "T0", "--candidate", "T1", str(path)])
+        check(code == 2 and out.getvalue() == "" and str(path) in err.getvalue(), f"{name} input must exit 2")
 
 # CLI rejects an exclusion without a reason.
 with contextlib.redirect_stderr(io.StringIO()):

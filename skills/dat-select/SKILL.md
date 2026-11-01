@@ -8,6 +8,7 @@ description: 作業に着手する前に、DAT の routing policy に沿って�
 着手前に構成を 1 つ選び、短い判断として示す。ランタイムの設定・エージェント起動・ファイル書き換えはしない。選択条件はこの Skill に持たず、正本の policy を読んで当てはめる（パスはこの SKILL.md からの相対パス）。
 
 - 選び方: [policies/routing/R0_dynamic.yaml](../../policies/routing/R0_dynamic.yaml)
+- 入力の意味と現行の当てはめ方: [docs/ARCHITECTURE.md「R0 の入力と現行の当てはめ方」](../../docs/ARCHITECTURE.md#r0-の入力と現行の当てはめ方)
 - 上限: [policies/escalation/E0_default.yaml](../../policies/escalation/E0_default.yaml)
 - 各構成の意味: [baselines/](../../baselines/)、[topologies/canonical/](../../topologies/canonical/)
 

@@ -90,6 +90,16 @@ warnings = vro.record_warnings(interrupted)
 if vro.validate_record(interrupted, validator) or len(warnings) != 2 or not any("interruptionKind" in w for w in warnings):
     failures.append(f"missing interruptionKind and unknown decision must warn without error, got {warnings}")
 
+no_verification = yaml.safe_load((FIXTURES / "valid" / "no-reviews-explicit-zero.yaml").read_text(encoding="utf-8"))
+if vro.verifier_kind_hint(no_verification):
+    failures.append("record without verifierKind must not get a verifierKind hint")
+no_verification["topologyBasis"]["verifierKind"] = "none"
+errors = vro.validate_record(no_verification, validator)
+if not any(e.startswith("schema: topologyBasis/verifierKind") for e in errors) or not any(
+    e.startswith("hint: topologyBasis.verifierKind") and "5.4" in e for e in errors
+):
+    failures.append(f"verifierKind: none without verification must keep the schema error and add a hint, got {errors}")
+
 with tempfile.TemporaryDirectory() as tmp:
     path = Path(tmp) / "interrupted.yaml"
     path.write_text(yaml.safe_dump(interrupted), encoding="utf-8")

@@ -253,13 +253,24 @@ def allowed_topologies(basis):
     return {"unknown"} | extra
 
 
+def verifier_kind_hint(record):
+    """Point to the fix when verifierKind is written although verification is not yes."""
+    basis = record.get("topologyBasis")
+    if isinstance(basis, dict) and "verifierKind" in basis and basis.get("verification") != "yes":
+        return [
+            "hint: topologyBasis.verifierKind: omit this field unless verification is yes "
+            "(docs/RUN_OBSERVATION_DESIGN.md section 5.4)"
+        ]
+    return []
+
+
 def validate_record(record, validator):
     schema_errors = sorted(validator.iter_errors(record), key=lambda e: list(e.absolute_path))
     if schema_errors:
         return [
             f"schema: {'/'.join(str(p) for p in error.absolute_path) or '$'}: {error.message}"
             for error in schema_errors
-        ]
+        ] + verifier_kind_hint(record)
     errors = check_redaction(record) + check_counts(record)
     basis_errors = check_basis(record)
     errors += basis_errors

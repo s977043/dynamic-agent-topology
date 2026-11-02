@@ -54,6 +54,8 @@ DATはHuman supervisionを重要なcoordination costとして扱いますが、�
 
 正式なHuman Attention metricを追加する場合は、測定対象（例: active supervision time、interruptions、concurrent decisions）と取得方法を事前定義し、既存の`human_interventions`と重複しないことをEvidenceで確認します。EXP-001 Feature Freeze中はMetric / Schema / summarizerの意味論を変更しません。
 
+小さく手動計測を試す場合は [Human Attention pilot proposal](HUMAN_ATTENTION_PILOT.md) を参照してください。これは正式Metric / Schemaの追加やRuntime・権限の変更ではありません。
+
 ## Evaluation principles
 
 - 単一Metricだけを最適化しません。
@@ -88,5 +90,12 @@ block別のdeltaと比、条件別平均の比は `python scripts/compare_paired
 - 対: `(experiment, scenario, blockId)`。入力は`schemas/evaluation.schema.json`で検証します。
 - `pairedBlocks`: block別の`delta`（candidate − baseline）、`totalTokensRatio`・`wallClockMsRatio`、`nullReasons`。
 - `invalidBlocks`（条件の欠落・重複、Control不一致）と`excludedBlocks`（`--exclude`の理由）は理由付きで残し、集計に入れません。
-- `conditionMeans`: 成立blockのRunだけの平均。欠測は分母から外し、件数を`<metric>Runs`に出します。`meanTotalTokensRatio`・`meanWallClockMsRatio`は条件別平均同士の比で、`null`の理由は`ratioNullReasons`に出します。
-- `status`: `PAIRED`（全block成立）/ `PARTIAL`（不成立あり）/ `INCONCLUSIVE`（成立0）。いずれもexit 0です。入力・引数の誤りはstderrに理由を出し、stdoutは空でexit 2です。
+- `conditionMeans`: 成立blockのRunだけの条件別観測値平均。欠測は各条件の分母から外し、件数を`<metric>Runs`に出します。左右の対象block集合が異なる場合があるため、この2つの平均を割ってpaired比と解釈しません。
+- `pairedMetricSummary`: `totalTokens` / `wallClockMs` ごとに、両条件の値が揃う成立blockだけの`pairedBlockCount`・`baselineMean`・`candidateMean`と、欠測の`missingBlockCount`・`missingBlocks`（Scenario / blockId / 欠測条件）を出します。invalid / excluded blockはこの件数に含めません。
+- `meanTotalTokensRatio`・`meanWallClockMsRatio`: 対応する`pairedMetricSummary`の`candidateMean / baselineMean`。block別の比の平均ではありません。観測された0も母集団に残し、共通の観測ペアが0件、または分母が0なら`null`と理由を`ratioNullReasons`に出します。
+- `status`: 除外後の構造的な対の状態です。`PAIRED`（残ったblockがすべて成立）/ `PARTIAL`（不成立あり）/ `INCONCLUSIVE`（成立0）。Metricの欠測・効果の有無・採用判断は表しません。`PAIRED`でも特定Metricの比が`null`になりえます。いずれもexit 0です。入力・引数の誤りはstderrに理由を出し、stdoutは空でexit 2です。
+- `--exclude BLOCK_ID=REASON`: 入力内でblockIdが1つのScenarioに属するときだけ適用します。複数Scenarioに同じIDがある曖昧な除外はexit 2で拒否します。その場合は対象Scenarioの入力ファイルだけに絞って比較します。除外なしなら同じIDを別Scenarioで使えます。
+
+例: T0のtokensが`[100, 200]`、対応するT1が`[欠測, 400]`なら、条件別観測値平均は150と400のままですが、paired平均比は観測が揃う後者のblockだけから`400 / 200 = 2.0`です。欠測blockの存在と理由も残します。Complete-caseの比は観測できた部分集合の記述であり、欠測による選択バイアスがないことを保証しません。
+
+互換性上の注意（#286）: 片側欠測時の平均比を同じ母集団へ修正し、曖昧な除外を拒否します。JSONには`pairedMetricSummary`を追加します。欠測がなく除外が一意な既存入力の数値、`conditionMeans`、元の`summarize_experiment.py`、EXP-001原本の意味論は変更しません。

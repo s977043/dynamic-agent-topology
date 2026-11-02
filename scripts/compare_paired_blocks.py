@@ -120,6 +120,12 @@ def compare(evaluations, experiment_spec, baseline, candidate, exclusions):
     if unknown:
         raise ValueError(f"excluded blocks not found in input: {unknown}")
 
+    ambiguous = sorted(block_id for block_id in exclusions
+                       if sum(key[1] == block_id for key in blocks) > 1)
+    if ambiguous:
+        raise ValueError(f"excluded block IDs are ambiguous across scenarios: {ambiguous}; "
+                         "pass input files for one scenario when excluding a reused block ID")
+
     paired, invalid, excluded = [], [], []
     included_runs = {baseline: [], candidate: []}
     for (scenario, block_id), runs in sorted(blocks.items()):
@@ -170,10 +176,32 @@ def compare(evaluations, experiment_spec, baseline, candidate, exclusions):
 
     base_means = condition_means(included_runs[baseline])
     cand_means = condition_means(included_runs[candidate])
+    # Descriptive condition means above may use different observed populations.
+    # Ratios must instead use the same complete pairs for each metric.
+    paired_metric_summary = {}
+    for name in ("totalTokens", "wallClockMs"):
+        complete = [block for block in paired
+                    if block["baseline"][name] is not None and block["candidate"][name] is not None]
+        missing = []
+        for block in paired:
+            missing_conditions = [condition for side, condition in (("baseline", baseline), ("candidate", candidate))
+                                  if block[side][name] is None]
+            if missing_conditions:
+                missing.append({"scenario": block["scenario"], "blockId": block["blockId"],
+                                "missingConditions": missing_conditions})
+        paired_metric_summary[name] = {
+            "pairedBlockCount": len(complete),
+            "missingBlockCount": len(missing),
+            "baselineMean": statistics.fmean(block["baseline"][name] for block in complete) if complete else None,
+            "candidateMean": statistics.fmean(block["candidate"][name] for block in complete) if complete else None,
+            "missingBlocks": missing,
+        }
+    token_summary = paired_metric_summary["totalTokens"]
+    wall_summary = paired_metric_summary["wallClockMs"]
     ratio_nulls = []
-    mean_token_ratio, reason = ratio(cand_means["totalTokens"], base_means["totalTokens"], "meanTotalTokensRatio")
+    mean_token_ratio, reason = ratio(token_summary["candidateMean"], token_summary["baselineMean"], "meanTotalTokensRatio")
     ratio_nulls += [reason] if reason else []
-    mean_wall_ratio, reason = ratio(cand_means["wallClockMs"], base_means["wallClockMs"], "meanWallClockMsRatio")
+    mean_wall_ratio, reason = ratio(wall_summary["candidateMean"], wall_summary["baselineMean"], "meanWallClockMsRatio")
     ratio_nulls += [reason] if reason else []
 
     return {
@@ -185,6 +213,7 @@ def compare(evaluations, experiment_spec, baseline, candidate, exclusions):
         "excludedBlockCount": len(excluded),
         "status": "INCONCLUSIVE" if not paired else ("PARTIAL" if invalid else "PAIRED"),
         "conditionMeans": {baseline: base_means, candidate: cand_means},
+        "pairedMetricSummary": paired_metric_summary,
         "meanTotalTokensRatio": mean_token_ratio,
         "meanWallClockMsRatio": mean_wall_ratio,
         "ratioNullReasons": ratio_nulls,
@@ -208,7 +237,7 @@ def main(argv=None):
     parser.add_argument("--candidate", required=True, help="candidate condition id")
     parser.add_argument("--experiment-spec", help="experiment.yaml (default: found by name under experiments/)")
     parser.add_argument("--exclude", action="append", default=[], type=parse_exclusion,
-                        metavar="BLOCK_ID=REASON", help="exclude a block; the reason is kept in the output")
+                        metavar="BLOCK_ID=REASON", help="exclude a block ID unique across input scenarios; keep its reason")
     args = parser.parse_args(argv)
 
     try:

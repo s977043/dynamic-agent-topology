@@ -131,6 +131,12 @@ jobs:
       - name: Experiment summary smoke test
         run: python scripts/summarize_experiment.py examples/experiment-run/*-evaluation.yaml
 
+      - name: Test paired block comparison
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_compare_paired_blocks.py
+
+      - name: Paired block comparison smoke test
+        run: python scripts/compare_paired_blocks.py --baseline T0 --candidate T1 examples/experiment-run/*-evaluation.yaml
+
       - name: Validate failing experiment fixtures
         run: python scripts/validate_fixtures.py
 

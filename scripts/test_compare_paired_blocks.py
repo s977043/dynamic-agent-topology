@@ -154,4 +154,127 @@ with contextlib.redirect_stderr(io.StringIO()):
     else:
         raise AssertionError("empty exclusion reason must fail")
 
+# Ratio populations use complete metric pairs, not each condition's nonnull rows.
+for missing_conditions in (("T0",), ("T1",), ("T0", "T1")):
+    rows = [run(c, "missing", tokens=None if c in missing_conditions else (100, 0)) for c in ("T0", "T1")]
+    rows += [run("T0", "complete", tokens=(200, 0)), run("T1", "complete", tokens=(400, 0))]
+    result = compare(rows, SPEC, "T0", "T1", {})
+    check(result["meanTotalTokensRatio"] == 2.0, "token ratio must use identical complete-pair populations")
+    summary = result["pairedMetricSummary"]["totalTokens"]
+    check(summary["pairedBlockCount"] == 1 and summary["missingBlockCount"] == 1, "metric pair counts")
+    check(summary["baselineMean"] == 200 and summary["candidateMean"] == 400, "paired means")
+    check(summary["missingBlocks"] == [{"scenario": "s1", "blockId": "missing",
+                                        "missingConditions": list(missing_conditions)}], "missing sides and block identity")
+    for condition in ("T0", "T1"):
+        check(result["conditionMeans"][condition]["totalTokensRuns"] == (1 if condition in missing_conditions else 2),
+              "descriptive condition means retain their original observation counts")
+    check(result["pairedBlockCount"] == 2 and result["status"] == "PAIRED", "structural pair status is unchanged")
+    check(result["pairedMetricSummary"]["wallClockMs"]["pairedBlockCount"] == 2, "token missingness does not drop wall time")
+
+# Equal nonnull counts do not prove that the same blocks were measured.
+result = compare([run("T0", "a", tokens=(100, 0)), run("T1", "a", tokens=None),
+                  run("T0", "b", tokens=None), run("T1", "b", tokens=(400, 0))], SPEC, "T0", "T1", {})
+check(result["meanTotalTokensRatio"] is None, "disjoint observed populations have no paired ratio")
+check(result["pairedMetricSummary"]["totalTokens"]["pairedBlockCount"] == 0, "no metric-complete pair")
+check("meanTotalTokensRatio: value missing" in result["ratioNullReasons"], "unavailable ratio has a reason")
+
+# A partly recorded token total is unavailable; zero is an observed value.
+partial = run("T1", "partial")
+del partial["efficiency"]["outputTokens"]
+result = compare([run("T0", "partial"), partial, run("T0", "zero", tokens=(0, 0), wall=0),
+                  run("T1", "zero", tokens=(0, 0), wall=0)], SPEC, "T0", "T1", {})
+summary = result["pairedMetricSummary"]["totalTokens"]
+check(summary["pairedBlockCount"] == 1 and summary["baselineMean"] == 0, "measured zero remains in population")
+check(result["meanTotalTokensRatio"] is None and "meanTotalTokensRatio: zero denominator" in result["ratioNullReasons"],
+      "zero denominator is null, not a missing measurement")
+
+# Zero-denominator blocks remain in a ratio-of-means population.
+result = compare([run("T0", "zero", tokens=(0, 0)), run("T1", "zero", tokens=(100, 0)),
+                  run("T0", "nonzero", tokens=(100, 0)), run("T1", "nonzero", tokens=(100, 0))],
+                 SPEC, "T0", "T1", {})
+check(result["meanTotalTokensRatio"] == 2.0, "do not drop observed zeros or average block ratios")
+check(result["pairedMetricSummary"]["totalTokens"]["pairedBlockCount"] == 2, "both measured pairs count")
+
+# Reused block IDs are valid unless the exclusion itself is ambiguous.
+rows = [run(c, "shared", scenario=s) for s in ("s1", "s2") for c in ("T0", "T1")]
+check(compare(rows, SPEC, "T0", "T1", {})["pairedBlockCount"] == 2, "reused block IDs still pair by scenario")
+try:
+    compare(rows, SPEC, "T0", "T1", {"shared": "confounded"})
+except ValueError as error:
+    check("ambiguous across scenarios" in str(error), "ambiguity has an actionable error")
+else:
+    raise AssertionError("ambiguous exclusion must fail rather than drop multiple scenarios")
+result = compare(rows[:2], SPEC, "T0", "T1", {"shared": "confounded"})
+check(result["excludedBlockCount"] == 1 and result["status"] == "INCONCLUSIVE", "one-scenario exclusion remains valid")
+check(result["pairedMetricSummary"]["totalTokens"]["pairedBlockCount"] == 0, "excluded pairs never enter metric summary")
+check(result["meanTotalTokensRatio"] is None, "no pairs is null, not zero")
+
+# Invalid/excluded blocks do not contribute to missingness of accepted pairs.
+result = compare([run("T0", "valid"), run("T1", "valid", tokens=(200, 0)),
+                  run("T0", "invalid", tokens=None), run("T1", "invalid", model="other"),
+                  run("T0", "excluded", tokens=None), run("T1", "excluded")],
+                 SPEC, "T0", "T1", {"excluded": "predeclared confound"})
+check(result["pairedMetricSummary"]["totalTokens"]["missingBlockCount"] == 0, "only structurally accepted pairs summarized")
+check(result["pairedMetricSummary"]["totalTokens"]["pairedBlockCount"] == 1, "only valid pair summarized")
+check(result["meanTotalTokensRatio"] == 2.0 and result["invalidBlockCount"] == 1 and result["excludedBlockCount"] == 1,
+      "invalid/excluded evidence stays separate")
+
+# Exercise the real CLI validation and error contract with synthetic fixture copies.
+with tempfile.TemporaryDirectory() as tmp:
+    spec_name = yaml.safe_load((EXP_DIR / "experiment.yaml").read_text(encoding="utf-8"))["metadata"]["name"]
+
+    def invoke_synthetic_cli(rows, extra=()):
+        paths = []
+        for index, row in enumerate(rows):
+            fixture = yaml.safe_load(SAMPLE.read_text(encoding="utf-8"))
+            fixture["metadata"] = {**row["metadata"], "experiment": spec_name}
+            fixture["executionContext"] = row["executionContext"]
+            fixture["efficiency"] = row["efficiency"]
+            path = Path(tmp) / f"synthetic-{index}.yaml"
+            path.write_text(yaml.safe_dump(fixture), encoding="utf-8")
+            paths.append(str(path))
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["--baseline", "T0", "--candidate", "T1", "--experiment-spec",
+                         str(EXP_DIR / "experiment.yaml"), *extra, *paths])
+        return code, out.getvalue(), err.getvalue()
+
+    rows = [run("T0", "a"), run("T1", "a", tokens=None),
+            run("T0", "b", tokens=(200, 0)), run("T1", "b", tokens=(400, 0))]
+    code, out, err = invoke_synthetic_cli(rows)
+    check(code == 0 and not err and yaml.safe_load(out)["meanTotalTokensRatio"] == 2.0,
+          "CLI returns complete-pair ratio after real schema validation")
+    rows = [run(c, "shared", scenario=s) for s in ("s1", "s2") for c in ("T0", "T1")]
+    for extra, message in ((["--exclude", "shared=confounded"], "ambiguous across scenarios"),
+                           (["--exclude", "absent=confounded"], "not found in input"),
+                           (["--exclude", "shared=first", "--exclude", "shared=second"], "more than once")):
+        code, out, err = invoke_synthetic_cli(rows, extra)
+        check(code == 2 and out == "" and message in err, "CLI fails closed with empty stdout")
+    code, out, err = invoke_synthetic_cli(rows[:2], ["--exclude", "shared=confounded"])
+    check(code == 0 and not err and yaml.safe_load(out)["excludedBlockCount"] == 1,
+          "CLI keeps an unambiguous exclusion usable")
+
+# Historical canonical inputs are read-only: complete-data ratios stay unchanged.
+for label, paths in (
+    ("18 runs", sorted((EXP_DIR / "runs" / "pilot-codex").glob("*/evaluation.yaml"))),
+    ("16 runs", sorted(path for path in (EXP_DIR / "runs" / "pilot-codex").glob("*/evaluation.yaml")
+                       if path.parent.name not in ("EXP-001-train-normalize-name-r01-T0",
+                                                   "EXP-001-train-normalize-name-r01-T1"))),
+):
+    evaluations = [yaml.safe_load(path.read_text(encoding="utf-8")) for path in paths]
+    historical_spec = yaml.safe_load((EXP_DIR / "experiment.yaml").read_text(encoding="utf-8"))
+    result = compare(evaluations, historical_spec, "T0", "T1", {})
+    expected_count = 18 if label == "18 runs" else 16
+    check(len(evaluations) == expected_count and result["pairedBlockCount"] == expected_count // 2,
+          f"historical {label} population must stay explicit")
+    check(result["invalidBlockCount"] == 0, "historical pairs remain valid")
+    totals = {condition: [r["efficiency"]["inputTokens"] + r["efficiency"]["outputTokens"]
+                         for r in evaluations if r["metadata"]["condition"] == condition]
+              for condition in ("T0", "T1")}
+    expected_ratio = (sum(totals["T1"]) / len(totals["T1"])) / (sum(totals["T0"]) / len(totals["T0"]))
+    check(abs(result["meanTotalTokensRatio"] - expected_ratio) < 1e-12, "historical ratio unchanged")
+    check(result["pairedMetricSummary"]["totalTokens"]["missingBlockCount"] == 0,
+          "historical comparison is complete-data, not an imputed population")
+    print(f"historical {label}: {result['pairedBlockCount']} pairs, token ratio={result['meanTotalTokensRatio']:.12f}")
+
 print("compare_paired_blocks tests passed")

@@ -155,6 +155,8 @@ R0 の分岐（上から順）: (1) `complexity: low, ambiguity: low` → T0、(
 | G-D1 | #273：QUICKSTART §6 に、コピー直後の WARNING の意味と消し方を追加 | 一部対応。WARNING 自体は出る |
 | G-A1 | #277：ARCHITECTURE「R0 の入力と現行の当てはめ方」に、4 入力の値の意味と判定例（例であり閾値ではない）を追加。dat-select SKILL からリンク | 尺度は追加。記録者間の一致率が上がるかは未検証 |
 | G-A2 | #277：同節に、(1) が `risk` を参照しないこと、上から当てはめること、R0 に fallback がないことを現行挙動として明記 | 挙動は変更なし。意図は不明のまま。分岐順の変更（H-A2）は範囲外 |
+| G-C1 | #278：`scripts/compare_paired_blocks.py` を追加し、block 別の差と比、条件別平均の比を出す。#279：テストと smoke を spec-lint に配線 | DECISION.md の 18 件版を手で転記せずに再現。人の負担がどれだけ減ったかは未測定。`summarize_experiment.py` は凍結のため変更なし |
+| G-C2 | #278：同 CLI の `--exclude <blockId>=<理由>` で除外し、除外した block と理由を出力に残す。#279：同上 | DECISION.md の 16 件版を手で転記せずに再現。人の負担は未測定。`summarize_experiment.py` は凍結のため変更なし |
 
 ## 6. 範囲外・未実施
 

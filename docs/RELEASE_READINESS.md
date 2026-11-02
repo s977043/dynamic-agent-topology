@@ -162,6 +162,6 @@ Keep the publication-pending interval short. If tag or GitHub Release publicatio
 
 ## EXP-001 boundary
 
-EXP-001 is currently evidence acquisition under feature freeze. Publishing DAT does not imply that T1, a Verifier, or any other Topology/Capability has been proven effective.
+EXP-001 is completed (Feature Freeze revision 3, decision **Keep T0** in PR #181; see `experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md`), and its historical experiment inputs remain immutable. Publishing DAT does not imply that T1, a Verifier, or any other Topology/Capability has been proven effective.
 
 Do not delay a repository release solely to manufacture a positive experiment result. Conversely, do not use a release to imply experimental validation that has not occurred.

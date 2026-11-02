@@ -14,7 +14,8 @@ Previous boundary: tag `v0.4.1` (`4475b3004ecd07ae5da313121543067119a59479`).
 
 ### Added
 
-- `scripts/compare_paired_blocks.py` compares a baseline and a candidate condition per paired block `(experiment, scenario, blockId)`, reporting block deltas and ratios, condition-mean ratios, invalid blocks, and excluded blocks with reasons as JSON (null with a reason for missing values and zero denominators); `scripts/summarize_experiment.py` is unchanged.
+- `scripts/compare_paired_blocks.py` compares a baseline and a candidate condition per paired block `(experiment, scenario, blockId)`, reporting block deltas and ratios, condition-mean ratios, invalid blocks, and excluded blocks with reasons as JSON (null with a reason for missing values and zero denominators); `scripts/summarize_experiment.py` is unchanged. spec-lint now runs `scripts/test_compare_paired_blocks.py` and a smoke run on `examples/experiment-run/` (#278, #279).
+- DAT vNext design material under `docs/rfc/`: the P0 Baseline, the redesign RFC, and the independent review runbook (#269), and `docs/rfc/DAT_VNEXT_P0_JOURNEYS.md`, which records offline runs of P0 Journeys A to D (#271) and the follow-up status of the observed gaps (#274, #280, #281). The vNext design is a proposal and is not adopted. The records are offline observations; they do not measure whether human effort decreases or whether vNext is better than the current design.
 
 ### Changed
 

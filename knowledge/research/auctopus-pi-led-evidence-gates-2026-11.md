@@ -63,6 +63,28 @@
 3. 新実装が必要なgapが再現した場合だけ、P1用の隔離Spikeで最小修正を提案。既存EXP-001凍結33blobを一切変更しない。
 4. 結果は技術的な検出可否と、PI-led導入価値を分けて判定。P1だけでMulti-Agentを採用しない。
 
+### 初回の静的契約マッピング・負の対照（2026-11-03 JST）
+
+DAT mainの次の既存ファイルを参照した。これは現行契約の**静的確認とJSON Schema単体のローカルprobe**であり、Repo全validatorや実モデルの評価を実行したわけではない。
+
+- schemas/evaluation.schema.json: verdictは pass/fail/inconclusive。evidenceにはrequiredGates、passedGates、completeness、任意のverifierFalseAcceptがある。**GateごとのID・時系列・provenanceは必須項目ではない**。
+- schemas/execution-trace.schema.json: verify/evidence/reviewなどのeventと任意details/artifactがある。個別controlは記録できるが、記録内容とverdictの自動整合を表現するcanonical fieldではない。
+- scripts/validate_experiments.py: acceptanceCriteriaPassed <= acceptanceCriteriaTotal、passedGates <= requiredGates、Trace/EvaluationのID・Runtime/Model/Effort・要約値整合、paired control一致を検査する。**passedGates < requiredGates と verdict=pass の組み合わせは、このスクリプトに直接の拒否条件がない**。
+- scripts/compare_paired_blocks.py: arm間のRuntime/Model/Effort不一致と条件の重複・欠落をinvalid blockにする（C8を既存機構で扱える）。
+- docs/EXPERIMENTS.md: evidence/実際の拒否/採用判断を区別し、必要なfail-closedはExperiment固有のDecision Ruleとindependent oracleで評価する方針。
+
+ローカルprobe（実DAT JSON Schemaの2026-11-03 main blobを使用、Python jsonschema Draft202012Validator、mockのRunEvaluationを各ケースで変化させる。実行結果はいずれも同一schema入力で確認）:
+
+| 入力差分 | スキーマ検証 | 読み取れること |
+| --- | --- | --- |
+| requiredGates=2、passedGates=2、taskSuccess=true、verdict=pass | PASS | 正常対照 |
+| requiredGates=2、passedGates=1、taskSuccess=true、verdict=pass | PASS | control未通過をSchema単独では拒否しない |
+| requiredGates=2、passedGates=0、taskSuccess=true、verdict=pass | PASS | control全欠測相当もSchema単独では拒否しない |
+| requiredGates=2、passedGates=1、taskSuccess=true、verdict=inconclusive | PASS | VerdictとOutcomeの一貫性をSchemaだけで強制しない |
+| verdict=approve（enum外） | FAIL | Schema検証が動作している負の対照 |
+
+**判断:** schema-levelでの結果であり、実験固有oracleやOperator/Reviewer Gateを含む全体のfail-closed能力は未測定。DATはAgent Runtimeではないため、グローバルSchemaが常に判定を拒否するべきと即断しない。次のP1は「既存の実験Decision Ruleと独立oracleがC2/C3でfalse acceptを阻止できるか」を対象とし、Schemaやvalidatorの変更は**実際の再現gapが生じた場合のみ**提案する。
+
 ## 5. 後続の比較と事前登録ゲート
 
 次の実測は別のOperator許可が得られた場合のみ。比較対象をT0+同じgate・oracleとPI-led候補に揃え、gate有無による改善とRole/Contextの改善を混ぜない。可能なら独立Verifierあり/なしも分け、必要なrole数は効果で判断する。
@@ -84,7 +106,7 @@
 ## 7. 次のアクション（Issue #295）
 
 - [x] 論文とOSSの出典・限界・適用条件の調査記録
-- [ ] C1〜C8が現行DATのどのvalidator/decisionで扱えるか静的マッピング
+- [x] C1〜C8のうちSchema/validator/paired比較への初回静的マッピング（全経路の検証は未完了）
 - [ ] P1 failure-first fixtureの安全な実施・機械検証
 - [ ] 独立セッションレビュー（対象commitと実施範囲を記録）
 - [ ] 課金・実モデル比較は事前登録とOperator承認後

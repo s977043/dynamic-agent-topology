@@ -1,0 +1,42 @@
+{
+  "blockId": "cloud-dispatch-20261103-b01",
+  "scenario": "latest-valid-record",
+  "baseCommit": "95a4c8dad9564c1235108c0bee77161c0c1225ef",
+  "oracleFreezeCommit": "6136a92",
+  "runtime": "host collaboration tools; manually orchestrated",
+  "model": null,
+  "effort": null,
+  "totalTokens": null,
+  "costUsd": null,
+  "humanAttentionSeconds": null,
+  "timingMethod": "monotonic timestamps immediately before spawn orchestration and after parent observes final result; includes scheduling, tools and observation delay; excludes oracle setup/scoring and PR work",
+  "timestamps": {
+    "t0_start": 156.998069851,
+    "t0_start_utc": "2026-11-03T00:52:05Z",
+    "t0_observed_end": 189.32290191,
+    "t1_start": 189.322902284,
+    "t1_worker_observed_end": 223.539410141,
+    "t1_verifier_start": 223.539410556,
+    "t1_observed_end": 257.927516384
+  },
+  "t0": {
+    "workerInvocations": 1,
+    "verifierInvocations": 0,
+    "wallSeconds": 32.324832059000016,
+    "sessionTask": "/root/t0_worker"
+  },
+  "t1": {
+    "workerInvocations": 1,
+    "verifierInvocations": 1,
+    "workerWallSeconds": 34.21650785699998,
+    "verifierWallSeconds": 34.38810582799999,
+    "wallSeconds": 68.60461409999999,
+    "workerSessionTask": "/root/t1_worker",
+    "verifierSessionTask": "/root/t1_verifier",
+    "verifierVerdict": "PASS",
+    "repairRounds": 0
+  },
+  "evaluatorSessionTask": "/root/oracle",
+  "sessionIdStatus": "task labels only, platform session IDs unavailable",
+  "evidenceClass": "live manual feasibility canary, not controlled effectiveness comparison"
+}

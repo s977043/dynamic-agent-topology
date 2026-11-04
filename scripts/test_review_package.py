@@ -44,13 +44,19 @@ def expect_exit(fn, reason: str) -> str:
     raise AssertionError(reason)
 
 
-def fake_runner(calls: list, fetched: str = HEAD, checkout_head: str = HEAD, base: str = MAIN, status: str = ""):
+def fake_runner(calls: list, fetched: str = HEAD, checkout_head: str = HEAD, base: str = MAIN, status: str = "",
+                snapshot=None, api_failure: bool = False):
     def runner(cmd: list[str]) -> str:
         calls.append(cmd)
         if cmd[:3] == ["gh", "pr", "view"]:
-            return json.dumps(PR)
+            check("baseRefOid" not in cmd[-1], "unsupported gh JSON field is not requested")
+            return json.dumps({key: value for key, value in PR.items() if key != "baseRefOid"})
         if cmd[:3] == ["gh", "issue", "view"]:
             return json.dumps(ISSUE)
+        if cmd[:2] == ["gh", "api"] and cmd[2] == "repos/o/r/pulls/7":
+            if api_failure:
+                raise SystemExit("API failure")
+            return json.dumps(snapshot if snapshot is not None else {"number": 7, "head": {"sha": HEAD}, "base": {"sha": MAIN, "ref": "main"}})
         if cmd[:2] == ["gh", "api"]:
             check(cmd[2] == "repos/o/r/issues/comments/99", "Issue comment is fetched by ID")
             return json.dumps(COMMENT)
@@ -63,7 +69,7 @@ def fake_runner(calls: list, fetched: str = HEAD, checkout_head: str = HEAD, bas
         if cmd[-2:] == ["status", "--porcelain"]:
             return status
         if "diff" in cmd:
-            check(cmd[-1] == f"origin/main...{HEAD}", "diff is taken against the base")
+            check(cmd[-1] == f"{MAIN}...{HEAD}", "diff is taken against the base")
             return "diff --git a/x b/x\n"
         return ""
     return runner
@@ -115,6 +121,23 @@ with tempfile.TemporaryDirectory() as tmp:
                           "a base that differs from the PR's baseRefOid must stop")
     check("base main moved" in message and not (Path(tmp) / "materials" / "pr-diff.patch").exists(),
           "base mismatch stops before the diff is written")
+
+# A REST/view race, malformed response or failed API must not produce a package.
+for snapshot in (
+    {"number": 7, "head": {"sha": "c" * 40}, "base": {"sha": MAIN, "ref": "main"}},
+    {"number": 7, "head": {"sha": HEAD}, "base": {"sha": MAIN, "ref": "other"}},
+    {"number": 7, "head": {"sha": HEAD}, "base": {"sha": "", "ref": "main"}},
+    {"number": 8, "head": {"sha": HEAD}, "base": {"sha": MAIN, "ref": "main"}},
+    {},
+):
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "pkg"
+        expect_exit(lambda: build(build_args(out), fake_runner([], snapshot=snapshot)), "inconsistent snapshot must stop")
+        check(not out.exists(), "bad snapshot stops before writing materials")
+with tempfile.TemporaryDirectory() as tmp:
+    out = Path(tmp) / "pkg"
+    expect_exit(lambda: build(build_args(out), fake_runner([], api_failure=True)), "API failure must stop")
+    check(not out.exists(), "API failure stops before writing materials")
 
 with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "checkout").mkdir()

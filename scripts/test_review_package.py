@@ -146,6 +146,8 @@ with tempfile.TemporaryDirectory() as tmp:
     package = build(build_args(Path(tmp), no_checkout=True), release_runner(calls))
     check(["git", "-C", "/repo", "fetch", "--quiet", "origin", "main", "release"] in calls,
           "main and a non-main base are both fetched")
+    check(any("diff" in cmd and cmd[-1] == f"{RELEASE}...{HEAD}" for cmd in calls),
+          "the diff is generated for a non-main base")
     check(package["base"] == "release" and package["main"] == MAIN
           and f"base: release {RELEASE}" in (Path(tmp) / "materials" / "pr.md").read_text(encoding="utf-8"),
           "a non-main base is recorded separately from main")

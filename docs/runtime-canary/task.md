@@ -1,0 +1,3 @@
+# Public synthetic repair task
+Repair `select_latest(records)` in solution.py using Python standard library only.
+Input is a list of dictionaries with `id` (string) and `revision` (nonnegative integer, bool excluded). Ignore any record whose id is not a nonempty string or whose revision is invalid; missing keys are invalid. Other keys are allowed. Return one record per id: greatest valid revision wins; equal revision keeps the first record. Return records ordered by first valid appearance of their id. Do not mutate the input list or any record. Return a list; selected records may be the original objects. No normalization of id strings. Input items may also be non-dictionaries and should be ignored.

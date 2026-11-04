@@ -10,6 +10,7 @@ Current adoption state is recorded in [`../sources.yaml`](../sources.yaml). If a
 
 | Note | Primary source(s) | Tracking issue |
 |---|---|---|
+| [Auctopus PI-led critical gates (research-only)](auctopus-pi-led-evidence-gates-2026-11.md) | Mansouri et al. arXiv:2610.40589v1; E-zClap/auctopus v1.0.0 (pinned) | [#295](https://github.com/s977043/dynamic-agent-topology/issues/295) |
 | [Raven executable-configuration evolution](raven-executable-configuration-evolution.md) | Raven / HarnessBank | [#21](https://github.com/s977043/dynamic-agent-topology/issues/21) |
 | [Agent population scaling and ecological safety](agent-population-ecological-safety-2026-10.md) | Crawley & Tanaka, *Ecology of AI Agents* (arXiv:2610.12436v1) | [#166](https://github.com/s977043/dynamic-agent-topology/issues/166) |
 | [Claude Code Mods runtime guardrails](claude-code-mods-runtime-guardrails.md) | Anthropic Claude Code Mods | [#59](https://github.com/s977043/dynamic-agent-topology/issues/59) |

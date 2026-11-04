@@ -287,3 +287,16 @@ sources:
     url: https://note.com/ai_dev_leaders/n/ndd23a2abf5be
     published_at: '2026-10-15'
     adopted: []
+
+  - id: mansouri-auctopus-quantum-lab-2026
+    type: preprint
+    title: "Collaborative AI agents for autonomous experimental research with solid-state quantum spins"
+    url: "https://arxiv.org/abs/2610.40589"
+    published_at: "2026-10-29"
+    adopted: []
+
+  - id: e-zclap-auctopus-2026
+    type: repository
+    title: "E-zClap/auctopus v1.0.0: PI-led autonomous research laboratory (pinned)"
+    url: "https://github.com/E-zClap/auctopus/tree/bbb98e3711a8f18a6ca70d4d6787ecaadac9490f"
+    adopted: []

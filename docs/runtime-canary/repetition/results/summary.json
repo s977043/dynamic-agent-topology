@@ -1,0 +1,17 @@
+{
+  "evidenceClass": "offline-saved-output-replay",
+  "liveAgentRuns": 0,
+  "matched": 6,
+  "passed": true,
+  "scoringInvocations": 6,
+  "sourceComplete": true,
+  "sourceHashesAfter": {
+    "evaluate.py": "fc5a50aca33f897c54c2f0afc6500f878a8fd37f5d2ab04764551e11d1b97fd6",
+    "initial.py": "61abebe05c3345b31a99f9fc7f1f456f451b180e5bb3b01c9441bcc6796d20a9",
+    "t0-final.py": "c7cefb20433a3266be9b44e25d59a111da3810be943e9fc53a2386122d4c0e5c",
+    "t1-final.py": "e4a4ad185871dd9efdfbec4bd81528d8e503a64cbca5fb6ef8291373d0bd7504",
+    "task.md": "59209283ab188ad164febe0ca0adcef27bf101e8359194dc5d22d54317bad01d"
+  },
+  "sourcesUnchanged": true,
+  "topologyEffect": "NOT_TESTED"
+}

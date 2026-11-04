@@ -1,0 +1,37 @@
+{
+  "python": "Python 3.12.14",
+  "overwrite": {
+    "exitCode": 2,
+    "message": "Refusing existing output directory",
+    "existingFilesUnchanged": true
+  },
+  "missingSource": {
+    "exitCode": 1,
+    "retainedObservations": 6,
+    "errors": [
+      "FileNotFoundError",
+      "FileNotFoundError",
+      "FileNotFoundError",
+      "FileNotFoundError",
+      "FileNotFoundError",
+      "FileNotFoundError"
+    ],
+    "summary": {
+      "evidenceClass": "offline-saved-output-replay",
+      "liveAgentRuns": 0,
+      "matched": 0,
+      "passed": false,
+      "scoringInvocations": 6,
+      "sourceComplete": false,
+      "sourceHashesAfter": {
+        "evaluate.py": null,
+        "initial.py": null,
+        "t0-final.py": null,
+        "t1-final.py": null,
+        "task.md": null
+      },
+      "sourcesUnchanged": true,
+      "topologyEffect": "NOT_TESTED"
+    }
+  }
+}

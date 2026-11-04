@@ -1,0 +1,30 @@
+{
+  "blinding": "Opaque labels only; shared filesystem/public hashes do not enforce blinding.",
+  "createdAt": "2026-11-04T03:28:14.518076+00:00",
+  "environment": {
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "release": "6.18.57",
+    "system": "Linux"
+  },
+  "evidenceClass": "offline-saved-output-replay",
+  "missingMetrics": {
+    "costUsd": null,
+    "effort": null,
+    "humanAttentionSeconds": null,
+    "model": null,
+    "tokens": null
+  },
+  "missingReason": "No model calls or human timing; subprocess duration is scoring time only.",
+  "planSha256": "0b7a1cb28dc1720a6a8ab9c4309262211ec9f7167dd5764f0f00d22502e7bac5",
+  "repositoryHead": "541a4bedad068af4e0f5951ad1cc075af3308ac6",
+  "scriptSha256": "11fb6249a161175b8c9c37a546369bba3f0d0de50d3853db0f4844585bee43a4",
+  "sourceHashesBefore": {
+    "evaluate.py": "fc5a50aca33f897c54c2f0afc6500f878a8fd37f5d2ab04764551e11d1b97fd6",
+    "initial.py": "61abebe05c3345b31a99f9fc7f1f456f451b180e5bb3b01c9441bcc6796d20a9",
+    "t0-final.py": "c7cefb20433a3266be9b44e25d59a111da3810be943e9fc53a2386122d4c0e5c",
+    "t1-final.py": "e4a4ad185871dd9efdfbec4bd81528d8e503a64cbca5fb6ef8291373d0bd7504",
+    "task.md": "59209283ab188ad164febe0ca0adcef27bf101e8359194dc5d22d54317bad01d"
+  },
+  "timeoutSeconds": 30
+}

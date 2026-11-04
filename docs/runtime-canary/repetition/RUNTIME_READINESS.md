@@ -33,3 +33,5 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/model_role_split_pilot.py run --dry-run
 [実行計画](LIVE_RUNTIME_PLAN.md)に沿い、実際に利用する既存端末の担当者から、CLI版・OS/arch、追加従量課金なしの経路と利用枠、既存権限で可能な隔離方式、取得できるmodel/effort/usage項目の確認結果を受け取る。秘密値や認証ファイルを共有する必要はない。
 
 認証変更・有料probe・新しいprivateデータ送信が必要なら開始前に止める。既存subscriptionも無制限・無料とは推測しない。今回の公開fixtureを使う新しいstudyの実行予算・Operator・完全なmodel ID・effort・block条件が確定するまで、live起動コマンドを実行しない。人間注意時間は参加者の計時がなければnull、provider原価換算と追加請求額は別にする。
+
+補助確認: `PYTHONDONTWRITEBYTECODE=1 python scripts/test_hard_task_calibrate.py` はexit0。ただしこのLinuxには `/usr/bin/sandbox-exec` がなく、gradeとAC sandbox probeはSKIPと表示された。その2項目は未検証であり、Mac隔離や採点の成功根拠にはしない。guidance・ledger・凍結snapshot監査は成功、原本33 blobs intact。

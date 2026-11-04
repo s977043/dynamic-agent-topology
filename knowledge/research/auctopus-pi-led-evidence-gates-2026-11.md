@@ -3,7 +3,7 @@
 - 状態: **RESEARCH ONLY / NOT ADOPTED / NOT VALIDATED IN DAT**
 - 調査日: 2026-11-03 JST
 - 追跡: [Issue #295](https://github.com/s977043/dynamic-agent-topology/issues/295)
-- DAT参照基準: main 95a4c8dad9564c1235108c0c1225ef（2026-11-03取得）
+- DAT参照基準: main 95a4c8dad9564c1235108c0bee77161c0c1225ef（2026-11-03取得）
 - 範囲: 外部論文と実装の出典固定・適用仮説・最小オフライン検証計画。現在のDATのTopology/Role/Policy/Schema/Runtime/Skillを変更しない。
 
 ## 1. 一次資料・固定条件
@@ -79,7 +79,7 @@ DAT mainの次の既存ファイルを参照した。これは現行契約の**�
 | --- | --- | --- |
 | requiredGates=2、passedGates=2、taskSuccess=true、verdict=pass | PASS | 正常対照 |
 | requiredGates=2、passedGates=1、taskSuccess=true、verdict=pass | PASS | control未通過をSchema単独では拒否しない |
-| requiredGates=2、passedGates=0、taskSuccess=true、verdict=pass | PASS | control全欠測相当もSchema単独では拒否しない |
+| requiredGates=2、passedGates=0、taskSuccess=true、verdict=pass | PASS | gate通過数ゼロでもSchema単独では拒否しない（全失敗と全欠測は区別されない） |
 | requiredGates=2、passedGates=1、taskSuccess=true、verdict=inconclusive | PASS | VerdictとOutcomeの一貫性をSchemaだけで強制しない |
 | verdict=approve（enum外） | FAIL | Schema検証が動作している負の対照 |
 

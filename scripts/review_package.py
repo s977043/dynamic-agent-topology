@@ -122,8 +122,22 @@ def build(args: argparse.Namespace, runner: Runner = run) -> dict:
 
     pr = json.loads(runner([
         "gh", "pr", "view", str(args.pr), "-R", args.repo, "--json",
-        "number,title,url,author,body,comments,headRefOid,baseRefName,baseRefOid",
+        "number,title,url,author,body,comments,headRefOid,baseRefName",
     ]))
+    snapshot = json.loads(runner(["gh", "api", f"repos/{args.repo}/pulls/{args.pr}"]))
+    try:
+        api_head = snapshot["head"]["sha"]
+        api_base = snapshot["base"]["sha"]
+        api_base_ref = snapshot["base"]["ref"]
+        if snapshot["number"] != args.pr or pr["number"] != args.pr:
+            raise ValueError("PR number mismatch")
+        if not all(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40}", sha) for sha in (api_head, api_base)):
+            raise ValueError("missing or invalid SHA")
+        if api_head != pr["headRefOid"] or api_base_ref != pr["baseRefName"]:
+            raise ValueError("PR head or base changed between gh pr view and REST API")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SystemExit(f"invalid or inconsistent PR snapshot: {exc}; retry") from exc
+    pr["baseRefOid"] = api_base
     head = pr["headRefOid"]
     base = pr["baseRefName"]
     runner([*git, "fetch", "--quiet", "origin", f"refs/pull/{args.pr}/head"])
@@ -138,7 +152,7 @@ def build(args: argparse.Namespace, runner: Runner = run) -> dict:
 
     materials.mkdir(parents=True, exist_ok=True)
     (materials / "pr.md").write_text(render_pr(pr), encoding="utf-8")
-    (materials / "pr-diff.patch").write_text(runner([*git, "diff", f"origin/{base}...{head}"]), encoding="utf-8")
+    (materials / "pr-diff.patch").write_text(runner([*git, "diff", f"{base_sha}...{head}"]), encoding="utf-8")
     for number in args.issue:
         issue = json.loads(runner([
             "gh", "issue", "view", str(number), "-R", args.repo, "--json", "number,title,url,author,body,createdAt",

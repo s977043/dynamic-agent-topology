@@ -46,7 +46,7 @@ PYTHONDONTWRITEBYTECODE=1 python3.12 scripts/test_hard_task_calibrate.py
 
 ## 今回の非model確認の途中記録
 
-親担当の観測: `model_role_split_pilot.py plan` は成功。`run --dry-run` は新規scratchへ2件の `dry-run-ungraded` を作り、両方 `modelLaunched: false`。渡した60秒・1,000 tokens/Run・総2,000 tokens・模擬100 tokensは検査パラメータで、今回のlive予算承認ではない。#220の既存ID/modelを用いるsynthetic検査であり、本計画のモデル試行0件を変えない。
+親担当の観測: `model_role_split_pilot.py plan` は成功。`run --dry-run` は新規scratchへ2件の `dry-run-ungraded` を作り、保存run.jsonは両方 `dryRun: true`・`modelLaunched: true`。後者は既存キットの合成起動フラグで、実モデル起動の証拠ではない（run_oneのdry-run分岐）。実際のmodel/container起動は0。渡した60秒・1,000 tokens/Run・総2,000 tokens・模擬100 tokensは検査パラメータで、今回のlive予算承認ではない。#220の既存ID/modelを用いるsynthetic検査であり、本計画のモデル試行0件を変えない。
 
 `test_model_role_split_pilot.py` は先行21テストのOK後、`test_relay_flow` のpaced readが0.9秒で閾値1.0秒以下となりexit1。後続のrelay EAGAIN・stalled reader・teardownは独立実行で成功したが、最初のsuite失敗を打ち消さない。独立担当が待機イベントの完了でpacingが消えるテスト不具合を再現し、完了イベントから独立したsleepへ修正した。閾値・assertion・production runtimeは不変。修正後は該当テストと全25テストが成功した。初回失敗はこの履歴として保持する。live前提は課金・実効metadata・隔離の未確認により未完了。
 

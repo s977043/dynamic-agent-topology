@@ -24,7 +24,7 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/model_role_split_pilot.py run --dry-run
   --max-run-tokens 1000 --budget-tokens 2000 --dry-run-tokens 100
 ```
 
-2件とも `dry-run-ungraded`、tokens=100（合成値）、success=None。model/containerを起動せず、fixtureの取得・採点なし。この1000/2000はdry-run検査用の値で実モデル予算の承認ではない。`--dry-run-grade`は使用していない。#300のreplayとは異なる既存基盤の合成trace経路の確認だけで、実効modelやbillingを実証しない。
+2件とも `dry-run-ungraded`、tokens=100（合成値）、success=None。保存run.jsonは `dryRun: true`・`modelLaunched: true` で、後者はキット内の合成起動フラグ。実起動の証拠にしない。model/containerを起動せず、fixtureの取得・採点なし。この1000/2000はdry-run検査用の値で実モデル予算の承認ではない。`--dry-run-grade`は使用していない。#300のreplayとは異なる既存基盤の合成trace経路の確認だけで、実効modelやbillingを実証しない。
 
 既存test_model_role_split_pilot.py初回実行は21テスト成功後に `test_relay_flow` が失敗（paced read 0.9秒、必要>1秒）。未実行だったrelay_eagain/stalled_reader/teardownは別途実行して成功。全suite初回成功とは記録しない。独立担当が同じ失敗を再現。server完了時のdone.set後はdone.wait(0.01)が即時returnし、pacingが消えていた。time.sleep(0.01)へ置換して閾値・assertion・productionを保持。修正後は該当テストと全25テストが成功。初回失敗は保持する。
 

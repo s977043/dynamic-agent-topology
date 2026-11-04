@@ -122,6 +122,34 @@ with tempfile.TemporaryDirectory() as tmp:
     check("base main moved" in message and not (Path(tmp) / "materials" / "pr-diff.patch").exists(),
           "base mismatch stops before the diff is written")
 
+RELEASE = "d" * 40
+
+
+def release_runner(calls: list):
+    def runner(cmd: list[str]) -> str:
+        calls.append(cmd)
+        if cmd[:3] == ["gh", "pr", "view"]:
+            return json.dumps(dict({k: v for k, v in PR.items() if k != "baseRefOid"}, baseRefName="release"))
+        if cmd[:2] == ["gh", "api"] and cmd[2] == "repos/o/r/pulls/7":
+            return json.dumps({"number": 7, "head": {"sha": HEAD}, "base": {"sha": RELEASE, "ref": "release"}})
+        if cmd[-2:] == ["rev-parse", "origin/release"]:
+            return RELEASE + "\n"
+        if "diff" in cmd:
+            check(cmd[-1] == f"{RELEASE}...{HEAD}", "diff is pinned to the verified base SHA, not main")
+            return "diff --git a/x b/x\n"
+        return fake_runner([])(cmd)
+    return runner
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    calls = []
+    package = build(build_args(Path(tmp), no_checkout=True), release_runner(calls))
+    check(["git", "-C", "/repo", "fetch", "--quiet", "origin", "main", "release"] in calls,
+          "main and a non-main base are both fetched")
+    check(package["base"] == "release" and package["main"] == MAIN
+          and f"base: release {RELEASE}" in (Path(tmp) / "materials" / "pr.md").read_text(encoding="utf-8"),
+          "a non-main base is recorded separately from main")
+
 # A REST/view race, malformed response or failed API must not produce a package.
 for snapshot in (
     {"number": 7, "head": {"sha": "c" * 40}, "base": {"sha": MAIN, "ref": "main"}},

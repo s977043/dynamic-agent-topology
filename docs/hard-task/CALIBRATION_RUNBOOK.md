@@ -60,7 +60,7 @@
 | `<work-root>/.calibration.lock` がある | 重複起動として停止。別の実行がないと確認してから Operator が手で消す |
 | work root が DAT repo の中 | 停止 |
 | trace の model / effort が `gpt-6.1-sol` / `high` 以外、または `cli_version` が違う | その Run を `control-deviation` として残し、バッチを停止（§2 の control deviation） |
-| 1 Run の経過時間が `--timeout-s` を超えた | container を kill し `aborted-timeout` として残す。次の Run へ進む |
+| 1 Run の経過時間が `--timeout-s` を超えた | Codex を kill する前後で trace を回収し、`aborted-timeout` として残す。trace に使用量があれば（`tokenUsageKnown: true`）次の Run へ進む。使用量は trace の最後の記録で、kill までの増分は含まない。使用量がなければ（`false`、`totalTokens` なし）推測せず停止し、再開は §7 の解決の後に限る。中止 Run は作り直さない |
 | 1 Run の token が `--max-run-tokens` を超えた | 記録した後バッチを停止（token は Run の終了後にしか分からないため、事後の検出） |
 | 使用済み token + `--max-run-tokens` が `--budget-tokens` を超える | 次の Run を始めずに停止 |
 
@@ -120,13 +120,13 @@
 
 本節とキットは model 起動の許可ではありません。正本は [第 2 版](../HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md) §3・§3.1・§5 と [補遺 1](../HARD_TASK_T0_FAIL_T1_PREREGISTRATION_ADDENDUM_1.md) で、食い違えば正本が優先します。§1・§2 の隔離と §3 の停止条件は、スクリーニングにもそのまま適用します（Run ID は `HTS-<order>-n<k>`）。
 
-**起動の前提（すべて Operator が確認する）**: 補遺 1 の成立（#244 の blob 記録）。第 2 版 §5.1b の実効上限の確認、または超過可能性と処置についての Operator の判断。キットはこれらを判定しません。補遺 1 の確定で本文が変わると blob が変わり、キットは起動前に止まります。その場合は記録値の更新が別途必要です。
+**起動の前提（すべて Operator が確認する）**: 補遺 1 の成立（#244 の blob 記録）。第 2 版 §5.1b の実効上限の確認、または超過可能性と処置についての Operator の判断。キットはこれらを判定しません。補遺 1 のファイル冒頭の「下書き」は成立前の文面で、成立の根拠は #244 の blob 記録です。
 
 **キットの動作**:
 
 | 対象 | 動作 |
 |---|---|
-| order 1〜5 | `--reuse-root` の `HTC-<order>-n1`〜`n3` の `run.json` だけを読む（新しい Run なし）。成功があれば打ち切り、3 回とも失敗なら 0/3。読めない、または `completed` の実 Run でなければ停止 |
+| order 1〜5 | `--reuse-root` の `HTC-<order>-n1`〜`n3` の `run.json` だけを読む（新しい Run なし）。成功があれば打ち切り、3 回とも失敗なら 0/3。読めない、`completed` の実 Run でない（`modelLaunched`・Codex 版・model / effort の不一致を含む）、runId・repo・revision が固定候補と違うときは選別前に停止 |
 | order 10・11・16・26・28・32・38 | 事前除外。Run も説明の読み込みもせず、失敗・0/3・budget-excluded に数えない |
 | 残り 32 件 | order 昇順に T0 を最大 3 回。verified success で打ち切り。0/3 が 12 件（order 1〜5 を含む）そろったら停止 |
 
@@ -140,7 +140,7 @@
 
 較正 25 Run の token は支出済みのためスクリーニング予算に数えません（第 2 版 §5.1）。集計の `reusedTokensNotCounted` に別に表示します。
 
-**timeout の制限**: `--timeout-s` で kill すると session trace を回収できず（§2 の回収は正常終了後のみ）、その Run は `run.json` が `started` のまま、token 不明でバッチが止まります。§3 の「次の Run へ進む」にはならず、自動で budget-excluded にもなりません。この Run の扱いと token の確認は Operator が判断し、#244 に記録します。再開はその解消後です（`--skip-existing` は `totalTokens` のない Run で止まります）。
+**timeout**: `aborted-timeout` の候補は失敗に数えず budget-excluded とし、次の候補へ進みます。使用量が不明なときはバッチが止まり、集計の `budgetExcluded[].usageUnknown` と `usageUnknownRuns` に表示されます。Operator は根拠のある記録（`codex-events.jsonl` など）で使用量を確かめ、その Run の `run.json` に `totalTokens` と `tokenUsageKnown: true` を書き、根拠を #244 に記録してから `--skip-existing` で再開します。確かめられなければ再開しません。Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が確認します。
 
 **手順**:
 

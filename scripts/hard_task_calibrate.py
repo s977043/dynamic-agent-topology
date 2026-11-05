@@ -335,21 +335,45 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
                 proc.communicate(prompt, timeout=args.timeout_s)
                 rc = proc.returncode
             except subprocess.TimeoutExpired:
-                docker("kill", name, check=False)
+                # The tmpfs trace dies with the container, so end Codex inside it (PID 1 survives KILL) and collect first.
+                before = try_collect_sessions(name, rdir)
+                kill = docker("exec", name, "sh", "-c", "kill -s KILL -- -1", check=False)
                 proc.kill()
                 proc.wait()
+                evidence["timeoutTrace"] = {"collectedBeforeKill": before, "killExitCode": kill.returncode,
+                                            "collectedAfterKill": try_collect_sessions(name, rdir)}
                 return None, evidence
-        tar = subprocess.run(["docker", "exec", name, "tar", "-C", CODEX_HOME, "-cf", "-", "sessions"],
-                             capture_output=True, check=True).stdout
-        with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
-            members = [m for m in tf.getmembers() if m.isfile() and m.name.startswith("sessions/")]
-            if any("auth.json" in m.name for m in members):
-                raise Stop("auth.json found in collected evidence")
-            tf.extractall(rdir, members=members, filter="data")
+        collect_sessions(name, rdir)
         return rc, evidence
     finally:
         if started:
             docker("stop", "-t", "5", name, check=False)
+
+
+def collect_sessions(name: str, rdir: Path) -> None:
+    tar = subprocess.run(["docker", "exec", name, "tar", "-C", CODEX_HOME, "-cf", "-", "sessions"],
+                         capture_output=True, check=True).stdout
+    with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
+        members = [m for m in tf.getmembers() if m.isfile() and m.name.startswith("sessions/")]
+        if any("auth.json" in m.name for m in members):
+            raise Stop("auth.json found in collected evidence")
+        tf.extractall(rdir, members=members, filter="data")
+
+
+def try_collect_sessions(name: str, rdir: Path) -> bool:
+    try:
+        collect_sessions(name, rdir)
+    except (subprocess.CalledProcessError, tarfile.TarError, OSError):
+        return False
+    return True
+
+
+def timeout_usage_known(rdir: Path) -> bool:
+    """Whether the trace collected at a timeout holds a usage record; a missing or torn trace is not estimated."""
+    try:
+        return bool(read_trace(find_session(rdir / "sessions"))["totalTokenUsage"])
+    except (Stop, ValueError):
+        return False
 
 
 def fake_codex(args, sessions_dir: Path) -> int:
@@ -591,6 +615,14 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
             raise
     record["wallClockMs"] = int((time.monotonic() - started) * 1000)
     record["codexExitCode"] = rc
+    if rc is None:
+        record.update(status="aborted-timeout", modelLaunched=True, finishedAt=now(),
+                      stopReason=f"wall clock limit: exceeded --timeout-s {args.timeout_s}")
+        record["tokenUsageKnown"] = timeout_usage_known(rdir)
+        write_record(rdir, record)
+        if not record["tokenUsageKnown"]:
+            raise Stop(f"{run['runId']} timed out and its token usage is unknown; resolve it before resuming")
+        record["tokenUsageBasis"] = "last token_count in the trace collected at the timeout; later usage is not recorded"
     session = find_session(rdir / "sessions")
     trace = read_trace(session)
     record["trace"] = {"file": str(session.relative_to(rdir)), "cliVersion": trace["cliVersion"],
@@ -767,11 +799,16 @@ def load_reuse(reuse_root: Path, candidates: list[dict]) -> dict[int, dict]:
                 rec = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as exc:
                 raise Stop(f"reuse: cannot read {path}: {exc}")
-            if (rec.get("order") != cand["order"] or rec.get("calRep") != k or rec.get("dryRun") is not False
+            trace = rec.get("trace") or {}
+            if (rec.get("runId") != path.parent.name or rec.get("order") != cand["order"] or rec.get("calRep") != k
+                    or rec.get("repo") != cand["repo"] or rec.get("revision") != cand["revision"]
+                    or rec.get("dryRun") is not False or rec.get("modelLaunched") is not True
                     or rec.get("status") != "completed" or not isinstance(rec.get("verifiedSuccess"), bool)
                     or not isinstance(rec.get("totalTokens"), int)
-                    or (rec.get("trace") or {}).get("contexts") != [[MODEL, EFFORT]]):
-                raise Stop(f"reuse: {path} is not a completed real {MODEL}/{EFFORT} Run with verifiedSuccess and totalTokens")
+                    or trace.get("contexts") != [[MODEL, EFFORT]]
+                    or trace.get("cliVersion") != RUNTIME_VERSION.split()[-1]):
+                raise Stop(f"reuse: {path} is not a completed real {RUNTIME_VERSION} {MODEL}/{EFFORT} Run of this "
+                           "candidate with verifiedSuccess and totalTokens")
             runs.append({"k": k, "runId": rec["runId"], "status": rec["status"],
                          "success": rec["verifiedSuccess"], "tokens": rec["totalTokens"]})
         outcome = "truncated" if any(r["success"] for r in runs) else "zero"
@@ -805,31 +842,41 @@ def screen_records(work_root: Path, order: int) -> list[dict]:
         rec = read_record(rdir)
         if never_launched(rec):
             continue
-        if not isinstance(rec.get("totalTokens"), int):
+        if not isinstance(rec.get("totalTokens"), int) and rec.get("status") != "aborted-timeout":
             raise Stop(f"{rdir.name} has no totalTokens; record its usage before resuming")
         recs.append(rec)
     return recs
 
 
+def exclusion_reason(rec: dict) -> str:
+    if rec.get("tokenLimitExceeded"):
+        return (f"token limit: {rec['runId']} used {rec['totalTokens']} tokens "
+                f"> --max-run-tokens {rec['limits']['maxRunTokens']}")
+    tokens = rec.get("totalTokens")
+    return f"{rec.get('stopReason')}: {rec['runId']} used {'unknown' if tokens is None else tokens} tokens"
+
+
 def classify(work_root: Path, order: int) -> dict:
     recs = screen_records(work_root, order)
-    runs, outcome = [], "not-started" if not recs else "incomplete"
+    runs, outcome, reason = [], "not-started" if not recs else "incomplete", None
     for rec in recs:
         result = run_outcome(rec)
         runs.append({"k": rec["calRep"], "runId": rec["runId"], "status": rec["status"], "result": result,
-                     "tokens": rec["totalTokens"]})
+                     "tokens": rec.get("totalTokens")})
         if result in ("success", "budget-excluded"):
             outcome = "truncated" if result == "success" else "budget-excluded"
+            if result == "budget-excluded":
+                reason = exclusion_reason(rec)
             break
     else:
         if len(runs) == SCREEN_K:
             outcome = "zero"
     marker = marker_path(work_root, order)
-    reason = None
     if marker.exists():
         outcome = "budget-excluded"
         reason = json.loads(marker.read_text(encoding="utf-8")).get("reason")
-    return {"outcome": outcome, "runs": runs, "tokens": sum(r["tokens"] for r in runs), "reason": reason}
+    return {"outcome": outcome, "runs": runs, "tokens": sum(r["tokens"] or 0 for r in runs), "reason": reason,
+            "usageUnknown": [r["runId"] for r in runs if r["tokens"] is None]}
 
 
 def write_marker(work_root: Path, order: int, reason: str) -> None:
@@ -924,7 +971,11 @@ def cmd_screen(args) -> int:
         for path in sorted(work_root.glob("HTS-*/run.json")):
             if json.loads(path.read_text(encoding="utf-8")).get("dryRun") is not args.dry_run:
                 raise Stop(f"{path} was written in a different dry-run mode; synthetic and real Runs must not mix")
-        spent = sum(classify(work_root, c["order"])["tokens"] for c in targets)
+        states = [classify(work_root, c["order"]) for c in targets]
+        unknown = [run_id for s in states for run_id in s["usageUnknown"]]
+        if unknown:
+            raise Stop(f"token usage is unknown for {', '.join(unknown)}; resolve it before resuming")
+        spent = sum(s["tokens"] for s in states)
         if spent:
             print(f"existing screening runs already used {spent} tokens (counted against --budget-tokens)")
         mirror = Path(args.mirror_dir) if args.mirror_dir else None
@@ -980,9 +1031,10 @@ def screen_summarize(work_root: Path, reuse_root: Path) -> dict:
         "feasibilityOnly": len(zero) < SCREEN_TARGET,
         "truncated": [r["order"] for r in rows if r["outcome"] == "truncated"],
         "preExcluded": list(PRE_EXCLUDED),
-        "budgetExcluded": [{"order": r["order"], "reason": r.get("reason") or r["runs"][-1]["status"],
-                            "tokens": r["tokens"]} for r in rows if r["outcome"] == "budget-excluded"],
+        "budgetExcluded": [{"order": r["order"], "reason": r["reason"], "tokens": r["tokens"],
+                            "usageUnknown": r["usageUnknown"]} for r in rows if r["outcome"] == "budget-excluded"],
         "screeningTokens": sum(r["tokens"] for r in screened),
+        "usageUnknownRuns": [run_id for r in screened for run_id in r["usageUnknown"]],
         "reusedTokensNotCounted": sum(r["tokens"] for r in rows if r["source"].startswith("reuse")),
         "stopReason": stops[-1]["reason"] if stops else None,
         "stopLog": stops,

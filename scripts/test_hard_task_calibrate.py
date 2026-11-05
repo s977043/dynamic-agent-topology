@@ -308,13 +308,15 @@ def test_workspace_and_grade(tmp: Path) -> None:
 def write_reuse(root: Path) -> None:
     """Synthetic calibration results: 1, 4 succeed; 2, 3 fail n1..n3 (2 succeeds at n4); 5 succeeds n1..n4."""
     successes = {1: {1, 2, 3, 4, 5}, 2: {4}, 3: set(), 4: {1, 2, 3, 4, 5}, 5: {1, 2, 3, 4}}
+    cands = {c["order"]: c for c in htc.load_candidates()}
     for order, ok in successes.items():
         for k in range(1, 6):
             rdir = root / f"HTC-{order:02d}-n{k}"
             rdir.mkdir(parents=True)
             rec = {"runId": rdir.name, "order": order, "calRep": k, "dryRun": False, "status": "completed",
+                   "repo": cands[order]["repo"], "revision": cands[order]["revision"],
                    "modelLaunched": True, "verifiedSuccess": k in ok, "totalTokens": 1000 * order,
-                   "trace": {"contexts": [[htc.MODEL, htc.EFFORT]]}}
+                   "trace": {"contexts": [[htc.MODEL, htc.EFFORT]], "cliVersion": "0.160.1"}}
             (rdir / "run.json").write_text(json.dumps(rec))
 
 
@@ -398,7 +400,21 @@ def test_screen_limits(tmp: Path, reuse: Path, tasks: Path) -> None:
     work = tmp / "run-cap"
     rc, _, err = run_cli(screen_args(work, reuse, tasks, "--dry-run-tokens", "150000", run="100000"))
     check(rc == 2 and "exceeded" in err and len(list(work.glob("HTS-*/run.json"))) == 1, "per-run overrun stops")
-    check(htc.screen_summarize(work, reuse)["budgetExcluded"][0]["order"] == 6, "overrun Run is not a failure")
+    s = htc.screen_summarize(work, reuse)
+    excluded = s["budgetExcluded"][0]
+    check(excluded["order"] == 6 and 6 not in s["selectedZero"] and excluded["tokens"] == 150000,
+          "overrun Run is not a failure and its spend is kept")
+    check("token limit" in excluded["reason"] and "150000" in excluded["reason"] and "100000" in excluded["reason"],
+          f"reason names the usage and the limit: {excluded['reason']}")
+    work = tmp / "cand-exact"
+    rc, _, _ = run_cli(screen_args(work, reuse, tasks, "--dry-run-success", "7", run="100000", cand="168022", budget="168022"))
+    check(rc == 2 and (work / "HTS-06-n2").exists(), "spent + max per run equal to the caps starts the Run")
+    work = tmp / "cand-one-less"
+    rc, _, _ = run_cli(screen_args(work, reuse, tasks, run="100000", cand="168021", budget="1000000"))
+    check(not (work / "HTS-06-n2").exists() and (work / "HTS-06.budget-excluded.json").exists(), "one token less does not")
+    work = tmp / "budget-one-less"
+    rc, _, err = run_cli(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="168021"))
+    check(rc == 2 and "budget" in err and not (work / "HTS-06-n2").exists(), "one token less of the budget stops")
     work = tmp / "args"
     try:
         run_cli([a for a in screen_args(work, reuse, tasks) if a not in ("--max-candidate-tokens", "10000000")])
@@ -411,7 +427,15 @@ def test_screen_limits(tmp: Path, reuse: Path, tasks: Path) -> None:
 def test_screen_reuse_and_blobs(tmp: Path, reuse: Path, tasks: Path) -> None:
     for name, mutate in (("missing", lambda rec, p: p.unlink()),
                          ("timeout", lambda rec, p: p.write_text(json.dumps({**rec, "status": "aborted-timeout"}))),
-                         ("dry", lambda rec, p: p.write_text(json.dumps({**rec, "dryRun": True})))):
+                         ("dry", lambda rec, p: p.write_text(json.dumps({**rec, "dryRun": True}))),
+                         ("version", lambda rec, p: p.write_text(json.dumps(
+                             {**rec, "trace": {**rec["trace"], "cliVersion": "0.159.0"}}))),
+                         ("not-launched", lambda rec, p: p.write_text(json.dumps({**rec, "modelLaunched": False}))),
+                         ("no-launch-flag", lambda rec, p: p.write_text(json.dumps(
+                             {a: b for a, b in rec.items() if a != "modelLaunched"}))),
+                         ("revision", lambda rec, p: p.write_text(json.dumps({**rec, "revision": "0" * 40}))),
+                         ("repo", lambda rec, p: p.write_text(json.dumps({**rec, "repo": "https://example.invalid/x"}))),
+                         ("run-id", lambda rec, p: p.write_text(json.dumps({**rec, "runId": "HTC-03-n3"})))):
         bad = tmp / f"reuse-{name}"
         shutil.copytree(reuse, bad)
         path = bad / "HTC-03-n2" / "run.json"
@@ -460,6 +484,156 @@ def test_screen_record_states(tmp: Path, reuse: Path, tasks: Path) -> None:
     check(rc == 2 and "no totalTokens" in err_text, "Run left in started state (e.g. timeout without a trace) stops resume")
 
 
+class FakeRealRun:
+    """Drives the real (non-dry) run path with the container, workspace, and grading replaced; no model or container."""
+
+    def __init__(self, timeouts: dict[str, bool], success_at: dict[int, int] | None = None):
+        self.timeouts, self.success_at = timeouts, success_at or {}
+
+    def container(self, args, rdir, _prompt, evidence):
+        evidence["modelLaunched"] = True
+        if self.timeouts.get(rdir.name) is False:  # timed out with no usable trace
+            return None, evidence
+        htc.fake_codex(args, rdir / "sessions")
+        return (None if rdir.name in self.timeouts else 0), evidence
+
+    def grade(self, cand, ws, _grade_dir, _ac, _py):
+        k = int(ws.parent.name.rsplit("n", 1)[1])
+        return {"verifiedSuccess": self.success_at.get(cand["order"]) == k, "acExitCode": 0}
+
+    def __enter__(self):
+        names = ("container_exec_codex", "grade", "prepare_workspace", "load_ac_files", "preflight_screen", "preflight")
+        self.saved = {n: getattr(htc, n) for n in names}
+        htc.container_exec_codex = self.container
+        htc.grade = self.grade
+        htc.prepare_workspace = lambda _c, ws, _m: ws.mkdir()
+        htc.load_ac_files = lambda _c, _m: {}
+        htc.preflight_screen = htc.preflight = lambda *_a: None
+        return self
+
+    def __exit__(self, *_exc):
+        for name, value in self.saved.items():
+            setattr(htc, name, value)
+
+
+def real_args(args: list[str]) -> list[str]:
+    return [a for a in args if a != "--dry-run"]
+
+
+def test_timeout_reaches_aborted(tmp: Path, reuse: Path, tasks: Path) -> None:
+    work = tmp / "to-known"
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    with FakeRealRun({"HTS-06-n1": True}, {o: 1 for o in range(7, 45)}):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, **limits)))
+    check(rc == 0, f"known usage: batch continues after a timeout: {err}")
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(record["status"] == "aborted-timeout" and record["modelLaunched"] is True and record["totalTokens"] == 68022
+          and record["tokenUsageKnown"] is True and "timeout-s" in record["stopReason"], f"saved: {record}")
+    check(not (work / "HTS-06-n2").exists(), "candidate stops at the timeout")
+    s = htc.screen_summarize(work, reuse)
+    check(s["budgetExcluded"][0]["order"] == 6 and 6 not in s["selectedZero"] and s["budgetExcluded"][0]["tokens"] == 68022
+          and "68022" in s["budgetExcluded"][0]["reason"] and not s["usageUnknownRuns"], "known timeout is budget-excluded")
+
+    work = tmp / "to-unknown"
+    with FakeRealRun({"HTS-06-n1": False}):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, **limits)))
+    check(rc == 2 and "unknown" in err, "unknown usage stops the batch")
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    check(record["status"] == "aborted-timeout" and record["modelLaunched"] is True and record["tokenUsageKnown"] is False
+          and "totalTokens" not in record, f"saved without a guess: {record}")
+    s = htc.screen_summarize(work, reuse)
+    check(s["usageUnknownRuns"] == ["HTS-06-n1"] and s["budgetExcluded"][0]["usageUnknown"] == ["HTS-06-n1"]
+          and "unknown" in s["budgetExcluded"][0]["reason"], "summary shows budget-excluded and unknown usage")
+    with FakeRealRun({}):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, "--skip-existing", **limits)))
+    check(rc == 2 and "unknown" in err and not (work / "HTS-07-n1").exists(), "resume waits for the usage")
+    path.write_text(json.dumps({**record, "totalTokens": 70000, "tokenUsageKnown": True}))
+    with FakeRealRun({}, {o: 1 for o in range(7, 45)}):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, "--skip-existing", **limits)))
+    check(rc == 0 and json.loads(path.read_text())["totalTokens"] == 70000 and (work / "HTS-07-n1").exists()
+          and not (work / "attempts").exists(), f"resolved: resumes without redoing the aborted Run: {err}")
+
+    work = tmp / "to-run"
+    base = real_args(dry_args(work, tmp / "tasks"))
+    with FakeRealRun({"HTC-01-n1": False}):
+        rc, _, err = run_cli(base)
+    record = json.loads((work / "HTC-01-n1" / "run.json").read_text())
+    check(rc == 2 and record["status"] == "aborted-timeout" and "totalTokens" not in record, "run: unknown usage stops")
+    rc, _, err = run_cli(["summarize", "--work-root", str(work)])
+    check(rc == 0, f"run: summarize reads the aborted Run: {err}")
+    with FakeRealRun({}):
+        rc, _, err = run_cli(base + ["--skip-existing"])
+    check(rc == 2 and "no totalTokens" in err, "run: resume waits for the usage")
+    work = tmp / "to-run-known"
+    with FakeRealRun({"HTC-01-n1": True}):
+        rc, _, err = run_cli(real_args(dry_args(work, tmp / "tasks")))
+    record = json.loads((work / "HTC-01-n1" / "run.json").read_text())
+    check(rc == 0 and record["status"] == "aborted-timeout" and (work / "HTC-02-n1").exists(),
+          f"run: known usage proceeds to the next Run: {err}")
+
+
+def test_timeout_collects_around_kill(tmp: Path) -> None:
+    rdir = tmp / "kill" / "HTS-06-n1"
+    (rdir / "workspace").mkdir(parents=True)
+    calls: list[str] = []
+
+    class Done:
+        returncode, stdout = 0, htc.RUNTIME_VERSION
+
+    def fake_docker(*a, stdin=None, check=True):
+        if a[0] == "inspect":
+            result = Done()
+            result.stdout = "[{}]"
+            return result
+        if "kill -s KILL" in " ".join(a):
+            calls.append("kill")
+        elif a[0] == "stop":
+            calls.append("stop")
+        return Done()
+
+    class FakePopen:
+        def __init__(self, *_a, **_k):
+            self.returncode = None
+
+        def communicate(self, _prompt, timeout):
+            raise subprocess.TimeoutExpired("codex", timeout)
+
+        def kill(self):
+            calls.append("client-kill")
+
+        def wait(self):
+            return -9
+
+    def fake_collect(_name, _rdir):
+        calls.append("collect")
+        return True
+
+    class A:
+        timeout_s, work_root, codex_dir, auth_file = 1, str(tmp / "kill"), "/opt/cx", "/home/op/.codex/auth.json"
+
+    saved = (htc.docker, htc.check_container, htc.check_auth_probe, htc.try_collect_sessions, subprocess.Popen)
+    htc.docker, htc.check_container, htc.check_auth_probe = fake_docker, lambda *_a: {}, lambda *_a: None
+    htc.try_collect_sessions, subprocess.Popen = fake_collect, FakePopen
+    try:
+        rc, evidence = htc.container_exec_codex(A, rdir, "prompt", {})
+    finally:
+        htc.docker, htc.check_container, htc.check_auth_probe, htc.try_collect_sessions, subprocess.Popen = saved
+    check(rc is None and calls == ["collect", "kill", "client-kill", "collect", "stop"], f"order: {calls}")
+    check(evidence["timeoutTrace"]["collectedAfterKill"] is True and evidence["modelLaunched"], "evidence recorded")
+
+
+def test_success_at_later_runs(tmp: Path, reuse: Path, tasks: Path) -> None:
+    work = tmp / "later"
+    with FakeRealRun({}, {6: 2, 7: 3, **{o: 1 for o in range(8, 45)}}):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks)))
+    check(rc == 0, f"later successes: {err}")
+    check((work / "HTS-06-n2").exists() and not (work / "HTS-06-n3").exists(), "success at n2 stops before n3")
+    rows = {r["order"]: r for r in htc.screen_summarize(work, reuse)["candidates"]}
+    check(rows[6]["outcome"] == "truncated" and [r["result"] for r in rows[6]["runs"]] == ["failure", "success"], "n2")
+    check(rows[7]["outcome"] == "truncated" and [r["result"] for r in rows[7]["runs"]] == ["failure", "failure", "success"], "n3")
+
+
 def test_calibration_unchanged() -> None:
     rc, out, _ = run_cli(["plan"])
     check(rc == 0 and len(out.splitlines()) == 25 and all(ln.startswith("HTC-") for ln in out.splitlines()),
@@ -498,6 +672,9 @@ def main() -> int:
         test_screen_limits(tmp, reuse, screen_tasks)
         test_screen_reuse_and_blobs(tmp, reuse, screen_tasks)
         test_screen_record_states(tmp, reuse, screen_tasks)
+        test_timeout_reaches_aborted(tmp, reuse, screen_tasks)
+        test_timeout_collects_around_kill(tmp)
+        test_success_at_later_runs(tmp, reuse, screen_tasks)
     print("test_hard_task_calibrate: OK")
     return 0
 

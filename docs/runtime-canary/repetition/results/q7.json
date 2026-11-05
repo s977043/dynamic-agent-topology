@@ -1,0 +1,147 @@
+{
+  "blockId": "b01",
+  "durationSeconds": 0.033864212,
+  "endedMonotonicNs": 123336971187,
+  "error": null,
+  "exitCode": 1,
+  "expectedMatched": true,
+  "label": "q7",
+  "result": {
+    "cases": [
+      {
+        "case": "empty",
+        "error": null,
+        "input_unchanged": true,
+        "passed": true,
+        "selection_matches": true
+      },
+      {
+        "case": "singleton_zero",
+        "error": null,
+        "input_unchanged": true,
+        "passed": true,
+        "selection_matches": true
+      },
+      {
+        "case": "highest_not_last",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "equal_keeps_first",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "tie_after_upgrade",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "first_id_order",
+        "error": null,
+        "input_unchanged": true,
+        "passed": true,
+        "selection_matches": true
+      },
+      {
+        "case": "invalid_does_not_reserve_order",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "missing_keys",
+        "error": "KeyError: 'id'",
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "invalid_ids",
+        "error": "TypeError: unhashable type: 'list'",
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "invalid_revisions",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "bool_does_not_override",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "bool_does_not_reserve_order",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "non_dictionaries",
+        "error": "TypeError: 'NoneType' object is not subscriptable",
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "whitespace_ids_valid",
+        "error": null,
+        "input_unchanged": true,
+        "passed": true,
+        "selection_matches": true
+      },
+      {
+        "case": "no_id_normalization",
+        "error": null,
+        "input_unchanged": true,
+        "passed": true,
+        "selection_matches": true
+      },
+      {
+        "case": "unbounded_integer",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      },
+      {
+        "case": "extra_keys_nested_preserved",
+        "error": null,
+        "input_unchanged": true,
+        "passed": true,
+        "selection_matches": true
+      },
+      {
+        "case": "discarded_records_unchanged",
+        "error": null,
+        "input_unchanged": true,
+        "passed": false,
+        "selection_matches": false
+      }
+    ],
+    "failed": 12,
+    "oracle_sha256": "fc5a50aca33f897c54c2f0afc6500f878a8fd37f5d2ab04764551e11d1b97fd6",
+    "passed": 6,
+    "solution_sha256": "61abebe05c3345b31a99f9fc7f1f456f451b180e5bb3b01c9441bcc6796d20a9",
+    "total": 18
+  },
+  "startedMonotonicNs": 123303106975,
+  "stderr": "",
+  "stdout": "{\"cases\": [{\"case\": \"empty\", \"error\": null, \"input_unchanged\": true, \"passed\": true, \"selection_matches\": true}, {\"case\": \"singleton_zero\", \"error\": null, \"input_unchanged\": true, \"passed\": true, \"selection_matches\": true}, {\"case\": \"highest_not_last\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"equal_keeps_first\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"tie_after_upgrade\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"first_id_order\", \"error\": null, \"input_unchanged\": true, \"passed\": true, \"selection_matches\": true}, {\"case\": \"invalid_does_not_reserve_order\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"missing_keys\", \"error\": \"KeyError: 'id'\", \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"invalid_ids\", \"error\": \"TypeError: unhashable type: 'list'\", \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"invalid_revisions\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"bool_does_not_override\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"bool_does_not_reserve_order\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"non_dictionaries\", \"error\": \"TypeError: 'NoneType' object is not subscriptable\", \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"whitespace_ids_valid\", \"error\": null, \"input_unchanged\": true, \"passed\": true, \"selection_matches\": true}, {\"case\": \"no_id_normalization\", \"error\": null, \"input_unchanged\": true, \"passed\": true, \"selection_matches\": true}, {\"case\": \"unbounded_integer\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}, {\"case\": \"extra_keys_nested_preserved\", \"error\": null, \"input_unchanged\": true, \"passed\": true, \"selection_matches\": true}, {\"case\": \"discarded_records_unchanged\", \"error\": null, \"input_unchanged\": true, \"passed\": false, \"selection_matches\": false}], \"failed\": 12, \"oracle_sha256\": \"fc5a50aca33f897c54c2f0afc6500f878a8fd37f5d2ab04764551e11d1b97fd6\", \"passed\": 6, \"solution_sha256\": \"61abebe05c3345b31a99f9fc7f1f456f451b180e5bb3b01c9441bcc6796d20a9\", \"total\": 18}\n"
+}

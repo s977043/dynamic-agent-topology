@@ -788,7 +788,8 @@ def test_relay_flow(tmp: Path) -> None:
             start = time.monotonic()
             while chunk := s.recv(65536):
                 raw += chunk
-                done.wait(0.01)  # pacing of the slow reader, not a synchronisation
+                # Server completion must not cancel reader pacing.
+                time.sleep(0.01)
             took = time.monotonic() - start
         check(raw == big, f"slow reader got the whole answer ({len(raw)} bytes, {took:.1f}s)")
         check(took > 1.0, f"the paced read outlasted IDLE ({took:.1f}s), so it shows reads keep the link alive")

@@ -6,6 +6,7 @@ from pathlib import Path
 import contextlib
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -304,8 +305,173 @@ def test_workspace_and_grade(tmp: Path) -> None:
     check(not htc.grade(cand, ws, tmp / "run1" / "grade4", net_test, py)["verifiedSuccess"], "AC has no network")
 
 
+def write_reuse(root: Path) -> None:
+    """Synthetic calibration results: 1, 4 succeed; 2, 3 fail n1..n3 (2 succeeds at n4); 5 succeeds n1..n4."""
+    successes = {1: {1, 2, 3, 4, 5}, 2: {4}, 3: set(), 4: {1, 2, 3, 4, 5}, 5: {1, 2, 3, 4}}
+    for order, ok in successes.items():
+        for k in range(1, 6):
+            rdir = root / f"HTC-{order:02d}-n{k}"
+            rdir.mkdir(parents=True)
+            rec = {"runId": rdir.name, "order": order, "calRep": k, "dryRun": False, "status": "completed",
+                   "modelLaunched": True, "verifiedSuccess": k in ok, "totalTokens": 1000 * order,
+                   "trace": {"contexts": [[htc.MODEL, htc.EFFORT]]}}
+            (rdir / "run.json").write_text(json.dumps(rec))
+
+
+def screen_args(work: Path, reuse: Path, tasks: Path, *extra: str, budget: str = "50000000",
+                cand: str = "10000000", run: str = "4000000") -> list[str]:
+    return ["screen", "--dry-run", "--work-root", str(work), "--reuse-root", str(reuse), "--task-dir", str(tasks),
+            "--timeout-s", "1800", "--max-run-tokens", run, "--max-candidate-tokens", cand, "--budget-tokens", budget,
+            *extra]
+
+
+def test_screen_constants() -> None:
+    text = (ROOT / "docs/HARD_TASK_T0_FAIL_T1_PREREGISTRATION_ADDENDUM_1.md").read_text(encoding="utf-8")
+    section = text.split("## 2.", 1)[1].split("## 3.", 1)[0]
+    listed = tuple(int(m) for m in re.findall(r"^\| (\d+) \| `https://", section, flags=re.M))
+    check(listed == htc.PRE_EXCLUDED, f"PRE_EXCLUDED {htc.PRE_EXCLUDED} != addendum 1 §2 {listed}")
+    missing = tuple(o for o in range(6, 45)
+                    if not (ROOT / f"docs/hard-task/task-descriptions/order-{o:02d}.md").exists())
+    check(missing == htc.PRE_EXCLUDED, "pre-excluded orders are exactly those without a task description")
+    check(len(htc.screen_targets(htc.load_screen_candidates())) == 32, "32 candidates to screen")
+    check({p.name for p in htc.SCREEN_BLOBS} == {"HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md",
+                                                 "HARD_TASK_T0_FAIL_T1_PREREGISTRATION_ADDENDUM_1.md", "CANDIDATES.yaml"},
+          "screening checks the second edition, addendum 1, and the candidate table")
+    rc, out, _ = run_cli(["screen-plan"])
+    lines = out.splitlines()
+    check(rc == 0 and len(lines) == 45, "44 candidates plus the stop rule")
+    check(all("pre-excluded" in lines[o - 1] for o in htc.PRE_EXCLUDED), "plan shows pre-excluded orders")
+    check(all("reuse HTC-0" in lines[o - 1] for o in range(1, 6)), "plan shows reuse for 1..5")
+    check(lines[5].startswith("06\tHTS-06-n1"), "screening Run IDs do not collide with calibration")
+
+
+def test_screen_flow(tmp: Path, reuse: Path, tasks: Path) -> None:
+    work = tmp / "screen"
+    rc, out, err = run_cli(screen_args(work, reuse, tasks, "--dry-run-success", "6,8"))
+    check(rc == 0 and "target-reached" in out, f"screen dry-run: {err}")
+    check(not list(work.glob("HTS-06-n2")) and (work / "HTS-06-n1").exists(), "truncated at the first success")
+    check(all(not list(work.glob(f"HTS-{o:02d}-*")) for o in htc.PRE_EXCLUDED), "pre-excluded orders never run")
+    check(not list(work.glob("HTS-21-*")), "stops when 12 candidates are 0/3")
+    check(len(list(work.glob("HTS-*/run.json"))) == 1 + 3 + 1 + 9 * 3, "32 Runs")
+    check(not (work / htc.LOCK_NAME).exists(), "lock released")
+    s = htc.screen_summarize(work, reuse)
+    check(s["selectedZero"] == [2, 3, 7, 9, 12, 13, 14, 15, 17, 18, 19, 20], f"selected {s['selectedZero']}")
+    check(not s["feasibilityOnly"] and s["stopReason"] == "target-reached" and s["dryRun"], "stop reason")
+    check(s["truncated"] == [1, 4, 5, 6, 8], "reuse uses n1..n3 only; screening truncates")
+    check(s["preExcluded"] == list(htc.PRE_EXCLUDED) and not s["budgetExcluded"], "pre-excluded are not budget-excluded")
+    rows = {r["order"]: r for r in s["candidates"]}
+    check(all(rows[o]["outcome"] == "pre-excluded" and rows[o]["runs"] == [] for o in htc.PRE_EXCLUDED), "pre-excluded rows")
+    check([r["k"] for r in rows[2]["runs"]] == [1, 2, 3], "reuse reads n1..n3 only")
+    check(rows[21]["outcome"] == "not-started", "candidates after the stop are not started")
+    check(s["screeningTokens"] == 32 * 68022 and s["reusedTokensNotCounted"] == 3 * 1000 * 15, "token accounting")
+    rc, _, err = run_cli(screen_args(work, reuse, tasks))
+    check(rc == 2 and "refusing to overwrite" in err, "existing screening results refused")
+    rc, out, _ = run_cli(screen_args(work, reuse, tasks, "--skip-existing"))
+    check(rc == 0 and "target-reached" in out and len(list(work.glob("HTS-*/run.json"))) == 32,
+          "resume runs nothing new")
+    rc, _, err = run_cli(screen_args(ROOT / "tmp-screen", reuse, tasks))
+    check(rc == 2 and "outside" in err, "work root inside repo refused")
+    work = tmp / "screen-real"
+    rc, _, err = run_cli([a for a in screen_args(work, reuse, tasks) if a != "--dry-run"])
+    check(rc == 2 and not list(work.glob("HTS-*")), f"real screen without isolation inputs stops before any Run: {err}")
+
+
+def test_screen_limits(tmp: Path, reuse: Path, tasks: Path) -> None:
+    work = tmp / "cand-cap"
+    rc, out, _ = run_cli(screen_args(work, reuse, tasks, "--dry-run-success", ",".join(str(o) for o in range(7, 45)),
+                                     run="100000", cand="200000"))
+    check(rc == 0 and not (work / "HTS-06-n3").exists() and (work / "HTS-07-n1").exists(),
+          "candidate cap: third Run not started, next candidate continues")
+    s = htc.screen_summarize(work, reuse)
+    check([b["order"] for b in s["budgetExcluded"]] == [6] and 6 not in s["selectedZero"], "budget-excluded, not 0/3")
+    check(s["feasibilityOnly"] and s["stopReason"] == "candidates-exhausted", "feasibility-only when exhausted")
+    work = tmp / "global-cap"
+    rc, _, err = run_cli(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="300000"))
+    check(rc == 2 and "budget" in err and len(list(work.glob("HTS-*/run.json"))) == 3, "global cap stops before Run 4")
+    s = htc.screen_summarize(work, reuse)
+    check(s["stopReason"].startswith("budget") and s["feasibilityOnly"] and s["screeningTokens"] == 3 * 68022,
+          "stop reason recorded; reuse not counted against the budget")
+    rc, out, err = run_cli(screen_args(work, reuse, tasks, "--skip-existing", run="100000", cand="1000000",
+                                     budget="400000"))
+    check(rc == 2 and "204066" in out and len(list(work.glob("HTS-*/run.json"))) == 5,
+          "resume counts existing tokens and adds only what fits")
+    work = tmp / "run-cap"
+    rc, _, err = run_cli(screen_args(work, reuse, tasks, "--dry-run-tokens", "150000", run="100000"))
+    check(rc == 2 and "exceeded" in err and len(list(work.glob("HTS-*/run.json"))) == 1, "per-run overrun stops")
+    check(htc.screen_summarize(work, reuse)["budgetExcluded"][0]["order"] == 6, "overrun Run is not a failure")
+    work = tmp / "args"
+    try:
+        run_cli([a for a in screen_args(work, reuse, tasks) if a not in ("--max-candidate-tokens", "10000000")])
+    except SystemExit as exc:
+        check(exc.code == 2, "missing limit is a usage error")
+    else:
+        raise AssertionError("screen accepted a missing --max-candidate-tokens")
+
+
+def test_screen_reuse_and_blobs(tmp: Path, reuse: Path, tasks: Path) -> None:
+    for name, mutate in (("missing", lambda rec, p: p.unlink()),
+                         ("timeout", lambda rec, p: p.write_text(json.dumps({**rec, "status": "aborted-timeout"}))),
+                         ("dry", lambda rec, p: p.write_text(json.dumps({**rec, "dryRun": True})))):
+        bad = tmp / f"reuse-{name}"
+        shutil.copytree(reuse, bad)
+        path = bad / "HTC-03-n2" / "run.json"
+        mutate(json.loads(path.read_text()), path)
+        work = tmp / f"screen-{name}"
+        rc, _, err = run_cli(screen_args(work, bad, tasks))
+        check(rc == 2 and "reuse" in err and not list(work.glob("HTS-*")), f"unusable reuse ({name}) stops")
+    saved = dict(htc.SCREEN_BLOBS)
+    for path in saved:
+        htc.SCREEN_BLOBS[path] = "0" * 40
+        work = tmp / f"blob-{path.stem}"
+        rc, _, err = run_cli(screen_args(work, reuse, tasks))
+        htc.SCREEN_BLOBS.update(saved)
+        check(rc == 2 and "blob mismatch" in err and not work.exists(), f"blob mismatch stops ({path.name})")
+
+
+def test_screen_record_states(tmp: Path, reuse: Path, tasks: Path) -> None:
+    check(htc.run_outcome({"runId": "x", "status": "aborted-timeout"}) == "budget-excluded", "timeout is not a failure")
+    for status in ("control-deviation", "started"):
+        try:
+            htc.run_outcome({"runId": "x", "status": status})
+        except htc.Stop:
+            continue
+        raise AssertionError(f"classified status {status}")
+    work = tmp / "mix"
+    rc, _, _ = run_cli(screen_args(work, reuse, tasks, budget="300000", run="100000"))
+    check(rc == 2 and (work / "HTS-06-n1").exists(), "partial dry batch")
+    args = htc.parser().parse_args([a for a in screen_args(work, reuse, tasks, "--skip-existing") if a != "--dry-run"])
+    saved = htc.preflight_screen
+    htc.preflight_screen = lambda _a: None
+    try:
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            rc = htc.cmd_screen(args)
+    finally:
+        htc.preflight_screen = saved
+    check(rc == 2 and "must not mix" in err.getvalue(), "real resume over synthetic Runs stops")
+    work = tmp / "started"
+    rc, _, _ = run_cli(screen_args(work, reuse, tasks, budget="300000", run="100000"))
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    record.update({"status": "started", "modelLaunched": False})
+    record.pop("totalTokens")
+    path.write_text(json.dumps(record))
+    rc, _, err_text = run_cli(screen_args(work, reuse, tasks, "--skip-existing"))
+    check(rc == 2 and "no totalTokens" in err_text, "Run left in started state (e.g. timeout without a trace) stops resume")
+
+
+def test_calibration_unchanged() -> None:
+    rc, out, _ = run_cli(["plan"])
+    check(rc == 0 and len(out.splitlines()) == 25 and all(ln.startswith("HTC-") for ln in out.splitlines()),
+          "calibration plan unchanged")
+    check(htc.PREREGISTRATION.name == "HARD_TASK_T0_T1_PREREGISTRATION.md"
+          and htc.PREREGISTRATION_BLOB == "52b4a585044e00d52fea8db64f725c4b4f3258cd", "calibration blob unchanged")
+
+
 def main() -> int:
     test_plan()
+    test_calibration_unchanged()
+    test_screen_constants()
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d).resolve()
         prompt = tmp / "tasks"
@@ -322,6 +488,16 @@ def main() -> int:
         test_missing_launch_flag(tmp, prompt)
         test_container_isolation(tmp)
         test_workspace_and_grade(tmp)
+        reuse = tmp / "reuse"
+        write_reuse(reuse)
+        screen_tasks = tmp / "screen-tasks"
+        screen_tasks.mkdir()
+        for cand in htc.screen_targets(htc.load_screen_candidates()):
+            (screen_tasks / f"order-{cand['order']:02d}.md").write_text(f"Symptom-only description {cand['order']}.\n")
+        test_screen_flow(tmp, reuse, screen_tasks)
+        test_screen_limits(tmp, reuse, screen_tasks)
+        test_screen_reuse_and_blobs(tmp, reuse, screen_tasks)
+        test_screen_record_states(tmp, reuse, screen_tasks)
     print("test_hard_task_calibrate: OK")
     return 0
 

@@ -115,3 +115,46 @@
 | バッチの token 予算（`--budget-tokens`） | **確定済み**: 25 Run 全体で 7,500,000。同上 |
 | T0 の prompt（Worker に課題をどう示すか） | **決定**（オーガナイザー、PR #251 のレビュー 2 回目の対応時）: 修正 commit の件名・修正内容・原因・テストを渡さず、**症状・再現手順・期待結果・実際の結果だけ** を書いた候補ごとの説明を渡す。説明は較正 Run の結果を見る前に作り、ファイルの hash を #244 に記録してから較正を始める。説明の作成は別 PR とし、作成者と別セッションのレビューで漏洩（原因・修正箇所の示唆）がないかを確かめる。キットは `--task-dir` で候補ごとの説明ファイルを受け取り、`{fixSubject}` などの置換機能は持たない（`{fixSubject}` が書かれていれば止まる）。理由: 件名は修正内容を示しうる（例: 「parse CREATE TABLE TABLESPACE」は直す箇所と方法を示す）ため、難度を T0 の実測で定義する設計で難度の操作化が崩れる。説明ファイルは未作成 |
 | Codex 0.160.1 の Linux バイナリ | EXP-001 の container で使ったのは 0.160.0。0.160.1 の Linux バイナリの取得と SHA-256 の記録は未実施（**NOT_TESTED**） |
+
+## 7. スクリーニング（第 2 版の §3）
+
+本節とキットは model 起動の許可ではありません。正本は [第 2 版](../HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md) §3・§3.1・§5 と [補遺 1](../HARD_TASK_T0_FAIL_T1_PREREGISTRATION_ADDENDUM_1.md) で、食い違えば正本が優先します。§1・§2 の隔離と §3 の停止条件は、スクリーニングにもそのまま適用します（Run ID は `HTS-<order>-n<k>`）。
+
+**起動の前提（すべて Operator が確認する）**: 補遺 1 の成立（#244 の blob 記録）。第 2 版 §5.1b の実効上限の確認、または超過可能性と処置についての Operator の判断。キットはこれらを判定しません。補遺 1 の確定で本文が変わると blob が変わり、キットは起動前に止まります。その場合は記録値の更新が別途必要です。
+
+**キットの動作**:
+
+| 対象 | 動作 |
+|---|---|
+| order 1〜5 | `--reuse-root` の `HTC-<order>-n1`〜`n3` の `run.json` だけを読む（新しい Run なし）。成功があれば打ち切り、3 回とも失敗なら 0/3。読めない、または `completed` の実 Run でなければ停止 |
+| order 10・11・16・26・28・32・38 | 事前除外。Run も説明の読み込みもせず、失敗・0/3・budget-excluded に数えない |
+| 残り 32 件 | order 昇順に T0 を最大 3 回。verified success で打ち切り。0/3 が 12 件（order 1〜5 を含む）そろったら停止 |
+
+| 追加の停止条件 | 動作 |
+|---|---|
+| 第 2 版・補遺 1・候補表の blob が記録値と違う | 起動前に停止 |
+| 候補の消費 + `--max-run-tokens` が `--max-candidate-tokens` を超える | その候補の次の Run を始めず budget-excluded とし、次の候補へ進む |
+| スクリーニングの消費 + `--max-run-tokens` が `--budget-tokens` を超える | 次の Run を始めずに停止 |
+| Run 後に `--max-run-tokens` を超えた | 記録して停止。その候補は budget-excluded（事後の検出で、実効 hard cap ではない） |
+| 再開時に dry-run の記録と実 Run が混ざる | 停止 |
+
+較正 25 Run の token は支出済みのためスクリーニング予算に数えません（第 2 版 §5.1）。集計の `reusedTokensNotCounted` に別に表示します。
+
+**timeout の制限**: `--timeout-s` で kill すると session trace を回収できず（§2 の回収は正常終了後のみ）、その Run は `run.json` が `started` のまま、token 不明でバッチが止まります。§3 の「次の Run へ進む」にはならず、自動で budget-excluded にもなりません。この Run の扱いと token の確認は Operator が判断し、#244 に記録します。再開はその解消後です（`--skip-existing` は `totalTokens` のない Run で止まります）。
+
+**手順**:
+
+1. dry-run で計画と出力を確認する（model も container も起動しない。`dry-run` の結果は合成で、選別に使わない）:
+
+   ```bash
+   python3.12 scripts/hard_task_calibrate.py screen-plan
+   python3.12 scripts/hard_task_calibrate.py screen --dry-run --work-root ~/dat-runs/screen-dry \
+     --reuse-root ~/dat-runs/hard-task-cal-1 --task-dir docs/hard-task/task-descriptions \
+     --timeout-s 1800 --max-run-tokens 4000000 --max-candidate-tokens 10000000 --budget-tokens 50000000
+   python3.12 scripts/hard_task_calibrate.py screen-summarize --work-root ~/dat-runs/screen-dry \
+     --reuse-root ~/dat-runs/hard-task-cal-1
+   ```
+
+2. 本番（Operator のみ）: `--dry-run` を外し、新しい `--work-root` と `--codex-dir` を指定して同じ上限で実行する。上限は第 2 版 §5.2 の確定値で、キットは既定値を持たない。表示される説明の SHA-256 が #244 の記録と一致することを確かめる。
+3. exit code が 2 なら標準エラーの `STOP:` の理由を #244 に記録する。理由の解消後に同じ上限で `--skip-existing` を付けて再開する。
+4. `screen-summarize --output <ファイル>` で集計を保存し、候補ごとの n1〜nk、打ち切り、事前除外、budget-excluded（件数・理由・消費）、選ばれた 0/3 の一覧、使用 token、停止理由、`feasibilityOnly` を #244 に記録する。報告では、評価集合が E1 除外後の候補集合に条件付くことを併記する（補遺 1 §3）。

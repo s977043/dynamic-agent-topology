@@ -6,6 +6,12 @@ Subcommands:
   run        execute the Runs sequentially (T0, Codex / gpt-6.1-sol / high); --dry-run never launches a model
   summarize  aggregate per-candidate verified successes and m (token ratio vs EXP-001 T0)
 
+Screening (second-edition preregistration §3 / §3.1 and addendum 1; HTS-<order>-n<k> Runs):
+  screen-plan       print how each initial candidate 1..44 is handled (reuse / pre-excluded / up to k=3 Runs)
+  screen            T0 screening: reuse n1..n3 of orders 1..5, stop a candidate at its first verified success,
+                    stop when 12 candidates are 0/3; --dry-run never launches a model
+  screen-summarize  per-candidate n1..nk results, truncated / pre-excluded / budget-excluded, selected 0/3
+
 Each real Run executes Codex in its own Docker container that bind-mounts only that Run's workspace, the
 prompt, the Codex binary directory, and auth.json (the EXP-001 run-kit-g constraints). The AC runs on the
 host under sandbox-exec with network denied. The Operator launches `run` without --dry-run; agents use
@@ -712,10 +718,340 @@ def cmd_plan(_args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- screening (second edition §3 / §3.1, addendum 1)
+
+SCREEN_BLOBS = {
+    ROOT / "docs/HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md": "57007effd1fd502c86ea7e63029352df902670d0",
+    ROOT / "docs/HARD_TASK_T0_FAIL_T1_PREREGISTRATION_ADDENDUM_1.md": "b1e6d473bb875fbcab139cce3cabf25ba8b0b924",
+    CANDIDATES: CANDIDATES_BLOB,
+}
+SCREEN_K = 3
+SCREEN_TARGET = 12
+SCREEN_C = 44
+REUSE_ORDERS = (1, 2, 3, 4, 5)
+# Addendum 1 §2: excluded before screening; never run, not counted as failure, 0/3, or budget-excluded.
+PRE_EXCLUDED = (10, 11, 16, 26, 28, 32, 38)
+SCREEN_LOG = "screen-log.jsonl"
+
+
+def load_screen_candidates(path: Path = CANDIDATES) -> list[dict]:
+    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    initial = sorted((c for c in doc["candidates"] if c["set"] == "initial"), key=lambda c: c["order"])
+    if [c["order"] for c in initial] != list(range(1, SCREEN_C + 1)):
+        raise Stop(f"candidate table initial orders are not exactly 1..{SCREEN_C}")
+    return initial
+
+
+def screen_targets(candidates: list[dict]) -> list[dict]:
+    return [c for c in candidates if c["order"] not in REUSE_ORDERS and c["order"] not in PRE_EXCLUDED]
+
+
+def screen_run_id(order: int, k: int) -> str:
+    return f"HTS-{order:02d}-n{k}"
+
+
+def marker_path(work_root: Path, order: int) -> Path:
+    return work_root / f"HTS-{order:02d}.budget-excluded.json"
+
+
+def load_reuse(reuse_root: Path, candidates: list[dict]) -> dict[int, dict]:
+    """§3.1: only n1..n3 of each of the first 5 candidates, read from the calibration results; never guessed."""
+    out = {}
+    for cand in candidates:
+        if cand["order"] not in REUSE_ORDERS:
+            continue
+        runs = []
+        for k in range(1, SCREEN_K + 1):
+            path = reuse_root / f"HTC-{cand['order']:02d}-n{k}" / "run.json"
+            try:
+                rec = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise Stop(f"reuse: cannot read {path}: {exc}")
+            if (rec.get("order") != cand["order"] or rec.get("calRep") != k or rec.get("dryRun") is not False
+                    or rec.get("status") != "completed" or not isinstance(rec.get("verifiedSuccess"), bool)
+                    or not isinstance(rec.get("totalTokens"), int)
+                    or (rec.get("trace") or {}).get("contexts") != [[MODEL, EFFORT]]):
+                raise Stop(f"reuse: {path} is not a completed real {MODEL}/{EFFORT} Run with verifiedSuccess and totalTokens")
+            runs.append({"k": k, "runId": rec["runId"], "status": rec["status"],
+                         "success": rec["verifiedSuccess"], "tokens": rec["totalTokens"]})
+        outcome = "truncated" if any(r["success"] for r in runs) else "zero"
+        out[cand["order"]] = {"outcome": outcome, "runs": runs, "tokens": sum(r["tokens"] for r in runs)}
+    return out
+
+
+def run_outcome(rec: dict) -> str:
+    """success / failure / budget-excluded for one launched screening Run; anything else cannot be classified."""
+    if rec.get("tokenLimitExceeded"):
+        return "budget-excluded"
+    status = rec.get("status")
+    if status == "aborted-timeout":
+        return "budget-excluded"
+    if status == "completed":
+        if not isinstance(rec.get("verifiedSuccess"), bool):
+            raise Stop(f"{rec.get('runId')} is completed without a boolean verifiedSuccess")
+        return "success" if rec["verifiedSuccess"] else "failure"
+    if status == "dry-run-ungraded":
+        return "success" if rec.get("dryRunSuccess") is True else "failure"
+    raise Stop(f"{rec.get('runId')} has status {status!r}; cannot classify the screening Run")
+
+
+def screen_records(work_root: Path, order: int) -> list[dict]:
+    """Launched screening Runs of one candidate in Run-number order (never-launched attempts are not Runs)."""
+    recs = []
+    for k in range(1, SCREEN_K + 1):
+        rdir = work_root / screen_run_id(order, k)
+        if not rdir.exists():
+            continue
+        rec = read_record(rdir)
+        if never_launched(rec):
+            continue
+        if not isinstance(rec.get("totalTokens"), int):
+            raise Stop(f"{rdir.name} has no totalTokens; record its usage before resuming")
+        recs.append(rec)
+    return recs
+
+
+def classify(work_root: Path, order: int) -> dict:
+    recs = screen_records(work_root, order)
+    runs, outcome = [], "not-started" if not recs else "incomplete"
+    for rec in recs:
+        result = run_outcome(rec)
+        runs.append({"k": rec["calRep"], "runId": rec["runId"], "status": rec["status"], "result": result,
+                     "tokens": rec["totalTokens"]})
+        if result in ("success", "budget-excluded"):
+            outcome = "truncated" if result == "success" else "budget-excluded"
+            break
+    else:
+        if len(runs) == SCREEN_K:
+            outcome = "zero"
+    marker = marker_path(work_root, order)
+    reason = None
+    if marker.exists():
+        outcome = "budget-excluded"
+        reason = json.loads(marker.read_text(encoding="utf-8")).get("reason")
+    return {"outcome": outcome, "runs": runs, "tokens": sum(r["tokens"] for r in runs), "reason": reason}
+
+
+def write_marker(work_root: Path, order: int, reason: str) -> None:
+    marker_path(work_root, order).write_text(json.dumps({"order": order, "reason": reason, "at": now()}) + "\n",
+                                             encoding="utf-8")
+
+
+def log_screen(work_root: Path, event: dict) -> None:
+    with (work_root / SCREEN_LOG).open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"at": now(), **event}, ensure_ascii=False) + "\n")
+
+
+def preflight_screen(args) -> None:
+    for path, expected in SCREEN_BLOBS.items():
+        actual = git_blob_sha(path)
+        if actual != expected:
+            raise Stop(f"blob mismatch for {path.name}: {actual} != {expected}")
+    work_root = Path(args.work_root).resolve()
+    if work_root == ROOT or ROOT in work_root.parents:
+        raise Stop("work root must be outside the DAT repository")
+    if work_root == Path(args.reuse_root).expanduser().resolve():
+        raise Stop("work root must differ from the reuse root")
+    for name in ("timeout_s", "max_run_tokens", "max_candidate_tokens", "budget_tokens"):
+        if getattr(args, name) <= 0:
+            raise Stop(f"--{name.replace('_', '-')} must be positive")
+    if args.max_run_tokens > args.max_candidate_tokens or args.max_run_tokens > args.budget_tokens:
+        raise Stop("--max-run-tokens exceeds --max-candidate-tokens or --budget-tokens")
+    existing = sorted(p.name for p in work_root.glob("HTS-*")) if work_root.exists() else []
+    if existing and not args.skip_existing:
+        raise Stop(f"screening results already exist (refusing to overwrite): {', '.join(existing)}")
+    if will_grade(args):
+        probe_ac_sandbox(args.ac_python)
+    if not args.dry_run:
+        preflight_container(args)
+
+
+def screen_candidate(args, cand: dict, work_root: Path, spent: int, task: tuple[str, str],
+                     ac_files: dict[str, bytes]) -> tuple[str, int]:
+    """Up to k T0 Runs; stops the candidate at the first verified success. Returns (outcome, screening spend)."""
+    order = cand["order"]
+    for k in range(1, SCREEN_K + 1):
+        state = classify(work_root, order)
+        if state["outcome"] in ("truncated", "zero", "budget-excluded"):
+            return state["outcome"], spent
+        rdir = work_root / screen_run_id(order, k)
+        if rdir.exists():
+            if not never_launched(read_record(rdir)):
+                print(f"skip existing {rdir.name}")
+                continue
+            print(f"retry {rdir.name}: model was never launched; previous attempt kept at "
+                  f"{preserve_attempt(work_root, rdir)}")
+        if spent + args.max_run_tokens > args.budget_tokens:
+            raise Stop(f"budget: spent {spent} + max per run {args.max_run_tokens} > {args.budget_tokens}")
+        if state["tokens"] + args.max_run_tokens > args.max_candidate_tokens:
+            reason = (f"candidate budget: spent {state['tokens']} + max per run {args.max_run_tokens} "
+                      f"> {args.max_candidate_tokens}")
+            write_marker(work_root, order, reason)
+            print(f"order-{order:02d}: budget-excluded ({reason})")
+            return "budget-excluded", spent
+        run = {"runId": rdir.name, "order": order, "calRep": k, "candidate": cand}
+        record = run_one(args, run, work_root, task[0], task[1], ac_files)
+        record["phase"] = "screening"
+        if args.dry_run:
+            record["dryRunSuccess"] = order in args.dry_run_success
+        write_record(rdir, record)
+        spent += record["totalTokens"]
+        cand_spent = state["tokens"] + record["totalTokens"]
+        print(f"{rdir.name}: {record['status']} tokens={record['totalTokens']} "
+              f"success={record.get('verifiedSuccess', record.get('dryRunSuccess'))}")
+        if record.get("tokenLimitExceeded"):
+            raise Stop(f"{rdir.name} exceeded --max-run-tokens ({record['totalTokens']})")
+        if cand_spent > args.max_candidate_tokens:
+            reason = f"candidate spend {cand_spent} exceeded --max-candidate-tokens after {rdir.name}"
+            write_marker(work_root, order, reason)
+            raise Stop(reason)
+        if spent > args.budget_tokens:
+            raise Stop(f"screening spend {spent} exceeded --budget-tokens after {rdir.name}")
+    return classify(work_root, order)["outcome"], spent
+
+
+def cmd_screen(args) -> int:
+    candidates = load_screen_candidates()
+    preflight_screen(args)
+    reused = load_reuse(Path(args.reuse_root).expanduser().resolve(), candidates)
+    targets = screen_targets(candidates)
+    tasks = load_task_descriptions(Path(args.task_dir), targets)
+    for order, (_, sha) in sorted(tasks.items()):
+        print(f"task description order-{order:02d}.md sha256 {sha} (must match the hash recorded in #244)")
+    work_root = Path(args.work_root).resolve()
+    lock = acquire_lock(work_root)
+    try:
+        for path in sorted(work_root.glob("HTS-*/run.json")):
+            if json.loads(path.read_text(encoding="utf-8")).get("dryRun") is not args.dry_run:
+                raise Stop(f"{path} was written in a different dry-run mode; synthetic and real Runs must not mix")
+        spent = sum(classify(work_root, c["order"])["tokens"] for c in targets)
+        if spent:
+            print(f"existing screening runs already used {spent} tokens (counted against --budget-tokens)")
+        mirror = Path(args.mirror_dir) if args.mirror_dir else None
+        ac_files = load_ac_files(targets, mirror) if will_grade(args) else {}
+        zeros = sum(1 for r in reused.values() if r["outcome"] == "zero")
+        reason = "candidates-exhausted"
+        for cand in targets:
+            if zeros >= SCREEN_TARGET:
+                reason = "target-reached"
+                break
+            outcome, spent = screen_candidate(args, cand, work_root, spent, tasks[cand["order"]],
+                                              ac_files.get(cand["order"], {}))
+            zeros += outcome == "zero"
+        else:
+            if zeros >= SCREEN_TARGET:
+                reason = "target-reached"
+        log_screen(work_root, {"event": "end", "reason": reason, "zeros": zeros, "spent": spent})
+        print(f"screening ended: {reason} (0/{SCREEN_K} candidates: {zeros})")
+    except Stop as exc:
+        log_screen(work_root, {"event": "stop", "reason": str(exc)})
+        print(f"STOP: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        lock.unlink()
+    return 0
+
+
+def screen_summarize(work_root: Path, reuse_root: Path) -> dict:
+    candidates = load_screen_candidates()
+    reused = load_reuse(reuse_root, candidates)
+    rows = []
+    for cand in candidates:
+        order = cand["order"]
+        row = {"order": order, "repo": cand["repo"], "revision": cand["revision"]}
+        if order in PRE_EXCLUDED:
+            row.update(source="addendum-1", outcome="pre-excluded", runs=[], tokens=0)
+        elif order in reused:
+            row.update(source="reuse (calibration n1..n3)", **reused[order])
+        else:
+            row.update(source="screening", **classify(work_root, order))
+        rows.append(row)
+    stops = []
+    log = work_root / SCREEN_LOG
+    if log.exists():
+        stops = [json.loads(ln) for ln in log.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    screened = [r for r in rows if r["source"] == "screening"]
+    launched = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(work_root.glob("HTS-*/run.json"))]
+    zero = [r["order"] for r in rows if r["outcome"] == "zero"]
+    return {
+        "k": SCREEN_K, "target": SCREEN_TARGET,
+        "dryRun": any(r.get("dryRun") for r in launched),
+        "selectedZero": zero, "selectedCount": len(zero),
+        "feasibilityOnly": len(zero) < SCREEN_TARGET,
+        "truncated": [r["order"] for r in rows if r["outcome"] == "truncated"],
+        "preExcluded": list(PRE_EXCLUDED),
+        "budgetExcluded": [{"order": r["order"], "reason": r.get("reason") or r["runs"][-1]["status"],
+                            "tokens": r["tokens"]} for r in rows if r["outcome"] == "budget-excluded"],
+        "screeningTokens": sum(r["tokens"] for r in screened),
+        "reusedTokensNotCounted": sum(r["tokens"] for r in rows if r["source"].startswith("reuse")),
+        "stopReason": stops[-1]["reason"] if stops else None,
+        "stopLog": stops,
+        "candidates": rows,
+    }
+
+
+def cmd_screen_summarize(args) -> int:
+    result = screen_summarize(Path(args.work_root).resolve(), Path(args.reuse_root).expanduser().resolve())
+    text = json.dumps(result, ensure_ascii=False, indent=2)
+    print(text)
+    if args.output:
+        out = Path(args.output)
+        if out.exists():
+            print(f"STOP: {out} exists (refusing to overwrite)", file=sys.stderr)
+            return 2
+        out.write_text(text + "\n", encoding="utf-8")
+    return 0
+
+
+def cmd_screen_plan(_args) -> int:
+    for cand in load_screen_candidates():
+        order = cand["order"]
+        if order in PRE_EXCLUDED:
+            action = "pre-excluded (addendum 1; no Run, not counted)"
+        elif order in REUSE_ORDERS:
+            action = f"reuse HTC-{order:02d}-n1..n{SCREEN_K} (no new Run)"
+        else:
+            action = f"{screen_run_id(order, 1)}..n{SCREEN_K} (stop at first verified success)"
+        print(f"{order:02d}\t{action}\t{cand['repo']}@{cand['revision']}")
+    print(f"stop when {SCREEN_TARGET} candidates are 0/{SCREEN_K} (reuse included)")
+    return 0
+
+
+def orders(value: str) -> set[int]:
+    return {int(x) for x in value.split(",") if x.strip()}
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("plan").set_defaults(func=cmd_plan)
+    sub.add_parser("screen-plan").set_defaults(func=cmd_screen_plan)
+    sc = sub.add_parser("screen")
+    sc.add_argument("--work-root", required=True, help="screening results directory outside the DAT repo")
+    sc.add_argument("--reuse-root", required=True, help="calibration results with HTC-01..05-n1..n3 (read only)")
+    sc.add_argument("--task-dir", required=True, help="directory with order-NN.md for the screened candidates")
+    sc.add_argument("--timeout-s", type=int, required=True, help="per-Run wall clock hard limit (no default)")
+    sc.add_argument("--max-run-tokens", type=int, required=True, help="per-Run token limit, checked after the Run")
+    sc.add_argument("--max-candidate-tokens", type=int, required=True, help="per-candidate screening token limit")
+    sc.add_argument("--budget-tokens", type=int, required=True, help="approved screening budget (reuse not counted)")
+    sc.add_argument("--codex-dir", help="Linux Codex vendor directory with bin/codex (mounted read-only at /cx)")
+    sc.add_argument("--auth-file", default="~/.codex/auth.json", help="mounted read-only; contents are not read")
+    sc.add_argument("--ac-python", default="python3.12")
+    sc.add_argument("--mirror-dir", help="local clones named after the repo (dry-run / offline tests)")
+    sc.add_argument("--skip-existing", action="store_true",
+                    help="leave existing Run directories untouched, skip them, and count their tokens against the budget")
+    sc.add_argument("--dry-run", action="store_true", help="never launch a model or a container; write a synthetic trace")
+    sc.add_argument("--dry-run-model", default=MODEL)
+    sc.add_argument("--dry-run-effort", default=EFFORT)
+    sc.add_argument("--dry-run-tokens", type=int, default=68022)
+    sc.add_argument("--dry-run-success", type=orders, default=set(),
+                    help="comma-separated orders whose dry-run Runs count as synthetic successes")
+    sc.set_defaults(func=cmd_screen)
+    ss = sub.add_parser("screen-summarize")
+    ss.add_argument("--work-root", required=True)
+    ss.add_argument("--reuse-root", required=True)
+    ss.add_argument("--output")
+    ss.set_defaults(func=cmd_screen_summarize)
     r = sub.add_parser("run")
     r.add_argument("--work-root", required=True, help="results directory outside the DAT repo")
     r.add_argument("--task-dir", required=True,

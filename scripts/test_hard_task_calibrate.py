@@ -496,7 +496,7 @@ class FakeRealRun:
         if self.timeouts.get(rdir.name) is False:  # timed out with no usable trace
             return None, evidence
         htc.fake_codex(args, rdir / "sessions")
-        evidence["timeoutTrace"] = {"killExitCode": 0, "collectedAfterKill": True}
+        evidence["timeoutTrace"] = {"killExitCode": 0, "collectedAfterKill": True, "stopExitCode": 0}
         return (None if rdir.name in self.timeouts else 0), evidence
 
     def grade(self, cand, ws, _grade_dir, _ac, _py):
@@ -610,6 +610,7 @@ class TimeoutHandlerRun(FakeRealRun):
                 raise OSError("docker")
             if self.stop_mode == "hang":
                 raise subprocess.TimeoutExpired("docker", timeout)
+            result.returncode = self.stop_mode
         return result
 
     def fake_collect(self, _name, rdir, timeout=None):
@@ -671,6 +672,7 @@ def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
              ("force-oserror", 1, "ok", "oserror", 0, kill_failed, False),
              ("stop-oserror-after-kill", 0, "ok", 0, "oserror", clean, True),
              ("stop-hang-after-kill", 0, "ok", 0, "hang", clean, True),
+             ("stop-nonzero-after-kill", 0, "ok", 0, 1, clean, True),
              ("stop-oserror-after-kill-fail", 1, "ok", 0, "oserror", kill_failed, False),
              ("stop-oserror-after-force-fail", "hang", "ok", "oserror", "oserror", kill_failed, False)]
     for name, kill, collect, force, stop, calls, known in cases:
@@ -688,8 +690,8 @@ def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
         check(trace["collectedAfterKill"] is (collect in ("ok", "no-token-count") and kill == 0),
               f"{name}: collect evidence {trace}")
         if stop:
-            check(trace["stopExitCode"] is None and trace["stopError"] and "docker stop" in err,
-                  f"{name}: stop failure kept and shown: {trace} {err}")
+            check(trace["stopExitCode"] == (stop if stop == 1 else None) and (stop == 1 or trace["stopError"])
+                  and "docker stop" in err, f"{name}: stop failure kept and shown: {trace} {err}")
         else:
             check(trace["stopExitCode"] == 0 and "stopError" not in trace and "docker stop" not in err,
                   f"{name}: stop evidence {trace}")
@@ -697,8 +699,19 @@ def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
         excluded = s["budgetExcluded"][0]
         check(excluded["order"] == 6 and 6 not in s["selectedZero"], f"{name}: budget-excluded")
         if known:
-            check(rc == 0 and record["totalTokens"] == 68022 and "lower bound" in record["tokenUsageBasis"]
-                  and not s["usageUnknownRuns"], f"{name}: continues with the observed value: {err}")
+            check(record["totalTokens"] == 68022 and "lower bound" in record["tokenUsageBasis"]
+                  and not s["usageUnknownRuns"] and s["screeningTokens"] >= 68022, f"{name}: observed value kept")
+            if not stop:
+                check(rc == 0, f"{name}: continues: {err}")
+                continue
+            check(rc == 2 and "container" in err and not (work / "HTS-07-n1").exists()
+                  and len(list(work.glob("HTS-*/run.json"))) == 1, f"{name}: batch stops on a failed stop: {err}")
+            check(s["stopReason"].startswith("HTS-06-n1 timed out and docker stop failed"), f"{name}: stop reason")
+            with TimeoutHandlerRun(0, "ok"):
+                rc, _, err = run_cli(args + ["--skip-existing"])
+            kept = json.loads(path.read_text())
+            check(rc == 0 and (work / "HTS-07-n1").exists() and not (work / "HTS-06-n2").exists()
+                  and kept == record, f"{name}: resumes without redoing or changing the Run: {err}")
             continue
         check(rc == 2 and "unknown" in err and "totalTokens" not in record and not (work / "HTS-06-n2").exists()
               and not (work / "HTS-07-n1").exists(), f"{name}: stops without a guess: {err}")
@@ -706,6 +719,16 @@ def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
         with TimeoutHandlerRun(0, "ok"):
             rc, _, err = run_cli(args + ["--skip-existing"])
         check(rc == 2 and "unknown" in err and not (work / "HTS-07-n1").exists(), f"{name}: resume refused")
+
+    work = tmp / "handler-run-stop"
+    with TimeoutHandlerRun(0, "ok", 0, "oserror"):
+        rc, _, err = run_cli(real_args(dry_args(work, tmp / "tasks")))
+    record = json.loads((work / "HTC-01-n1" / "run.json").read_text())
+    check(rc == 2 and "docker stop failed" in err and record["totalTokens"] == 68022
+          and not (work / "HTC-02-n1").exists(), f"run: batch stops on a failed stop: {err}")
+    with TimeoutHandlerRun(0, "ok"):
+        rc, out, err = run_cli(real_args(dry_args(work, tmp / "tasks", "--skip-existing")))
+    check(rc == 0 and "skip existing HTC-01-n1" in out and (work / "HTC-02-n1").exists(), f"run: resumes: {err}")
 
     work = tmp / "handler-collect-fail"
     path = work / "HTS-06-n1" / "run.json"

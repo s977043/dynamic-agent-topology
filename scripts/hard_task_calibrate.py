@@ -687,6 +687,9 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
         record["tokenLimitExceeded"] = True
     record["finishedAt"] = now()
     write_record(rdir, record)
+    if rc is None and timeout_trace.get("stopExitCode") != 0:
+        raise Stop(f"{run['runId']} timed out and docker stop failed ({timeout_trace}); confirm the container "
+                   "stopped, then resume with --skip-existing")
     return record
 
 

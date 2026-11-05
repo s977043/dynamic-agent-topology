@@ -60,7 +60,7 @@
 | `<work-root>/.calibration.lock` がある | 重複起動として停止。別の実行がないと確認してから Operator が手で消す |
 | work root が DAT repo の中 | 停止 |
 | trace の model / effort が `gpt-6.1-sol` / `high` 以外、または `cli_version` が違う | その Run を `control-deviation` として残し、バッチを停止（§2 の control deviation） |
-| 1 Run の経過時間が `--timeout-s` を超えた | container 内で Codex を kill し、その後に trace を回収して container を止める（各段階に 30 秒の上限。kill や回収が失敗・超過したら強制停止へ進む）。`aborted-timeout` として残す。kill が exit 0、kill 後の回収が成功、trace に `token_count` がある場合だけ `tokenUsageKnown: true` として次の Run へ進む。その値は kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限。それ以外はすべて `tokenUsageKnown: false`（`totalTokens` なし）で、推測せず停止し、停止失敗の根拠を `run.json` の `isolation.timeoutTrace` に残す。再開は §7 の解決の後に限る。中止 Run は作り直さない |
+| 1 Run の経過時間が `--timeout-s` を超えた | container 内で Codex を kill し、その後に trace を回収して container を止める（各段階に 30 秒の上限。kill や回収が失敗・超過したら強制停止へ進む）。`aborted-timeout` として残す。kill が exit 0、kill 後の回収が成功、trace に `token_count` がある場合だけ `tokenUsageKnown: true` として次の Run へ進む。その値は kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限。それ以外はすべて `tokenUsageKnown: false`（`totalTokens` なし）で、推測せず停止し、停止失敗の根拠を `run.json` の `isolation.timeoutTrace` に残す。再開は §7 の解決の後に限る。`docker stop` が exit 0 でない（非ゼロ・上限超過・起動失敗）ときは、`true` でもバッチを停止する（記録と使用量の値は保持）。Operator が container の停止を確かめた後に `--skip-existing` で再開する（§7）。中止 Run は作り直さない |
 | 1 Run の token が `--max-run-tokens` を超えた | 記録した後バッチを停止（token は Run の終了後にしか分からないため、事後の検出） |
 | 使用済み token + `--max-run-tokens` が `--budget-tokens` を超える | 次の Run を始めずに停止 |
 
@@ -153,7 +153,7 @@
 Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
 
 - 固定 image の container 内で kill が exit 0 で返り、Codex 配下が終了し、その後に trace を回収できること。
-- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` を変えない。`true` でも次の Run へ自動で進むため、`true` は container の停止完了の証明ではない。警告が出たら container が止まったことを手で確かめ、#244 に記録する。
+- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、`true` でもバッチを停止する。Operator は `docker ps` などで container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
 - **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop）それぞれの上限で、timeout 後の処理全体は最大 150 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
 
 **手順**:

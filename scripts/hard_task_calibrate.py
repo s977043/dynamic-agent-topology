@@ -344,12 +344,22 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
         return rc, evidence
     finally:
         if started:
-            try:
-                stop = docker("stop", "-t", "5", name, check=False, timeout=stop_bound)
-                if stop_bound is not None:
-                    evidence.setdefault("timeoutTrace", {})["stopExitCode"] = stop.returncode
-            except subprocess.TimeoutExpired:
-                evidence.setdefault("timeoutTrace", {})["stopExitCode"] = None
+            if stop_bound is None:
+                docker("stop", "-t", "5", name, check=False)
+            else:
+                record_timeout_stop(name, evidence.setdefault("timeoutTrace", {}))
+
+
+def record_timeout_stop(name: str, trace: dict) -> None:
+    """A failed stop must not lose the timeout record; it is kept as evidence and shown to the Operator."""
+    trace["stopExitCode"] = None
+    try:
+        trace["stopExitCode"] = docker("stop", "-t", "5", name, check=False, timeout=TIMEOUT_STEP_S).returncode
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        trace["stopError"] = type(exc).__name__
+    if trace["stopExitCode"] != 0:
+        print(f"WARNING: docker stop {name} failed after a timeout (exit {trace['stopExitCode']}, "
+              f"{trace.get('stopError')}); confirm the container stopped", file=sys.stderr)
 
 
 def stop_after_timeout(name: str, proc: subprocess.Popen, rdir: Path) -> dict:

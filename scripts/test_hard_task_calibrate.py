@@ -578,9 +578,9 @@ def test_timeout_reaches_aborted(tmp: Path, reuse: Path, tasks: Path) -> None:
 class TimeoutHandlerRun(FakeRealRun):
     """Keeps the real container_exec_codex timeout handler; only docker, the Codex client, and tar are replaced."""
 
-    def __init__(self, kill, collect, force=0):
+    def __init__(self, kill, collect, force=0, stop=0):
         super().__init__({})
-        self.kill_mode, self.collect_mode, self.force_mode = kill, collect, force
+        self.kill_mode, self.collect_mode, self.force_mode, self.stop_mode = kill, collect, force, stop
         self.calls: list[str] = []
         self.bounds: list[int | None] = []
 
@@ -593,15 +593,23 @@ class TimeoutHandlerRun(FakeRealRun):
             self.bounds.append(timeout)
             if self.kill_mode == "hang":
                 raise subprocess.TimeoutExpired("docker", timeout)
+            if self.kill_mode == "oserror":
+                raise OSError("docker")
             result.returncode = self.kill_mode
         elif a[0] == "kill":
             self.calls.append("force-kill")
             self.bounds.append(timeout)
             if self.force_mode == "hang":
                 raise subprocess.TimeoutExpired("docker", timeout)
+            if self.force_mode == "oserror":
+                raise OSError("docker")
         elif a[0] == "stop":
             self.calls.append("stop")
             self.bounds.append(timeout)
+            if self.stop_mode == "oserror":
+                raise OSError("docker")
+            if self.stop_mode == "hang":
+                raise subprocess.TimeoutExpired("docker", timeout)
         return result
 
     def fake_collect(self, _name, rdir, timeout=None):
@@ -611,6 +619,8 @@ class TimeoutHandlerRun(FakeRealRun):
             raise subprocess.TimeoutExpired("tar", timeout)
         if self.collect_mode == "fail":
             raise subprocess.CalledProcessError(1, "tar")
+        if self.collect_mode == "oserror":
+            raise OSError("docker")
         args = types.SimpleNamespace(dry_run_model=htc.MODEL, dry_run_effort=htc.EFFORT, dry_run_tokens=68022)
         htc.fake_codex(args, rdir / "sessions")
         if self.collect_mode == "no-token-count":
@@ -651,14 +661,22 @@ def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
     clean = ["exec-kill", "client-kill", "collect", "stop"]
     collect_failed = ["exec-kill", "client-kill", "collect", "force-kill", "stop"]
     kill_failed = ["exec-kill", "client-kill", "force-kill", "stop"]
-    cases = [("ok", 0, "ok", 0, clean, True), ("collect-fail", 0, "fail", 0, collect_failed, False),
-             ("collect-hang", 0, "hang", 0, collect_failed, False), ("no-count", 0, "no-token-count", 0, clean, False),
-             ("kill-nonzero", 1, "ok", 0, kill_failed, False), ("kill-hang", "hang", "ok", 0, kill_failed, False),
-             ("force-hang", "hang", "ok", "hang", kill_failed, False)]
-    for name, kill, collect, force, calls, known in cases:
+    cases = [("ok", 0, "ok", 0, 0, clean, True), ("collect-fail", 0, "fail", 0, 0, collect_failed, False),
+             ("collect-hang", 0, "hang", 0, 0, collect_failed, False),
+             ("collect-oserror", 0, "oserror", 0, 0, collect_failed, False),
+             ("no-count", 0, "no-token-count", 0, 0, clean, False),
+             ("kill-nonzero", 1, "ok", 0, 0, kill_failed, False), ("kill-hang", "hang", "ok", 0, 0, kill_failed, False),
+             ("kill-oserror", "oserror", "ok", 0, 0, kill_failed, False),
+             ("force-hang", "hang", "ok", "hang", 0, kill_failed, False),
+             ("force-oserror", 1, "ok", "oserror", 0, kill_failed, False),
+             ("stop-oserror-after-kill", 0, "ok", 0, "oserror", clean, True),
+             ("stop-hang-after-kill", 0, "ok", 0, "hang", clean, True),
+             ("stop-oserror-after-kill-fail", 1, "ok", 0, "oserror", kill_failed, False),
+             ("stop-oserror-after-force-fail", "hang", "ok", "oserror", "oserror", kill_failed, False)]
+    for name, kill, collect, force, stop, calls, known in cases:
         work = tmp / f"handler-{name}"
         args = real_args(screen_args(work, reuse, tasks))
-        with TimeoutHandlerRun(kill, collect, force) as runner:
+        with TimeoutHandlerRun(kill, collect, force, stop) as runner:
             rc, _, err = run_cli(args)
         check(runner.calls[:len(calls)] == calls, f"{name}: order {runner.calls}")
         check(all(b == htc.TIMEOUT_STEP_S for b in runner.bounds), f"{name}: every step is bounded {runner.bounds}")
@@ -667,8 +685,14 @@ def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
         trace = record["isolation"]["timeoutTrace"]
         check(record["status"] == "aborted-timeout" and record["modelLaunched"] is True
               and record["tokenUsageKnown"] is known, f"{name}: {record}")
-        check(trace["stopExitCode"] == 0 and (trace["collectedAfterKill"] is (collect != "fail" and collect != "hang"
-              and kill == 0)), f"{name}: stop evidence {trace}")
+        check(trace["collectedAfterKill"] is (collect in ("ok", "no-token-count") and kill == 0),
+              f"{name}: collect evidence {trace}")
+        if stop:
+            check(trace["stopExitCode"] is None and trace["stopError"] and "docker stop" in err,
+                  f"{name}: stop failure kept and shown: {trace} {err}")
+        else:
+            check(trace["stopExitCode"] == 0 and "stopError" not in trace and "docker stop" not in err,
+                  f"{name}: stop evidence {trace}")
         s = htc.screen_summarize(work, reuse)
         excluded = s["budgetExcluded"][0]
         check(excluded["order"] == 6 and 6 not in s["selectedZero"], f"{name}: budget-excluded")

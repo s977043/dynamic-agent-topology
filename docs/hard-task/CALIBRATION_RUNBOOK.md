@@ -150,7 +150,11 @@
 4. `totalTokens` と `tokenUsageKnown: true` だけを更新する。`status`・`runId`・`modelLaunched` は変えず、中止 Run を作り直さない。`tokenUsageKnown: false` のままの `totalTokens` や、`totalTokens` のない `true` は解決済みと扱わず、再開も集計も停止する。
 5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。
 
-Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が確認します。
+Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
+
+- 固定 image の container 内で kill が exit 0 で返り、Codex 配下が終了し、その後に trace を回収できること。
+- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` を変えない。`true` でも次の Run へ自動で進むため、`true` は container の停止完了の証明ではない。警告が出たら container が止まったことを手で確かめ、#244 に記録する。
+- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop）それぞれの上限で、timeout 後の処理全体は最大 150 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
 
 **手順**:
 

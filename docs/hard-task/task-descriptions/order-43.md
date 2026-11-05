@@ -4,7 +4,7 @@
 
 ## 症状
 
-Snowflake などの `REGEXP_COUNT(文字列, パターン[, 開始位置[, フラグ]])` を ClickHouse 方言へ変換すると、`REGEXP_COUNT(...)` がそのまま出力される。ClickHouse には `REGEXP_COUNT` 関数がなく、正規表現の一致回数は `countMatches(文字列, パターン)` で数えるため、出力された SQL は ClickHouse で実行できない。逆に ClickHouse の `countMatches(...)` を Snowflake 方言へ変換すると `COUNTMATCHES(...)` がそのまま出力され、Snowflake で実行できない。
+Snowflake などの `REGEXP_COUNT(文字列, パターン[, 開始位置[, フラグ]])` を ClickHouse 方言へ変換すると、`REGEXP_COUNT(...)` がそのまま出力される。ClickHouse には `REGEXP_COUNT` 関数がないため、出力された SQL は ClickHouse で実行できない。逆に ClickHouse の `countMatches(...)` を Snowflake 方言へ変換すると `COUNTMATCHES(...)` がそのまま出力され、Snowflake で実行できない。
 
 ## 再現手順
 
@@ -20,7 +20,7 @@ print(sqlglot.transpile("SELECT countMatches(name, 'o')", read="clickhouse", wri
 
 ## 期待結果
 
-- Snowflake の `REGEXP_COUNT(name, 'o')` は ClickHouse 方言で `countMatches(name, 'o')` になり、ClickHouse の `countMatches(name, 'o')` は Snowflake 方言で `REGEXP_COUNT(name, 'o')` になる。ClickHouse 方言どうしでは `countMatches(...)` のまま戻る
+- 双方向の変換結果は変換先で実行でき、元の SQL と同じ正規表現の一致回数を返す。同じ方言への変換でも意味が保たれる
 - 開始位置を指定した場合は、文字列のその位置（バイトではなく文字単位で数えた位置）から後ろだけを数える ClickHouse の式になる
 - フラグを指定した場合は、ClickHouse の正規表現で同じ意味になるようにする。`i`（大文字小文字を区別しない）、`m`、`s` は反映し、`c`（区別する、既定）と `i` が両方あるときは後に書かれた方が優先される。表せないフラグは未対応として扱う
 

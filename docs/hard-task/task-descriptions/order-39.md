@@ -20,7 +20,7 @@ for sql in ["SELECT AVG(amount) OVER (PARTITION BY region ORDER BY day) FROM sal
 
 ## 期待結果
 
-- Teradata 方言の、`ORDER BY` を持ち `ROWS` 句を持たないウィンドウ集約（`SUM`、`AVG`、`MAX`、`COUNT(*)` など）を別の方言（DuckDB、Snowflake など）へ変換すると、パーティション全体を集計範囲とする指定 `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` が付き、Teradata と同じ結果を計算する SQL になる（例: `AVG(amount) OVER (PARTITION BY region ORDER BY day NULLS FIRST ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)`）
+- Teradata 方言の、`ORDER BY` を持ち `ROWS` 句を持たないウィンドウ集約（`SUM`、`AVG`、`MAX`、`COUNT(*)` など）を別の方言（DuckDB、Snowflake など）へ変換しても、各行でパーティション全体を対象とした集計結果になり、Teradata で元の SQL を評価した結果と一致する
 - Teradata 方言へ戻すときは、入力と同じ文（集計範囲の指定なし）になる
 - `ORDER BY` を持たないウィンドウ集約は変わらない
 - 集約でないウィンドウ関数（`RANK`、`DENSE_RANK`、`ROW_NUMBER`、`LAG` など）と、`FIRST_VALUE` には集計範囲の指定を付けない

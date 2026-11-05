@@ -51,8 +51,8 @@ except TypeError as exc:
 ## 期待結果
 
 - 3 つの値はそれぞれ `"d"`、`["d"]`、`{"k": "d"}` に符号化され、どの場合も呼び出しは `['for_json', '_asdict']`（各 1 回）になる
-- `D` の例では、注記が `['when serializing object object', "when serializing D item 'b'"]` になる
-- `NotADict` の例では、`TypeError` のメッセージが `_asdict() must return a dict, not list` で、注記が `["when serializing dict item 'a'"]` になる
+- `D` の例では、注記が、符号化に失敗した値と、それを含む実際の容器 `D` のキー `b` を正しく示す
+- `NotADict` の例では、不正な戻り値による失敗として報告され、注記が実際の外側の dict のキー `a` を正しく示す
 
 ## 実際の結果
 

@@ -60,7 +60,7 @@
 | `<work-root>/.calibration.lock` がある | 重複起動として停止。別の実行がないと確認してから Operator が手で消す |
 | work root が DAT repo の中 | 停止 |
 | trace の model / effort が `gpt-6.1-sol` / `high` 以外、または `cli_version` が違う | その Run を `control-deviation` として残し、バッチを停止（§2 の control deviation） |
-| 1 Run の経過時間が `--timeout-s` を超えた | Codex を kill する前後で trace を回収し、`aborted-timeout` として残す。trace に使用量があれば（`tokenUsageKnown: true`）次の Run へ進む。使用量は trace の最後の記録で、kill までの増分は含まない。使用量がなければ（`false`、`totalTokens` なし）推測せず停止し、再開は §7 の解決の後に限る。中止 Run は作り直さない |
+| 1 Run の経過時間が `--timeout-s` を超えた | container 内で Codex を kill し、その後に trace を回収して container を止める（各段階に 30 秒の上限。kill や回収が失敗・超過したら強制停止へ進む）。`aborted-timeout` として残す。kill が exit 0、kill 後の回収が成功、trace に `token_count` がある場合だけ `tokenUsageKnown: true` として次の Run へ進む。その値は kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限。それ以外はすべて `tokenUsageKnown: false`（`totalTokens` なし）で、推測せず停止し、停止失敗の根拠を `run.json` の `isolation.timeoutTrace` に残す。再開は §7 の解決の後に限る。中止 Run は作り直さない |
 | 1 Run の token が `--max-run-tokens` を超えた | 記録した後バッチを停止（token は Run の終了後にしか分からないため、事後の検出） |
 | 使用済み token + `--max-run-tokens` が `--budget-tokens` を超える | 次の Run を始めずに停止 |
 
@@ -140,7 +140,17 @@
 
 較正 25 Run の token は支出済みのためスクリーニング予算に数えません（第 2 版 §5.1）。集計の `reusedTokensNotCounted` に別に表示します。
 
-**timeout**: `aborted-timeout` の候補は失敗に数えず budget-excluded とし、次の候補へ進みます。使用量が不明なときはバッチが止まり、集計の `budgetExcluded[].usageUnknown` と `usageUnknownRuns` に表示されます。Operator は根拠のある記録（`codex-events.jsonl` など）で使用量を確かめ、その Run の `run.json` に `totalTokens` と `tokenUsageKnown: true` を書き、根拠を #244 に記録してから `--skip-existing` で再開します。確かめられなければ再開しません。Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が確認します。
+**timeout**: `aborted-timeout` の候補は失敗に数えず budget-excluded とし、次の候補へ進みます。`tokenUsageKnown: true` の値は、kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限です（`tokenUsageBasis`）。これを確定値として予算に加算して次へ進むため、timeout が重なると不足分が累積します。この扱いを受け入れるかは、第 2 版 §5.1b の超過可能性と処置についての Operator の判断に含めます。
+
+**使用量が不明なとき**: バッチが止まり、集計の `budgetExcluded[].usageUnknown` と `usageUnknownRuns` に表示されます。Operator は次の順で解決します。
+
+1. `isolation.timeoutTrace` を読み、`forceKillExitCode` や `stopExitCode` が 0 でない、または null なら、container が止まったことを先に確かめる。
+2. 根拠を確かめる。根拠は、その Run の **終了までの使用量を裏付ける記録** に限る。途中の累積値は解決にならない。裏付けられなければ再開しない。
+3. 更新前の `run.json` を別ファイルに保存する。
+4. `totalTokens` と `tokenUsageKnown: true` だけを更新する。`status`・`runId`・`modelLaunched` は変えず、中止 Run を作り直さない。`tokenUsageKnown: false` のままの `totalTokens` や、`totalTokens` のない `true` は解決済みと扱わず、再開も集計も停止する。
+5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。
+
+Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が確認します。
 
 **手順**:
 

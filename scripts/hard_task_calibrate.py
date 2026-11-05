@@ -56,6 +56,7 @@ P_MAX_SUCCESSES = 2
 C = 44
 T0_TOKENS_EXP001 = 68022.0
 LOCK_NAME = ".calibration.lock"
+TIMEOUT_STEP_S = 30
 CODEX_HOME = "/tmp/codex-home"
 # Same profile as EXP-001 config-never.sh: workspace-write equivalent, CODEX_HOME hidden from sandboxed commands.
 CONFIG_TOML = f"""model = "{MODEL}"
@@ -260,8 +261,8 @@ def check_container(inspect: dict, expected: list[tuple[str, str, str, bool]], w
     return evidence
 
 
-def docker(*args: str, stdin: str | None = None, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["docker", *args], input=stdin, capture_output=True, text=True, check=check)
+def docker(*args: str, stdin: str | None = None, check: bool = True, timeout: int | None = None) -> subprocess.CompletedProcess:
+    return subprocess.run(["docker", *args], input=stdin, capture_output=True, text=True, check=check, timeout=timeout)
 
 
 def preflight_container(args) -> None:
@@ -310,6 +311,7 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
     name = f"htc-{rdir.name.lower()}-{os.getpid()}"  # same name as recorded in run.json
     evidence["container"] = name
     started = False
+    stop_bound = None
     try:
         docker(*docker_run_command(args, rdir, name)[1:])
         started = True
@@ -335,24 +337,51 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
                 proc.communicate(prompt, timeout=args.timeout_s)
                 rc = proc.returncode
             except subprocess.TimeoutExpired:
-                # The tmpfs trace dies with the container, so end Codex inside it (PID 1 survives KILL) and collect first.
-                before = try_collect_sessions(name, rdir)
-                kill = docker("exec", name, "sh", "-c", "kill -s KILL -- -1", check=False)
-                proc.kill()
-                proc.wait()
-                evidence["timeoutTrace"] = {"collectedBeforeKill": before, "killExitCode": kill.returncode,
-                                            "collectedAfterKill": try_collect_sessions(name, rdir)}
+                stop_bound = TIMEOUT_STEP_S
+                evidence["timeoutTrace"] = stop_after_timeout(name, proc, rdir)
                 return None, evidence
         collect_sessions(name, rdir)
         return rc, evidence
     finally:
         if started:
-            docker("stop", "-t", "5", name, check=False)
+            try:
+                stop = docker("stop", "-t", "5", name, check=False, timeout=stop_bound)
+                if stop_bound is not None:
+                    evidence.setdefault("timeoutTrace", {})["stopExitCode"] = stop.returncode
+            except subprocess.TimeoutExpired:
+                evidence.setdefault("timeoutTrace", {})["stopExitCode"] = None
 
 
-def collect_sessions(name: str, rdir: Path) -> None:
+def stop_after_timeout(name: str, proc: subprocess.Popen, rdir: Path) -> dict:
+    """End Codex first, then collect the trace (it dies with the tmpfs). Every step is bounded; failures force-kill."""
+    result = {"killExitCode": None, "collectedAfterKill": False, "forceKillExitCode": None}
+    try:
+        result["killExitCode"] = docker("exec", name, "sh", "-c", "kill -s KILL -- -1", check=False,
+                                        timeout=TIMEOUT_STEP_S).returncode
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        result["killError"] = type(exc).__name__
+    proc.kill()
+    try:
+        proc.wait(timeout=TIMEOUT_STEP_S)
+    except subprocess.TimeoutExpired:
+        result["clientWaitTimedOut"] = True
+    if result["killExitCode"] == 0:
+        try:
+            collect_sessions(name, rdir, timeout=TIMEOUT_STEP_S)
+            result["collectedAfterKill"] = True
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, tarfile.TarError, OSError) as exc:
+            result["collectError"] = type(exc).__name__
+    if not result["collectedAfterKill"]:
+        try:
+            result["forceKillExitCode"] = docker("kill", name, check=False, timeout=TIMEOUT_STEP_S).returncode
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            result["forceKillError"] = type(exc).__name__
+    return result
+
+
+def collect_sessions(name: str, rdir: Path, timeout: int | None = None) -> None:
     tar = subprocess.run(["docker", "exec", name, "tar", "-C", CODEX_HOME, "-cf", "-", "sessions"],
-                         capture_output=True, check=True).stdout
+                         capture_output=True, check=True, timeout=timeout).stdout
     with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
         members = [m for m in tf.getmembers() if m.isfile() and m.name.startswith("sessions/")]
         if any("auth.json" in m.name for m in members):
@@ -360,16 +389,10 @@ def collect_sessions(name: str, rdir: Path) -> None:
         tf.extractall(rdir, members=members, filter="data")
 
 
-def try_collect_sessions(name: str, rdir: Path) -> bool:
-    try:
-        collect_sessions(name, rdir)
-    except (subprocess.CalledProcessError, tarfile.TarError, OSError):
+def timeout_usage_known(rdir: Path, timeout_trace: dict) -> bool:
+    """Only a clean kill, a post-kill collection, and a token_count in that trace count; nothing is estimated."""
+    if timeout_trace.get("killExitCode") != 0 or timeout_trace.get("collectedAfterKill") is not True:
         return False
-    return True
-
-
-def timeout_usage_known(rdir: Path) -> bool:
-    """Whether the trace collected at a timeout holds a usage record; a missing or torn trace is not estimated."""
     try:
         return bool(read_trace(find_session(rdir / "sessions"))["totalTokenUsage"])
     except (Stop, ValueError):
@@ -424,6 +447,10 @@ def read_record(rdir: Path) -> dict:
     record = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     if not isinstance(record.get("modelLaunched"), bool):
         raise Stop(f"{path} has no boolean modelLaunched; cannot tell whether the model ran")
+    if record.get("status") == "aborted-timeout":
+        known, has_tokens = record.get("tokenUsageKnown"), isinstance(record.get("totalTokens"), int)
+        if not ((known is True and has_tokens) or (known is False and "totalTokens" not in record)):
+            raise Stop(f"{path}: tokenUsageKnown {known!r} and totalTokens are inconsistent; not treated as resolved")
     return record
 
 
@@ -618,11 +645,14 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     if rc is None:
         record.update(status="aborted-timeout", modelLaunched=True, finishedAt=now(),
                       stopReason=f"wall clock limit: exceeded --timeout-s {args.timeout_s}")
-        record["tokenUsageKnown"] = timeout_usage_known(rdir)
+        timeout_trace = record["isolation"].get("timeoutTrace") or {}
+        record["tokenUsageKnown"] = timeout_usage_known(rdir, timeout_trace)
         write_record(rdir, record)
         if not record["tokenUsageKnown"]:
-            raise Stop(f"{run['runId']} timed out and its token usage is unknown; resolve it before resuming")
-        record["tokenUsageBasis"] = "last token_count in the trace collected at the timeout; later usage is not recorded"
+            raise Stop(f"{run['runId']} timed out and its token usage is unknown ({timeout_trace}); confirm the "
+                       "container stopped and resolve the usage before resuming")
+        record["tokenUsageBasis"] = ("cumulative value observed in the trace collected after the kill; a lower bound "
+                                     "that excludes usage not recorded before the stop")
     session = find_session(rdir / "sessions")
     trace = read_trace(session)
     record["trace"] = {"file": str(session.relative_to(rdir)), "cliVersion": trace["cliVersion"],

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -495,6 +496,7 @@ class FakeRealRun:
         if self.timeouts.get(rdir.name) is False:  # timed out with no usable trace
             return None, evidence
         htc.fake_codex(args, rdir / "sessions")
+        evidence["timeoutTrace"] = {"killExitCode": 0, "collectedAfterKill": True}
         return (None if rdir.name in self.timeouts else 0), evidence
 
     def grade(self, cand, ws, _grade_dir, _ac, _py):
@@ -573,54 +575,130 @@ def test_timeout_reaches_aborted(tmp: Path, reuse: Path, tasks: Path) -> None:
           f"run: known usage proceeds to the next Run: {err}")
 
 
-def test_timeout_collects_around_kill(tmp: Path) -> None:
-    rdir = tmp / "kill" / "HTS-06-n1"
-    (rdir / "workspace").mkdir(parents=True)
-    calls: list[str] = []
+class TimeoutHandlerRun(FakeRealRun):
+    """Keeps the real container_exec_codex timeout handler; only docker, the Codex client, and tar are replaced."""
 
-    class Done:
-        returncode, stdout = 0, htc.RUNTIME_VERSION
+    def __init__(self, kill, collect, force=0):
+        super().__init__({})
+        self.kill_mode, self.collect_mode, self.force_mode = kill, collect, force
+        self.calls: list[str] = []
+        self.bounds: list[int | None] = []
 
-    def fake_docker(*a, stdin=None, check=True):
+    def fake_docker(self, *a, stdin=None, check=True, timeout=None):
+        result = subprocess.CompletedProcess(a, 0, htc.RUNTIME_VERSION, "")
         if a[0] == "inspect":
-            result = Done()
             result.stdout = "[{}]"
-            return result
-        if "kill -s KILL" in " ".join(a):
-            calls.append("kill")
+        elif "kill -s KILL" in " ".join(a):
+            self.calls.append("exec-kill")
+            self.bounds.append(timeout)
+            if self.kill_mode == "hang":
+                raise subprocess.TimeoutExpired("docker", timeout)
+            result.returncode = self.kill_mode
+        elif a[0] == "kill":
+            self.calls.append("force-kill")
+            self.bounds.append(timeout)
+            if self.force_mode == "hang":
+                raise subprocess.TimeoutExpired("docker", timeout)
         elif a[0] == "stop":
-            calls.append("stop")
-        return Done()
+            self.calls.append("stop")
+            self.bounds.append(timeout)
+        return result
 
-    class FakePopen:
-        def __init__(self, *_a, **_k):
-            self.returncode = None
+    def fake_collect(self, _name, rdir, timeout=None):
+        self.calls.append("collect")
+        self.bounds.append(timeout)
+        if self.collect_mode == "hang":
+            raise subprocess.TimeoutExpired("tar", timeout)
+        if self.collect_mode == "fail":
+            raise subprocess.CalledProcessError(1, "tar")
+        args = types.SimpleNamespace(dry_run_model=htc.MODEL, dry_run_effort=htc.EFFORT, dry_run_tokens=68022)
+        htc.fake_codex(args, rdir / "sessions")
+        if self.collect_mode == "no-token-count":
+            trace = rdir / "sessions" / "rollout-dry-run.jsonl"
+            trace.write_text("".join(ln + "\n" for ln in trace.read_text().splitlines() if "token_count" not in ln))
 
-        def communicate(self, _prompt, timeout):
-            raise subprocess.TimeoutExpired("codex", timeout)
+    def __enter__(self):
+        super().__enter__()
+        runner = self
 
-        def kill(self):
-            calls.append("client-kill")
+        class FakePopen:
+            def __init__(self, *_a, **_k):
+                self.returncode = None
 
-        def wait(self):
-            return -9
+            def communicate(self, _prompt, timeout):
+                raise subprocess.TimeoutExpired("codex", timeout)
 
-    def fake_collect(_name, _rdir):
-        calls.append("collect")
-        return True
+            def kill(self):
+                runner.calls.append("client-kill")
 
-    class A:
-        timeout_s, work_root, codex_dir, auth_file = 1, str(tmp / "kill"), "/opt/cx", "/home/op/.codex/auth.json"
+            def wait(self, timeout=None):
+                runner.bounds.append(timeout)
+                return -9
 
-    saved = (htc.docker, htc.check_container, htc.check_auth_probe, htc.try_collect_sessions, subprocess.Popen)
-    htc.docker, htc.check_container, htc.check_auth_probe = fake_docker, lambda *_a: {}, lambda *_a: None
-    htc.try_collect_sessions, subprocess.Popen = fake_collect, FakePopen
-    try:
-        rc, evidence = htc.container_exec_codex(A, rdir, "prompt", {})
-    finally:
-        htc.docker, htc.check_container, htc.check_auth_probe, htc.try_collect_sessions, subprocess.Popen = saved
-    check(rc is None and calls == ["collect", "kill", "client-kill", "collect", "stop"], f"order: {calls}")
-    check(evidence["timeoutTrace"]["collectedAfterKill"] is True and evidence["modelLaunched"], "evidence recorded")
+        self.handler_saved = (htc.docker, htc.check_container, htc.check_auth_probe, htc.collect_sessions, subprocess.Popen)
+        htc.container_exec_codex = self.saved["container_exec_codex"]
+        htc.docker, htc.collect_sessions = self.fake_docker, self.fake_collect
+        htc.check_container, htc.check_auth_probe = (lambda *_a: {}), (lambda *_a: None)
+        subprocess.Popen = FakePopen
+        return self
+
+    def __exit__(self, *exc):
+        htc.docker, htc.check_container, htc.check_auth_probe, htc.collect_sessions, subprocess.Popen = self.handler_saved
+        super().__exit__(*exc)
+
+
+def test_timeout_handler(tmp: Path, reuse: Path, tasks: Path) -> None:
+    clean = ["exec-kill", "client-kill", "collect", "stop"]
+    collect_failed = ["exec-kill", "client-kill", "collect", "force-kill", "stop"]
+    kill_failed = ["exec-kill", "client-kill", "force-kill", "stop"]
+    cases = [("ok", 0, "ok", 0, clean, True), ("collect-fail", 0, "fail", 0, collect_failed, False),
+             ("collect-hang", 0, "hang", 0, collect_failed, False), ("no-count", 0, "no-token-count", 0, clean, False),
+             ("kill-nonzero", 1, "ok", 0, kill_failed, False), ("kill-hang", "hang", "ok", 0, kill_failed, False),
+             ("force-hang", "hang", "ok", "hang", kill_failed, False)]
+    for name, kill, collect, force, calls, known in cases:
+        work = tmp / f"handler-{name}"
+        args = real_args(screen_args(work, reuse, tasks))
+        with TimeoutHandlerRun(kill, collect, force) as runner:
+            rc, _, err = run_cli(args)
+        check(runner.calls[:len(calls)] == calls, f"{name}: order {runner.calls}")
+        check(all(b == htc.TIMEOUT_STEP_S for b in runner.bounds), f"{name}: every step is bounded {runner.bounds}")
+        path = work / "HTS-06-n1" / "run.json"
+        record = json.loads(path.read_text())
+        trace = record["isolation"]["timeoutTrace"]
+        check(record["status"] == "aborted-timeout" and record["modelLaunched"] is True
+              and record["tokenUsageKnown"] is known, f"{name}: {record}")
+        check(trace["stopExitCode"] == 0 and (trace["collectedAfterKill"] is (collect != "fail" and collect != "hang"
+              and kill == 0)), f"{name}: stop evidence {trace}")
+        s = htc.screen_summarize(work, reuse)
+        excluded = s["budgetExcluded"][0]
+        check(excluded["order"] == 6 and 6 not in s["selectedZero"], f"{name}: budget-excluded")
+        if known:
+            check(rc == 0 and record["totalTokens"] == 68022 and "lower bound" in record["tokenUsageBasis"]
+                  and not s["usageUnknownRuns"], f"{name}: continues with the observed value: {err}")
+            continue
+        check(rc == 2 and "unknown" in err and "totalTokens" not in record and not (work / "HTS-06-n2").exists()
+              and not (work / "HTS-07-n1").exists(), f"{name}: stops without a guess: {err}")
+        check(s["usageUnknownRuns"] == ["HTS-06-n1"] and "unknown" in excluded["reason"], f"{name}: summary")
+        with TimeoutHandlerRun(0, "ok"):
+            rc, _, err = run_cli(args + ["--skip-existing"])
+        check(rc == 2 and "unknown" in err and not (work / "HTS-07-n1").exists(), f"{name}: resume refused")
+
+    work = tmp / "handler-collect-fail"
+    path = work / "HTS-06-n1" / "run.json"
+    original = json.loads(path.read_text())
+    args = real_args(screen_args(work, reuse, tasks, "--skip-existing"))
+    for bad in ({**original, "totalTokens": 70000}, {**original, "tokenUsageKnown": True}):
+        path.write_text(json.dumps(bad))
+        with FakeRealRun({}):
+            rc, _, err = run_cli(args)
+        check(rc == 2 and "inconsistent" in err and not (work / "HTS-07-n1").exists(), "partial hand fix: resume refused")
+        rc, _, err = run_cli(["screen-summarize", "--work-root", str(work), "--reuse-root", str(reuse)])
+        check(rc == 2 and "inconsistent" in err, "partial hand fix: summary refused")
+    run_work = tmp / "to-run"
+    run_path = run_work / "HTC-01-n1" / "run.json"
+    run_path.write_text(json.dumps({**json.loads(run_path.read_text()), "totalTokens": 70000}))
+    rc, _, err = run_cli(["summarize", "--work-root", str(run_work)])
+    check(rc == 2 and "inconsistent" in err, "run: partial hand fix refused by summarize")
 
 
 def test_success_at_later_runs(tmp: Path, reuse: Path, tasks: Path) -> None:
@@ -673,7 +751,7 @@ def main() -> int:
         test_screen_reuse_and_blobs(tmp, reuse, screen_tasks)
         test_screen_record_states(tmp, reuse, screen_tasks)
         test_timeout_reaches_aborted(tmp, reuse, screen_tasks)
-        test_timeout_collects_around_kill(tmp)
+        test_timeout_handler(tmp, reuse, screen_tasks)
         test_success_at_later_runs(tmp, reuse, screen_tasks)
     print("test_hard_task_calibrate: OK")
     return 0

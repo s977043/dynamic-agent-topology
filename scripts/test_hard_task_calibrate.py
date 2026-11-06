@@ -405,7 +405,7 @@ def test_screen_limits(tmp: Path, reuse: Path, tasks: Path) -> None:
     excluded = s["budgetExcluded"][0]
     check(excluded["order"] == 6 and 6 not in s["selectedZero"] and excluded["tokens"] == 150000,
           "overrun Run is not a failure and its spend is kept")
-    check("token limit" in excluded["reason"] and "150000" in excluded["reason"] and "100000" in excluded["reason"],
+    check(excluded["reason"].startswith("token limit: HTS-06-n1") and "150000" in excluded["reason"] and "100000" in excluded["reason"],
           f"reason names the usage and the limit: {excluded['reason']}")
     work = tmp / "cand-exact"
     rc, _, _ = run_cli(screen_args(work, reuse, tasks, "--dry-run-success", "7", run="100000", cand="168022", budget="168022"))
@@ -959,6 +959,123 @@ def test_screen_post_launch_errors(tmp: Path, reuse: Path, tasks: Path) -> None:
               f"{name}: retried: {err}")
 
 
+class MatrixRun(NonzeroHandlerRun):
+    """Real container_exec_codex; the exit code, collection, trace, usage, and AC result are all given."""
+
+    def __init__(self, code, collect, trace, usage, success):
+        super().__init__(collect, code=code)
+        self.trace_state, self.usage = trace, usage
+        self.success_at = {**{o: 1 for o in range(7, 45)}, **({6: 1} if success else {})}
+
+    def fake_collect(self, _name, rdir, timeout=None):
+        args = types.SimpleNamespace(dry_run_model=htc.MODEL, dry_run_effort=htc.EFFORT, dry_run_tokens=68022)
+        htc.fake_codex(args, rdir / "sessions")
+        path = rdir / "sessions" / "rollout-dry-run.jsonl"
+        if self.trace_state == "missing":
+            path.unlink()
+        elif self.trace_state == "corrupt":
+            path.write_text("not json\n")
+        elif not self.usage:
+            path.write_text("".join(ln + "\n" for ln in path.read_text().splitlines() if "token_count" not in ln))
+        if self.collect_mode == "fail":
+            raise subprocess.CalledProcessError(1, "tar")
+        if self.collect_mode == "hang":
+            raise subprocess.TimeoutExpired("tar", timeout)
+
+
+def matrix_cases() -> list[tuple]:
+    return [(code, collect, trace, usage, success)
+            for code in (0, 1) for collect in ("ok", "fail", "hang") for trace in ("readable", "missing", "corrupt")
+            for usage in (True, False) for success in (True, False)]
+
+
+def check_matrix_case(tmp: Path, reuse: Path, tasks: Path, case: tuple) -> None:
+    code, collect, trace, usage, success = case
+    label = f"code={code} collect={collect} trace={trace} usage={usage} success={success}"
+    work = tmp / "matrix" / label.replace(" ", "_").replace("=", "-")
+    args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
+    with MatrixRun(code, collect, trace, usage, success):
+        rc, _, err = run_cli(args)
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    intact = collect == "ok" and trace == "readable" and usage
+    if code == 0 and intact:
+        check(record["status"] == "completed" and record["verifiedSuccess"] is success and record["totalTokens"] == 68022,
+              f"{label}: only the fully normal Run is graded: {record}")
+        return
+    check(rc == 2 and "verifiedSuccess" not in record and "acExitCode" not in record
+          and record["status"] in htc.ABORTED_STATUSES and record["modelLaunched"] is True, f"{label}: aborted: {record}")
+    check(record["tokenUsageKnown"] is intact and ("totalTokens" in record) is intact, f"{label}: usage: {record}")
+    check(not (work / "HTS-06-n2").exists() and not (work / "HTS-07-n1").exists(), f"{label}: stops at the first Run")
+
+    def excluded() -> None:
+        s = htc.screen_summarize(work, reuse)
+        check(6 not in s["selectedZero"] and 6 not in s["truncated"] and s["budgetExcluded"][0]["order"] == 6,
+              f"{label}: neither a success nor 0/3: {s['budgetExcluded']}")
+
+    excluded()
+    others = {o: 1 for o in range(7, 45)}
+    if not intact:
+        check(htc.screen_summarize(work, reuse)["screeningTokens"] == 0, f"{label}: no partial usage in the budget")
+        with NonzeroExitRun({}, others):
+            rc, _, err = run_cli(args + ["--skip-existing"])
+        check(rc == 2 and "unknown" in err and not (work / "HTS-07-n1").exists(), f"{label}: resume refused: {err}")
+        excluded()
+        resolve_usage(path)
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and (work / "HTS-07-n1").exists() and not (work / "HTS-06-n2").exists(), f"{label}: resumes: {err}")
+    excluded()
+
+
+def test_screen_abort_matrix(tmp: Path, reuse: Path, tasks: Path) -> None:
+    for case in matrix_cases():
+        check_matrix_case(tmp, reuse, tasks, case)
+
+
+def test_screen_before_launch(tmp: Path, reuse: Path, tasks: Path) -> None:
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    others = {o: 1 for o in range(7, 45)}
+
+    def fail_prepare(_cand, _ws, _mirror):
+        raise subprocess.CalledProcessError(128, "git clone")
+
+    real_sha = htc.sha256_file
+
+    def bad_prompt_sha(path):
+        return "0" * 64 if path.name == "prompt.md" else real_sha(path)
+
+    for name, patch, value in (("prepare", "prepare_workspace", fail_prepare), ("sha", "sha256_file", bad_prompt_sha)):
+        work = tmp / f"before-{name}"
+        args = real_args(screen_args(work, reuse, tasks, **limits))
+        with NonzeroExitRun({}):
+            setattr(htc, patch, value)
+            try:
+                rc, _, err = run_cli(args)
+            finally:
+                htc.sha256_file = real_sha
+        record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+        check(rc == 2 and "STOP" in err and record["status"] == "isolation-stop" and record["modelLaunched"] is False
+              and record["stopReason"], f"{name}: saved as never launched: {record}")
+        with NonzeroExitRun({}, {6: 1, **others}):
+            rc, out, err = run_cli(args + ["--skip-existing"])
+        check(rc == 0 and "retry HTS-06-n1" in out and (work / "attempts" / "HTS-06-n1" / "attempt-1").exists(),
+              f"{name}: retried: {err}")
+
+    work = tmp / "before-started"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    with NonzeroExitRun({}):
+        run_cli(args + ["--dry-run-success", "6"])
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    record.update(status="started", modelLaunched=False)
+    record.pop("totalTokens")
+    path.write_text(json.dumps(record))
+    with NonzeroExitRun({}, others):
+        rc, out, err = run_cli(args + ["--skip-existing"])
+    check(rc == 2 and "retry" not in out and "no totalTokens" in err, "a leftover started record is not retried")
+
+
 def test_screen_abort_accounting(tmp: Path, reuse: Path, tasks: Path) -> None:
     work = tmp / "acct"
     with NonzeroExitRun({"HTS-06-n1": 1}):
@@ -1146,6 +1263,8 @@ def main() -> int:
         test_screen_nonzero_exit(tmp, reuse, screen_tasks)
         test_screen_abort_keeps_record(tmp, reuse, screen_tasks)
         test_screen_post_launch_errors(tmp, reuse, screen_tasks)
+        test_screen_abort_matrix(tmp, reuse, screen_tasks)
+        test_screen_before_launch(tmp, reuse, screen_tasks)
         test_screen_abort_accounting(tmp, reuse, screen_tasks)
         test_calibration_keeps_nonzero_exit()
         test_success_at_later_runs(tmp, reuse, screen_tasks)

@@ -437,13 +437,22 @@ def screen_trace_state(rdir: Path) -> tuple[bool, bool]:
         return True, False
 
 
-def screen_abort(rc: int, readable: bool) -> tuple[str, str] | None:
-    """Conservative implementation rule (screening only): these Runs are never graded. (status, reason) or None."""
+def screen_abort(rc: int, collect_error: str | None, readable: bool, usage_known: bool) -> tuple[str, str] | None:
+    """The only gate to grading (screening only): None when all inputs are normal, else (status, reason).
+
+    Conservative implementation rule: every other combination is treated as an environment abort.
+    """
     if rc != 0:
-        return ABORTED_NONZERO, f"codex exit code {rc}: conservatively treated as an environment abort"
-    if not readable:
-        return ABORTED_TRACE, "codex exit code 0 without a readable trace: conservatively treated as an environment abort"
-    return None
+        cause, status = f"codex exit code {rc}", ABORTED_NONZERO
+    elif collect_error:
+        cause, status = f"codex exit code 0 but the trace collection failed ({collect_error})", ABORTED_TRACE
+    elif not readable:
+        cause, status = "codex exit code 0 without a readable trace", ABORTED_TRACE
+    elif not usage_known:
+        cause, status = "codex exit code 0 without token usage in the trace", ABORTED_TRACE
+    else:
+        return None
+    return status, f"{cause}: conservatively treated as an environment abort"
 
 
 def fake_codex(args, sessions_dir: Path) -> int:
@@ -661,13 +670,18 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
               "promptSha256": prompt_sha, "status": "started", "modelLaunched": False, "startedAt": now()}
     write_record(rdir, record)
     ws = rdir / "workspace"
-    if will_grade(args):
-        prepare_workspace(cand, ws, Path(args.mirror_dir) if args.mirror_dir else None)
-    else:
-        ws.mkdir()
-    (rdir / "prompt.md").write_text(prompt, encoding="utf-8")
-    if sha256_file(rdir / "prompt.md") != prompt_sha:
-        raise Stop(f"{run['runId']}: prompt copy SHA-256 differs from the task description")
+    try:
+        if will_grade(args):
+            prepare_workspace(cand, ws, Path(args.mirror_dir) if args.mirror_dir else None)
+        else:
+            ws.mkdir()
+        (rdir / "prompt.md").write_text(prompt, encoding="utf-8")
+        if sha256_file(rdir / "prompt.md") != prompt_sha:
+            raise Stop(f"{run['runId']}: prompt copy SHA-256 differs from the task description")
+    except Exception as exc:  # no model can have started here
+        if args.cmd != "screen" or args.dry_run:
+            raise
+        raise record_run_error(rdir, record, exc) from exc
     name = f"htc-{run['runId'].lower()}-{os.getpid()}"
     record["containerCommand"] = docker_run_command(args, rdir, name)
     record["command"] = codex_exec_command(name)
@@ -738,7 +752,9 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
     aborted = None
     if screening and rc is not None:
         readable, usage_known = screen_trace_state(rdir)
-        aborted = screen_abort(rc, readable)
+        collect_error = record.get("isolation", {}).get("collectError")
+        aborted = screen_abort(rc, collect_error, readable, usage_known)
+        usage_known = usage_known and not collect_error  # a partial collection is not a confirmed cumulative value
     if aborted:
         record.update(status=aborted[0], modelLaunched=True, finishedAt=now(), stopReason=aborted[1],
                       tokenUsageKnown=usage_known)
@@ -995,7 +1011,7 @@ def screen_records(work_root: Path, order: int) -> list[dict]:
 
 def exclusion_reason(rec: dict) -> str:
     if rec.get("tokenLimitExceeded") and rec.get("status") != ABORTED_NONZERO:
-        return (f"token limit:{rec['runId']} used {rec['totalTokens']} tokens "
+        return (f"token limit: {rec['runId']} used {rec['totalTokens']} tokens "
                 f"> --max-run-tokens {rec['limits']['maxRunTokens']}")
     tokens = rec.get("totalTokens")
     return f"{rec.get('stopReason')}: {rec['runId']} used {'unknown' if tokens is None else tokens} tokens"

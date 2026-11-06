@@ -959,24 +959,45 @@ def test_screen_post_launch_errors(tmp: Path, reuse: Path, tasks: Path) -> None:
               f"{name}: retried: {err}")
 
 
+def write_trace(rdir: Path, state: str, usage: bool, context: bool, model: str) -> None:
+    args = types.SimpleNamespace(dry_run_model=model, dry_run_effort=htc.EFFORT, dry_run_tokens=68022)
+    htc.fake_codex(args, rdir / "sessions")
+    path = rdir / "sessions" / "rollout-dry-run.jsonl"
+    if state == "missing":
+        path.unlink()
+    elif state == "corrupt":
+        path.write_text("not json\n")
+    else:
+        dropped = ([] if usage else ["token_count"]) + ([] if context else ["turn_context"])
+        path.write_text("".join(ln + "\n" for ln in path.read_text().splitlines() if not any(d in ln for d in dropped)))
+
+
+class TraceTimeoutRun(TimeoutHandlerRun):
+    """Real timeout handler; the collected trace is shaped as given."""
+
+    def __init__(self, usage=True, context=True, model=htc.MODEL):
+        super().__init__(0, "ok")
+        self.usage, self.context, self.model = usage, context, model
+
+    def fake_collect(self, _name, rdir, timeout=None):
+        write_trace(rdir, "readable", self.usage, self.context, self.model)
+
+
 class MatrixRun(NonzeroHandlerRun):
     """Real container_exec_codex; the exit code, collection, trace, usage, and AC result are all given."""
 
-    def __init__(self, code, collect, trace, usage, success):
+    def __init__(self, code, collect, trace, usage, context, success, model=htc.MODEL):
         super().__init__(collect, code=code)
-        self.trace_state, self.usage = trace, usage
+        self.trace_state, self.usage, self.context, self.model = trace, usage, context, model
         self.success_at = {**{o: 1 for o in range(7, 45)}, **({6: 1} if success else {})}
+        self.graded: list[str] = []
+
+    def grade(self, cand, ws, grade_dir, ac, py):
+        self.graded.append(ws.parent.name)
+        return super().grade(cand, ws, grade_dir, ac, py)
 
     def fake_collect(self, _name, rdir, timeout=None):
-        args = types.SimpleNamespace(dry_run_model=htc.MODEL, dry_run_effort=htc.EFFORT, dry_run_tokens=68022)
-        htc.fake_codex(args, rdir / "sessions")
-        path = rdir / "sessions" / "rollout-dry-run.jsonl"
-        if self.trace_state == "missing":
-            path.unlink()
-        elif self.trace_state == "corrupt":
-            path.write_text("not json\n")
-        elif not self.usage:
-            path.write_text("".join(ln + "\n" for ln in path.read_text().splitlines() if "token_count" not in ln))
+        write_trace(rdir, self.trace_state, self.usage, self.context, self.model)
         if self.collect_mode == "fail":
             raise subprocess.CalledProcessError(1, "tar")
         if self.collect_mode == "hang":
@@ -984,28 +1005,30 @@ class MatrixRun(NonzeroHandlerRun):
 
 
 def matrix_cases() -> list[tuple]:
-    return [(code, collect, trace, usage, success)
+    return [(code, collect, trace, usage, context, success)
             for code in (0, 1) for collect in ("ok", "fail", "hang") for trace in ("readable", "missing", "corrupt")
-            for usage in (True, False) for success in (True, False)]
+            for usage in (True, False) for context in (True, False) for success in (True, False)]
 
 
 def check_matrix_case(tmp: Path, reuse: Path, tasks: Path, case: tuple) -> None:
-    code, collect, trace, usage, success = case
-    label = f"code={code} collect={collect} trace={trace} usage={usage} success={success}"
+    code, collect, trace, usage, context, success = case
+    label = f"code={code} collect={collect} trace={trace} usage={usage} context={context} success={success}"
     work = tmp / "matrix" / label.replace(" ", "_").replace("=", "-")
     args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
-    with MatrixRun(code, collect, trace, usage, success):
+    with MatrixRun(code, collect, trace, usage, context, success) as runner:
         rc, _, err = run_cli(args)
     path = work / "HTS-06-n1" / "run.json"
     record = json.loads(path.read_text())
     intact = collect == "ok" and trace == "readable" and usage
-    if code == 0 and intact:
-        check(record["status"] == "completed" and record["verifiedSuccess"] is success and record["totalTokens"] == 68022,
-              f"{label}: only the fully normal Run is graded: {record}")
+    if code == 0 and intact and context:
+        check(record["status"] == "completed" and record["verifiedSuccess"] is success and record["totalTokens"] == 68022
+              and runner.graded.count("HTS-06-n1") == 1, f"{label}: only the fully normal Run is graded once: {record}")
         return
-    check(rc == 2 and "verifiedSuccess" not in record and "acExitCode" not in record
-          and record["status"] in htc.ABORTED_STATUSES and record["modelLaunched"] is True, f"{label}: aborted: {record}")
+    expected = "aborted-nonzero-exit" if code else "aborted-trace-unavailable"
+    check(rc == 2 and record["status"] == expected and runner.graded == [] and "verifiedSuccess" not in record
+          and "acExitCode" not in record and record["modelLaunched"] is True, f"{label}: {expected}: {record} {err}")
     check(record["tokenUsageKnown"] is intact and ("totalTokens" in record) is intact, f"{label}: usage: {record}")
+    check(("traceControlsMissing" in record) is (trace == "readable" and not context), f"{label}: evidence: {record}")
     check(not (work / "HTS-06-n2").exists() and not (work / "HTS-07-n1").exists(), f"{label}: stops at the first Run")
 
     def excluded() -> None:
@@ -1031,6 +1054,51 @@ def check_matrix_case(tmp: Path, reuse: Path, tasks: Path, case: tuple) -> None:
 def test_screen_abort_matrix(tmp: Path, reuse: Path, tasks: Path) -> None:
     for case in matrix_cases():
         check_matrix_case(tmp, reuse, tasks, case)
+
+
+def test_screen_trace_controls(tmp: Path, reuse: Path, tasks: Path) -> None:
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    others = {o: 1 for o in range(7, 45)}
+
+    work = tmp / "tc-timeout-missing"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    with TraceTimeoutRun(context=False):
+        rc, _, err = run_cli(args)
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(rc == 0 and record["status"] == "aborted-timeout" and record["totalTokens"] == 68022
+          and "turn_context" in record["traceControlsMissing"], f"timeout without turn_context stays a timeout: {err}")
+    s = htc.screen_summarize(work, reuse)
+    check(s["budgetExcluded"][0]["order"] == 6 and s["budgetExcluded"][0]["tokens"] == 68022, "counted as excluded")
+
+    work = tmp / "tc-timeout-missing-no-usage"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    path = work / "HTS-06-n1" / "run.json"
+    with TraceTimeoutRun(usage=False, context=False):
+        rc, _, err = run_cli(args)
+    record = json.loads(path.read_text())
+    check(rc == 2 and "unknown" in err and record["status"] == "aborted-timeout" and record["tokenUsageKnown"] is False
+          and record["traceControlsMissing"], f"no usage either: {record}")
+    resolve_usage(path)
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and (work / "HTS-07-n1").exists(), f"runbook resume: {err}")
+
+    cases = (("timeout", lambda: TraceTimeoutRun(model="gpt-6-luna")),
+             ("timeout-no-usage", lambda: TraceTimeoutRun(usage=False, model="gpt-6-luna")),
+             ("exit1", lambda: MatrixRun(1, "ok", "readable", True, True, False, model="gpt-6-luna")),
+             ("exit1-no-usage", lambda: MatrixRun(1, "ok", "readable", False, True, False, model="gpt-6-luna")),
+             ("exit0", lambda: MatrixRun(0, "ok", "readable", True, True, True, model="gpt-6-luna")))
+    for name, make in cases:
+        work = tmp / f"tc-mismatch-{name}"
+        args = real_args(screen_args(work, reuse, tasks, **limits))
+        with make() as runner:
+            rc, _, err = run_cli(args)
+        record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+        check(rc == 2 and "control deviation" in err and record["status"] == "control-deviation"
+              and "verifiedSuccess" not in record and not getattr(runner, "graded", []), f"{name}: mismatch stops: {record}")
+        with NonzeroExitRun({}, others):
+            rc, _, err = run_cli(args + ["--skip-existing"])
+        check(rc == 2 and not (work / "HTS-07-n1").exists(), f"{name}: resume refused: {err}")
 
 
 def test_screen_before_launch(tmp: Path, reuse: Path, tasks: Path) -> None:
@@ -1264,6 +1332,7 @@ def main() -> int:
         test_screen_abort_keeps_record(tmp, reuse, screen_tasks)
         test_screen_post_launch_errors(tmp, reuse, screen_tasks)
         test_screen_abort_matrix(tmp, reuse, screen_tasks)
+        test_screen_trace_controls(tmp, reuse, screen_tasks)
         test_screen_before_launch(tmp, reuse, screen_tasks)
         test_screen_abort_accounting(tmp, reuse, screen_tasks)
         test_calibration_keeps_nonzero_exit()

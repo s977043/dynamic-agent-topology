@@ -437,7 +437,42 @@ def screen_trace_state(rdir: Path) -> tuple[bool, bool]:
         return True, False
 
 
-def screen_abort(rc: int, collect_error: str | None, readable: bool, usage_known: bool) -> tuple[str, str] | None:
+def trace_controls(trace: dict) -> tuple[list[str], list[str]]:
+    """(mismatches, missing) of the trace's effective values: absence is not evidence of a different model."""
+    mismatches, missing = [], []
+    if not trace["contexts"]:
+        missing.append("turn_context")
+    for model, effort in trace["contexts"]:
+        if (model, effort) != (MODEL, EFFORT):
+            mismatches.append(f"trace model/effort {(model, effort)} != {(MODEL, EFFORT)}")
+    if trace["cliVersion"] is None:
+        missing.append("cli_version")
+    elif trace["cliVersion"] != RUNTIME_VERSION.split()[-1]:
+        mismatches.append(f"trace cli_version {trace['cliVersion']!r}")
+    return mismatches, missing
+
+
+def screen_check_controls(rdir: Path, record: dict) -> None:
+    """Saves missing values next to the abort state; only an actual mismatch overrides it and stops the batch."""
+    try:
+        session = find_session(rdir / "sessions")
+        trace = read_trace(session)
+    except Exception:
+        return
+    mismatches, missing = trace_controls(trace)
+    if missing:
+        record["traceControlsMissing"] = missing
+    if mismatches:
+        if record.get("status") in ABORTED_STATUSES:
+            record["abortedAs"] = record["status"]
+        record.update(status="control-deviation", stopReason=f"control deviation: {'; '.join(mismatches)}")
+    write_record(rdir, record)
+    if mismatches:
+        raise Stop(record["stopReason"])
+
+
+def screen_abort(rc: int, collect_error: str | None, readable: bool, usage_known: bool,
+                 controls_known: bool) -> tuple[str, str] | None:
     """The only gate to grading (screening only): None when all inputs are normal, else (status, reason).
 
     Conservative implementation rule: every other combination is treated as an environment abort.
@@ -450,6 +485,8 @@ def screen_abort(rc: int, collect_error: str | None, readable: bool, usage_known
         cause, status = "codex exit code 0 without a readable trace", ABORTED_TRACE
     elif not usage_known:
         cause, status = "codex exit code 0 without token usage in the trace", ABORTED_TRACE
+    elif not controls_known:
+        cause, status = "codex exit code 0 without effective model, effort, or version in the trace", ABORTED_TRACE
     else:
         return None
     return status, f"{cause}: conservatively treated as an environment abort"
@@ -744,6 +781,8 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
         timeout_trace = record["isolation"].get("timeoutTrace") or {}
         record["tokenUsageKnown"] = timeout_usage_known(rdir, timeout_trace, screening)
         write_record(rdir, record)
+        if screening:
+            screen_check_controls(rdir, record)
         if not record["tokenUsageKnown"]:
             raise Stop(f"{run['runId']} timed out and its token usage is unknown ({timeout_trace}); confirm the "
                        "container stopped and resolve the usage before resuming")
@@ -753,12 +792,19 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
     if screening and rc is not None:
         readable, usage_known = screen_trace_state(rdir)
         collect_error = record.get("isolation", {}).get("collectError")
-        aborted = screen_abort(rc, collect_error, readable, usage_known)
+        try:
+            controls_known = readable and not trace_controls(read_trace(find_session(rdir / "sessions")))[1]
+        except Exception:
+            controls_known = False
+        aborted = screen_abort(rc, collect_error, readable, usage_known, controls_known)
         usage_known = usage_known and not collect_error  # a partial collection is not a confirmed cumulative value
     if aborted:
         record.update(status=aborted[0], modelLaunched=True, finishedAt=now(), stopReason=aborted[1],
                       tokenUsageKnown=usage_known)
         write_record(rdir, record)
+    if screening and rc is not None:
+        screen_check_controls(rdir, record)
+    if aborted:
         if not usage_known:
             raise Stop(f"{run['runId']} {aborted[1]}; its token usage is unknown. Confirm the cause and resolve the "
                        "usage before resuming")
@@ -768,7 +814,8 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
     record["trace"] = {"file": str(session.relative_to(rdir)), "cliVersion": trace["cliVersion"],
                        "contexts": [list(c) for c in trace["contexts"]], "totalTokenUsage": trace["totalTokenUsage"]}
     try:
-        check_trace(trace)
+        if not screening:  # screening compared the effective values above, keeping the abort state on missing values
+            check_trace(trace)
     except Stop as exc:
         record["status"] = "control-deviation"
         record["stopReason"] = str(exc)

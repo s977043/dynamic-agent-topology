@@ -59,7 +59,8 @@ LOCK_NAME = ".calibration.lock"
 TIMEOUT_STEP_S = 30
 ABORTED_NONZERO = "aborted-nonzero-exit"
 ABORTED_TRACE = "aborted-trace-unavailable"
-ABORTED_STATUSES = ("aborted-timeout", ABORTED_NONZERO, ABORTED_TRACE)
+ABORTED_ERROR = "aborted-run-error"
+ABORTED_STATUSES = ("aborted-timeout", ABORTED_NONZERO, ABORTED_TRACE, ABORTED_ERROR)
 CODEX_HOME = "/tmp/codex-home"
 # Same profile as EXP-001 config-never.sh: workspace-write equivalent, CODEX_HOME hidden from sandboxed commands.
 CONFIG_TOML = f"""model = "{MODEL}"
@@ -309,7 +310,7 @@ def codex_exec_command(name: str) -> list[str]:
             "-m", MODEL, "-c", f"model_reasoning_effort={EFFORT}", "-c", "approval_policy=never", "-C", "/work", "-"]
 
 
-def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple[int | None, dict]:
+def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict, on_launched=None) -> tuple[int | None, dict]:
     """One fresh container per Run; fills `evidence` as checks pass. Returns (exit code or None on timeout, evidence)."""
     name = f"htc-{rdir.name.lower()}-{os.getpid()}"  # same name as recorded in run.json
     evidence["container"] = name
@@ -336,6 +337,8 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
                 (rdir / "codex-stderr.log").open("w", encoding="utf-8") as err:
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True)
             evidence["modelLaunched"] = True
+            if on_launched:
+                on_launched()
             try:
                 proc.communicate(prompt, timeout=args.timeout_s)
                 rc = proc.returncode
@@ -343,10 +346,11 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
                 stop_bound = TIMEOUT_STEP_S
                 evidence["timeoutTrace"] = stop_after_timeout(name, proc, rdir)
                 return None, evidence
+        screening = args.cmd == "screen"
         try:
-            collect_sessions(name, rdir)
-        except (subprocess.CalledProcessError, tarfile.TarError, OSError) as exc:
-            if args.cmd != "screen":
+            collect_sessions(name, rdir, timeout=TIMEOUT_STEP_S if screening else None)
+        except Exception as exc:
+            if not screening or isinstance(exc, Stop):
                 raise
             evidence["collectError"] = type(exc).__name__
         return rc, evidence
@@ -409,10 +413,12 @@ def collect_sessions(name: str, rdir: Path, timeout: int | None = None) -> None:
         tf.extractall(rdir, members=members, filter="data")
 
 
-def timeout_usage_known(rdir: Path, timeout_trace: dict) -> bool:
+def timeout_usage_known(rdir: Path, timeout_trace: dict, screening: bool = False) -> bool:
     """Only a clean kill, a post-kill collection, and a token_count in that trace count; nothing is estimated."""
     if timeout_trace.get("killExitCode") != 0 or timeout_trace.get("collectedAfterKill") is not True:
         return False
+    if screening:
+        return screen_trace_state(rdir)[1]
     try:
         return bool(read_trace(find_session(rdir / "sessions"))["totalTokenUsage"])
     except (Stop, ValueError):
@@ -423,11 +429,11 @@ def screen_trace_state(rdir: Path) -> tuple[bool, bool]:
     """(readable, usage known) of a screening Run's trace; a damaged or missing trace must not lose the record."""
     try:
         usage = read_trace(find_session(rdir / "sessions"))["totalTokenUsage"]
-    except (Stop, ValueError, OSError, AttributeError, TypeError):
+    except Exception:
         return False, False
     try:
         return True, bool(usage) and int(usage["input_tokens"]) + int(usage["output_tokens"]) >= 0
-    except (KeyError, TypeError, ValueError):
+    except Exception:
         return True, False
 
 
@@ -666,14 +672,49 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     record["containerCommand"] = docker_run_command(args, rdir, name)
     record["command"] = codex_exec_command(name)
     write_record(rdir, record)
+    try:
+        return execute_run(args, run, rdir, ws, record, prompt, ac_files)
+    except Stop:
+        raise
+    except Exception as exc:  # KeyboardInterrupt and Stop pass; every other failure keeps the record (screening only)
+        if args.cmd != "screen" or args.dry_run:
+            raise
+        raise record_run_error(rdir, record, exc) from exc
+
+
+def record_run_error(rdir: Path, record: dict, exc: Exception) -> Stop:
+    """Save what is known about a screening Run that raised; returns the Stop for the batch."""
+    cause = f"{type(exc).__name__}: {exc}"
+    if not record.get("isolation", {}).get("modelLaunched"):
+        record.update(status="isolation-stop", modelLaunched=False, stopReason=f"before the model started: {cause}")
+        write_record(rdir, record)
+        return Stop(f"{record['runId']} stopped before the model started ({cause}); resolve the cause, then resume "
+                    "with --skip-existing to retry it")
+    for key in ("totalTokens", "tokenUsageBasis"):
+        record.pop(key, None)
+    record.update(status=ABORTED_ERROR, modelLaunched=True, tokenUsageKnown=False, finishedAt=now(),
+                  stopReason=f"error after the model started: {cause}: conservatively treated as an environment abort")
+    write_record(rdir, record)
+    return Stop(f"{record['runId']} failed after the model started ({cause}); its token usage is unknown. Confirm the "
+                "container stopped and resolve the usage before resuming")
+
+
+def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str, ac_files: dict[str, bytes]) -> dict:
+    cand = run["candidate"]
+    screening = args.cmd == "screen"
     started = time.monotonic()
     if args.dry_run:
         rc = fake_codex(args, rdir / "sessions")
         record["modelLaunched"] = True  # simulated
     else:
         record["isolation"] = {}
+
+        def persist_launch() -> None:
+            record["modelLaunched"] = True
+            write_record(rdir, record)
+
         try:
-            rc, _ = container_exec_codex(args, rdir, prompt, record["isolation"])
+            rc, _ = container_exec_codex(args, rdir, prompt, record["isolation"], persist_launch if screening else None)
             record["modelLaunched"] = True
         except Stop as exc:
             record["status"] = "isolation-stop"
@@ -687,14 +728,13 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
         record.update(status="aborted-timeout", modelLaunched=True, finishedAt=now(),
                       stopReason=f"wall clock limit: exceeded --timeout-s {args.timeout_s}")
         timeout_trace = record["isolation"].get("timeoutTrace") or {}
-        record["tokenUsageKnown"] = timeout_usage_known(rdir, timeout_trace)
+        record["tokenUsageKnown"] = timeout_usage_known(rdir, timeout_trace, screening)
         write_record(rdir, record)
         if not record["tokenUsageKnown"]:
             raise Stop(f"{run['runId']} timed out and its token usage is unknown ({timeout_trace}); confirm the "
                        "container stopped and resolve the usage before resuming")
         record["tokenUsageBasis"] = ("cumulative value observed in the trace collected after the kill; a lower bound "
                                      "that excludes usage not recorded before the stop")
-    screening = args.cmd == "screen"
     aborted = None
     if screening and rc is not None:
         readable, usage_known = screen_trace_state(rdir)
@@ -729,7 +769,7 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     else:
         try:
             record.update(grade(cand, ws, rdir / "grade", ac_files, args.ac_python))
-        except (subprocess.SubprocessError, OSError) as exc:
+        except Exception as exc:
             if not screening:
                 raise
             record.update(status="grade-error", modelLaunched=True, finishedAt=now(),

@@ -491,7 +491,7 @@ class FakeRealRun:
     def __init__(self, timeouts: dict[str, bool], success_at: dict[int, int] | None = None):
         self.timeouts, self.success_at = timeouts, success_at or {}
 
-    def container(self, args, rdir, _prompt, evidence):
+    def container(self, args, rdir, _prompt, evidence, _on_launched=None):
         evidence["modelLaunched"] = True
         if self.timeouts.get(rdir.name) is False:  # timed out with no usable trace
             return None, evidence
@@ -755,7 +755,7 @@ class NonzeroExitRun(FakeRealRun):
         super().__init__({}, success_at)
         self.exits, self.no_usage = exits, no_usage
 
-    def container(self, args, rdir, _prompt, evidence):
+    def container(self, args, rdir, _prompt, evidence, _on_launched=None):
         evidence["modelLaunched"] = True
         htc.fake_codex(args, rdir / "sessions")
         if self.no_usage and rdir.name in self.exits:
@@ -767,22 +767,32 @@ class NonzeroExitRun(FakeRealRun):
 class NonzeroHandlerRun(TimeoutHandlerRun):
     """Keeps the real container_exec_codex; Codex ends with `code`; collection and docker stop behave as given."""
 
-    def __init__(self, collect, stop=0, code=1):
+    def __init__(self, collect, stop=0, code=1, run_fails=False, popen_fails=False, communicate_fails=None):
         super().__init__(0, collect, 0, stop)
-        self.code = code
+        self.code, self.run_fails, self.popen_fails = code, run_fails, popen_fails
+        self.communicate_fails = communicate_fails  # the run.json path read at the moment communicate fails
+        self.on_disk_at_failure = None
+
+    def fake_docker(self, *a, stdin=None, check=True, timeout=None):
+        if a[0] == "run" and self.run_fails:
+            raise subprocess.CalledProcessError(125, "docker run")
+        return super().fake_docker(*a, stdin=stdin, check=check, timeout=timeout)
 
     def __enter__(self):
         super().__enter__()
-        code = self.code
+        runner = self
 
         class Exit:
-            returncode = code
+            returncode = runner.code
 
             def __init__(self, *_a, **_k):
-                pass
+                if runner.popen_fails:
+                    raise OSError("popen")
 
             def communicate(self, _prompt, timeout):
-                return None
+                if runner.communicate_fails:
+                    runner.on_disk_at_failure = json.loads(runner.communicate_fails.read_text())
+                    raise OSError("communicate")
 
         subprocess.Popen = Exit
         return self
@@ -874,6 +884,79 @@ def test_screen_abort_keeps_record(tmp: Path, reuse: Path, tasks: Path) -> None:
     with NonzeroExitRun({}, others):
         rc, _, err = run_cli(args + ["--skip-existing"])
     check(rc == 2 and "cannot classify" in err, "grade failure never becomes a result on resume")
+
+
+def test_screen_post_launch_errors(tmp: Path, reuse: Path, tasks: Path) -> None:
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    others = {o: 1 for o in range(7, 45)}
+
+    work = tmp / "pl-communicate"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    path = work / "HTS-06-n1" / "run.json"
+    with NonzeroHandlerRun("ok", communicate_fails=path) as runner:
+        rc, _, err = run_cli(args)
+    check(runner.on_disk_at_failure["modelLaunched"] is True, "launch is on disk before communicate returns")
+    record = json.loads(path.read_text())
+    check(rc == 2 and "STOP" in err and record["status"] == "aborted-run-error" and record["modelLaunched"] is True
+          and record["tokenUsageKnown"] is False and "totalTokens" not in record and "OSError" in record["stopReason"]
+          and record["isolation"]["stopTrace"]["stopExitCode"] == 0, f"communicate failure: {record}")
+    s = htc.screen_summarize(work, reuse)
+    check(s["usageUnknownRuns"] == ["HTS-06-n1"] and s["budgetExcluded"][0]["order"] == 6, "communicate failure: summary")
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 2 and "unknown" in err and not (work / "HTS-07-n1").exists(), "communicate failure: resume refused")
+    resolve_usage(path)
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and (work / "HTS-07-n1").exists() and not (work / "HTS-06-n2").exists(), f"runbook resume: {err}")
+
+    work = tmp / "pl-timeout-read"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    path = work / "HTS-06-n1" / "run.json"
+    saved = htc.read_trace
+
+    def unreadable(_path):
+        raise OSError("read")
+
+    htc.read_trace = unreadable
+    try:
+        with TimeoutHandlerRun(0, "ok"):
+            rc, _, err = run_cli(args)
+    finally:
+        htc.read_trace = saved
+    record = json.loads(path.read_text())
+    check(rc == 2 and "unknown" in err and record["status"] == "aborted-timeout" and record["modelLaunched"] is True
+          and record["tokenUsageKnown"] is False and "totalTokens" not in record, f"timeout read failure: {record}")
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 2 and "unknown" in err, "timeout read failure: resume refused")
+    resolve_usage(path)
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and (work / "HTS-07-n1").exists() and not (work / "HTS-06-n2").exists(), f"runbook resume: {err}")
+
+    work = tmp / "pl-collect-hang"
+    with NonzeroHandlerRun("hang", code=0) as runner:
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, **limits)))
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(rc == 2 and record["status"] == "aborted-trace-unavailable"
+          and record["isolation"]["collectError"] == "TimeoutExpired" and htc.TIMEOUT_STEP_S in runner.bounds,
+          f"normal-exit collection is bounded: {record}")
+
+    for name, kwargs in (("run", {"run_fails": True}), ("popen", {"popen_fails": True})):
+        work = tmp / f"pl-before-{name}"
+        args = real_args(screen_args(work, reuse, tasks, **limits))
+        with NonzeroHandlerRun("ok", **kwargs):
+            rc, _, err = run_cli(args)
+        record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+        check(rc == 2 and "STOP" in err and record["status"] == "isolation-stop" and record["modelLaunched"] is False
+              and record["stopReason"], f"{name}: pre-launch failure: {record}")
+        with NonzeroExitRun({}, {6: 1, **others}):
+            rc, out, err = run_cli(args + ["--skip-existing"])
+        kept = work / "attempts" / "HTS-06-n1" / "attempt-1" / "run.json"
+        check(rc == 0 and "retry HTS-06-n1" in out and json.loads(kept.read_text())["status"] == "isolation-stop"
+              and json.loads((work / "HTS-06-n1" / "run.json").read_text())["status"] == "completed",
+              f"{name}: retried: {err}")
 
 
 def test_screen_abort_accounting(tmp: Path, reuse: Path, tasks: Path) -> None:
@@ -985,12 +1068,28 @@ def test_calibration_keeps_nonzero_exit() -> None:
         check(rc == 0 and record["status"] == "completed" and record["codexExitCode"] == 1
               and record["verifiedSuccess"] is False and (work / "HTC-02-n1").exists(),
               f"calibration still grades a non-zero exit: {err}")
+        cases = ((NonzeroHandlerRun("fail"), subprocess.CalledProcessError, "failed collection"),
+                 (NonzeroHandlerRun("ok", run_fails=True), subprocess.CalledProcessError, "docker run failure"),
+                 (NonzeroHandlerRun("ok", popen_fails=True), OSError, "Popen failure"))
+        for i, (runner, expected, why) in enumerate(cases):
+            cal = tmp / f"cal-{i}"
+            try:
+                with runner:
+                    run_cli(real_args(dry_args(cal, prompt)))
+            except expected:
+                record = json.loads((cal / "HTC-01-n1" / "run.json").read_text())
+                check(record["status"] == "started", f"calibration record unchanged: {why}")
+                continue
+            raise AssertionError(f"calibration handling of a {why} changed")
+        cal = tmp / "cal-communicate"
+        path = cal / "HTC-01-n1" / "run.json"
         try:
-            with NonzeroHandlerRun("fail"):
-                run_cli(real_args(dry_args(tmp / "cal-no-trace", prompt)))
-        except subprocess.CalledProcessError:
+            with NonzeroHandlerRun("ok", communicate_fails=path) as runner:
+                run_cli(real_args(dry_args(cal, prompt)))
+        except OSError:
+            check(runner.on_disk_at_failure["modelLaunched"] is False, "calibration does not persist the launch early")
             return
-        raise AssertionError("calibration handling of a failed collection changed")
+        raise AssertionError("calibration handling of a communicate failure changed")
 
 
 def test_success_at_later_runs(tmp: Path, reuse: Path, tasks: Path) -> None:
@@ -1046,6 +1145,7 @@ def main() -> int:
         test_timeout_handler(tmp, reuse, screen_tasks)
         test_screen_nonzero_exit(tmp, reuse, screen_tasks)
         test_screen_abort_keeps_record(tmp, reuse, screen_tasks)
+        test_screen_post_launch_errors(tmp, reuse, screen_tasks)
         test_screen_abort_accounting(tmp, reuse, screen_tasks)
         test_calibration_keeps_nonzero_exit()
         test_success_at_later_runs(tmp, reuse, screen_tasks)

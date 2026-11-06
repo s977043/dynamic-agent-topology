@@ -58,7 +58,8 @@ T0_TOKENS_EXP001 = 68022.0
 LOCK_NAME = ".calibration.lock"
 TIMEOUT_STEP_S = 30
 ABORTED_NONZERO = "aborted-nonzero-exit"
-ABORTED_STATUSES = ("aborted-timeout", ABORTED_NONZERO)
+ABORTED_TRACE = "aborted-trace-unavailable"
+ABORTED_STATUSES = ("aborted-timeout", ABORTED_NONZERO, ABORTED_TRACE)
 CODEX_HOME = "/tmp/codex-home"
 # Same profile as EXP-001 config-never.sh: workspace-write equivalent, CODEX_HOME hidden from sandboxed commands.
 CONFIG_TOML = f"""model = "{MODEL}"
@@ -333,8 +334,8 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
         cmd = codex_exec_command(name)
         with (rdir / "codex-events.jsonl").open("w", encoding="utf-8") as out, \
                 (rdir / "codex-stderr.log").open("w", encoding="utf-8") as err:
-            evidence["modelLaunched"] = True
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True)
+            evidence["modelLaunched"] = True
             try:
                 proc.communicate(prompt, timeout=args.timeout_s)
                 rc = proc.returncode
@@ -345,27 +346,29 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
         try:
             collect_sessions(name, rdir)
         except (subprocess.CalledProcessError, tarfile.TarError, OSError) as exc:
-            if not screen_abort(args, rc):
+            if args.cmd != "screen":
                 raise
             evidence["collectError"] = type(exc).__name__
         return rc, evidence
     finally:
         if started:
-            if stop_bound is None:
-                docker("stop", "-t", "5", name, check=False)
+            if stop_bound is not None:
+                record_container_stop(name, evidence.setdefault("timeoutTrace", {}))
+            elif args.cmd == "screen" and evidence.get("modelLaunched"):
+                record_container_stop(name, evidence.setdefault("stopTrace", {}))
             else:
-                record_timeout_stop(name, evidence.setdefault("timeoutTrace", {}))
+                docker("stop", "-t", "5", name, check=False)
 
 
-def record_timeout_stop(name: str, trace: dict) -> None:
-    """A failed stop must not lose the timeout record; it is kept as evidence and shown to the Operator."""
+def record_container_stop(name: str, trace: dict) -> None:
+    """A failed stop must not lose the Run's record; it is kept as evidence and shown to the Operator."""
     trace["stopExitCode"] = None
     try:
         trace["stopExitCode"] = docker("stop", "-t", "5", name, check=False, timeout=TIMEOUT_STEP_S).returncode
     except (subprocess.TimeoutExpired, OSError) as exc:
         trace["stopError"] = type(exc).__name__
     if trace["stopExitCode"] != 0:
-        print(f"WARNING: docker stop {name} failed after a timeout (exit {trace['stopExitCode']}, "
+        print(f"WARNING: docker stop {name} failed (exit {trace['stopExitCode']}, "
               f"{trace.get('stopError')}); confirm the container stopped", file=sys.stderr)
 
 
@@ -410,19 +413,31 @@ def timeout_usage_known(rdir: Path, timeout_trace: dict) -> bool:
     """Only a clean kill, a post-kill collection, and a token_count in that trace count; nothing is estimated."""
     if timeout_trace.get("killExitCode") != 0 or timeout_trace.get("collectedAfterKill") is not True:
         return False
-    return trace_has_usage(rdir)
-
-
-def trace_has_usage(rdir: Path) -> bool:
     try:
         return bool(read_trace(find_session(rdir / "sessions"))["totalTokenUsage"])
     except (Stop, ValueError):
         return False
 
 
-def screen_abort(args, rc: int | None) -> bool:
-    """Screening only: a non-zero Codex exit is conservatively treated as an environment abort, never graded."""
-    return args.cmd == "screen" and rc not in (0, None)
+def screen_trace_state(rdir: Path) -> tuple[bool, bool]:
+    """(readable, usage known) of a screening Run's trace; a damaged or missing trace must not lose the record."""
+    try:
+        usage = read_trace(find_session(rdir / "sessions"))["totalTokenUsage"]
+    except (Stop, ValueError, OSError, AttributeError, TypeError):
+        return False, False
+    try:
+        return True, bool(usage) and int(usage["input_tokens"]) + int(usage["output_tokens"]) >= 0
+    except (KeyError, TypeError, ValueError):
+        return True, False
+
+
+def screen_abort(rc: int, readable: bool) -> tuple[str, str] | None:
+    """Conservative implementation rule (screening only): these Runs are never graded. (status, reason) or None."""
+    if rc != 0:
+        return ABORTED_NONZERO, f"codex exit code {rc}: conservatively treated as an environment abort"
+    if not readable:
+        return ABORTED_TRACE, "codex exit code 0 without a readable trace: conservatively treated as an environment abort"
+    return None
 
 
 def fake_codex(args, sessions_dir: Path) -> int:
@@ -679,15 +694,18 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
                        "container stopped and resolve the usage before resuming")
         record["tokenUsageBasis"] = ("cumulative value observed in the trace collected after the kill; a lower bound "
                                      "that excludes usage not recorded before the stop")
-    aborted = screen_abort(args, rc)
+    screening = args.cmd == "screen"
+    aborted = None
+    if screening and rc is not None:
+        readable, usage_known = screen_trace_state(rdir)
+        aborted = screen_abort(rc, readable)
     if aborted:
-        record.update(status=ABORTED_NONZERO, modelLaunched=True, finishedAt=now(),
-                      stopReason=f"codex exit code {rc}: conservatively treated as an environment abort")
-        record["tokenUsageKnown"] = trace_has_usage(rdir)
+        record.update(status=aborted[0], modelLaunched=True, finishedAt=now(), stopReason=aborted[1],
+                      tokenUsageKnown=usage_known)
         write_record(rdir, record)
-        if not record["tokenUsageKnown"]:
-            raise Stop(f"{run['runId']} exited {rc} and its token usage is unknown; confirm the cause and resolve "
-                       "the usage before resuming")
+        if not usage_known:
+            raise Stop(f"{run['runId']} {aborted[1]}; its token usage is unknown. Confirm the cause and resolve the "
+                       "usage before resuming")
         record["tokenUsageBasis"] = "cumulative value observed in the trace; a lower bound if usage went unrecorded"
     session = find_session(rdir / "sessions")
     trace = read_trace(session)
@@ -705,11 +723,20 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     if rc is None:
         record["status"] = "aborted-timeout"
     elif aborted:
-        record["status"] = ABORTED_NONZERO
+        record["status"] = aborted[0]
     elif not will_grade(args):
         record["status"] = "dry-run-ungraded"
     else:
-        record.update(grade(cand, ws, rdir / "grade", ac_files, args.ac_python))
+        try:
+            record.update(grade(cand, ws, rdir / "grade", ac_files, args.ac_python))
+        except (subprocess.SubprocessError, OSError) as exc:
+            if not screening:
+                raise
+            record.update(status="grade-error", modelLaunched=True, finishedAt=now(),
+                          stopReason=f"grading failed: {type(exc).__name__}")
+            write_record(rdir, record)
+            raise Stop(f"{run['runId']} could not be graded ({type(exc).__name__}); the Run is kept unclassified and "
+                       "the screening cannot resume until the Operator decides how to treat it")
         record["status"] = "completed"
     if record["totalTokens"] > args.max_run_tokens:
         record["tokenLimitExceeded"] = True
@@ -719,8 +746,12 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
         raise Stop(f"{run['runId']} timed out and docker stop failed ({timeout_trace}); confirm the container "
                    "stopped, then resume with --skip-existing")
     if aborted:
-        raise Stop(f"{run['runId']} exited {rc}; the candidate is budget-excluded. Confirm the cause, then resume "
-                   "with --skip-existing")
+        raise Stop(f"{run['runId']} {aborted[1]}: exited {rc}; the candidate is budget-excluded. Confirm the cause, "
+                   "then resume with --skip-existing")
+    stop_trace = record.get("isolation", {}).get("stopTrace")
+    if stop_trace and stop_trace.get("stopExitCode") != 0:
+        raise Stop(f"{run['runId']} finished and docker stop failed ({stop_trace}); confirm the container stopped, "
+                   "then resume with --skip-existing")
     return record
 
 

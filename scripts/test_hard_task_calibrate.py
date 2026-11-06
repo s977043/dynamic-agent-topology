@@ -765,16 +765,18 @@ class NonzeroExitRun(FakeRealRun):
 
 
 class NonzeroHandlerRun(TimeoutHandlerRun):
-    """Keeps the real container_exec_codex; Codex exits 1 and the session collection behaves as `collect`."""
+    """Keeps the real container_exec_codex; Codex ends with `code`; collection and docker stop behave as given."""
 
-    def __init__(self, collect):
-        super().__init__(0, collect)
+    def __init__(self, collect, stop=0, code=1):
+        super().__init__(0, collect, 0, stop)
+        self.code = code
 
     def __enter__(self):
         super().__enter__()
+        code = self.code
 
-        class ExitOne:
-            returncode = 1
+        class Exit:
+            returncode = code
 
             def __init__(self, *_a, **_k):
                 pass
@@ -782,8 +784,121 @@ class NonzeroHandlerRun(TimeoutHandlerRun):
             def communicate(self, _prompt, timeout):
                 return None
 
-        subprocess.Popen = ExitOne
+        subprocess.Popen = Exit
         return self
+
+
+def resolve_usage(path: Path) -> None:
+    """Runbook §7 step 4: only totalTokens and tokenUsageKnown change."""
+    path.write_text(json.dumps({**json.loads(path.read_text()), "totalTokens": 70000, "tokenUsageKnown": True}))
+
+
+def test_screen_abort_keeps_record(tmp: Path, reuse: Path, tasks: Path) -> None:
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    others = {o: 1 for o in range(7, 45)}
+
+    work = tmp / "ab-stop"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    with NonzeroHandlerRun("ok", stop="oserror"):
+        rc, _, err = run_cli(args)
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    check(rc == 2 and record["status"] == "aborted-nonzero-exit" and record["modelLaunched"] is True
+          and record["isolation"]["stopTrace"]["stopError"] == "OSError" and "docker stop" in err,
+          f"stop failure after exit 1 is kept: {record}")
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and (work / "HTS-07-n1").exists() and not (work / "HTS-06-n2").exists(), f"resumes: {err}")
+
+    work = tmp / "ab-read"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    saved = htc.read_trace
+
+    def unreadable(_path):
+        raise OSError("read")
+
+    htc.read_trace = unreadable
+    try:
+        with NonzeroExitRun({"HTS-06-n1": 1}):
+            rc, _, err = run_cli(args)
+    finally:
+        htc.read_trace = saved
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    check(rc == 2 and "STOP" in err and record["status"] == "aborted-nonzero-exit" and record["modelLaunched"] is True
+          and record["tokenUsageKnown"] is False and "totalTokens" not in record, f"unreadable trace: {record}")
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 2 and "unknown" in err, "unreadable trace: resume waits for the usage")
+    resolve_usage(path)
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and (work / "HTS-07-n1").exists() and not (work / "HTS-06-n2").exists(), f"runbook resume: {err}")
+
+    work = tmp / "ab-zero-collect"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    with NonzeroHandlerRun("fail", code=0):
+        rc, _, err = run_cli(args)
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    check(rc == 2 and record["status"] == "aborted-trace-unavailable" and record["modelLaunched"] is True
+          and record["tokenUsageKnown"] is False and record["codexExitCode"] == 0, f"exit 0 without a trace: {record}")
+    resolve_usage(path)
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    rows = {r["order"]: r for r in htc.screen_summarize(work, reuse)["candidates"]}
+    check(rc == 0 and rows[6]["outcome"] == "budget-excluded" and not (work / "HTS-06-n2").exists(), f"resumes: {err}")
+
+    work = tmp / "ab-zero-stop"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    with NonzeroHandlerRun("ok", stop="oserror", code=0):
+        rc, _, err = run_cli(args)
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(rc == 2 and "docker stop failed" in err and record["status"] == "completed" and record["totalTokens"] == 68022
+          and not (work / "HTS-06-n2").exists(), f"exit 0, stop failure: result kept, batch stops: {err}")
+    with NonzeroExitRun({}, {6: 2, **others}):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and json.loads((work / "HTS-06-n1" / "run.json").read_text()) == record
+          and (work / "HTS-06-n2").exists(), f"exit 0, stop failure: resumes: {err}")
+
+    work = tmp / "ab-grade"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    with NonzeroExitRun({}):
+        def hang(*_a):
+            raise subprocess.TimeoutExpired("ac", 300)
+        htc.grade = hang
+        rc, _, err = run_cli(args)
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(rc == 2 and "STOP" in err and record["status"] == "grade-error" and record["modelLaunched"] is True
+          and record["totalTokens"] == 68022, f"grade failure is recorded: {record}")
+    with NonzeroExitRun({}, others):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 2 and "cannot classify" in err, "grade failure never becomes a result on resume")
+
+
+def test_screen_abort_accounting(tmp: Path, reuse: Path, tasks: Path) -> None:
+    work = tmp / "acct"
+    with NonzeroExitRun({"HTS-06-n1": 1}):
+        run_cli(real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000")))
+    with NonzeroExitRun({}):
+        rc, out, err = run_cli(real_args(screen_args(work, reuse, tasks, "--skip-existing", run="100000", cand="1000000",
+                                                     budget="168021")))
+    check(rc == 2 and "68022" in out and "budget" in err and not (work / "HTS-07-n1").exists(),
+          f"aborted usage counts against the budget on resume: {err}")
+    with NonzeroExitRun({}, {o: 1 for o in range(8, 45)}):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, "--skip-existing", run="100000", cand="1000000",
+                                                   budget="168022")))
+    check((work / "HTS-07-n1").exists(), f"exactly the remaining budget starts the next Run: {err}")
+
+    work = tmp / "twelve"
+    args = real_args(screen_args(work, reuse, tasks))
+    with NonzeroExitRun({"HTS-06-n1": 1}):
+        run_cli(args)
+    with NonzeroExitRun({}):
+        rc, out, err = run_cli(args + ["--skip-existing"])
+    s = htc.screen_summarize(work, reuse)
+    check(rc == 0 and "target-reached" in out and s["selectedCount"] == 12 and 6 not in s["selectedZero"]
+          and s["selectedZero"][-1] == 19 and not (work / "HTS-20-n1").exists(), f"12 without the aborted one: {s['selectedZero']}")
 
 
 def test_screen_nonzero_exit(tmp: Path, reuse: Path, tasks: Path) -> None:
@@ -930,6 +1045,8 @@ def main() -> int:
         test_timeout_reaches_aborted(tmp, reuse, screen_tasks)
         test_timeout_handler(tmp, reuse, screen_tasks)
         test_screen_nonzero_exit(tmp, reuse, screen_tasks)
+        test_screen_abort_keeps_record(tmp, reuse, screen_tasks)
+        test_screen_abort_accounting(tmp, reuse, screen_tasks)
         test_calibration_keeps_nonzero_exit()
         test_success_at_later_runs(tmp, reuse, screen_tasks)
     print("test_hard_task_calibrate: OK")

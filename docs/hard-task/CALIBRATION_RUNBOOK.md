@@ -142,7 +142,7 @@
 
 **timeout**: `aborted-timeout` の候補は失敗に数えず budget-excluded とし、次の候補へ進みます。`tokenUsageKnown: true` の値は、kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限です（`tokenUsageBasis`）。これを確定値として予算に加算して次へ進むため、timeout が重なると不足分が累積します。この扱いを受け入れるかは、第 2 版 §5.1b の超過可能性と処置についての Operator の判断に含めます。
 
-**非ゼロ終了**: スクリーニングでは、Codex の非ゼロ終了を採点せず `aborted-nonzero-exit` として残し、その候補を budget-excluded（理由に終了コード）として残りの Run を打ち切り、バッチを停止します。第 2 版 §3 に環境起因の判定基準がないため、非ゼロ終了を環境起因として保守的に扱う実装上の規則で、Operator の確認待ちです。Operator は `codex-stderr.log` などで原因を確かめて #244 に記録し、`--skip-existing` で再開します（次の候補へ進み、中止 Run は作り直しません）。使用量が trace から読めないときは、次の「使用量が不明なとき」の解決が先です。較正モードの扱いは変えていません。
+**非ゼロ終了**: スクリーニングでは、Codex の非ゼロ終了を採点せず `aborted-nonzero-exit` として残し、その候補を budget-excluded（理由に終了コード）として残りの Run を打ち切り、バッチを停止します。第 2 版 §3 に環境起因の判定基準がないため、非ゼロ終了を環境起因として保守的に扱う実装上の規則で、Operator の確認待ちです。Operator は `codex-stderr.log` などで原因を確かめて #244 に記録し、`--skip-existing` で再開します（次の候補へ進み、中止 Run は作り直しません）。使用量が trace から読めないときは、次の「使用量が不明なとき」の解決が先です。終了コード 0 でも trace を回収・読み取りできなければ、同じ規則で `aborted-trace-unavailable` とします。model 起動後の `docker stop` の失敗は `isolation.stopTrace` に残してバッチを停止し、container の停止を確かめた後に再開します。AC の実行自体が失敗した Run は `grade-error` として残して停止します。成否を分類する規則がないため、再開には Operator の判断が要ります。これらの規則も Operator の確認待ちです。較正モードの扱いは変えていません。
 
 **使用量が不明なとき**: バッチが止まり、集計の `budgetExcluded[].usageUnknown` と `usageUnknownRuns` に表示されます。Operator は次の順で解決します。
 

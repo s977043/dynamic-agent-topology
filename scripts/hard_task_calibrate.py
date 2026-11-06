@@ -57,6 +57,8 @@ C = 44
 T0_TOKENS_EXP001 = 68022.0
 LOCK_NAME = ".calibration.lock"
 TIMEOUT_STEP_S = 30
+ABORTED_NONZERO = "aborted-nonzero-exit"
+ABORTED_STATUSES = ("aborted-timeout", ABORTED_NONZERO)
 CODEX_HOME = "/tmp/codex-home"
 # Same profile as EXP-001 config-never.sh: workspace-write equivalent, CODEX_HOME hidden from sandboxed commands.
 CONFIG_TOML = f"""model = "{MODEL}"
@@ -340,7 +342,12 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict) -> tuple
                 stop_bound = TIMEOUT_STEP_S
                 evidence["timeoutTrace"] = stop_after_timeout(name, proc, rdir)
                 return None, evidence
-        collect_sessions(name, rdir)
+        try:
+            collect_sessions(name, rdir)
+        except (subprocess.CalledProcessError, tarfile.TarError, OSError) as exc:
+            if not screen_abort(args, rc):
+                raise
+            evidence["collectError"] = type(exc).__name__
         return rc, evidence
     finally:
         if started:
@@ -403,10 +410,19 @@ def timeout_usage_known(rdir: Path, timeout_trace: dict) -> bool:
     """Only a clean kill, a post-kill collection, and a token_count in that trace count; nothing is estimated."""
     if timeout_trace.get("killExitCode") != 0 or timeout_trace.get("collectedAfterKill") is not True:
         return False
+    return trace_has_usage(rdir)
+
+
+def trace_has_usage(rdir: Path) -> bool:
     try:
         return bool(read_trace(find_session(rdir / "sessions"))["totalTokenUsage"])
     except (Stop, ValueError):
         return False
+
+
+def screen_abort(args, rc: int | None) -> bool:
+    """Screening only: a non-zero Codex exit is conservatively treated as an environment abort, never graded."""
+    return args.cmd == "screen" and rc not in (0, None)
 
 
 def fake_codex(args, sessions_dir: Path) -> int:
@@ -457,7 +473,7 @@ def read_record(rdir: Path) -> dict:
     record = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     if not isinstance(record.get("modelLaunched"), bool):
         raise Stop(f"{path} has no boolean modelLaunched; cannot tell whether the model ran")
-    if record.get("status") == "aborted-timeout":
+    if record.get("status") in ABORTED_STATUSES:
         known, has_tokens = record.get("tokenUsageKnown"), isinstance(record.get("totalTokens"), int)
         if not ((known is True and has_tokens) or (known is False and "totalTokens" not in record)):
             raise Stop(f"{path}: tokenUsageKnown {known!r} and totalTokens are inconsistent; not treated as resolved")
@@ -663,6 +679,16 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
                        "container stopped and resolve the usage before resuming")
         record["tokenUsageBasis"] = ("cumulative value observed in the trace collected after the kill; a lower bound "
                                      "that excludes usage not recorded before the stop")
+    aborted = screen_abort(args, rc)
+    if aborted:
+        record.update(status=ABORTED_NONZERO, modelLaunched=True, finishedAt=now(),
+                      stopReason=f"codex exit code {rc}: conservatively treated as an environment abort")
+        record["tokenUsageKnown"] = trace_has_usage(rdir)
+        write_record(rdir, record)
+        if not record["tokenUsageKnown"]:
+            raise Stop(f"{run['runId']} exited {rc} and its token usage is unknown; confirm the cause and resolve "
+                       "the usage before resuming")
+        record["tokenUsageBasis"] = "cumulative value observed in the trace; a lower bound if usage went unrecorded"
     session = find_session(rdir / "sessions")
     trace = read_trace(session)
     record["trace"] = {"file": str(session.relative_to(rdir)), "cliVersion": trace["cliVersion"],
@@ -678,6 +704,8 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     record["totalTokens"] = int(usage["input_tokens"]) + int(usage["output_tokens"])
     if rc is None:
         record["status"] = "aborted-timeout"
+    elif aborted:
+        record["status"] = ABORTED_NONZERO
     elif not will_grade(args):
         record["status"] = "dry-run-ungraded"
     else:
@@ -690,6 +718,9 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
     if rc is None and timeout_trace.get("stopExitCode") != 0:
         raise Stop(f"{run['runId']} timed out and docker stop failed ({timeout_trace}); confirm the container "
                    "stopped, then resume with --skip-existing")
+    if aborted:
+        raise Stop(f"{run['runId']} exited {rc}; the candidate is budget-excluded. Confirm the cause, then resume "
+                   "with --skip-existing")
     return record
 
 
@@ -864,7 +895,7 @@ def run_outcome(rec: dict) -> str:
     if rec.get("tokenLimitExceeded"):
         return "budget-excluded"
     status = rec.get("status")
-    if status == "aborted-timeout":
+    if status in ABORTED_STATUSES:
         return "budget-excluded"
     if status == "completed":
         if not isinstance(rec.get("verifiedSuccess"), bool):
@@ -885,15 +916,15 @@ def screen_records(work_root: Path, order: int) -> list[dict]:
         rec = read_record(rdir)
         if never_launched(rec):
             continue
-        if not isinstance(rec.get("totalTokens"), int) and rec.get("status") != "aborted-timeout":
+        if not isinstance(rec.get("totalTokens"), int) and rec.get("status") not in ABORTED_STATUSES:
             raise Stop(f"{rdir.name} has no totalTokens; record its usage before resuming")
         recs.append(rec)
     return recs
 
 
 def exclusion_reason(rec: dict) -> str:
-    if rec.get("tokenLimitExceeded"):
-        return (f"token limit: {rec['runId']} used {rec['totalTokens']} tokens "
+    if rec.get("tokenLimitExceeded") and rec.get("status") != ABORTED_NONZERO:
+        return (f"token limit:{rec['runId']} used {rec['totalTokens']} tokens "
                 f"> --max-run-tokens {rec['limits']['maxRunTokens']}")
     tokens = rec.get("totalTokens")
     return f"{rec.get('stopReason')}: {rec['runId']} used {'unknown' if tokens is None else tokens} tokens"

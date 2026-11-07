@@ -19,7 +19,7 @@
 
 証拠（Agentの記録）:
 
-- [実containerのリハーサル](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6712281649)（main `0db01af`）: S1〜S10の停止・再開経路が期待と一致。dry-run（`screen-plan`、`screen --dry-run`）はexit 0。**本物のCodexは起動していない**（偽の`bin/codex`とダミーauth）。`codex --version`・auth probeはSIMULATEDで、本物のCodexのtrace形式とkillへの反応は未検証。1GBを超えるtraceは未測定。
+- [実containerのリハーサル](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6712281649)（main `0db01af`）: S1〜S10の停止・再開経路が期待と一致。dry-run（`screen-plan`、`screen --dry-run`）はexit 0。**本物のCodexは起動していない**（偽の`bin/codex`とダミーauth）。`codex --version`・auth probeはSIMULATEDで、本物のCodexのtrace形式とkillへの反応は未検証。回収時間は312MBと1.04GBの合成traceで測定した（1.04GBで19.1秒、上限30秒の64%）。それより大きいtraceと本物のCodexのtraceは未測定。
 - キットの不具合候補4件: `control-deviation`で`screen-summarize`がrc=2で止まる、`--rm`由来の`docker stop`のWARNING誤報、停止経路で`phase`が入らない、回収の30秒上限がhost側の展開に効かない（推定）。修正はブランチ `fix/244-screening-rehearsal-findings` で作業中（取得時点でPR・remoteブランチなし）。
 
 Operatorの判断（[判断材料](https://github.com/s977043/dynamic-agent-topology/issues/244#issuecomment-6712373806)）:
@@ -41,7 +41,7 @@ D1〜D4が揃い、キット修正がmergeされるまでスクリーニング�
 | P0 | 本計画の更新PR | Open Issue/PRの原本照合、別セッションの独立レビュー、最新head CI | 通常文書PRの必須指摘0・必須CI成功でmerge |
 | P0 | #244 キット修正 | `fix/244-screening-rehearsal-findings` のPR化、独立レビュー | 規則・必須CIのテストを変えるなら規則変更PRとしてHuman merge |
 | P0 | #244 Operator判断 | D1・D3・D4の回答、D2案Aの仕組みの記録 | 揃うまでスクリーニングを起動しない。Agentは判断を代行しない |
-| P1 | #288 / #248 | Draftの合成oracleと最小検証計画 | Human merge待ち。合成oracleのPASSを効果証拠にしない |
+| P1 | #288 / #248 | Draftの合成oracleと最小検証計画。次の作業は別モデルの独立レビュー | 独立レビューの後にHuman merge（必須CIのworkflowにテストを足すため規則変更PRとして扱う。#288の2026-11-05のコメント）。合成oracleのPASSを効果証拠にしない |
 | P1 | #302 | Mac Claude CodeでのT0/T1実モデル反復の実行条件 | Operator判断待ち。model起動はOperator |
 | P1 | #223 / #268 / #287 / #295 | 未決事項・計測・研究ノートの次段階 | 判定規則の変更と公開を混同しない。未計測を計測済みにしない |
 | P2 | #31 / #159 / #88 / #93 / #220 | 管理者確認・事前登録・実測条件の整理 | 設定を推測でPASSにしない。前提未達はUNKNOWN/DEFER |
@@ -55,7 +55,7 @@ D1〜D4が揃い、キット修正がmergeされるまでスクリーニング�
 | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) | #82/#211を候補armとして吸収済み | 母集団・予算・事前登録が必要。Human同意はEXP-002→EXP-003の順序だけ |
 | [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | 規則変更PRの記録先。最新は#307 | Actions PR作成許可の管理者確認。規則・Guard変更のmergeはHuman |
 | [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) | 予備キット#254と修正#257/#261/#263。資格情報は案D（Operator承認） | 実効permission・認証・課金境界は未実測。FAIL/NOT_TESTEDが残る間model起動なし |
-| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | H1支持23件/7project、H2支持23/23（Agent報告） | 原store・ログの独立監査は未実施。公開転記は設計§6、release/tagはHuman |
+| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | H1支持23件/7project、H2支持23/23（Agent報告） | 原store・ログの独立監査は未実施。公開転記は設計§6、Releaseの公開はバージョンごとのHumanのyが前提 |
 | [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) | 上記「#244 スクリーニング起動前の状態」 | D1〜D4とキット修正。評価予算は選定後の見積もりで再承認 |
 | [#248](https://github.com/s977043/dynamic-agent-topology/issues/248) | Draft #288（合成oracle 34テスト） | 事前登録・独立oracle・費用・Operator条件を満たしてから実行 |
 | [#268](https://github.com/s977043/dynamic-agent-topology/issues/268) | RFC・P0 Journey・#276/#277の対応がmerge済み | 分岐順の変更（breaking）は仮説H-A2の検証後 |
@@ -69,7 +69,7 @@ D1〜D4が揃い、キット修正がmergeされるまでスクリーニング�
 2. **検証→レビュー→修正→再レビュー:** 最新mainへの通常同期、共有台帳の保全、正負検証、33 original blobs、Human-owned境界を確認する。
 3. **検証→レビュー→修正→再レビュー:** 最終head・本文・CI・未解決指摘を一致させ、別セッション独立Reviewerが判断する。変更があれば影響を再検証する。
 
-回数自体や作者の自己レビューを独立承認にしません。差分を作成したセッションは自己承認せず、別セッションへ原本・exact head・関連Issue・検証ログを渡します。[Harness](AGENT_HARNESS.md)に従い、通常PRのみ必要CI成功・独立レビュー必須指摘0・Ruleset順守後にmerge。AGENTS/CLAUDE/.claude/.codex/Harness規則等の変更、Freeze、release/tag、force push、削除はHuman専権を維持します。
+回数自体や作者の自己レビューを独立承認にしません。差分を作成したセッションは自己承認せず、別セッションへ原本・exact head・関連Issue・検証ログを渡します。[Harness](AGENT_HARNESS.md)に従い、通常PRのみ必要CI成功・独立レビュー必須指摘0・Ruleset順守後にmerge。AGENTS/CLAUDE/.claude/.codex/Harness規則等の変更のmerge、Freeze、force push、削除はHuman専権を維持します。Releaseの公開にはバージョンごとにHumanのyが必要で、その承認とHOTL条件のもとで、release PRのmerge・新しいtagの作成・Releaseの公開・公開後の検証はAgentが行えます（[AGENTS.md](../AGENTS.md)、[RELEASE_READINESS](RELEASE_READINESS.md)）。既存tagの移動・削除、Releaseの削除、breaking changeやFeature Freezeに関わる公開はHuman-onlyです。
 
 ## 終了・保留
 

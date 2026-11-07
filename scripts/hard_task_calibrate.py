@@ -483,7 +483,7 @@ def scan_trace_controls(rdir: Path) -> tuple[list[str], list[str]]:
     contexts = metas = 0
     for path in paths:
         try:
-            lines = path.read_bytes().decode("utf-8", errors="replace").splitlines()
+            lines = trace_lines(path.read_bytes().decode("utf-8", errors="replace"))
         except OSError:
             missing.add("session-files")
             continue
@@ -518,6 +518,12 @@ def screen_check_controls(rdir: Path, record: dict) -> None:
     mismatches, missing = scan_trace_controls(rdir)
     if missing:
         record["traceControlsMissing"] = missing
+    try:
+        has_trace = any((rdir / "sessions").rglob("rollout-*.jsonl"))
+    except OSError:
+        has_trace = False
+    if not has_trace:
+        record["traceControlsChecked"] = False
     if mismatches:
         if record.get("status") in ABORTED_STATUSES:
             record["abortedAs"] = record["status"]
@@ -678,7 +684,7 @@ def find_session(sessions_root: Path) -> Path:
 def read_trace(path: Path, null_safe: bool = False) -> dict:
     """null_safe (screening): contexts mixing null and string values are returned, not a sort failure."""
     meta, contexts, usage = {}, [], None
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in trace_lines(path.read_text(encoding="utf-8")):
         rec = json.loads(line)
         payload = rec.get("payload") or {}
         if rec.get("type") == "session_meta":
@@ -920,7 +926,23 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
 
 
 def write_record(rdir: Path, record: dict) -> None:
-    (rdir / "run.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    """A failed write leaves the previous run.json intact: write a sibling temporary file, then replace."""
+    fd, tmp = tempfile.mkstemp(prefix=".run.json.", dir=rdir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
+        os.replace(tmp, rdir / "run.json")
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def trace_lines(text: str) -> list[str]:
+    """JSONL lines split on \\n only; str.splitlines() would also split inside strings at U+2028 and similar."""
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return lines
 
 
 def cmd_run(args) -> int:

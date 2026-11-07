@@ -983,14 +983,18 @@ class TraceTimeoutRun(TimeoutHandlerRun):
         write_trace(rdir, "readable", self.usage, self.context, self.model)
 
 
-def raw_trace(rdir: Path, cli: str | None, contexts: list[tuple]) -> None:
+BROKEN = "{broken"
+
+
+def raw_trace(rdir: Path, cli: str | None, contexts: list) -> None:
     """A valid JSON trace with usage whose effective values are exactly the given ones."""
-    lines = [{"type": "session_meta", "payload": {"cli_version": cli}}]
-    lines += [{"type": "turn_context", "payload": {"model": m, "effort": e}} for m, e in contexts]
-    lines.append({"type": "event_msg", "payload": {"type": "token_count", "info": {"total_token_usage": {
-        "input_tokens": 68022, "output_tokens": 0}}}})
+    lines = [json.dumps({"type": "session_meta", "payload": {"cli_version": cli}})]
+    lines += [BROKEN if c == BROKEN else json.dumps({"type": "turn_context", "payload": {"model": c[0], "effort": c[1]}})
+              for c in contexts]
+    lines.append(json.dumps({"type": "event_msg", "payload": {"type": "token_count", "info": {"total_token_usage": {
+        "input_tokens": 68022, "output_tokens": 0}}}}))
     (rdir / "sessions").mkdir(parents=True, exist_ok=True)
-    (rdir / "sessions" / "rollout-raw.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
+    (rdir / "sessions" / "rollout-raw.jsonl").write_text("".join(ln + "\n" for ln in lines))
 
 
 class RawTimeoutRun(TimeoutHandlerRun):
@@ -1022,7 +1026,13 @@ def null_mix_cases() -> list[tuple]:
     return [("cli", "0.159.0", [NULL_MODEL, GOOD]),
             ("model", GOOD_CLI, [NULL_MODEL, GOOD, ("gpt-6-luna", htc.EFFORT)]),
             ("effort", GOOD_CLI, [NULL_EFFORT, GOOD, (htc.MODEL, "medium")]),
-            ("same-line", GOOD_CLI, [GOOD, (None, "medium")])]
+            ("same-line", GOOD_CLI, [GOOD, (None, "medium")]),
+            ("array-cli", "0.159.0", [([], htc.EFFORT), GOOD]),
+            ("array-effort", GOOD_CLI, [([], "medium")]),
+            ("array-model", GOOD_CLI, [(htc.MODEL, ["high"]), ("gpt-6-luna", htc.EFFORT)]),
+            ("broken-before", GOOD_CLI, [BROKEN, ("gpt-6-luna", htc.EFFORT)]),
+            ("broken-after", GOOD_CLI, [("gpt-6-luna", htc.EFFORT), BROKEN]),
+            ("broken-cli", "0.159.0", [BROKEN, GOOD])]
 
 
 def check_null_mix_refused(tmp: Path, reuse: Path, tasks: Path, name: str, make) -> None:
@@ -1067,6 +1077,40 @@ def test_screen_trace_null_mix(tmp: Path, reuse: Path, tasks: Path) -> None:
         check(rc == 0 and (work / "HTS-07-n1").exists(), f"null {name}: resumes: {err}")
         rows = {r["order"]: r for r in htc.screen_summarize(work, reuse)["candidates"]}
         check(rows[6]["outcome"] == "budget-excluded", f"null {name}: excluded")
+    for name, contexts, missing in (("broken", [BROKEN, GOOD], "malformed-lines"), ("array", [([], htc.EFFORT)], "model")):
+        for kind, make in (("exit0", lambda c, x: RawExitRun(0, c, x)), ("exit1", lambda c, x: RawExitRun(1, c, x)),
+                           ("timeout", RawTimeoutRun)):
+            work = tmp / "unusable" / f"{name}-{kind}"
+            args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
+            with make(GOOD_CLI, contexts):
+                rc, _, err = run_cli(args)
+            path = work / "HTS-06-n1" / "run.json"
+            record = json.loads(path.read_text())
+            check(rc == 2 and record["status"] in htc.ABORTED_STATUSES and record["tokenUsageKnown"] is False
+                  and "verifiedSuccess" not in record and missing in record["traceControlsMissing"],
+                  f"{name}-{kind}: missing, not a mismatch: {record}")
+            resolve_usage(path)
+            with NonzeroExitRun({}, others):
+                rc, _, err = run_cli(args + ["--skip-existing"])
+            check(rc == 0 and (work / "HTS-07-n1").exists(), f"{name}-{kind}: resumes: {err}")
+
+    work = tmp / "unusable" / "run-error"
+    args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
+    saved = htc.screen_trace_state
+
+    def raises(_rdir):
+        raise RuntimeError("state")
+
+    htc.screen_trace_state = raises
+    try:
+        with RawExitRun(1, "0.159.0", [GOOD]):
+            rc, _, err = run_cli(args)
+    finally:
+        htc.screen_trace_state = saved
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(rc == 2 and "control deviation" in err and record["status"] == "control-deviation"
+          and record["abortedAs"] == "aborted-run-error", f"run error keeps the mismatch check: {record}")
+
     work = tmp / "null-only" / "exit0"
     with RawExitRun(0, GOOD_CLI, [NULL_MODEL, GOOD]):
         rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000")))
@@ -1128,7 +1172,8 @@ def check_matrix_case(tmp: Path, reuse: Path, tasks: Path, case: tuple) -> None:
     check(rc == 2 and record["status"] == expected and runner.graded == [] and "verifiedSuccess" not in record
           and "acExitCode" not in record and record["modelLaunched"] is True, f"{label}: {expected}: {record} {err}")
     check(record["tokenUsageKnown"] is intact and ("totalTokens" in record) is intact, f"{label}: usage: {record}")
-    check(("traceControlsMissing" in record) is (trace == "readable" and not context), f"{label}: evidence: {record}")
+    check(("traceControlsMissing" in record) is (trace == "corrupt" or (trace == "readable" and not context)),
+          f"{label}: evidence: {record}")
     check(not (work / "HTS-06-n2").exists() and not (work / "HTS-07-n1").exists(), f"{label}: stops at the first Run")
 
     def excluded() -> None:

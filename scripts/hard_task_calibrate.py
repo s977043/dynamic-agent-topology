@@ -437,32 +437,64 @@ def screen_trace_state(rdir: Path) -> tuple[bool, bool]:
         return True, False
 
 
-def trace_controls(trace: dict) -> tuple[list[str], list[str]]:
-    """(mismatches, missing) of the trace's effective values: absence is not evidence of a different model."""
-    mismatches, missing = [], []
-    if not trace["contexts"]:
-        missing.append("turn_context")
-    for field, expected, values in (("model", MODEL, {c[0] for c in trace["contexts"]}),
-                                    ("effort", EFFORT, {c[1] for c in trace["contexts"]})):
-        if None in values:
-            missing.append(field)
-        for value in sorted(values - {None, expected}, key=repr):
-            mismatches.append(f"trace {field} {value!r} != {expected!r}")
-    if trace["cliVersion"] is None:
-        missing.append("cli_version")
-    elif trace["cliVersion"] != RUNTIME_VERSION.split()[-1]:
-        mismatches.append(f"trace cli_version {trace['cliVersion']!r}")
-    return mismatches, missing
+def scan_trace_controls(rdir: Path) -> tuple[list[str], list[str]]:
+    """(mismatches, missing) line by line, over every session file; never raises and never stops at a bad line.
+
+    Unreadable files, malformed lines, and non-string values are missing; absence is not evidence of a different
+    model, and it never hides a mismatch elsewhere. No session file at all gives nothing to report.
+    """
+    expected = {"model": MODEL, "effort": EFFORT, "cli_version": RUNTIME_VERSION.split()[-1]}
+    seen: dict[str, set[str]] = {field: set() for field in expected}
+    missing: set[str] = set()
+
+    def note(field: str, value: object) -> None:
+        if isinstance(value, str):
+            seen[field].add(value)
+        else:
+            missing.add(field)
+
+    try:
+        paths = sorted((rdir / "sessions").rglob("rollout-*.jsonl"))
+    except OSError:
+        return [], ["session-files"]
+    if not paths:
+        return [], []
+    contexts = metas = 0
+    for path in paths:
+        try:
+            lines = path.read_bytes().decode("utf-8", errors="replace").splitlines()
+        except OSError:
+            missing.add("session-files")
+            continue
+        for line in lines:
+            try:
+                rec = json.loads(line)
+            except (ValueError, RecursionError):
+                missing.add("malformed-lines")
+                continue
+            payload = rec.get("payload") if isinstance(rec, dict) else None
+            kind = rec.get("type") if isinstance(rec, dict) else None
+            if not isinstance(rec, dict) or (kind in ("turn_context", "session_meta") and not isinstance(payload, dict)):
+                missing.add("malformed-lines")
+            elif kind == "turn_context":
+                contexts += 1
+                note("model", payload.get("model"))
+                note("effort", payload.get("effort"))
+            elif kind == "session_meta":
+                metas += 1
+                note("cli_version", payload.get("cli_version"))
+    if not contexts:
+        missing.add("turn_context")
+    if not metas:
+        missing.add("cli_version")
+    mismatches = [f"trace {field} {value!r} != {expected[field]!r}"
+                  for field in expected for value in sorted(seen[field] - {expected[field]})]
+    return mismatches, sorted(missing)
 
 
 def screen_check_controls(rdir: Path, record: dict) -> None:
     """Saves missing values next to the abort state; only an actual mismatch overrides it and stops the batch."""
-    try:
-        session = find_session(rdir / "sessions")
-        trace = read_trace(session, null_safe=True)
-    except Exception:
-        return
-    mismatches, missing = trace_controls(trace)
+    mismatches, missing = scan_trace_controls(rdir)
     if missing:
         record["traceControlsMissing"] = missing
     if mismatches:
@@ -751,6 +783,10 @@ def record_run_error(rdir: Path, record: dict, exc: Exception) -> Stop:
     record.update(status=ABORTED_ERROR, modelLaunched=True, tokenUsageKnown=False, finishedAt=now(),
                   stopReason=f"error after the model started: {cause}: conservatively treated as an environment abort")
     write_record(rdir, record)
+    try:
+        screen_check_controls(rdir, record)
+    except Stop as deviation:
+        return deviation
     return Stop(f"{record['runId']} failed after the model started ({cause}); its token usage is unknown. Confirm the "
                 "container stopped and resolve the usage before resuming")
 
@@ -797,10 +833,7 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
     if screening and rc is not None:
         readable, usage_known = screen_trace_state(rdir)
         collect_error = record.get("isolation", {}).get("collectError")
-        try:
-            controls_known = readable and not trace_controls(read_trace(find_session(rdir / "sessions"), null_safe=True))[1]
-        except Exception:
-            controls_known = False
+        controls_known = readable and not scan_trace_controls(rdir)[1]
         aborted = screen_abort(rc, collect_error, readable, usage_known, controls_known)
         usage_known = usage_known and not collect_error  # a partial collection is not a confirmed cumulative value
     if aborted:

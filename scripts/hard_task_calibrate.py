@@ -367,18 +367,24 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict, on_launc
 def record_container_stop(name: str, trace: dict, confirm_absent: bool) -> None:
     """A failed stop must not lose the Run's record; it is kept as evidence and shown to the Operator.
 
-    Screening only: a failed stop of a container confirmed absent counts as stopped.
+    Screening only: an absent container is recorded, but the batch still stops, because absence on the current
+    daemon does not prove that the container started on the launch daemon has stopped.
     """
     trace["stopExitCode"] = None
     try:
         trace["stopExitCode"] = docker("stop", "-t", "5", name, check=False, timeout=TIMEOUT_STEP_S).returncode
     except (subprocess.TimeoutExpired, OSError) as exc:
         trace["stopError"] = type(exc).__name__
-    if trace["stopExitCode"] != 0 and confirm_absent:
+    if trace["stopExitCode"] == 0:
+        return
+    if confirm_absent:
         trace["containerAbsent"] = container_absent(name)
-    if not container_stopped(trace):
-        print(f"WARNING: docker stop {name} failed (exit {trace['stopExitCode']}, "
-              f"{trace.get('stopError')}); confirm the container stopped", file=sys.stderr)
+    failed = f"WARNING: docker stop {name} failed (exit {trace['stopExitCode']}, {trace.get('stopError')}); "
+    if trace.get("containerAbsent"):
+        print(failed + "the container is not found; confirm this is the daemon it was started on before resuming",
+              file=sys.stderr)
+    else:
+        print(failed + "confirm the container stopped", file=sys.stderr)
 
 
 def container_absent(name: str) -> bool:
@@ -389,10 +395,6 @@ def container_absent(name: str) -> bool:
     except (subprocess.TimeoutExpired, OSError):
         return False
     return ps.returncode == 0 and not ps.stdout.strip()
-
-
-def container_stopped(trace: dict) -> bool:
-    return trace.get("stopExitCode") == 0 or trace.get("containerAbsent") is True
 
 
 def stop_after_timeout(name: str, proc: subprocess.Popen, rdir: Path) -> dict:
@@ -904,14 +906,14 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
         record["tokenLimitExceeded"] = True
     record["finishedAt"] = now()
     write_record(rdir, record)
-    if rc is None and not container_stopped(timeout_trace):
+    if rc is None and timeout_trace.get("stopExitCode") != 0:
         raise Stop(f"{run['runId']} timed out and docker stop failed ({timeout_trace}); confirm the container "
                    "stopped, then resume with --skip-existing")
     if aborted:
         raise Stop(f"{run['runId']} {aborted[1]}: exited {rc}; the candidate is budget-excluded. Confirm the cause, "
                    "then resume with --skip-existing")
     stop_trace = record.get("isolation", {}).get("stopTrace")
-    if stop_trace and not container_stopped(stop_trace):
+    if stop_trace and stop_trace.get("stopExitCode") != 0:
         raise Stop(f"{run['runId']} finished and docker stop failed ({stop_trace}); confirm the container stopped, "
                    "then resume with --skip-existing")
     return record
@@ -1145,7 +1147,7 @@ def classify(work_root: Path, order: int) -> dict:
         if len(runs) == SCREEN_K:
             outcome = "zero"
     marker = marker_path(work_root, order)
-    if marker.exists():
+    if marker.exists() and outcome != "control-deviation":
         outcome = "budget-excluded"
         reason = json.loads(marker.read_text(encoding="utf-8")).get("reason")
     return {"outcome": outcome, "runs": runs, "tokens": sum(r["tokens"] or 0 for r in runs), "reason": reason,

@@ -161,8 +161,8 @@
 Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
 
 - 固定 image の container 内で kill が exit 0 で返り、Codex 配下が終了し、その後に trace を回収できること。
-- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。ただしスクリーニングでは、`docker ps -a` が応答して同じ名前の container がないと確かめられた場合（`--rm` で先に消えた場合）は `containerAbsent: true` を残して止まったとみなし、`WARNING` を出さずに進む（`isolation.stopTrace` も同じ）。確かめられなければ従来どおり停止する。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、`true` でもバッチを停止する。Operator は `docker ps` などで container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
-- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop）それぞれの上限で、timeout 後の処理全体は最大 150 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
+- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。スクリーニングでは続けて `docker ps -a` で同じ名前の container を探し、応答があって見つからなければ（`--rm` で先に消えた場合など）`containerAbsent: true` を残し、`WARNING` を「container が見つからない。起動先と同じ daemon か確かめてから再開する」という趣旨の文面にする（`isolation.stopTrace` も同じ）。今の接続先にないことは起動した container が止まった証拠にならないため、この場合もバッチは停止する。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、stop が失敗したら `true` でも、`containerAbsent: true` でもバッチを停止する。Operator は起動先の daemon（Docker context）で `docker ps` などを使い、container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
+- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop、stop 失敗後の `docker ps`）それぞれの上限で、timeout 後の処理全体は最大 180 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
 
 **手順**:
 

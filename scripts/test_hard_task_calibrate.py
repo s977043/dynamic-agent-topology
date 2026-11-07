@@ -6,6 +6,7 @@ from pathlib import Path
 import contextlib
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -455,12 +456,14 @@ def test_screen_reuse_and_blobs(tmp: Path, reuse: Path, tasks: Path) -> None:
 
 def test_screen_record_states(tmp: Path, reuse: Path, tasks: Path) -> None:
     check(htc.run_outcome({"runId": "x", "status": "aborted-timeout"}) == "budget-excluded", "timeout is not a failure")
-    for status in ("control-deviation", "started"):
-        try:
-            htc.run_outcome({"runId": "x", "status": status})
-        except htc.Stop:
-            continue
-        raise AssertionError(f"classified status {status}")
+    check(htc.run_outcome({"runId": "x", "status": "control-deviation"}) == "control-deviation",
+          "control deviation is kept apart from the outcomes")
+    try:
+        htc.run_outcome({"runId": "x", "status": "started"})
+    except htc.Stop:
+        pass
+    else:
+        raise AssertionError("classified status started")
     work = tmp / "mix"
     rc, _, _ = run_cli(screen_args(work, reuse, tasks, budget="300000", run="100000"))
     check(rc == 2 and (work / "HTS-06-n1").exists(), "partial dry batch")
@@ -1439,6 +1442,98 @@ def test_success_at_later_runs(tmp: Path, reuse: Path, tasks: Path) -> None:
     check(rows[7]["outcome"] == "truncated" and [r["result"] for r in rows[7]["runs"]] == ["failure", "failure", "success"], "n3")
 
 
+class AbsentStopRun(TimeoutHandlerRun):
+    """docker stop exits 1; `docker ps` lists `containers` (independent of the query) or fails or hangs."""
+
+    def __init__(self, ps, timeout=True, containers=()):
+        super().__init__(0, "ok", 0, 1)
+        self.ps_mode, self.timeout, self.containers = ps, timeout, containers
+        self.ps_args: list[tuple] = []
+
+    def fake_docker(self, *a, stdin=None, check=True, timeout=None):
+        if a[0] == "ps":
+            self.calls.append("ps")
+            self.bounds.append(timeout)
+            self.ps_args.append(a)
+            if self.ps_mode == "hang":
+                raise subprocess.TimeoutExpired("docker", timeout)
+            listed = [c for c in self.containers if f"name=^/{c}$" in a]
+            return subprocess.CompletedProcess(a, 1 if self.ps_mode == "fail" else 0,
+                                               "".join(c + "\n" for c in listed), "")
+        return super().fake_docker(*a, stdin=stdin, check=check, timeout=timeout)
+
+    def __enter__(self):
+        super().__enter__()
+        if not self.timeout:
+            class Exit:
+                returncode = 1
+
+                def __init__(self, *_a, **_k):
+                    pass
+
+                def communicate(self, _prompt, timeout):
+                    pass
+
+            subprocess.Popen = Exit
+        return self
+
+
+def test_screen_rehearsal_findings(tmp: Path, reuse: Path, tasks: Path) -> None:
+    """#244 rehearsal: control-deviation summary, `--rm` container already gone, phase on stop paths."""
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    others = {o: 1 for o in range(7, 45)}
+
+    work = tmp / "rf-deviation"
+    args = real_args(screen_args(work, reuse, tasks, **limits))
+    path = work / "HTS-06-n1" / "run.json"
+    with TraceTimeoutRun(model="gpt-6-luna"):
+        run_cli(args)
+    record = json.loads(path.read_text())
+    check(record["status"] == "control-deviation" and "totalTokens" not in record and record["phase"] == "screening",
+          f"deviation saved with phase: {record}")
+    for name in ("no-usage", "usage-added", "marker"):
+        if name == "usage-added":
+            resolve_usage(path)
+        if name == "marker":
+            htc.write_marker(work, 6, "candidate budget")
+        out = tmp / f"rf-summary-{name}.json"
+        rc, _, err = run_cli(["screen-summarize", "--work-root", str(work), "--reuse-root", str(reuse),
+                              "--output", str(out)])
+        check(rc == 0 and out.exists(), f"{name}: summary saved: {err}")
+        s = json.loads(out.read_text())
+        deviation = s["controlDeviation"]
+        check([d["runId"] for d in deviation] == ["HTS-06-n1"] and "control deviation" in deviation[0]["reason"]
+              and {r["order"]: r for r in s["candidates"]}[6]["outcome"] == "control-deviation"
+              and 6 not in s["selectedZero"] and not s["budgetExcluded"], f"{name}: shown as the stop reason: {s}")
+        with NonzeroExitRun({}, others):
+            rc, _, err = run_cli(args + ["--skip-existing"])
+        check(rc == 2 and "control deviation" in err and "record its usage" not in err and "resolve it" not in err
+              and not (work / "HTS-07-n1").exists(), f"{name}: resume refused without a usage hint: {err}")
+
+    own = f"htc-hts-06-n1-{os.getpid()}"
+    for name, ps, timeout, containers, absent in (
+            ("timeout-absent", "ok", True, (), True), ("timeout-renamed", "ok", True, ("htc-other",), True),
+            ("timeout-present", "ok", True, (own,), False), ("timeout-ps-fail", "fail", True, (), False),
+            ("timeout-ps-hang", "hang", True, (), False), ("exit1-absent", "ok", False, (), True),
+            ("exit1-present", "ok", False, (own,), False)):
+        work = tmp / f"rf-{name}"
+        with AbsentStopRun(ps, timeout, containers) as runner:
+            rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, **limits)))
+        record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+        trace = record["isolation"]["timeoutTrace" if timeout else "stopTrace"]
+        check(record["phase"] == "screening" and trace["stopExitCode"] == 1
+              and runner.ps_args == [("ps", "-a", "--filter", f"name=^/{own}$", "--format", "{{.Names}}")]
+              and all(b == htc.TIMEOUT_STEP_S for b in runner.bounds), f"{name}: {record} {runner.ps_args}")
+        check(rc == 2 and "WARNING" in err and not (work / "HTS-07-n1").exists()
+              and ("not found" in err and "daemon" in err) is absent and trace.get("containerAbsent", False) is absent,
+              f"{name}: a failed stop always stops the batch: {err}")
+        if timeout:
+            check(record["status"] == "aborted-timeout" and "timed out and docker stop failed" in err, f"{name}: {err}")
+        else:
+            check(record["status"] == "aborted-nonzero-exit" and "codex exit code 1" in record["stopReason"]
+                  and "codex exit code 1" in err, f"{name}: {record['status']} {err}")
+
+
 def test_calibration_unchanged() -> None:
     rc, out, _ = run_cli(["plan"])
     check(rc == 0 and len(out.splitlines()) == 25 and all(ln.startswith("HTC-") for ln in out.splitlines()),
@@ -1489,6 +1584,7 @@ def main() -> int:
         test_screen_abort_accounting(tmp, reuse, screen_tasks)
         test_calibration_keeps_nonzero_exit()
         test_success_at_later_runs(tmp, reuse, screen_tasks)
+        test_screen_rehearsal_findings(tmp, reuse, screen_tasks)
     print("test_hard_task_calibrate: OK")
     return 0
 

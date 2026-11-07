@@ -357,23 +357,44 @@ def container_exec_codex(args, rdir: Path, prompt: str, evidence: dict, on_launc
     finally:
         if started:
             if stop_bound is not None:
-                record_container_stop(name, evidence.setdefault("timeoutTrace", {}))
+                record_container_stop(name, evidence.setdefault("timeoutTrace", {}), args.cmd == "screen")
             elif args.cmd == "screen" and evidence.get("modelLaunched"):
-                record_container_stop(name, evidence.setdefault("stopTrace", {}))
+                record_container_stop(name, evidence.setdefault("stopTrace", {}), True)
             else:
                 docker("stop", "-t", "5", name, check=False)
 
 
-def record_container_stop(name: str, trace: dict) -> None:
-    """A failed stop must not lose the Run's record; it is kept as evidence and shown to the Operator."""
+def record_container_stop(name: str, trace: dict, confirm_absent: bool) -> None:
+    """A failed stop must not lose the Run's record; it is kept as evidence and shown to the Operator.
+
+    Screening only: an absent container is recorded, but the batch still stops, because absence on the current
+    daemon does not prove that the container started on the launch daemon has stopped.
+    """
     trace["stopExitCode"] = None
     try:
         trace["stopExitCode"] = docker("stop", "-t", "5", name, check=False, timeout=TIMEOUT_STEP_S).returncode
     except (subprocess.TimeoutExpired, OSError) as exc:
         trace["stopError"] = type(exc).__name__
-    if trace["stopExitCode"] != 0:
-        print(f"WARNING: docker stop {name} failed (exit {trace['stopExitCode']}, "
-              f"{trace.get('stopError')}); confirm the container stopped", file=sys.stderr)
+    if trace["stopExitCode"] == 0:
+        return
+    if confirm_absent:
+        trace["containerAbsent"] = container_absent(name)
+    failed = f"WARNING: docker stop {name} failed (exit {trace['stopExitCode']}, {trace.get('stopError')}); "
+    if trace.get("containerAbsent"):
+        print(failed + "the container is not found; confirm this is the daemon it was started on before resuming",
+              file=sys.stderr)
+    else:
+        print(failed + "confirm the container stopped", file=sys.stderr)
+
+
+def container_absent(name: str) -> bool:
+    """True only when `docker ps -a` answers and lists no such container (a `--rm` container already removed)."""
+    try:
+        ps = docker("ps", "-a", "--filter", f"name=^/{name}$", "--format", "{{.Names}}", check=False,
+                    timeout=TIMEOUT_STEP_S)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return ps.returncode == 0 and not ps.stdout.strip()
 
 
 def stop_after_timeout(name: str, proc: subprocess.Popen, rdir: Path) -> dict:
@@ -742,6 +763,8 @@ def run_one(args, run: dict, work_root: Path, prompt: str, prompt_sha: str, ac_f
               "declared": {"runtime": RUNTIME_VERSION, "model": MODEL, "effort": EFFORT},
               "limits": {"timeoutS": args.timeout_s, "maxRunTokens": args.max_run_tokens},
               "promptSha256": prompt_sha, "status": "started", "modelLaunched": False, "startedAt": now()}
+    if args.cmd == "screen":
+        record["phase"] = "screening"
     write_record(rdir, record)
     ws = rdir / "workspace"
     try:
@@ -1075,6 +1098,8 @@ def run_outcome(rec: dict) -> str:
         return "success" if rec["verifiedSuccess"] else "failure"
     if status == "dry-run-ungraded":
         return "success" if rec.get("dryRunSuccess") is True else "failure"
+    if status == "control-deviation":
+        return "control-deviation"
     raise Stop(f"{rec.get('runId')} has status {status!r}; cannot classify the screening Run")
 
 
@@ -1088,7 +1113,8 @@ def screen_records(work_root: Path, order: int) -> list[dict]:
         rec = read_record(rdir)
         if never_launched(rec):
             continue
-        if not isinstance(rec.get("totalTokens"), int) and rec.get("status") not in ABORTED_STATUSES:
+        if (not isinstance(rec.get("totalTokens"), int) and rec.get("status") not in ABORTED_STATUSES
+                and rec.get("status") != "control-deviation"):
             raise Stop(f"{rdir.name} has no totalTokens; record its usage before resuming")
         recs.append(rec)
     return recs
@@ -1109,6 +1135,9 @@ def classify(work_root: Path, order: int) -> dict:
         result = run_outcome(rec)
         runs.append({"k": rec["calRep"], "runId": rec["runId"], "status": rec["status"], "result": result,
                      "tokens": rec.get("totalTokens")})
+        if result == "control-deviation":
+            outcome, reason = result, rec.get("stopReason")
+            break
         if result in ("success", "budget-excluded"):
             outcome = "truncated" if result == "success" else "budget-excluded"
             if result == "budget-excluded":
@@ -1118,7 +1147,7 @@ def classify(work_root: Path, order: int) -> dict:
         if len(runs) == SCREEN_K:
             outcome = "zero"
     marker = marker_path(work_root, order)
-    if marker.exists():
+    if marker.exists() and outcome != "control-deviation":
         outcome = "budget-excluded"
         reason = json.loads(marker.read_text(encoding="utf-8")).get("reason")
     return {"outcome": outcome, "runs": runs, "tokens": sum(r["tokens"] or 0 for r in runs), "reason": reason,
@@ -1184,7 +1213,6 @@ def screen_candidate(args, cand: dict, work_root: Path, spent: int, task: tuple[
             return "budget-excluded", spent
         run = {"runId": rdir.name, "order": order, "calRep": k, "candidate": cand}
         record = run_one(args, run, work_root, task[0], task[1], ac_files)
-        record["phase"] = "screening"
         if args.dry_run:
             record["dryRunSuccess"] = order in args.dry_run_success
         write_record(rdir, record)
@@ -1218,6 +1246,9 @@ def cmd_screen(args) -> int:
             if json.loads(path.read_text(encoding="utf-8")).get("dryRun") is not args.dry_run:
                 raise Stop(f"{path} was written in a different dry-run mode; synthetic and real Runs must not mix")
         states = [classify(work_root, c["order"]) for c in targets]
+        deviated = [s["runs"][-1]["runId"] for s in states if s["outcome"] == "control-deviation"]
+        if deviated:
+            raise Stop(f"control deviation in {', '.join(deviated)}; the screening does not resume (runbook §7)")
         unknown = [run_id for s in states for run_id in s["usageUnknown"]]
         if unknown:
             raise Stop(f"token usage is unknown for {', '.join(unknown)}; resolve it before resuming")
@@ -1279,6 +1310,8 @@ def screen_summarize(work_root: Path, reuse_root: Path) -> dict:
         "preExcluded": list(PRE_EXCLUDED),
         "budgetExcluded": [{"order": r["order"], "reason": r["reason"], "tokens": r["tokens"],
                             "usageUnknown": r["usageUnknown"]} for r in rows if r["outcome"] == "budget-excluded"],
+        "controlDeviation": [{"order": r["order"], "runId": r["runs"][-1]["runId"], "reason": r["reason"]}
+                             for r in rows if r["outcome"] == "control-deviation"],
         "screeningTokens": sum(r["tokens"] for r in screened),
         "usageUnknownRuns": [run_id for r in screened for run_id in r["usageUnknown"]],
         "reusedTokensNotCounted": sum(r["tokens"] for r in rows if r["source"].startswith("reuse")),

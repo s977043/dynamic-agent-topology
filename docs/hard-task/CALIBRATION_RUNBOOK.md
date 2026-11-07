@@ -156,13 +156,13 @@
 
 起動通知の後に Ctrl-C や強制終了で `status: started`、`modelLaunched: true` が残った Run は、手順 4 の対象外で、Operator が判断します。
 
-**trace の実効値**: `turn_context` や `cli_version` が trace にないだけなら、中止の状態を変えず、欠落を `traceControlsMissing` に併記します。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。
+**trace の実効値**: `turn_context` や `cli_version` が trace にないだけなら、中止の状態を変えず、欠落を `traceControlsMissing` に併記します。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。再開は使用量の記録の有無によらず control deviation として拒否されます。`screen-summarize` は集計を出し、その候補を `control-deviation`、Run と停止理由を `controlDeviation` に表示します。
 
 Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
 
 - 固定 image の container 内で kill が exit 0 で返り、Codex 配下が終了し、その後に trace を回収できること。
-- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、`true` でもバッチを停止する。Operator は `docker ps` などで container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
-- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop）それぞれの上限で、timeout 後の処理全体は最大 150 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
+- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。スクリーニングでは続けて `docker ps -a` で同じ名前の container を探し、応答があって見つからなければ（`--rm` で先に消えた場合など）`containerAbsent: true` を残し、`WARNING` を「container が見つからない。起動先と同じ daemon か確かめてから再開する」という趣旨の文面にする（`isolation.stopTrace` も同じ）。今の接続先にないことは起動した container が止まった証拠にならないため、この場合もバッチは停止する。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、stop が失敗したら `true` でも、`containerAbsent: true` でもバッチを停止する。Operator は起動先の daemon（Docker context）で `docker ps` などを使い、container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
+- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop、stop 失敗後の `docker ps`）それぞれの上限で、timeout 後の処理全体は最大 180 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
 
 **手順**:
 

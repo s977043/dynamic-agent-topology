@@ -60,7 +60,7 @@
 | `<work-root>/.calibration.lock` がある | 重複起動として停止。別の実行がないと確認してから Operator が手で消す |
 | work root が DAT repo の中 | 停止 |
 | trace の model / effort が `gpt-6.1-sol` / `high` 以外、または `cli_version` が違う | その Run を `control-deviation` として残し、バッチを停止（§2 の control deviation） |
-| 1 Run の経過時間が `--timeout-s` を超えた | container を kill し `aborted-timeout` として残す。次の Run へ進む |
+| 1 Run の経過時間が `--timeout-s` を超えた | container 内で Codex を kill し、その後に trace を回収して container を止める（各段階に 30 秒の上限。kill や回収が失敗・超過したら強制停止へ進む）。`aborted-timeout` として残す。kill が exit 0、kill 後の回収が成功、trace に `token_count` がある場合だけ `tokenUsageKnown: true` として次の Run へ進む。その値は kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限。それ以外はすべて `tokenUsageKnown: false`（`totalTokens` なし）で、推測せず停止し、停止失敗の根拠を `run.json` の `isolation.timeoutTrace` に残す。再開は §7 の解決の後に限る。`docker stop` が exit 0 でない（非ゼロ・上限超過・起動失敗）ときは、`true` でもバッチを停止する（記録と使用量の値は保持）。Operator が container の停止を確かめた後に `--skip-existing` で再開する（§7）。中止 Run は作り直さない |
 | 1 Run の token が `--max-run-tokens` を超えた | 記録した後バッチを停止（token は Run の終了後にしか分からないため、事後の検出） |
 | 使用済み token + `--max-run-tokens` が `--budget-tokens` を超える | 次の Run を始めずに停止 |
 
@@ -115,3 +115,68 @@
 | バッチの token 予算（`--budget-tokens`） | **確定済み**: 25 Run 全体で 7,500,000。同上 |
 | T0 の prompt（Worker に課題をどう示すか） | **決定**（オーガナイザー、PR #251 のレビュー 2 回目の対応時）: 修正 commit の件名・修正内容・原因・テストを渡さず、**症状・再現手順・期待結果・実際の結果だけ** を書いた候補ごとの説明を渡す。説明は較正 Run の結果を見る前に作り、ファイルの hash を #244 に記録してから較正を始める。説明の作成は別 PR とし、作成者と別セッションのレビューで漏洩（原因・修正箇所の示唆）がないかを確かめる。キットは `--task-dir` で候補ごとの説明ファイルを受け取り、`{fixSubject}` などの置換機能は持たない（`{fixSubject}` が書かれていれば止まる）。理由: 件名は修正内容を示しうる（例: 「parse CREATE TABLE TABLESPACE」は直す箇所と方法を示す）ため、難度を T0 の実測で定義する設計で難度の操作化が崩れる。説明ファイルは未作成 |
 | Codex 0.160.1 の Linux バイナリ | EXP-001 の container で使ったのは 0.160.0。0.160.1 の Linux バイナリの取得と SHA-256 の記録は未実施（**NOT_TESTED**） |
+
+## 7. スクリーニング（第 2 版の §3）
+
+本節とキットは model 起動の許可ではありません。正本は [第 2 版](../HARD_TASK_T0_FAIL_T1_PREREGISTRATION.md) §3・§3.1・§5 と [補遺 1](../HARD_TASK_T0_FAIL_T1_PREREGISTRATION_ADDENDUM_1.md) で、食い違えば正本が優先します。§1・§2 の隔離と §3 の停止条件は、スクリーニングにもそのまま適用します（Run ID は `HTS-<order>-n<k>`）。
+
+**起動の前提（すべて Operator が確認する）**: 補遺 1 の成立（#244 の blob 記録）。第 2 版 §5.1b の実効上限の確認、または超過可能性と処置についての Operator の判断。キットはこれらを判定しません。補遺 1 のファイル冒頭の「下書き」は成立前の文面で、成立の根拠は #244 の blob 記録です。
+
+**キットの動作**:
+
+| 対象 | 動作 |
+|---|---|
+| order 1〜5 | `--reuse-root` の `HTC-<order>-n1`〜`n3` の `run.json` だけを読む（新しい Run なし）。成功があれば打ち切り、3 回とも失敗なら 0/3。読めない、`completed` の実 Run でない（`modelLaunched`・Codex 版・model / effort の不一致を含む）、runId・repo・revision が固定候補と違うときは選別前に停止 |
+| order 10・11・16・26・28・32・38 | 事前除外。Run も説明の読み込みもせず、失敗・0/3・budget-excluded に数えない |
+| 残り 32 件 | order 昇順に T0 を最大 3 回。verified success で打ち切り。0/3 が 12 件（order 1〜5 を含む）そろったら停止 |
+
+| 追加の停止条件 | 動作 |
+|---|---|
+| 第 2 版・補遺 1・候補表の blob が記録値と違う | 起動前に停止 |
+| 候補の消費 + `--max-run-tokens` が `--max-candidate-tokens` を超える | その候補の次の Run を始めず budget-excluded とし、次の候補へ進む |
+| スクリーニングの消費 + `--max-run-tokens` が `--budget-tokens` を超える | 次の Run を始めずに停止 |
+| Run 後に `--max-run-tokens` を超えた | 記録して停止。その候補は budget-excluded（事後の検出で、実効 hard cap ではない） |
+| 再開時に dry-run の記録と実 Run が混ざる | 停止 |
+
+較正 25 Run の token は支出済みのためスクリーニング予算に数えません（第 2 版 §5.1）。集計の `reusedTokensNotCounted` に別に表示します。
+
+**timeout**: `aborted-timeout` の候補は失敗に数えず budget-excluded とし、次の候補へ進みます。`tokenUsageKnown: true` の値は、kill 後の trace で観測した累積値で、停止直前の未記録分を含まない下限です（`tokenUsageBasis`）。これを確定値として予算に加算して次へ進むため、timeout が重なると不足分が累積します。この扱いを受け入れるかは、第 2 版 §5.1b の超過可能性と処置についての Operator の判断に含めます。
+
+**非ゼロ終了**: スクリーニングでは、Codex の非ゼロ終了を採点せず `aborted-nonzero-exit` として残し、その候補を budget-excluded（理由に終了コード）として残りの Run を打ち切り、バッチを停止します。第 2 版 §3 に環境起因の判定基準がないため、非ゼロ終了を環境起因として保守的に扱う実装上の規則で、Operator の確認待ちです。Operator は `codex-stderr.log` などで原因を確かめて #244 に記録し、`--skip-existing` で再開します（次の候補へ進み、中止 Run は作り直しません）。使用量が trace から読めないときは、次の「使用量が不明なとき」の解決が先です。終了コード 0 でも、trace の回収に失敗した、trace を読めない、trace に使用量がない、のいずれかなら、同じ規則で `aborted-trace-unavailable` とします。採点に進むのは、終了コード 0、回収成功、trace 可読、使用量ありがすべてそろった Run だけです。回収に失敗した Run は、残った trace が読めても途中の累積値を確定値とせず、`tokenUsageKnown: false` とします。model 起動後の `docker stop` の失敗は `isolation.stopTrace` に残してバッチを停止し、container の停止を確かめた後に再開します。AC の実行自体が失敗した Run は `grade-error` として残して停止します。成否を分類する規則がないため、再開には Operator の判断が要ります。model 起動後のその他の例外（通信・trace 処理など）は `aborted-run-error`（`tokenUsageKnown: false`）として残して停止し、「使用量が不明なとき」の解決後に再開します。起動前の失敗（workspace の準備、prompt の SHA-256 不一致、`docker run`、Codex クライアントの起動など）は `isolation-stop` と原因を残し、`--skip-existing` で再試行します。これらの規則も Operator の確認待ちです。較正モードの扱いは変えていません。
+
+**再利用する較正記録**: order 1〜5 の再利用には非ゼロ終了の除外を適用しません（`load_reuse` は終了コードを検査しません）。Operator はスクリーニングの起動前に、再利用する `HTC-<order>-n1`〜`n3` の `run.json` の `codexExitCode` を確認します。非ゼロや欠落の終了コードを見つけたら、スクリーニングを起動せずに停止し、Operator が扱いを判断します。
+
+**使用量が不明なとき**: バッチが止まり、集計の `budgetExcluded[].usageUnknown` と `usageUnknownRuns` に表示されます。Operator は次の順で解決します。
+
+1. `isolation.timeoutTrace` と `isolation.stopTrace` を読み、`forceKillExitCode` や `stopExitCode` が 0 でない、または null なら、container が止まったことを先に確かめる。
+2. 根拠を確かめる。根拠は、その Run の **終了までの使用量を裏付ける記録** に限る。途中の累積値は解決にならない。裏付けられなければ再開しない。
+3. 更新前の `run.json` を別ファイルに保存する。
+4. `totalTokens` と `tokenUsageKnown: true` だけを更新する。`status`・`runId`・`modelLaunched` は変えず、中止 Run を作り直さない。`tokenUsageKnown: false` のままの `totalTokens` や、`totalTokens` のない `true` は解決済みと扱わず、再開も集計も停止する。
+5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。
+
+起動通知の後に Ctrl-C や強制終了で `status: started`、`modelLaunched: true` が残った Run は、手順 4 の対象外で、Operator が判断します。
+
+**trace の実効値**: `turn_context` や `cli_version` が trace にないだけなら、中止の状態を変えず、欠落を `traceControlsMissing` に併記します。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。
+
+Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
+
+- 固定 image の container 内で kill が exit 0 で返り、Codex 配下が終了し、その後に trace を回収できること。
+- **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、`true` でもバッチを停止する。Operator は `docker ps` などで container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
+- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop）それぞれの上限で、timeout 後の処理全体は最大 150 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
+
+**手順**:
+
+1. dry-run で計画と出力を確認する（model も container も起動しない。`dry-run` の結果は合成で、選別に使わない）:
+
+   ```bash
+   python3.12 scripts/hard_task_calibrate.py screen-plan
+   python3.12 scripts/hard_task_calibrate.py screen --dry-run --work-root ~/dat-runs/screen-dry \
+     --reuse-root ~/dat-runs/hard-task-cal-1 --task-dir docs/hard-task/task-descriptions \
+     --timeout-s 1800 --max-run-tokens 4000000 --max-candidate-tokens 10000000 --budget-tokens 50000000
+   python3.12 scripts/hard_task_calibrate.py screen-summarize --work-root ~/dat-runs/screen-dry \
+     --reuse-root ~/dat-runs/hard-task-cal-1
+   ```
+
+2. 本番（Operator のみ）: `--dry-run` を外し、新しい `--work-root` と `--codex-dir` を指定して同じ上限で実行する。上限は第 2 版 §5.2 の確定値で、キットは既定値を持たない。表示される説明の SHA-256 が #244 の記録と一致することを確かめる。
+3. exit code が 2 なら標準エラーの `STOP:` の理由を #244 に記録する。理由の解消後に同じ上限で `--skip-existing` を付けて再開する。
+4. `screen-summarize --output <ファイル>` で集計を保存し、候補ごとの n1〜nk、打ち切り、事前除外、budget-excluded（件数・理由・消費）、選ばれた 0/3 の一覧、使用 token、停止理由、`feasibilityOnly` を #244 に記録する。報告では、評価集合が E1 除外後の候補集合に条件付くことを併記する（補遺 1 §3）。

@@ -824,7 +824,7 @@ def test_screen_abort_keeps_record(tmp: Path, reuse: Path, tasks: Path) -> None:
     args = real_args(screen_args(work, reuse, tasks, **limits))
     saved = htc.read_trace
 
-    def unreadable(_path):
+    def unreadable(_path, null_safe=False):
         raise OSError("read")
 
     htc.read_trace = unreadable
@@ -915,7 +915,7 @@ def test_screen_post_launch_errors(tmp: Path, reuse: Path, tasks: Path) -> None:
     path = work / "HTS-06-n1" / "run.json"
     saved = htc.read_trace
 
-    def unreadable(_path):
+    def unreadable(_path, null_safe=False):
         raise OSError("read")
 
     htc.read_trace = unreadable
@@ -981,6 +981,106 @@ class TraceTimeoutRun(TimeoutHandlerRun):
 
     def fake_collect(self, _name, rdir, timeout=None):
         write_trace(rdir, "readable", self.usage, self.context, self.model)
+
+
+def raw_trace(rdir: Path, cli: str | None, contexts: list[tuple]) -> None:
+    """A valid JSON trace with usage whose effective values are exactly the given ones."""
+    lines = [{"type": "session_meta", "payload": {"cli_version": cli}}]
+    lines += [{"type": "turn_context", "payload": {"model": m, "effort": e}} for m, e in contexts]
+    lines.append({"type": "event_msg", "payload": {"type": "token_count", "info": {"total_token_usage": {
+        "input_tokens": 68022, "output_tokens": 0}}}})
+    (rdir / "sessions").mkdir(parents=True, exist_ok=True)
+    (rdir / "sessions" / "rollout-raw.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
+
+
+class RawTimeoutRun(TimeoutHandlerRun):
+    def __init__(self, cli, contexts):
+        super().__init__(0, "ok")
+        self.cli, self.contexts = cli, contexts
+
+    def fake_collect(self, _name, rdir, timeout=None):
+        raw_trace(rdir, self.cli, self.contexts)
+
+
+class RawExitRun(NonzeroHandlerRun):
+    def __init__(self, code, cli, contexts):
+        super().__init__("ok", code=code)
+        self.cli, self.contexts = cli, contexts
+
+    def fake_collect(self, _name, rdir, timeout=None):
+        raw_trace(rdir, self.cli, self.contexts)
+
+
+GOOD_CLI = htc.RUNTIME_VERSION.split()[-1]
+GOOD = (htc.MODEL, htc.EFFORT)
+NULL_MODEL = (None, htc.EFFORT)
+NULL_EFFORT = (htc.MODEL, None)
+
+
+def null_mix_cases() -> list[tuple]:
+    """(name, cli, contexts): a null line never hides an actual mismatch of another value."""
+    return [("cli", "0.159.0", [NULL_MODEL, GOOD]),
+            ("model", GOOD_CLI, [NULL_MODEL, GOOD, ("gpt-6-luna", htc.EFFORT)]),
+            ("effort", GOOD_CLI, [NULL_EFFORT, GOOD, (htc.MODEL, "medium")]),
+            ("same-line", GOOD_CLI, [GOOD, (None, "medium")])]
+
+
+def check_null_mix_refused(tmp: Path, reuse: Path, tasks: Path, name: str, make) -> None:
+    work = tmp / "null-mix" / name
+    args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
+    with make():
+        rc, _, err = run_cli(args)
+    path = work / "HTS-06-n1" / "run.json"
+    record = json.loads(path.read_text())
+    check(rc == 2 and "control deviation" in err and record["status"] == "control-deviation"
+          and "verifiedSuccess" not in record, f"{name}: mismatch found: {record['status']} {err}")
+    resolve_usage(path)
+    with NonzeroExitRun({}, {o: 1 for o in range(7, 45)}):
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 2 and not (work / "HTS-07-n1").exists(), f"{name}: refused after runbook step 4: {err}")
+
+
+def null_mix_runs() -> list[tuple]:
+    return [(f"{name}-{kind}", (lambda c=cli, x=contexts, m=make: m(c, x)))
+            for name, cli, contexts in null_mix_cases()
+            for kind, make in (("exit0", lambda c, x: RawExitRun(0, c, x)), ("exit1", lambda c, x: RawExitRun(1, c, x)),
+                               ("timeout", RawTimeoutRun))]
+
+
+def test_screen_trace_null_mix(tmp: Path, reuse: Path, tasks: Path) -> None:
+    for name, make in null_mix_runs():
+        check_null_mix_refused(tmp, reuse, tasks, name, make)
+
+    others = {o: 1 for o in range(7, 45)}
+    for name, contexts, missing in (("model", [NULL_MODEL], "model"), ("effort", [NULL_EFFORT], "effort"),
+                                    ("mixed", [NULL_MODEL, GOOD], "model")):
+        work = tmp / "null-only" / name
+        args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
+        with RawExitRun(1, GOOD_CLI, contexts):
+            rc, _, err = run_cli(args)
+        record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+        check(rc == 2 and record["status"] == "aborted-nonzero-exit" and record["totalTokens"] == 68022
+              and missing in record["traceControlsMissing"] and "verifiedSuccess" not in record,
+              f"null {name} is missing: {record}")
+        with NonzeroExitRun({}, others):
+            rc, _, err = run_cli(args + ["--skip-existing"])
+        check(rc == 0 and (work / "HTS-07-n1").exists(), f"null {name}: resumes: {err}")
+        rows = {r["order"]: r for r in htc.screen_summarize(work, reuse)["candidates"]}
+        check(rows[6]["outcome"] == "budget-excluded", f"null {name}: excluded")
+    work = tmp / "null-only" / "exit0"
+    with RawExitRun(0, GOOD_CLI, [NULL_MODEL, GOOD]):
+        rc, _, err = run_cli(real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000")))
+    record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+    check(rc == 2 and record["status"] == "aborted-trace-unavailable" and "verifiedSuccess" not in record,
+          f"exit 0 with a null value is not graded: {record}")
+
+    trace = tmp / "null-only" / "cal"
+    raw_trace(trace, GOOD_CLI, [NULL_MODEL, GOOD])
+    try:
+        htc.read_trace(trace / "sessions" / "rollout-raw.jsonl")
+    except TypeError:
+        return
+    raise AssertionError("read_trace default (used by calibration) changed for mixed null contexts")
 
 
 class MatrixRun(NonzeroHandlerRun):
@@ -1087,7 +1187,13 @@ def test_screen_trace_controls(tmp: Path, reuse: Path, tasks: Path) -> None:
              ("timeout-no-usage", lambda: TraceTimeoutRun(usage=False, model="gpt-6-luna")),
              ("exit1", lambda: MatrixRun(1, "ok", "readable", True, True, False, model="gpt-6-luna")),
              ("exit1-no-usage", lambda: MatrixRun(1, "ok", "readable", False, True, False, model="gpt-6-luna")),
-             ("exit0", lambda: MatrixRun(0, "ok", "readable", True, True, True, model="gpt-6-luna")))
+             ("exit0", lambda: MatrixRun(0, "ok", "readable", True, True, True, model="gpt-6-luna")),
+             ("cli-exit0", lambda: RawExitRun(0, "0.159.0", [GOOD])),
+             ("cli-exit1", lambda: RawExitRun(1, "0.159.0", [GOOD])),
+             ("cli-timeout", lambda: RawTimeoutRun("0.159.0", [GOOD])),
+             ("effort-exit0", lambda: RawExitRun(0, GOOD_CLI, [(htc.MODEL, "medium")])),
+             ("effort-exit1", lambda: RawExitRun(1, GOOD_CLI, [(htc.MODEL, "medium")])),
+             ("effort-timeout", lambda: RawTimeoutRun(GOOD_CLI, [(htc.MODEL, "medium")])))
     for name, make in cases:
         work = tmp / f"tc-mismatch-{name}"
         args = real_args(screen_args(work, reuse, tasks, **limits))
@@ -1333,6 +1439,7 @@ def main() -> int:
         test_screen_post_launch_errors(tmp, reuse, screen_tasks)
         test_screen_abort_matrix(tmp, reuse, screen_tasks)
         test_screen_trace_controls(tmp, reuse, screen_tasks)
+        test_screen_trace_null_mix(tmp, reuse, screen_tasks)
         test_screen_before_launch(tmp, reuse, screen_tasks)
         test_screen_abort_accounting(tmp, reuse, screen_tasks)
         test_calibration_keeps_nonzero_exit()

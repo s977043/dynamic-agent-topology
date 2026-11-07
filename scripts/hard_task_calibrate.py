@@ -428,7 +428,7 @@ def timeout_usage_known(rdir: Path, timeout_trace: dict, screening: bool = False
 def screen_trace_state(rdir: Path) -> tuple[bool, bool]:
     """(readable, usage known) of a screening Run's trace; a damaged or missing trace must not lose the record."""
     try:
-        usage = read_trace(find_session(rdir / "sessions"))["totalTokenUsage"]
+        usage = read_trace(find_session(rdir / "sessions"), null_safe=True)["totalTokenUsage"]
     except Exception:
         return False, False
     try:
@@ -442,9 +442,12 @@ def trace_controls(trace: dict) -> tuple[list[str], list[str]]:
     mismatches, missing = [], []
     if not trace["contexts"]:
         missing.append("turn_context")
-    for model, effort in trace["contexts"]:
-        if (model, effort) != (MODEL, EFFORT):
-            mismatches.append(f"trace model/effort {(model, effort)} != {(MODEL, EFFORT)}")
+    for field, expected, values in (("model", MODEL, {c[0] for c in trace["contexts"]}),
+                                    ("effort", EFFORT, {c[1] for c in trace["contexts"]})):
+        if None in values:
+            missing.append(field)
+        for value in sorted(values - {None, expected}, key=repr):
+            mismatches.append(f"trace {field} {value!r} != {expected!r}")
     if trace["cliVersion"] is None:
         missing.append("cli_version")
     elif trace["cliVersion"] != RUNTIME_VERSION.split()[-1]:
@@ -456,7 +459,7 @@ def screen_check_controls(rdir: Path, record: dict) -> None:
     """Saves missing values next to the abort state; only an actual mismatch overrides it and stops the batch."""
     try:
         session = find_session(rdir / "sessions")
-        trace = read_trace(session)
+        trace = read_trace(session, null_safe=True)
     except Exception:
         return
     mismatches, missing = trace_controls(trace)
@@ -619,7 +622,8 @@ def find_session(sessions_root: Path) -> Path:
     return hits[0]
 
 
-def read_trace(path: Path) -> dict:
+def read_trace(path: Path, null_safe: bool = False) -> dict:
+    """null_safe (screening): contexts mixing null and string values are returned, not a sort failure."""
     meta, contexts, usage = {}, [], None
     for line in path.read_text(encoding="utf-8").splitlines():
         rec = json.loads(line)
@@ -630,7 +634,8 @@ def read_trace(path: Path) -> dict:
             contexts.append((payload.get("model"), payload.get("effort")))
         elif rec.get("type") == "event_msg" and payload.get("type") == "token_count":
             usage = (payload.get("info") or {}).get("total_token_usage") or usage
-    return {"cliVersion": meta.get("cli_version"), "contexts": sorted(set(contexts)), "totalTokenUsage": usage}
+    ordered = sorted(set(contexts), key=repr) if null_safe else sorted(set(contexts))
+    return {"cliVersion": meta.get("cli_version"), "contexts": ordered, "totalTokenUsage": usage}
 
 
 def check_trace(trace: dict) -> None:
@@ -793,7 +798,7 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
         readable, usage_known = screen_trace_state(rdir)
         collect_error = record.get("isolation", {}).get("collectError")
         try:
-            controls_known = readable and not trace_controls(read_trace(find_session(rdir / "sessions")))[1]
+            controls_known = readable and not trace_controls(read_trace(find_session(rdir / "sessions"), null_safe=True))[1]
         except Exception:
             controls_known = False
         aborted = screen_abort(rc, collect_error, readable, usage_known, controls_known)
@@ -810,7 +815,7 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
                        "usage before resuming")
         record["tokenUsageBasis"] = "cumulative value observed in the trace; a lower bound if usage went unrecorded"
     session = find_session(rdir / "sessions")
-    trace = read_trace(session)
+    trace = read_trace(session, null_safe=screening)
     record["trace"] = {"file": str(session.relative_to(rdir)), "cliVersion": trace["cliVersion"],
                        "contexts": [list(c) for c in trace["contexts"]], "totalTokenUsage": trace["totalTokenUsage"]}
     try:

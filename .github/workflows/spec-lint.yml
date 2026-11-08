@@ -254,3 +254,6 @@ jobs:
 
       - name: Test hard task calibration
         run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_hard_task_calibrate.py
+
+      - name: Test subagent folding synthetic oracle
+        run: PYTHONDONTWRITEBYTECODE=1 python scripts/test_subagent_folding_oracle.py

@@ -1177,6 +1177,8 @@ def check_matrix_case(tmp: Path, reuse: Path, tasks: Path, case: tuple) -> None:
     check(record["tokenUsageKnown"] is intact and ("totalTokens" in record) is intact, f"{label}: usage: {record}")
     check(("traceControlsMissing" in record) is (trace == "corrupt" or (trace == "readable" and not context)),
           f"{label}: evidence: {record}")
+    check(("traceControlsChecked" in record) is (trace == "missing") and record.get("traceControlsChecked", False) is False,
+          f"{label}: unchecked effective values without a trace: {record}")
     check(not (work / "HTS-06-n2").exists() and not (work / "HTS-07-n1").exists(), f"{label}: stops at the first Run")
 
     def excluded() -> None:
@@ -1534,6 +1536,81 @@ def test_screen_rehearsal_findings(tmp: Path, reuse: Path, tasks: Path) -> None:
                   and "codex exit code 1" in err, f"{name}: {record['status']} {err}")
 
 
+def test_write_record_atomic(tmp: Path) -> None:
+    rdir = tmp / "atomic"
+    rdir.mkdir()
+    htc.write_record(rdir, {"status": "started"})
+    for name, target in (("write", "fdopen"), ("replace", "replace")):
+        real = getattr(htc.os, target)
+
+        def fail(*a, real=real, target=target, **k):
+            if target == "fdopen":
+                fh = real(*a, **k)
+                fh.write('{\n  "')
+                fh.close()
+            raise OSError("injected")
+
+        setattr(htc.os, target, fail)
+        try:
+            htc.write_record(rdir, {"status": "completed"})
+            raise AssertionError(f"{name}: the injected failure must propagate")
+        except OSError:
+            pass
+        finally:
+            setattr(htc.os, target, real)
+        check(json.loads((rdir / "run.json").read_text()) == {"status": "started"}
+              and [p.name for p in rdir.iterdir()] == ["run.json"], f"{name}: previous record kept, no temporary file")
+    htc.write_record(rdir, {"status": "completed"})
+    check(json.loads((rdir / "run.json").read_text()) == {"status": "completed"}, "normal write replaces")
+
+
+def test_trace_line_split(tmp: Path) -> None:
+    meta = {"type": "session_meta", "payload": {"cli_version": GOOD_CLI, "note": "a b\u0085c\x1cd"}}
+    ctx = {"type": "turn_context", "payload": {"model": htc.MODEL, "effort": htc.EFFORT}}
+    usage = {"type": "event_msg", "payload": {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 1}}}}
+    body = "\n".join(json.dumps(r, ensure_ascii=False) for r in (meta, ctx, usage))
+    cases = (("trailing-newline", body + "\n", []), ("no-trailing-newline", body, []),
+             ("crlf", body.replace("\n", "\r\n") + "\r\n", []),
+             ("blank-line", body.replace("\n", "\n\n", 1) + "\n", ["malformed-lines"]),
+             ("extra-trailing-blank", body + "\n\n", ["malformed-lines"]))
+    for name, text, missing in cases:
+        rdir = tmp / "split" / name
+        (rdir / "sessions").mkdir(parents=True)
+        path = rdir / "sessions" / "rollout-1.jsonl"
+        path.write_bytes(text.encode("utf-8"))
+        check(htc.scan_trace_controls(rdir) == ([], missing), f"{name}: scan {htc.scan_trace_controls(rdir)}")
+        if missing:
+            try:
+                htc.read_trace(path)
+                raise AssertionError(f"{name}: read_trace still rejects a blank line")
+            except ValueError:
+                pass
+            continue
+        for null_safe in (False, True):
+            trace = htc.read_trace(path, null_safe=null_safe)
+            check(trace["cliVersion"] == GOOD_CLI and trace["contexts"] == [GOOD] and trace["totalTokenUsage"],
+                  f"{name}: read_trace {trace}")
+
+
+def test_unreadable_and_mismatched_sessions(tmp: Path) -> None:
+    rdir = tmp / "two-sessions"
+    (rdir / "sessions" / "rollout-a.jsonl").mkdir(parents=True)
+    raw_trace(rdir, GOOD_CLI, [("gpt-6-luna", htc.EFFORT)])
+    mismatches, missing = htc.scan_trace_controls(rdir)
+    check(mismatches == [f"trace model 'gpt-6-luna' != {htc.MODEL!r}"] and missing == ["session-files"],
+          f"an unreadable file neither hides nor replaces the mismatch: {mismatches} {missing}")
+    record = {"runId": "HTS-06-n1", "status": "aborted-timeout"}
+    try:
+        htc.screen_check_controls(rdir, record)
+        raise AssertionError("the mismatch must stop")
+    except htc.Stop:
+        pass
+    saved = json.loads((rdir / "run.json").read_text())
+    check(saved["status"] == "control-deviation" and saved["abortedAs"] == "aborted-timeout"
+          and saved["traceControlsMissing"] == ["session-files"] and "traceControlsChecked" not in saved,
+          f"saved: {saved}")
+
+
 def test_calibration_unchanged() -> None:
     rc, out, _ = run_cli(["plan"])
     check(rc == 0 and len(out.splitlines()) == 25 and all(ln.startswith("HTC-") for ln in out.splitlines()),
@@ -1585,6 +1662,9 @@ def main() -> int:
         test_calibration_keeps_nonzero_exit()
         test_success_at_later_runs(tmp, reuse, screen_tasks)
         test_screen_rehearsal_findings(tmp, reuse, screen_tasks)
+        test_write_record_atomic(tmp)
+        test_trace_line_split(tmp)
+        test_unreadable_and_mismatched_sessions(tmp)
     print("test_hard_task_calibrate: OK")
     return 0
 

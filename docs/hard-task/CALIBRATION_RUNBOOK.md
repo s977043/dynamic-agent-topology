@@ -152,11 +152,11 @@
 2. 根拠を確かめる。根拠は、その Run の **終了までの使用量を裏付ける記録** に限る。途中の累積値は解決にならない。裏付けられなければ再開しない。
 3. 更新前の `run.json` を別ファイルに保存する。
 4. `totalTokens` と `tokenUsageKnown: true` だけを更新する。`status`・`runId`・`modelLaunched` は変えず、中止 Run を作り直さない。`tokenUsageKnown: false` のままの `totalTokens` や、`totalTokens` のない `true` は解決済みと扱わず、再開も集計も停止する。
-5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。
+5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。`traceControlsChecked: false` の Run（回収に失敗して trace がない Run など）は、「実効値は未検査」も記録する。`traceControlsMissing` があれば、その値も記録する。
 
 起動通知の後に Ctrl-C や強制終了で `status: started`、`modelLaunched: true` が残った Run は、手順 4 の対象外で、Operator が判断します。
 
-**trace の実効値**: `turn_context` や `cli_version` が trace にないだけなら、中止の状態を変えず、欠落を `traceControlsMissing` に併記します。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。再開は使用量の記録の有無によらず control deviation として拒否されます。`screen-summarize` は集計を出し、その候補を `control-deviation`、Run と停止理由を `controlDeviation` に表示します。
+**trace の実効値**: 実効値を確かめられなかった項目は、中止の状態を変えず `traceControlsMissing` に併記します。入りうる値は、`turn_context`（`turn_context` の行がない）、`cli_version`（`session_meta` の行がない）、`model`・`effort`（`turn_context` にその値が文字列でない）、`malformed-lines`（JSON として読めない行、空行、形の違う `turn_context`・`session_meta` の行がある）、`session-files`（session ファイルか、その一覧を読めない）です。`malformed-lines` や `session-files` がある trace は、読めた行とファイルの実効値だけを照合しており、実効値を全部は確かめられていません。読めた部分の不一致は、これらの欠落があっても不一致として扱います。回収に失敗した、または trace が残らなかった Run は、実効値を一つも確かめていないため `traceControlsChecked: false` を記録します。行は `\n` だけで区切ります（JSON の文字列中の U+2028 などでは区切りません）。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。再開は使用量の記録の有無によらず control deviation として拒否されます。`screen-summarize` は集計を出し、その候補を `control-deviation`、Run と停止理由を `controlDeviation` に表示します。
 
 Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
 

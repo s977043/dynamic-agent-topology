@@ -152,17 +152,17 @@
 2. 根拠を確かめる。根拠は、その Run の **終了までの使用量を裏付ける記録** に限る。途中の累積値は解決にならない。裏付けられなければ再開しない。
 3. 更新前の `run.json` を別ファイルに保存する。
 4. `totalTokens` と `tokenUsageKnown: true` だけを更新する。`status`・`runId`・`modelLaunched` は変えず、中止 Run を作り直さない。`tokenUsageKnown: false` のままの `totalTokens` や、`totalTokens` のない `true` は解決済みと扱わず、再開も集計も停止する。
-5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。`traceControlsChecked: false` の Run（回収に失敗して trace がない Run など）は、「実効値は未検査」も記録する。`traceControlsMissing` があれば、その値も記録する。
+5. #244 に変更前後の値、根拠のファイルと hash、計算方法、Operator を記録し、`--skip-existing` で再開する。`traceControlsChecked: false` の Run（session ファイルが一つも残らなかった Run）は、「実効値は未検査」も記録する。`traceControlsMissing` があれば、その値も記録する。
 
 起動通知の後に Ctrl-C や強制終了で `status: started`、`modelLaunched: true` が残った Run は、手順 4 の対象外で、Operator が判断します。
 
-**trace の実効値**: 実効値を確かめられなかった項目は、中止の状態を変えず `traceControlsMissing` に併記します。入りうる値は、`turn_context`（`turn_context` の行がない）、`cli_version`（`session_meta` の行がない）、`model`・`effort`（`turn_context` にその値が文字列でない）、`malformed-lines`（JSON として読めない行、空行、形の違う `turn_context`・`session_meta` の行がある）、`session-files`（session ファイルか、その一覧を読めない）です。`malformed-lines` や `session-files` がある trace は、読めた行とファイルの実効値だけを照合しており、実効値を全部は確かめられていません。読めた部分の不一致は、これらの欠落があっても不一致として扱います。回収に失敗した、または trace が残らなかった Run は、実効値を一つも確かめていないため `traceControlsChecked: false` を記録します。行は `\n` だけで区切ります（JSON の文字列中の U+2028 などでは区切りません）。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。再開は使用量の記録の有無によらず control deviation として拒否されます。`screen-summarize` は集計を出し、その候補を `control-deviation`、Run と停止理由を `controlDeviation` に表示します。
+**trace の実効値**: 実効値を確かめられなかった項目は、中止の状態を変えず `traceControlsMissing` に併記します。入りうる値は、`turn_context`（`turn_context` の行がない）、`cli_version`（`session_meta` の行がない）、`model`・`effort`（`turn_context` にその値が文字列でない）、`malformed-lines`（JSON として読めない行、空行、形の違う `turn_context`・`session_meta` の行がある）、`session-files`（session ファイルか、その一覧を読めない）です。`malformed-lines` や `session-files` がある trace は、読めた行とファイルの実効値だけを照合しており、実効値を全部は確かめられていません。読めた部分の不一致は、これらの欠落があっても不一致として扱います。回収に失敗するなどして session ファイル（`rollout-*.jsonl` のファイル）が一つも残らなかった Run は、実効値を一つも確かめていないため `traceControlsChecked: false` を記録します。部分的に残った Run は、このフィールドを書かず、読めた範囲の実効値を照合し、読めなかった分を `traceControlsMissing` に記録します。行は `\n` だけで区切ります（JSON の文字列中の U+2028 などでは区切りません）。この行分割と、`run.json` を一時ファイルから置き換える保存（権限は umask に従う）は、較正モード（`run`）にも適用されます。終了コード 0 でも欠落があれば採点せず `aborted-trace-unavailable` とします。実際の model / effort / 版の不一致は `control-deviation`（中止だった場合は `abortedAs` に元の状態）として停止し、手順 4 では再開できません。再開は使用量の記録の有無によらず control deviation として拒否されます。`screen-summarize` は集計を出し、その候補を `control-deviation`、Run と停止理由を `controlDeviation` に表示します。
 
 Docker 内での kill と回収の手順は合成テストだけで確認しており、実 container では未確認です（**NOT_TESTED**）。最初の本番前に Operator が次を確認します。
 
 - 固定 image の container 内で kill が exit 0 で返り、Codex 配下が終了し、その後に trace を回収できること。
 - **stop 失敗時の扱い**: timeout 後の `docker stop` が失敗すると、`stopExitCode: null` や非ゼロの値と `stopError` を `isolation.timeoutTrace` に残し、標準エラーに `WARNING` を出す。スクリーニングでは続けて `docker ps -a` で同じ名前の container を探し、応答があって見つからなければ（`--rm` で先に消えた場合など）`containerAbsent: true` を残し、`WARNING` を「container が見つからない。起動先と同じ daemon か確かめてから再開する」という趣旨の文面にする（`isolation.stopTrace` も同じ）。今の接続先にないことは起動した container が止まった証拠にならないため、この場合もバッチは停止する。記録は `aborted-timeout` のまま保存し、stop の失敗だけでは `tokenUsageKnown` と使用量の値を変えない。止まっていない container が残ったまま次の Run で課金が進むのを防ぐため、stop が失敗したら `true` でも、`containerAbsent: true` でもバッチを停止する。Operator は起動先の daemon（Docker context）で `docker ps` などを使い、container（`isolation.container` の名前）が止まったことを確かめ、必要なら止めて #244 に記録し、`--skip-existing` で再開する。`true` の記録は `run.json` を編集せずに再開できる。`false` なら「使用量が不明なとき」の解決も先に行う。
-- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop、stop 失敗後の `docker ps`）それぞれの上限で、timeout 後の処理全体は最大 180 秒程度かかる。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
+- **上限**: 30 秒は各待機（kill、Codex クライアントの終了待ち、回収、強制停止、stop、stop 失敗後の `docker ps`）それぞれの上限で、効くのは子プロセスの待機だけである。回収した tar の host 側の展開（`tarfile.open`、`getmembers`、`extractall`）には上限がなく、timeout 後の処理全体の時間は保証されない。この間も Run の wall clock は `--timeout-s` を超えて進む。30 秒が実環境で十分かも確かめる。
 
 **手順**:
 

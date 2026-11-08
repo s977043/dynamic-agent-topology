@@ -39,7 +39,8 @@ D1〜D4が揃い、キット修正がmergeされるまでスクリーニング�
 |---|---|---|---|
 | 完了 | #257 / #258 / #307 ほか | 上記到達点のとおり | 再計上しない |
 | P0 | 本計画の更新PR | Open Issue/PRの原本照合、別セッションの独立レビュー、最新head CI | 通常文書PRの必須指摘0・必須CI成功でmerge |
-| P0 | #244 キット修正 | `fix/244-screening-rehearsal-findings` のPR化、独立レビュー | 規則・必須CIのテストを変えるなら規則変更PRとしてHuman merge |
+| 完了 | #244 キット修正（#309 / #310） | 集計、停止記録、`phase`、`run.json` の原子的保存、trace の行分割 | 再計上しない |
+| P1 | #244 host 側の展開時間 | 回収後の tar の展開（`tarfile.open`・`getmembers`・`extractall`）に上限がない。本番の最初の Run で trace の大きさを確かめてから判断する | 上限を入れるかは実測後に決める。それまで runbook は処理全体の時間を保証しない |
 | P0 | #244 Operator判断 | D1・D3・D4の回答、D2案Aの仕組みの記録 | 揃うまでスクリーニングを起動しない。Agentは判断を代行しない |
 | P1 | #288 / #248 | Draftの合成oracleと最小検証計画。次の作業は別モデルの独立レビュー | 独立レビューの後にHuman merge（必須CIのworkflowにテストを足すため規則変更PRとして扱う。#288の2026-11-05のコメント）。合成oracleのPASSを効果証拠にしない |
 | P1 | #302 | Mac Claude CodeでのT0/T1実モデル反復の実行条件 | Operator判断待ち。model起動はOperator |

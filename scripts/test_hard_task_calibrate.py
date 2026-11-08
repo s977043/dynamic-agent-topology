@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1592,6 +1593,66 @@ def test_trace_line_split(tmp: Path) -> None:
                   f"{name}: read_trace {trace}")
 
 
+class SeparatorExitRun(RawExitRun):
+    """A trace whose JSON strings contain U+2028 and similar, with output_tokens in the usage."""
+
+    def fake_collect(self, _name, rdir, timeout=None):
+        note = "a b c\u0085d\x1ce"
+        lines = [{"type": "session_meta", "payload": {"cli_version": self.cli, "note": note}}]
+        lines += [{"type": "turn_context", "payload": {"model": m, "effort": e, "note": note}} for m, e in self.contexts]
+        lines.append({"type": "event_msg", "payload": {"type": "token_count", "note": note, "info": {
+            "total_token_usage": {"input_tokens": 68022, "output_tokens": 1978}}}})
+        (rdir / "sessions").mkdir(parents=True, exist_ok=True)
+        (rdir / "sessions" / "rollout-sep.jsonl").write_text(
+            "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in lines), encoding="utf-8")
+
+
+def test_screen_separator_trace(tmp: Path, reuse: Path, tasks: Path) -> None:
+    limits = {"run": "100000", "cand": "1000000", "budget": "10000000"}
+    others = {o: 1 for o in range(7, 45)}
+    cases = (("exit0", 0, [GOOD], 0, "completed"),
+             ("model-exit0", 0, [("gpt-6-luna", htc.EFFORT)], 2, "control-deviation"),
+             ("exit1", 1, [GOOD], 2, "aborted-nonzero-exit"))
+    for name, code, contexts, want_rc, want in cases:
+        work = tmp / f"sep-{name}"
+        args = real_args(screen_args(work, reuse, tasks, **limits))
+        with SeparatorExitRun(code, GOOD_CLI, contexts):
+            rc, _, err = run_cli(args)
+        record = json.loads((work / "HTS-06-n1" / "run.json").read_text())
+        deviated = want == "control-deviation"
+        check(rc == want_rc and record["status"] == want
+              and ("gpt-6-luna" in record["stopReason"] if deviated else record["totalTokens"] == 70000)
+              and "traceControlsMissing" not in record and "traceControlsChecked" not in record,
+              f"{name}: separators inside strings do not split lines: {record} {err}")
+        with NonzeroExitRun({}, others):
+            rc, _, err = run_cli(args + ["--skip-existing"])
+        check((rc == 2) is deviated and (work / "HTS-07-n1").exists() is not deviated,
+              f"{name}: resume: {err}")
+
+
+def test_session_directory_is_no_trace(tmp: Path) -> None:
+    rdir = tmp / "dir-only"
+    (rdir / "sessions" / "rollout-x.jsonl").mkdir(parents=True)
+    record = {"runId": "HTS-06-n1", "status": "aborted-timeout"}
+    htc.screen_check_controls(rdir, record)
+    saved = json.loads((rdir / "run.json").read_text())
+    check(saved["status"] == "aborted-timeout" and saved["traceControlsChecked"] is False
+          and "session-files" in saved["traceControlsMissing"], f"a directory named like a session is no trace: {saved}")
+
+
+def test_write_record_mode(tmp: Path) -> None:
+    for umask in (0o022, 0o077):
+        rdir = tmp / f"mode-{umask:03o}"
+        rdir.mkdir()
+        old = os.umask(umask)
+        try:
+            htc.write_record(rdir, {"status": "started"})
+        finally:
+            os.umask(old)
+        mode = stat.S_IMODE((rdir / "run.json").stat().st_mode)
+        check(mode == 0o666 & ~umask, f"umask {umask:03o}: run.json mode {mode:o}")
+
+
 def test_unreadable_and_mismatched_sessions(tmp: Path) -> None:
     rdir = tmp / "two-sessions"
     (rdir / "sessions" / "rollout-a.jsonl").mkdir(parents=True)
@@ -1665,6 +1726,9 @@ def main() -> int:
         test_write_record_atomic(tmp)
         test_trace_line_split(tmp)
         test_unreadable_and_mismatched_sessions(tmp)
+        test_screen_separator_trace(tmp, reuse, screen_tasks)
+        test_session_directory_is_no_trace(tmp)
+        test_write_record_mode(tmp)
     print("test_hard_task_calibrate: OK")
     return 0
 

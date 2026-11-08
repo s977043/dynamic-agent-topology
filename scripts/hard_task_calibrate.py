@@ -519,7 +519,7 @@ def screen_check_controls(rdir: Path, record: dict) -> None:
     if missing:
         record["traceControlsMissing"] = missing
     try:
-        has_trace = any((rdir / "sessions").rglob("rollout-*.jsonl"))
+        has_trace = any(p.is_file() for p in (rdir / "sessions").rglob("rollout-*.jsonl"))
     except OSError:
         has_trace = False
     if not has_trace:
@@ -926,10 +926,15 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
 
 
 def write_record(rdir: Path, record: dict) -> None:
-    """A failed write leaves the previous run.json intact: write a sibling temporary file, then replace."""
+    """A failed write leaves the previous run.json intact: write a sibling temporary file, then replace.
+
+    mkstemp creates the file as 0600; the mode is reset to what a plain open() would give under the umask."""
     fd, tmp = tempfile.mkstemp(prefix=".run.json.", dir=rdir)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            umask = os.umask(0)
+            os.umask(umask)
+            os.fchmod(fh.fileno(), 0o666 & ~umask)
             fh.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
         os.replace(tmp, rdir / "run.json")
     except BaseException:

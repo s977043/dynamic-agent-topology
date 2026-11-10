@@ -1567,6 +1567,44 @@ def test_write_record_atomic(tmp: Path) -> None:
     check(json.loads((rdir / "run.json").read_text()) == {"status": "completed"}, "normal write replaces")
 
 
+def test_write_record_create_refused(tmp: Path) -> None:
+    rdir = tmp / "create-refused"
+    rdir.mkdir()
+    htc.write_record(rdir, {"status": "started"})
+    other = rdir / ".run.json.0123456789abcdef"
+    other.write_text("other writer\n")
+    real_token = htc.secrets.token_hex
+    htc.secrets.token_hex = lambda *a, **k: "0123456789abcdef"
+    try:
+        htc.write_record(rdir, {"status": "completed"})
+        raise AssertionError("collision: FileExistsError must propagate")
+    except FileExistsError:
+        pass
+    finally:
+        htc.secrets.token_hex = real_token
+    check(json.loads((rdir / "run.json").read_text()) == {"status": "started"}, "collision: previous record kept")
+    check(other.read_text() == "other writer\n", "collision: the other file is kept")
+    check(sorted(p.name for p in rdir.iterdir()) == [".run.json.0123456789abcdef", "run.json"],
+          "collision: no new temporary file")
+    other.unlink()
+
+    real_open = htc.os.open
+
+    def refuse(*a, **k):
+        raise OSError("injected")
+
+    htc.os.open = refuse
+    try:
+        htc.write_record(rdir, {"status": "completed"})
+        raise AssertionError("os.open: the injected failure must propagate")
+    except OSError:
+        pass
+    finally:
+        htc.os.open = real_open
+    check(json.loads((rdir / "run.json").read_text()) == {"status": "started"}
+          and [p.name for p in rdir.iterdir()] == ["run.json"], "os.open: previous record kept, no temporary file")
+
+
 def test_trace_line_split(tmp: Path) -> None:
     meta = {"type": "session_meta", "payload": {"cli_version": GOOD_CLI, "note": "a b\u0085c\x1cd"}}
     ctx = {"type": "turn_context", "payload": {"model": htc.MODEL, "effort": htc.EFFORT}}
@@ -1676,6 +1714,24 @@ def test_write_record_mode(tmp: Path) -> None:
               f"umask {umask:03o}: run.json mode {mode:o}, umask after the call {after:03o}")
 
 
+def test_write_record_keeps_umask(tmp: Path) -> None:
+    rdir = tmp / "umask-untouched"
+    rdir.mkdir()
+    real_umask = htc.os.umask
+    calls = []
+
+    def record_call(*a, **k):
+        calls.append(a)
+        return real_umask(*a, **k)
+
+    htc.os.umask = record_call
+    try:
+        htc.write_record(rdir, {"status": "started"})
+    finally:
+        htc.os.umask = real_umask
+    check(calls == [], f"write_record must not call os.umask: {calls}")
+
+
 def test_unreadable_and_mismatched_sessions(tmp: Path) -> None:
     rdir = tmp / "two-sessions"
     (rdir / "sessions" / "rollout-a.jsonl").mkdir(parents=True)
@@ -1747,11 +1803,13 @@ def main() -> int:
         test_success_at_later_runs(tmp, reuse, screen_tasks)
         test_screen_rehearsal_findings(tmp, reuse, screen_tasks)
         test_write_record_atomic(tmp)
+        test_write_record_create_refused(tmp)
         test_trace_line_split(tmp)
         test_unreadable_and_mismatched_sessions(tmp)
         test_screen_separator_trace(tmp, reuse, screen_tasks)
         test_session_directory_is_no_trace(tmp, reuse, screen_tasks)
         test_write_record_mode(tmp)
+        test_write_record_keeps_umask(tmp)
     print("test_hard_task_calibrate: OK")
     return 0
 

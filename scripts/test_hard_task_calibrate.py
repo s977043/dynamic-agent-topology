@@ -758,8 +758,10 @@ class NonzeroExitRun(FakeRealRun):
     def __init__(self, exits: dict[str, int], success_at: dict[int, int] | None = None, no_usage: bool = False):
         super().__init__({}, success_at)
         self.exits, self.no_usage = exits, no_usage
+        self.launched: list[str] = []
 
     def container(self, args, rdir, _prompt, evidence, _on_launched=None):
+        self.launched.append(rdir.name)
         evidence["modelLaunched"] = True
         htc.fake_codex(args, rdir / "sessions")
         if self.no_usage and rdir.name in self.exits:
@@ -1624,20 +1626,39 @@ def test_screen_separator_trace(tmp: Path, reuse: Path, tasks: Path) -> None:
               and ("gpt-6-luna" in record["stopReason"] if deviated else record["totalTokens"] == 70000)
               and "traceControlsMissing" not in record and "traceControlsChecked" not in record,
               f"{name}: separators inside strings do not split lines: {record} {err}")
-        with NonzeroExitRun({}, others):
+        before = (work / "HTS-06-n1" / "run.json").read_bytes()
+        with NonzeroExitRun({}, others) as resumed:
             rc, _, err = run_cli(args + ["--skip-existing"])
-        check((rc == 2) is deviated and (work / "HTS-07-n1").exists() is not deviated,
-              f"{name}: resume: {err}")
+        check((rc == 2) is deviated and (work / "HTS-07-n1").exists() is not deviated
+              and (work / "HTS-06-n1" / "run.json").read_bytes() == before
+              and not any(r.startswith("HTS-06-") for r in resumed.launched)
+              and resumed.launched[:1] == (["HTS-07-n1"] if name == "exit1" else []),
+              f"{name}: resume keeps the record and does not relaunch it: {resumed.launched} {err}")
 
 
-def test_session_directory_is_no_trace(tmp: Path) -> None:
-    rdir = tmp / "dir-only"
+def test_session_directory_is_no_trace(tmp: Path, reuse: Path, tasks: Path) -> None:
+    work = tmp / "dir-only"
+    args = real_args(screen_args(work, reuse, tasks, run="100000", cand="1000000", budget="10000000"))
+    with FakeRealRun({"HTS-06-n1": True}, {o: 1 for o in range(7, 45)}):
+        rc, _, err = run_cli(args)
+    rdir = work / "HTS-06-n1"
+    record = json.loads((rdir / "run.json").read_text())
+    check(rc == 0 and record["status"] == "aborted-timeout" and record["tokenUsageKnown"] is True,
+          f"a resumable aborted record: {record} {err}")
+    before = htc.classify(work, 6)
+    shutil.rmtree(rdir / "sessions")
     (rdir / "sessions" / "rollout-x.jsonl").mkdir(parents=True)
-    record = {"runId": "HTS-06-n1", "status": "aborted-timeout"}
     htc.screen_check_controls(rdir, record)
     saved = json.loads((rdir / "run.json").read_text())
     check(saved["status"] == "aborted-timeout" and saved["traceControlsChecked"] is False
           and "session-files" in saved["traceControlsMissing"], f"a directory named like a session is no trace: {saved}")
+    after = htc.classify(work, 6)
+    check((after["outcome"], after["tokens"], after["usageUnknown"]) == (before["outcome"], before["tokens"], [])
+          and saved["totalTokens"] == record["totalTokens"], f"same classification and usage: {before} {after}")
+    with NonzeroExitRun({}, {o: 1 for o in range(7, 45)}) as resumed:
+        rc, _, err = run_cli(args + ["--skip-existing"])
+    check(rc == 0 and resumed.launched == [] and (work / "HTS-07-n1").exists()
+          and json.loads((rdir / "run.json").read_text()) == saved, f"resume continues: {resumed.launched} {err}")
 
 
 def test_write_record_mode(tmp: Path) -> None:
@@ -1647,10 +1668,12 @@ def test_write_record_mode(tmp: Path) -> None:
         old = os.umask(umask)
         try:
             htc.write_record(rdir, {"status": "started"})
+            after = os.umask(umask)
         finally:
             os.umask(old)
         mode = stat.S_IMODE((rdir / "run.json").stat().st_mode)
-        check(mode == 0o666 & ~umask, f"umask {umask:03o}: run.json mode {mode:o}")
+        check(mode == 0o666 & ~umask and after == umask,
+              f"umask {umask:03o}: run.json mode {mode:o}, umask after the call {after:03o}")
 
 
 def test_unreadable_and_mismatched_sessions(tmp: Path) -> None:
@@ -1727,7 +1750,7 @@ def main() -> int:
         test_trace_line_split(tmp)
         test_unreadable_and_mismatched_sessions(tmp)
         test_screen_separator_trace(tmp, reuse, screen_tasks)
-        test_session_directory_is_no_trace(tmp)
+        test_session_directory_is_no_trace(tmp, reuse, screen_tasks)
         test_write_record_mode(tmp)
     print("test_hard_task_calibrate: OK")
     return 0

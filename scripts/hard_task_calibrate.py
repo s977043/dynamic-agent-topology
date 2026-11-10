@@ -26,6 +26,7 @@ import hashlib
 import io
 import json
 import os
+import secrets
 import shlex
 import shutil
 import socket
@@ -928,13 +929,12 @@ def execute_run(args, run: dict, rdir: Path, ws: Path, record: dict, prompt: str
 def write_record(rdir: Path, record: dict) -> None:
     """A failed write leaves the previous run.json intact: write a sibling temporary file, then replace.
 
-    mkstemp creates the file as 0600; the mode is reset to what a plain open() would give under the umask."""
-    fd, tmp = tempfile.mkstemp(prefix=".run.json.", dir=rdir)
+    The temporary file is created with mode 0666 so the kernel applies the umask as a plain open() would,
+    without reading or changing the process umask."""
+    tmp = rdir / f".run.json.{secrets.token_hex(8)}"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            umask = os.umask(0)
-            os.umask(umask)
-            os.fchmod(fh.fileno(), 0o666 & ~umask)
             fh.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
         os.replace(tmp, rdir / "run.json")
     except BaseException:

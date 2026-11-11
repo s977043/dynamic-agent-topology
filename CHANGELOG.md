@@ -6,6 +6,38 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.6.0
+
+Content candidate: `876c05f129a5187a8aa9b04be8106d16e9f1f4b6`.
+
+Previous boundary: tag `v0.5.0` (`2144faf2cb9843bb317f842195f865098199e758`).
+
+### Breaking
+
+- `scripts/compare_paired_blocks.py` now rejects an `--exclude BLOCK_ID=REASON` whose block ID appears in more than one scenario of the input, with a `ValueError` message (`excluded block IDs are ambiguous across scenarios`) and exit code 2; 0.5.0 accepted it (#289). Migration: when excluding a block ID that is reused across scenarios, pass input files for one scenario per run.
+- `scripts/compare_paired_blocks.py` now computes `meanTotalTokensRatio` and `meanWallClockMsRatio` from complete pairs only (blocks where both conditions have the metric), reported in the new `pairedMetricSummary` field; in 0.5.0 they were the ratio of the descriptive `conditionMeans`, which could use different observed populations (#289). Migration: the same input can give a different ratio; do not compare 0.6.0 ratios directly with ratios produced by 0.5.0 when any paired block misses a metric, and re-run 0.5.0 comparisons with 0.6.0 when a ratio is reused. `conditionMeans` keeps its previous meaning.
+
+### Added
+
+- `pairedMetricSummary` in the `scripts/compare_paired_blocks.py` output: per metric, the complete-pair count, missing blocks with their missing conditions, and the paired means (#289). `docs/METRICS.md` describes the populations, and `docs/HUMAN_ATTENTION_PILOT.md` and `docs/human-attention-pilot/` add a Human Attention measurement procedure and a one-pair packet (#289, #290).
+- Hard-task screening mode in `scripts/hard_task_calibrate.py` (`screen-plan`, `screen`, `screen-summarize`) with the runbook update, task descriptions for orders 6 to 44, and a draft pre-screening exclusion addendum to the preregistration (#244; #304, #305, #307), followed by fixes from the rehearsal and reviews (#309, #310, #311, #315). Existing calibration subcommands keep their options.
+- `scripts/subagent_folding_oracle.py`, a synthetic oracle, and `docs/SUBAGENT_FOLDING_DESIGN.md` with a minimum verification plan; spec-lint runs `scripts/test_subagent_folding_oracle.py` (#288).
+- Runtime canary records under `docs/runtime-canary/`: one manually dispatched T0/T1 pair with independent grading (#293), repeated grading with Verifier execution evidence (#300), and live runtime conditions (#301). These are observations, not a T0/T1 comparison result.
+- Codex Cloud verification results and Docker measurements in `adapters/codex/` (#291, #292).
+- `docs/ADOPTION.md` connects task-level selection and role sharing to existing observations (#306).
+- Research note on Auctopus PI-led evidence gates as a verification candidate, registered in `knowledge/sources.yaml`; it is not an adopted contract (#296, #298).
+
+### Changed
+
+- `scripts/review_package.py` reads the PR base SHA from the REST API for gh 2.46 compatibility, stops when the PR snapshot is inconsistent, and diffs against the base SHA (#297); tests cover bases other than `main` (#299, #303).
+- `AGENTS.md` and `docs/AGENT_HARNESS.md` define the scope of "check scripts" for rule-change PRs (#313).
+- `docs/RELEASE_READINESS.md` records `v0.5.0` in the current release line and the completed EXP-001 state (#284, #285); `docs/CURRENT_EXECUTION_PLAN.md` is synced (#308, #312).
+- CI dependencies are bumped: `check-jsonschema` 0.39.0 and the GitHub Actions group (#282, #314). The relay test in `scripts/test_model_role_split_pilot.py` no longer lets server completion cancel reader pacing (#301). A regression test fixes the `write_record` temporary-file refusal and unchanged umask (#316).
+
+### Experiment status
+
+- No EXP-001 frozen input or evaluation semantic changed. Hard-task screening, Human Attention, Subagent folding, and runtime canary work are preparation and observations; no T0/T1 or topology comparison result is claimed in this release. The plugin version is unchanged.
+
 ## 0.5.0 — 2026-11-02
 
 Content candidate: `5cf7ba04218e390f0f4faec0f05f5aceae0dfce2`.

@@ -27,7 +27,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
    - `verification` が `yes` 以外のときの `verifierKind` の扱いは設計 §5.4 を読む（検証なしの形は [adapters/codex/examples/run-observation.yaml](../../adapters/codex/examples/run-observation.yaml)）
    - `taskDifficulty`（`trivial` / `standard` / `hard` / `unknown`）は構成を選ぶ前に決めた区分を書く。結果を見てから付けない
    - `outcome: interrupted` なら `interruptionKind`（`human-decision` / `ownership` / `environment` / `failure` / `unknown`）を書く
-   - 手戻りがあれば `rework.triggers`（`review-finding` / `self-correction` / `spec-change` / `ci-failure` / `unknown`）を書く
+   - 手戻りの出どころ別の回数（`rework.sources`）と `apiVersion`・`rework.triggers` との関係は設計 [§5.5](../../docs/RUN_OBSERVATION_DESIGN.md#55-reworksources出どころ別の回数321) を読む
    - `model[].effort` と `usage`（`totalTokens`・`costUsd`）は確認できた値だけ書き、分からなければ `unknown`
    - `reviews[].decision` は `approve` / `changes-requested` / `comment` / `unknown` のいずれかで書く
    - `startedAt` / `endedAt` はウェーブの開始・終了時に控えておく。期間の集計は `endedAt` で行う（[docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)）
@@ -48,7 +48,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations
 ```
 
-出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md) に従う。Python が使えないときは集計できないと報告する。
+出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)、出どころ別の表の読み方は設計 [§5.5.8](../../docs/RUN_OBSERVATION_DESIGN.md#558-記録の扱い集計の分母) に従う。Python が使えないときは集計できないと報告する。
 
 ## しないこと
 

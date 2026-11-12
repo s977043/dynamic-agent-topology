@@ -283,7 +283,7 @@ rework:
 | 6 | `v1alpha2` | `count` ≥ 1、`sources` に値 `unknown` がある | 除外 | 内訳の回数不明 |
 | 7 | `v1alpha2` | `count` ≥ 1、`sources` の全値が integer で合計 = `count` | 含める | — |
 
-H-src（§5.5.5）は、このうち測定期間内の `v1alpha2` の行だけを使う。一般の `sum` は全版を対象にするので、同じ store でも両者の件数は異なり、出力には対象の版と期間を明記する。混在 store では、既存の列（`known rework / waves`・`rework total`）の母集団は validator を通った記録のうち `count` が integer のもの（`rework total` はその `count` の合計。現行 `summarize` の実装）、出どころ別の表の母集団は「含める」の記録で、**両者は一致しない**。出どころ別の値を既存の合計と直接比べない。
+H-src（§5.5.5）は、このうち測定期間内の `v1alpha2` の行だけを使う。一般の `sum` は全版を対象にするので、同じ store でも両者の件数は異なり、出力には対象の版と期間を明記する。混在 store では、既存の列 `known rework / waves` の分母（waves）は validator を通った全記録（`count: unknown` を含む）、分子（known rework）は `count` が integer の記録の件数、`rework total` はその `count` の合計（現行 `summarize` の実装）で、出どころ別の表の母集団は「含める」の記録で、**両者は一致しない**。出どころ別の値を既存の合計と直接比べない。
 
 #### 5.5.9 互換性・移行・公開
 

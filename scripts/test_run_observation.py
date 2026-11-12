@@ -242,6 +242,45 @@ with tempfile.TemporaryDirectory() as tmp:
     (store / "project-a" / "obs-complex.yaml").unlink()
     expect(run("sum", "--store", str(store)), 0, "observations: 4", "sum without invalid files")
 
+    sources_store = tmp / "sources-store"
+    for index, (source, rework, version) in enumerate((
+        ("t1-separate-session-verifier.yaml", None, None),
+        ("v1alpha2-sources-add-up.yaml", None, None),
+        ("v1alpha2-count-zero-empty-sources.yaml", None, None),
+        ("v1alpha2-count-unknown-with-source.yaml", None, None),
+        ("v1alpha2-sources-unknown-lower-bound.yaml", None, None),
+        ("t1-separate-session-verifier.yaml", {"count": 2, "triggers": ["review-finding"]}, None),
+        ("t1-separate-session-verifier.yaml", {"count": 2}, "dat/v1alpha2"),
+    )):
+        record = yaml.safe_load((FIXTURES / "valid" / source).read_text(encoding="utf-8"))
+        record["metadata"]["observationId"] = f"obs-06{index:02d}"
+        if rework is not None:
+            record["rework"] = rework
+        if version is not None:
+            record["apiVersion"] = version
+        path = work / f"sources-{index}.yaml"
+        path.write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")
+        expect(run("save", str(path), "--store", str(sources_store)), 0, "OK", f"save sources record {index}")
+    result = run("sum", "--store", str(sources_store))
+    for text in (
+        "rework by source (all apiVersions, all periods",
+        "| topology | breakdown known / waves | excluded: count unknown | excluded: no breakdown (v1alpha1) | "
+        "excluded: no breakdown | excluded: source counts unknown | source: spec-change | source: human-return | "
+        "source: review-finding | source: ci-failure | source: self-correction | source: unknown |",
+        "| T1 | 3/7 | 1 | 1 | 1 | 1 | 0 | 0 | 2 | 1 | 0 | 0 |",
+        "| T1 | 6/7 | 10 |",
+    ):
+        expect(result, 0, text, "sum rework by source")
+
+    expect(run("sum", "--store", str(sources_store), "--store", str(store)), 0, "observations: 11", "sum across stores")
+    shutil.copyfile(sources_store / "project-a" / "obs-0600.yaml", store / "project-a" / "obs-0600.yaml")
+    result = run("sum", "--store", str(sources_store), "--store", str(store))
+    expect(result, 1, "duplicate observationId obs-0600: ", "sum detects observationId across stores")
+    if "observations:" in result.stdout:
+        failures.append("sum must not print counts when observationIds are duplicated across stores")
+    (store / "project-a" / "obs-0600.yaml").unlink()
+    expect(run("sum", "--store", str(sources_store), "--store", str(tmp / "missing")), 2, "store does not exist", "sum with a missing store")
+
 if failures:
     print("RunObservation CLI tests failed:")
     for failure in failures:

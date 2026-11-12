@@ -1,4 +1,4 @@
-apiVersion: dat/v1alpha1
+apiVersion: dat/v1alpha2
 kind: RunObservation
 metadata:
   observationId: obs-cc-0001
@@ -40,8 +40,9 @@ reviews:
     nonBlocking: 1
   decision: approve
 rework:
-  count: 0
-  triggers: []
+  count: 1
+  sources:
+    review-finding: 1
 humanInterventions:
 - kind: approval
   count: 1

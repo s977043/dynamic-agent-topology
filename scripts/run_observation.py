@@ -2,9 +2,11 @@
 """Save validated RunObservation records to a store, or summarize a store.
 
   python scripts/run_observation.py save <record.yaml> --store <dir>
-  python scripts/run_observation.py sum --store <dir>
+  python scripts/run_observation.py sum --store <dir> [--store <dir> ...]
 
---store may be omitted when DAT_OBSERVATION_STORE is set. A store inside this
+--store may be omitted when DAT_OBSERVATION_STORE is set. sum with several
+--store options counts them together and checks observationId across all of
+them. A store inside this
 repository or any git working tree (a .git in the store or an ancestor) is
 refused so that observation records are never committed.
 Records are saved as <store>/<metadata.project>/<metadata.observationId>.yaml;
@@ -17,7 +19,7 @@ file in the store cannot be read or parsed. sum counts only
 
 Exit codes: save returns 0 when stored and 1 when refused. sum returns 0 when
 every file was counted, 1 when tables were printed but invalid files were
-skipped or when counted records share an observationId (no tables), and 2 when the store does not exist. Both return 2 on a bad --store.
+skipped or when counted records share an observationId (no tables), and 2 when a store does not exist. Both return 2 on a bad --store.
 """
 from collections import Counter
 from pathlib import Path
@@ -34,6 +36,8 @@ ROOT = vro.ROOT
 STORE_ENV = "DAT_OBSERVATION_STORE"
 NOTICE = "Observational counts only; not evidence that a topology is better."
 PATH_ELEMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+SOURCES = ("spec-change", "human-return", "review-finding", "ci-failure", "self-correction", "unknown")
+EXCLUSIONS = ("count unknown", "no breakdown (v1alpha1)", "no breakdown", "source counts unknown")
 
 
 def cell(value):
@@ -125,23 +129,51 @@ def save(path, store):
     return 0
 
 
-def summarize(store):
-    if not store.is_dir():
-        print(f"NG\n- store does not exist: {store}")
+def source_breakdown(record):
+    """Return (sources, None) when the breakdown is counted, or (None, exclusion reason).
+
+    Rows of docs/RUN_OBSERVATION_DESIGN.md section 5.5.8 for a valid record.
+    """
+    rework = record["rework"]
+    if rework["count"] == "unknown":
+        return None, "count unknown"
+    if rework["count"] == 0:
+        return {}, None
+    if record["apiVersion"] == "dat/v1alpha1":
+        return None, "no breakdown (v1alpha1)"
+    if "sources" not in rework:
+        return None, "no breakdown"
+    if "unknown" in rework["sources"].values():
+        return None, "source counts unknown"
+    return rework["sources"], None
+
+
+def summarize(stores):
+    missing = [store for store in stores if not store.is_dir()]
+    if missing:
+        print("NG")
+        for store in missing:
+            print(f"- store does not exist: {store}")
         return 2
     validator = vro.load_validator()
+
+    def shown(store, path):
+        relative = path.relative_to(store)
+        return relative if len(stores) == 1 else store / relative
+
     records = []
     skipped = 0
-    for path in sorted(store.rglob("*.yaml")):
-        if len(path.relative_to(store).parts) != 2:
-            print(f"warning: not counted (outside <project>/<observationId>.yaml): {cell(path.relative_to(store))}")
-    for path in sorted(store.glob("*/*.yaml")):
-        record, errors = vro.load_record(path, validator)
-        if errors:
-            print(f"skipped invalid: {path.relative_to(store)}: {cell(errors[0])}")
-            skipped += 1
-            continue
-        records.append((path, record))
+    for store in stores:
+        for path in sorted(store.rglob("*.yaml")):
+            if len(path.relative_to(store).parts) != 2:
+                print(f"warning: not counted (outside <project>/<observationId>.yaml): {cell(shown(store, path))}")
+        for path in sorted(store.glob("*/*.yaml")):
+            record, errors = vro.load_record(path, validator)
+            if errors:
+                print(f"skipped invalid: {shown(store, path)}: {cell(errors[0])}")
+                skipped += 1
+                continue
+            records.append((shown(store, path), record))
     paths_by_id = {}
     for path, record in records:
         paths_by_id.setdefault(record["metadata"]["observationId"], []).append(path)
@@ -149,7 +181,7 @@ def summarize(store):
     if duplicates:
         print("NG")
         for key, paths in sorted(duplicates.items()):
-            print(f"- duplicate observationId {cell(key)}: {', '.join(cell(p.relative_to(store)) for p in paths)}")
+            print(f"- duplicate observationId {cell(key)}: {', '.join(cell(p) for p in paths)}")
         return 1
     records = [record for _, record in records]
     print(f"observations: {len(records)}")
@@ -167,6 +199,27 @@ def summarize(store):
             group = [r for r in records if r["topologyEquivalent"] == topology]
             known = [r["rework"]["count"] for r in group if isinstance(r["rework"]["count"], int)]
             print(f"| {cell(topology)} | {len(known)}/{len(group)} | {sum(known)} |")
+        print("\nrework by source (all apiVersions, all periods; docs/RUN_OBSERVATION_DESIGN.md section 5.5.8)")
+        print(
+            "\n| topology | breakdown known / waves | "
+            + " | ".join(f"excluded: {reason}" for reason in EXCLUSIONS)
+            + " | "
+            + " | ".join(f"source: {source}" for source in SOURCES)
+            + " |\n|"
+            + "---|" * (2 + len(EXCLUSIONS) + len(SOURCES))
+        )
+        for topology in sorted({r["topologyEquivalent"] for r in records}):
+            group = [source_breakdown(r) for r in records if r["topologyEquivalent"] == topology]
+            included = [sources for sources, _ in group if sources is not None]
+            excluded = Counter(reason for _, reason in group if reason is not None)
+            totals = [sum(sources.get(source, 0) for sources in included) for source in SOURCES]
+            print(
+                f"| {cell(topology)} | {len(included)}/{len(group)} | "
+                + " | ".join(str(excluded[reason]) for reason in EXCLUSIONS)
+                + " | "
+                + " | ".join(str(total) for total in totals)
+                + " |"
+            )
         decisions = Counter(
             vro.normalize_decision(review["decision"])
             for r in records if r["reviews"] != "unknown" for review in r["reviews"]
@@ -186,16 +239,19 @@ def main(argv):
     save_parser.add_argument("record")
     save_parser.add_argument("--store")
     sum_parser = commands.add_parser("sum", help="summarize stored records as Markdown tables")
-    sum_parser.add_argument("--store")
+    sum_parser.add_argument("--store", action="append")
     args = parser.parse_args(argv)
     try:
-        store = resolve_store(args.store)
+        if args.command == "save":
+            store = resolve_store(args.store)
+        else:
+            stores = [resolve_store(value) for value in args.store or [None]]
     except ValueError as error:
         print(f"NG\n- {error}")
         return 2
     if args.command == "save":
         return save(args.record, store)
-    return summarize(store)
+    return summarize(list(dict.fromkeys(stores)))
 
 
 if __name__ == "__main__":

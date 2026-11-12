@@ -22,6 +22,7 @@
 | `artifacts` | 作成・merge した PR（仮名 `pr-1` など） | 状態が分からない要素だけ `state: unknown` |
 | `reviews` | 独立レビューの判定と指摘件数。`reviewerKind` と `role` を必ず書き、本文は書かない | 一部も追えないときは `unknown`。レビューなしは `[]` |
 | `rework.count` | 修正のための再委託・再レビューの回数 | `unknown`。なかったときは `0` |
+| `rework.sources` | `rework.count` の各回を、その回のきっかけ（要件変更・Human の差し戻し・レビュー指摘・CI 失敗・自己修正）から設計 §5.5 の出どころに 1 つずつ割り当てて数える。`apiVersion: dat/v1alpha2` の記録だけに書き、`rework.triggers` とは併記しない。同じ store を読むすべての読取側が新版に上がるまでは `dat/v1alpha1` で書き、`sources` を書かない（設計 §5.5.9） | 回数が分からない出どころは `unknown`、出どころが分からない回はキー `unknown`。内訳を追えなければ書かない |
 | `humanInterventions` | 承認・方針の回答など人の介入の種別ごとの件数 | `unknown` |
 | `topologyEquivalent` / `topologyBasis` | 上の記録から設計 §5.2 の順で判定する。サブエージェントのコンテキスト分離は未確認（`isolated_context: unknown`）なので、別セッションかどうかは実行形態から記録者が判断し、判断できなければ `unknown` | 設計の規則どおり `unknown` |
 
@@ -36,7 +37,7 @@
    python <DAT のパス>/scripts/run_observation.py save <記録.yaml> --store ~/.dat/observations
    ```
 
-3. 集計は `sum` で Markdown の表として出す。不正なファイルは表示して数えない。終了コードは、すべて数えたとき 0、不正なファイルを飛ばしたとき 1（表は出る）、保存先がないとき 2。集計は観察件数であり、構成の優劣の根拠ではない
+3. 集計は `sum` で Markdown の表として出す。不正なファイルは表示して数えない。終了コードは、すべて数えたとき 0、不正なファイルを飛ばしたとき 1（表は出る）、`observationId` が重複したとき 1（表は出ない）、保存先がないとき 2。終了コード 1 の表は全件集計として扱わない。`--store` を複数渡すと合わせて集計し、`observationId` の重複を store を横断して確かめる。`known rework / waves` の分母（waves）は validator を通った全記録（`rework.count: unknown` を含む）、分子と `rework total` は `count` が整数の記録。出どころ別の表の母集団と除外の理由は設計 §5.5.8 に従い、既存の列と直接比べない。集計は観察件数であり、構成の優劣の根拠ではない
 
    ```bash
    python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations

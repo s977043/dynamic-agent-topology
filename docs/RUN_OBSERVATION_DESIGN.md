@@ -30,7 +30,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 - 判定対象: 段階 4 の dogfooding で集めた記録
 - 「取得」の定義: 値が `unknown` でないこと。`0` や空配列 `[]` は明示値として取得に数える
-- 取得率の分母: 判定対象の全記録で固定する。`unknown` は分母に残し、未取得として数える（§5.3 の一般集計で `unknown` を分母から除く規則とは別で、H1 には適用しない）
+- 取得率の分母: 判定対象の全記録で固定する。`unknown` は分母に残し、未取得として数える（§5.3 の「分母に含めるかは表ごとに決める」に基づく H1 の決め方）
 - 判定は次の順に適用し、結果は 1 つだけになる
   1. **INCONCLUSIVE（前提不足）**: 記録が 20 件未満、または 2 リポジトリ未満。取得率は見ない
   2. **棄却**: 6 項目のいずれかの取得率が 50% 未満。記録の時点・手順の設計を見直す
@@ -145,7 +145,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - 分からない値は文字列 `unknown`。0・空配列・`false` で補わない（METRICS の欠測値方針と同じ）
 - レビューをしなかったときは `reviews: []`、手戻りがなかったときは `rework.count: 0` を明記する。これが H1 の「取得」に数えられる
 - 時刻が分単位以上で両方分かるときだけ `wallClockMs` を出す
-- 集計は `unknown` を分母から除き、除いた件数を併記する
+- 集計で `unknown` を分母に含めるかは表ごとに決める（rework は §5.5.8）。分母から除いたときは除いた件数を併記する
 
 ### 5.4 段階 2 の実装で決めたこと
 
@@ -167,7 +167,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 
 `rework.count` の内訳を出どころ別に記録する任意項目。目的は、「1 件あたりの rework が T0〜T3 の順に多い」という観察に、レビュー指摘から数えられやすいという測定の偏りが混ざっていないかを**探索すること**。構成の優劣や因果は結論しない（§9）。版の扱いは Human 判断 V1（[#321 のコメント](https://github.com/s977043/dynamic-agent-topology/issues/321#issuecomment-6831840569)、2026-11-12）に従う。
 
-**現状の事実**
+**現状の事実**（実装前、基準コミット `a24004f` の時点の記述）
 
 - 現行 schema（`schemas/run-observation.schema.json`、`apiVersion: dat/v1alpha1`）の `rework` は `count`（必須）と `triggers`（出どころの集合。回数を持たない）だけで、`additionalProperties: false`
 - `triggers` を案内しているのは `skills/dat-observe/SKILL.md` だけで、`adapters/claude-code/RUN_OBSERVATION.md`・`adapters/codex/RUN_OBSERVATION.md` の項目表は `rework.count` だけ。`scripts/run_observation.py sum` は `rework.count` の合計だけを出す
@@ -302,7 +302,7 @@ H-src（§5.5.5）は、このうち測定期間内の `v1alpha2` の行だけ�
 
 1. 同じ store を読むすべての読取側（`sum` を実行する環境、記録を読む共有先・スクリプト）を新版に上げる
 2. 全読取側の更新が終わるまで、記録側は新形式（`dat/v1alpha2`）を書かない。記録側の plugin を先に上げた場合も、`apiVersion: dat/v1alpha1` で書き続ける
-3. 2 の唯一の例外: 旧版しか使えない読取側が長く残るときは、新形式の記録を別の store（例: `--store` で別ディレクトリ）に分けて保存し、旧版にはその store を読ませない。新版の `sum` は両方の store を別々に集計し、結果を合算するときは §5.5.8 の扱いに従う。現行 CLI の `observationId` 重複検査（`save` と `sum`）は 1 つの store の中だけなので、合算の前に両 store を横断して `observationId` の重複を確認し、重複があれば合算を止め、該当する実記録を照合してどちらを残すか決めてから集計し直す
+3. 2 の唯一の例外: 旧版しか使えない読取側が長く残るときは、新形式の記録を別の store（例: `--store` で別ディレクトリ）に分けて保存し、旧版にはその store を読ませない。新版の `sum` は `--store` を複数指定して両方の store をまとめて集計し（集計の扱いは §5.5.8）、store を横断して `observationId` の重複を検出する。重複検査は validator を通った記録の間で行い、invalid な記録は先に除外される。重複があると `sum` は表を出さずに exit 1 を返すので、該当する実記録を照合してどちらを残すか決めてから集計し直す。`save` の重複検査は保存先の 1 つの store の中だけなので、別 store に同じ `observationId` があっても保存は拒否されない
 4. 全読取側の更新後に、新しい記録から `apiVersion: dat/v1alpha2` と `rework.sources` を書く
 5. 既存の `dat/v1alpha1` 記録は書き換えない。出どころを遡って推測で埋めない
 6. `skipped invalid` を 1 件でも出して exit 1 になった `sum` の表は、全件集計として扱わない（DOGFOODING や Issue へ転記しない）。exit code を見ずに表を使う処理があれば、移行前に exit code を確認するよう直す

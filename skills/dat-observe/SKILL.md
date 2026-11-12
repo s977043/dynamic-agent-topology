@@ -49,7 +49,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations
 ```
 
-出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)、出どころ別の表の読み方は設計 [§5.5.8](../../docs/RUN_OBSERVATION_DESIGN.md#558-記録の扱い集計の分母) に従う。Python が使えないときは集計できないと報告する。
+出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。終了コードも確認し、exit 1 の表の扱いは設計 [§5.5.9 の移行手順](../../docs/RUN_OBSERVATION_DESIGN.md#559-互換性移行公開) に従う。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)、出どころ別の表の読み方は設計 [§5.5.8](../../docs/RUN_OBSERVATION_DESIGN.md#558-記録の扱い集計の分母) に従う。Python が使えないときは集計できないと報告する。
 
 ## しないこと
 

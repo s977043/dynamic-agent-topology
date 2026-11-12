@@ -110,6 +110,10 @@ Review OpenSSF Scorecard as supply-chain evidence. If the candidate or release P
 
 A reviewer must verify that failed, cancelled, skipped, stale, or superseded workflow runs are not being treated as successful evidence.
 
+These are pre-publication gates, including when a human publishes a breaking release. Human-only publication changes who performs the operation, not when the evidence is required. Required `main` checks must pass on the release commit before tagging; when release-commit Scorecard evidence is required, it must also pass before tagging, not as a follow-up after the tag or GitHub Release is published. The recent-result option above remains limited to human publication without supply-chain changes.
+
+The Scorecard workflow (`.github/workflows/scorecard.yml`) runs on pushes to `main` and on its schedule, not on release PR heads. When release-commit Scorecard evidence is required, after merge, wait for the run whose head SHA equals the release commit, and record its URL and successful conclusion. A successful content-candidate or PR-head check does not substitute for this evidence. If the required run is missing, pending, or unsuccessful, keep publication pending and follow Publication failure.
+
 ## Metadata gate
 
 The release PR should:
@@ -144,7 +148,7 @@ Do not copy statuses from an older SHA into this record as if they applied to th
 After the release PR is merged, treat the repository as **publication pending** until the tag and GitHub Release exist:
 
 1. record the release commit SHA;
-2. verify required `main` CI/security evidence for that exact commit according to the Evidence gate;
+2. verify and record required `main` CI/security evidence for that exact commit according to the Evidence gate, including the required Scorecard evidence, **before tagging or publishing**;
 3. create immutable tag `vX.Y.Z` at the release commit;
 4. publish the matching GitHub Release from that tag;
 5. verify README, `CHANGELOG.md`, `CITATION.cff`, tag, and GitHub Release describe the same version boundary.

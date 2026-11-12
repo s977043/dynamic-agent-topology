@@ -20,6 +20,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 
 1. **値を集める**: このセッションで実際に行った委託・レビュー・手戻り・人の確認、PR の状態など、確認できる情報源だけを使う。
 2. **YAML を書く**: 記録例の形で、作業中のリポジトリの外（一時ディレクトリ）に書く。
+   - 記録例は `apiVersion: dat/v1alpha2`。同じ store を読むすべての読取側（`sum` を実行する環境など）を新版に上げるまでは、`apiVersion: dat/v1alpha1` で書き、`rework.sources` を入れない（旧版は `dat/v1alpha2` の記録を拒否する）。条件と手順は設計 [§5.5.9](../../docs/RUN_OBSERVATION_DESIGN.md#559-互換性移行公開) の移行手順に従う
    - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
    - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない

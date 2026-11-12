@@ -45,7 +45,7 @@
    python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations
    ```
 
-4. 合成値の記録例: [examples/run-observation.yaml](examples/run-observation.yaml)
+4. 合成値の記録例: [examples/run-observation.yaml](examples/run-observation.yaml)（`apiVersion: dat/v1alpha2`）。同じ store を読むすべての読取側を新版に上げるまでは、この例の `apiVersion` を `dat/v1alpha1` にし、`rework.sources` を入れずに書く（旧版は `dat/v1alpha2` の記録を拒否する。条件と手順は設計 [§5.5.9](../../docs/RUN_OBSERVATION_DESIGN.md#559-互換性移行公開)）
 
 ## 秘匿
 

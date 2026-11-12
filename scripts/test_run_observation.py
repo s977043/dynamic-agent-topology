@@ -236,6 +236,7 @@ with tempfile.TemporaryDirectory() as tmp:
         "| T1 | 1/2 | 0 |",
         "| T0 | 2/2 | 0 |",
         "not evidence that a topology is better",
+        "excluded: invalid: 2 (not in the table; the table counts the 4 valid records)",
     ):
         expect(result, 1, text, "sum output with a skipped file")
     (store / "project-a" / "obs-bad.yaml").unlink()
@@ -280,6 +281,20 @@ with tempfile.TemporaryDirectory() as tmp:
         failures.append("sum must not print counts when observationIds are duplicated across stores")
     (store / "project-a" / "obs-0600.yaml").unlink()
     expect(run("sum", "--store", str(sources_store), "--store", str(tmp / "missing")), 2, "store does not exist", "sum with a missing store")
+
+    empty_store = tmp / "empty-store"
+    empty_store.mkdir()
+    result = run("sum", "--store", str(empty_store))
+    for text in ("observations: 0", "excluded: invalid: 0 (not in the table; the table counts the 0 valid records)"):
+        expect(result, 0, text, "sum on an empty store")
+    (empty_store / "project-a").mkdir()
+    shutil.copyfile(FIXTURES / "invalid" / "rework-sources-sum-mismatch.yaml", empty_store / "project-a" / "obs-bad.yaml")
+    result = run("sum", "--store", str(empty_store))
+    for text in ("skipped invalid: project-a/obs-bad.yaml", "observations: 0",
+                 "excluded: invalid: 1 (not in the table; the table counts the 0 valid records)"):
+        expect(result, 1, text, "sum on a store with only invalid records")
+    if "| topology | breakdown known" in result.stdout:
+        failures.append("sum must not print the source table without valid records")
 
 if failures:
     print("RunObservation CLI tests failed:")

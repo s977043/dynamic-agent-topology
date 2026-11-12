@@ -199,7 +199,17 @@ def summarize(stores):
             group = [r for r in records if r["topologyEquivalent"] == topology]
             known = [r["rework"]["count"] for r in group if isinstance(r["rework"]["count"], int)]
             print(f"| {cell(topology)} | {len(known)}/{len(group)} | {sum(known)} |")
-        print("\nrework by source (all apiVersions, all periods; docs/RUN_OBSERVATION_DESIGN.md section 5.5.8)")
+        decisions = Counter(
+            vro.normalize_decision(review["decision"])
+            for r in records if r["reviews"] != "unknown" for review in r["reviews"]
+        )
+        print("\n| review decision (normalized) | reviews |\n|---|---|")
+        for decision, count in sorted(decisions.items()):
+            print(f"| {cell(decision)} | {count} |")
+        print(f"\nendedAt unknown (cannot be placed in a period): {sum(r['endedAt'] == 'unknown' for r in records)}")
+    print("\nrework by source (all apiVersions, all periods; docs/RUN_OBSERVATION_DESIGN.md section 5.5.8)")
+    print(f"excluded: invalid: {skipped} (not in the table; the table counts the {len(records)} valid records)")
+    if records:
         print(
             "\n| topology | breakdown known / waves | "
             + " | ".join(f"excluded: {reason}" for reason in EXCLUSIONS)
@@ -220,14 +230,6 @@ def summarize(stores):
                 + " | ".join(str(total) for total in totals)
                 + " |"
             )
-        decisions = Counter(
-            vro.normalize_decision(review["decision"])
-            for r in records if r["reviews"] != "unknown" for review in r["reviews"]
-        )
-        print("\n| review decision (normalized) | reviews |\n|---|---|")
-        for decision, count in sorted(decisions.items()):
-            print(f"| {cell(decision)} | {count} |")
-        print(f"\nendedAt unknown (cannot be placed in a period): {sum(r['endedAt'] == 'unknown' for r in records)}")
     print(f"\n{NOTICE}")
     return 1 if skipped else 0
 

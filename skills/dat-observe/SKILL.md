@@ -24,13 +24,12 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
    - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
    - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない
-   - `topologyEquivalent` は設計 §5.2 の表を上から順に当てはめる。助言レビュー（`advisory`）と検証（`verifier`）を混ぜない。`same-session` の助言だけなら `independentReview: 'no'`
+   - `topologyEquivalent` と `topologyBasis`（`independentReview` を含む）は設計 [§5.2](../../docs/RUN_OBSERVATION_DESIGN.md#52-topologyequivalent-の判定基準) に従って決める
    - `verification` が `yes` 以外のときの `verifierKind` の扱いは設計 §5.4 を読む（検証なしの形は [adapters/codex/examples/run-observation.yaml](../../adapters/codex/examples/run-observation.yaml)）
-   - `taskDifficulty`（`trivial` / `standard` / `hard` / `unknown`）は構成を選ぶ前に決めた区分を書く。結果を見てから付けない
-   - `outcome: interrupted` なら `interruptionKind`（`human-decision` / `ownership` / `environment` / `failure` / `unknown`）を書く
+   - `taskDifficulty` は構成を選ぶ前に控えておく。`interruptionKind` などの任意項目の扱いは [docs/OBSERVATION_MEASUREMENT.md §7](../../docs/OBSERVATION_MEASUREMENT.md#7-任意項目)、値は schema に従う
    - 手戻りの出どころ別の回数（`rework.sources`）と `apiVersion`・`rework.triggers` との関係は設計 [§5.5](../../docs/RUN_OBSERVATION_DESIGN.md#55-reworksources出どころ別の回数321) を読む
    - `model[].effort` と `usage`（`totalTokens`・`costUsd`）は確認できた値だけ書き、分からなければ `unknown`
-   - `reviews[].decision` は `approve` / `changes-requested` / `comment` / `unknown` のいずれかで書く
+   - `reviews[]` の項目は設計 [§5.1](../../docs/RUN_OBSERVATION_DESIGN.md#51-項目)、値は schema に従う
    - `startedAt` / `endedAt` はウェーブの開始・終了時に控えておく。期間の集計は `endedAt` で行う（[docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)）
 3. **秘匿を確かめる**（保存前の必須条件。全文字列値が対象）: エージェント自身が全文字列値を読み、次を含まないことを確かめる。CLI の `OK` はこの確認の代わりにならない（validator が見るのは長さ・絶対パス・既知のトークン形式だけ）。秘密情報・トークン、private source、プロンプトや会話の本文、レビュー本文、個人環境の絶対パスを含めない。private な PR・ブランチ・リポジトリ名・個人名は仮名にする。`outcomeReason` は改行なしの 1 行。
 4. **保存先**: リポジトリの外の 1 か所。`--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、指定がなければ `~/.dat/observations` を案内する。

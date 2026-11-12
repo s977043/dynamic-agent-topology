@@ -13,7 +13,7 @@
   - #268 vNext: #269 RFC・P0 Baseline、#271 P0 Journey A〜D、#273〜#275、#278/#279 paired block集計CLI（#276）、#280 R0の尺度（#277）、#281。
   - #287 Human Attention: #289 paired比較の修正、#290 1ペア計測パケット（計測は未実施）。
   - #291/#292 Codex Cloud検証・Docker実測手順、#293 手動dispatchの1組canary、#300 canary反復採点、#301 live比較のruntime条件、#296/#298 Auctopus研究ノート（#295、未採用）、#297/#299/#303 review packageの互換性・テスト、#306 タスク単位の選定と観測の接続。
-- 2026-11-07〜08に#308（前回の本計画同期）、#309〜#311（#244 キット修正。#310・#311は規則変更PRとしてHuman merge）、#288（#248 合成oracle、Human merge）がmerge済み。
+- 2026-11-07〜08に#308（本計画同期）、#309〜#311（#244 キット修正。#310・#311は規則変更PRとしてHuman merge）、#288（#248 合成oracle、Human merge）がmerge済み。
 - 2026-11-09〜12に#312（前回の本計画同期）、#313（規則変更PRの「検査スクリプト」の範囲）、#314（github-actions更新）、#315・#316（#244 `write_record` のumask・再開検証と回帰テスト）、#317（v0.6.0 release）、#318（公開前のmain CIとScorecardの確認順）、#319（Current release lineをv0.6.0に）がmerge済み。
 - 研究ノートは未採用候補のままで、source台帳の`adopted: []`を維持しています。canaryや合成fixtureのPASSは構成の効果証拠ではありません。
 
@@ -58,7 +58,7 @@ Operatorの判断（[判断材料](https://github.com/s977043/dynamic-agent-topo
 | [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | v0.6.0まで公開済み（2026-11-12T17:09:39Z公開） | security関連6設定は未確認。closeはHuman判断 |
 | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) | 再現可能なbaseline failureが未取得。#244の進展を参照 | EXP-001全成功を回復効果の母集団にしない |
 | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) | #82/#211を候補armとして吸収済み | 母集団・予算・事前登録が必要。Human同意はEXP-002→EXP-003の順序だけ |
-| [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | 規則変更PRの記録先。最新コメントは#318（2026-11-12T00:21Z） | Actions PR作成許可の管理者確認。規則・Guard変更のmergeはHuman |
+| [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | 規則変更PRの記録先。最新コメントは#318（2026-11-12T00:21Z） | Actions PR作成許可の管理者確認。規則・Guard変更のmergeはHuman。#313のallowlist運用は5本merge または2026-12-31まで観察し、検査を弱めたことを理由とするHumanの差し戻しが1本でもあれば#313を戻す（判定はHuman）。進捗は2/5（#315は#159の記録で1/5、#316は#316のコメントで2本目と記録。#159には未記録）。差し戻しの有無は未確認 |
 | [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) | 予備キット#254と修正#257/#261/#263。資格情報は案D（Operator承認） | 実効permission・認証・課金境界は未実測。FAIL/NOT_TESTEDが残る間model起動なし |
 | [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | H1支持23件/7project、H2支持23/23（Agent報告） | 原store・ログの独立監査は未実施。公開転記は設計§6、Releaseの公開はバージョンごとのHumanのyが前提 |
 | [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) | 上記「#244 スクリーニング起動前の状態」 | D1〜D4（キット修正はmerge済み）。評価予算は選定後の見積もりで再承認 |

@@ -85,6 +85,7 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 | `artifacts` | 作成・merge した PR 等の参照 | `{ref, state}` の配列 | trace `events[].artifact` |
 | `reviews` | 独立レビューの記録 | `{target, reviewerKind, role, findings{blocking, nonBlocking}, decision}` の配列 | trace `events[type=review]` |
 | `rework.count` | 修正のための再委託・再レビューの回数 | integer または `unknown` | `handoffFailures` とは同義でない |
+| `rework.sources` | `rework.count` の出どころ別の内訳（`dat/v1alpha2` 以降。§5.5） | 出どころをキー、integer または `unknown` を値とする object | なし |
 | `humanInterventions` | 人の介入の種別ごとの件数 | `{kind, count}` の配列 | trace `summary.humanInterventions`（合計） |
 
 `reviewerKind` は `same-session` / `separate-session` / `separate-model` / `human` の enum。モデル名は `runtime` / `model` に置き、レビュー本文は書かない。
@@ -161,6 +162,154 @@ DAT を他リポジトリの日常開発で使うとき、Organizer・Worker・�
 - **トークン形式の負例**: 接頭辞の検査は、テストの実行時に接頭辞と `EXAMPLE` を連結して確かめる。リポジトリにトークン風の文字列を残さないため、fixture には置かない
 - **件数の整合**: `wallClockMs` は `startedAt`・`endedAt` が両方分かるときだけ数値を許し、両方分かるときは差との誤差 60 秒以内とする。`tasks.delegated` は `tasks.total` 以下
 - **秘匿の検査値**: 文字列値の長さ上限は 200 文字、`outcomeReason` は改行を含めない。トークン形式は `ghp_`・`gho_`・`ghu_`・`ghs_`・`ghr_`・`github_pat_`・`sk-` の接頭辞と、英大文字・小文字・数字を含む 32 文字以上でエントロピー 4.0 bit/文字以上の連続文字列。いずれも誤検知・見逃しがあり得る簡易検査で、人の差分確認（§6）を置き換えない
+
+### 5.5 `rework.sources`（出どころ別の回数、#321）
+
+`rework.count` の内訳を出どころ別に記録する任意項目。目的は、「1 件あたりの rework が T0〜T3 の順に多い」という観察に、レビュー指摘から数えられやすいという測定の偏りが混ざっていないかを**探索すること**。構成の優劣や因果は結論しない（§9）。版の扱いは Human 判断 V1（[#321 のコメント](https://github.com/s977043/dynamic-agent-topology/issues/321#issuecomment-6831840569)、2026-11-12）に従う。
+
+**現状の事実**
+
+- 現行 schema（`schemas/run-observation.schema.json`、`apiVersion: dat/v1alpha1`）の `rework` は `count`（必須）と `triggers`（出どころの集合。回数を持たない）だけで、`additionalProperties: false`
+- `triggers` を案内しているのは `skills/dat-observe/SKILL.md` だけで、`adapters/claude-code/RUN_OBSERVATION.md`・`adapters/codex/RUN_OBSERVATION.md` の項目表は `rework.count` だけ。`scripts/run_observation.py sum` は `rework.count` の合計だけを出す
+- 起票者のローカル store の 257 件で `rework.triggers` と `taskDifficulty` の記入は 0 件（出どころ: #321 本文、2026-11-13 の `sum` 再実行）。store は非公開のため第三者は再現できず、DAT 側では**未確認**
+- `rework.sources` を書いた記録はまだない（項目が存在しないため）
+
+#### 5.5.1 形と出どころの値
+
+```yaml
+apiVersion: dat/v1alpha2
+rework:
+  count: 3
+  sources:
+    review-finding: 2
+    ci-failure: 1
+```
+
+キーは次の 6 つの閉じた enum。値は 0 以上の integer か `unknown`。キーを書かない出どころは 0 回。表の順が判定順（§5.5.2）。
+
+| 順 | 出どころ | 意味 |
+|---|---|---|
+| 1 | `spec-change` | その回に要件（目的・受け入れ条件）の変更が含まれる。変えたのが Human か否か、差し戻しを伴うか否かを問わない |
+| 2 | `human-return` | Human が成果物を差し戻した（`reviewerKind: human` のレビュー指摘を含む）。その回に要件の変更は含まれない |
+| 3 | `review-finding` | `reviews[]` に記録した Human 以外のレビューの指摘を直した |
+| 4 | `ci-failure` | CI・テスト・validator の失敗を直した |
+| 5 | `self-correction` | Organizer・Worker が自ら誤りに気付いて直した |
+| 6 | `unknown` | 再委託・再レビューはあったが、出どころが分からない |
+
+#### 5.5.2 論点 (1) 数える単位
+
+- **規則**: 単位は現行の `rework.count`（修正のための再委託・再レビューの回数、§5.1）のまま変えない。修正のための再委託と、その修正結果に対する再レビューは、合わせて **1 回**（1 修正サイクル）と数える。再委託を伴わない再レビュー（例: 指摘への回答だけを確かめる再レビュー）も 1 回。各回に出どころを**ちょうど 1 つ**割り当て、複数当てはまるときは §5.5.1 の表の順で最初に当たったものに数える
+- **理由**: 定義を「修正の回数」に変えると、既存の `rework.count` と意味がずれ、旧新の記録を同じ列で集計できなくなる。「再委託 + 再レビュー = 1 回」は、内訳を `count` と同じ単位にするための明確化。`dat/v1alpha1` の記録者が再委託と再レビューを別々に数えていたかは**未確認**で、記録を遡って直さない。判定順は、要件の変化と人の判断を先に置き、記録者の裁量が大きい `self-correction` を後に置く
+- **許容の例**:
+  - レビュー指摘 2 件と CI 失敗を、1 回の再委託でまとめて直した → `count: 1`、`sources: {review-finding: 1}`
+  - 指摘修正のために再委託し、その結果を再レビューした → `count: 1`、`sources: {review-finding: 1}`（2 回ではない）
+  - 指摘修正の再委託・再レビューを 1 回、その後 CI 失敗修正の再委託を 1 回 → `count: 2`、`sources: {review-finding: 1, ci-failure: 1}`
+  - Worker が自分で誤りに気付き、再委託して直した → `count: 1`、`sources: {self-correction: 1}`
+- **数えない例**: 再委託・再レビューを伴わない自己修正（同じ委託の中で Worker が書き直しただけ）は `count` にも `sources` にも数えない
+- **拒否の例**: 1 回を 2 つの出どころに数え、内訳の合計が `count` を超える（`count: 1`、`sources: {review-finding: 1, ci-failure: 1}`）
+
+#### 5.5.3 論点 (2) `count: 0` と集計の分母
+
+- **規則**: `count: 0` は版・`sources`・`triggers` の有無を問わず「内訳既知（全出どころ 0）」で、出どころ別の集計の分母に**含める**（§5.5.8 の表）。`dat/v1alpha2` で `count: 0` のときは `sources` を書かないか、`{}`、または全値が 0 の object だけを許し、値が 1 以上・`unknown` の出どころがあれば拒否する
+- **理由**: rework 0 件の記録を「内訳不明」として分母から外すと、1 件あたりの値が過大になる。0 回の内訳は自明なので、記録者に追加の記入を求めず、旧記録も書き換えずに含められる
+- **例**: 許容 `count: 0`（`sources` なし）、`count: 0, sources: {}`。拒否 `count: 0, sources: {ci-failure: 1}`、`count: 0, sources: {unknown: unknown}`
+- **`count` ≥ 1 で `sources` なし**: 「内訳なし」として出どころ別の集計の分母から除き、除いた件数を併記する（§5.3）。`count` の合計（既存の列）には従来どおり含める
+
+#### 5.5.4 論点 (3) 値 `unknown` の意味と合計検査
+
+- **規則**: 値 `unknown` は「その出どころが**少なくとも 1 回あった**が、回数が分からない」。存在そのものが分からない回は、キー `unknown`（出どころ不明）に数える。合計検査は値 `unknown` を下限 1 として数える
+  - `count` が integer で全値が integer: 内訳の合計 = `count`
+  - `count` が integer で値 `unknown` がある: integer の合計 + 値 `unknown` の個数 ≤ `count`
+  - `count` が `unknown`: 1 以上の値か値 `unknown` を 1 つ以上含む `sources` だけを許す。`sources: {}` や全値 0 は「全出どころ 0」すなわち `count: 0` を意味し `count: unknown` と矛盾するため拒否する。合計検査はしない
+- **理由**: 「存在も不明」を値 `unknown` に含めると、キーなし（0 回）と区別できず、合計検査ができない。存在不明はキー `unknown` が既に表せる
+- **例**: 許容 `count: 3, sources: {review-finding: 2, ci-failure: unknown}`（2 + 1 ≤ 3）、`count: unknown, sources: {review-finding: 1}`。拒否 `count: 2, sources: {review-finding: 2, ci-failure: unknown}`（2 + 1 > 2）、`count: 3, sources: {review-finding: 1}`（全値 integer で合計不一致）、`count: unknown, sources: {}`
+- **集計**: 値 `unknown` を 1 つでも含む記録、`count: unknown` の記録は出どころ別の集計の分母から除き、件数を併記する。下限値で補わない。キー `unknown`（出どころ不明）の integer 値は集計に含め、その合計を併記する
+
+#### 5.5.5 論点 (4) 仮説と採否・保留条件
+
+**H-src（探索的）**: rework のうち、**レビュー指摘（`review-finding`）として記録されたもの以外**だけで見ると、全体の rework に比べて T0 と T3 の差が小さい。「以外」には出どころ不明（キー `unknown`）を含むため、結果には不明の件数を必ず併記し、不明が多いときは保留する（判定順 4）。支持されても「レビュー指摘として記録されたもの以外では差が小さい」という観察にとどまり、測定の偏りが原因とは結論しない。交絡を見るため `taskDifficulty` も記録する。
+
+- **測定期間**: `dat/v1alpha2` を最初に含む plugin 版の GitHub Release 公開時刻を T（UTC）とし、`endedAt` が [T, T + 90 日) の半開区間に入る記録を対象とする。`endedAt: unknown` の記録は期間に置けないので対象外とし、件数を併記する（現行 `sum` の `endedAt unknown` 表示と同じ考え方）
+- **母集団**: 測定期間内の `dat/v1alpha2` 記録。`dat/v1alpha1` の記録は期間内でも含めない
+- **分母 N_t**: 母集団のうち topology `t` で、§5.5.8 の表で「含める」に当たる件数（`count: 0` を含む）
+- **記入率 F_t**: 母集団のうち topology `t` で `count` ≥ 1 の記録に占める、内訳が既知（含める）の記録の割合。T0 と T3 で別々に出し、判定には小さい方（min(F_T0, F_T3)）を使う
+- **算式**: R_t = Σcount / N_t、S_t = Σ(count − `review-finding`) / N_t、U_t = Σ`sources.unknown` / Σcount、D = (S_T3 − S_T0) / (R_T3 − R_T0)
+- **判定順**（上から順に適用し、最初に当たったものに決める）:
+
+| 順 | 条件 | 判定 |
+|---|---|---|
+| 1 | N_T0 または N_T3 が 0（分母 0）、または `count` ≥ 1 の記録が T0・T3 のどちらかで 0 件（F_t の分母 0） | 保留 |
+| 2 | N_T0 または N_T3 が 20 件未満 | 保留 |
+| 3 | min(F_T0, F_T3) が 50% 未満 | 保留 |
+| 4 | U_T0 または U_T3 が 20% を超える（出どころ不明が多く「指摘以外」を解釈できない） | 保留 |
+| 5 | R_T3 − R_T0 ≤ 0.2（D の分母が 0 以下または小さすぎる） | 保留 |
+| 6 | D ≤ 0.5 | 支持 |
+| 7 | それ以外 | 反証 |
+
+- **項目の採否**: 初回の測定期間の終わりに min(F_T0, F_T3) で決める。80% 以上で採用、50% 以上 80% 未満は adapter・skills の案内を直して 90 日延長、50% 未満で不採用。F_t の分母が 0 なら保留として 90 日延長する。延長は 1 回だけで、延長期間は [T + 90 日, T + 180 日) とし、延長後の判定（採否と H-src）は初回と延長分を**合算した** [T, T + 180 日) の母集団で行う。延長後も 80% 未満、または分母 0 のときは不採用とする（項目の削除は §5.4 の規則で `apiVersion` を上げて行い、Human が判断する）
+- **閾値の根拠**: 20 件・20%・50%・80%・0.2・0.5・90 日は**目安で、DAT 側の Evidence はない**。20 件は段階 4（§8）の件数に合わせた。判定結果とともに閾値の妥当性も記録し、変えるときは判定前に本書を更新する
+
+#### 5.5.6 論点 (5) `human-return` と `spec-change` の境界
+
+- **規則**: 境界は「その回に要件（目的・受け入れ条件）の変更が含まれるか」。含まれれば、差し戻しを伴っても `spec-change`（§5.5.1 の判定順 1）。含まれなければ `human-return`。同じ 1 回を両方に数えない
+- **理由**: 要件変更は依頼側の変化で、構成の影響から最も遠い。差し戻しと要件変更が同時のとき要件変更を優先すると、`human-return` を「要件が同じままの成果物の不足」に限定でき、定義表・規則・例が一致する。1 回 1 出どころにすることで合計検査（§5.5.4）を保てる
+- **例**:
+  - Human が「受け入れ条件 A を満たしていない」と差し戻した → `human-return: 1`
+  - Human が途中で受け入れ条件 B を追加し、再委託した → `spec-change: 1`
+  - Human が差し戻しの際に条件 B を追加し、1 回の再委託で両方を直した → `spec-change: 1`
+  - 上の後、条件 A の不足だけを再度差し戻した → `spec-change: 1, human-return: 1`
+  - Human のレビュー（`reviewerKind: human`）の指摘を直し、要件は変わらない → `human-return`（`review-finding` には数えない）
+- **`humanInterventions` との関係**: 構造は変えない。`human-return` を書いた記録でも `humanInterventions` は従来どおり記録し、両者の件数の一致は検査しない
+
+#### 5.5.7 `triggers` との関係
+
+- `dat/v1alpha2` で `triggers` は**非推奨**。新しい記録では `sources` を使う
+- `dat/v1alpha2` の記録で `sources` と `triggers` の併記は拒否する（集合と回数が食い違ったときにどちらを正とするか決められないため）
+- `triggers` は出どころ別の集計に使わない。`triggers` だけの記録の扱いは、他の記録と同じく §5.5.8 の表で `count` によって決まる（`count: 0` なら含める、`count` ≥ 1 なら内訳なし）
+- `dat/v1alpha1` の記録の `triggers` は従来どおり受理し、`sources` へ変換しない（集合から回数を推測しない）
+- `triggers` の削除は別の版で行い、本設計では決めない
+
+#### 5.5.8 記録の扱い（集計の分母）
+
+新版の `sum` と H-src は、すべての記録を次の表の 1 行に当てはめ、上から順に最初に当たった行で扱う。旧記録は書き換えない。出どころ別の表には「含める」の件数と、除外の件数を理由別に必ず併記する。
+
+| 順 | 版 | `rework` の内容 | 扱い | 除外の理由（併記） |
+|---|---|---|---|---|
+| 1 | 問わない | validator を通らない | 集計しない（`skipped invalid`） | invalid |
+| 2 | 問わない | `count: unknown` | 除外 | count unknown |
+| 3 | 問わない | `count: 0`（`triggers` の有無、`sources` なし・`{}`・全値 0 を問わない） | 含める（全出どころ 0） | — |
+| 4 | `v1alpha1` | `count` ≥ 1（`triggers` の有無を問わない） | 除外 | 内訳なし（旧版） |
+| 5 | `v1alpha2` | `count` ≥ 1、`sources` なし（`triggers` だけの記録を含む） | 除外 | 内訳なし |
+| 6 | `v1alpha2` | `count` ≥ 1、`sources` に値 `unknown` がある | 除外 | 内訳の回数不明 |
+| 7 | `v1alpha2` | `count` ≥ 1、`sources` の全値が integer で合計 = `count` | 含める | — |
+
+H-src（§5.5.5）は、このうち測定期間内の `v1alpha2` の行だけを使う。一般の `sum` は全版を対象にするので、同じ store でも両者の件数は異なり、出力には対象の版と期間を明記する。混在 store では、既存の列（`known rework / waves`・`rework total`）の母集団は validator を通った記録のうち `count` が integer のもの（`rework total` はその `count` の合計。現行 `summarize` の実装）、出どころ別の表の母集団は「含める」の記録で、**両者は一致しない**。出どころ別の値を既存の合計と直接比べない。
+
+#### 5.5.9 互換性・移行・公開
+
+版の規則は §5.4「閉じた enum の拡張」と同じ扱い（Human 判断 V1）。新 schema は `apiVersion` の `dat/v1alpha1` と `dat/v1alpha2` を受理し、`rework.sources` は `dat/v1alpha2` だけで許可する。
+
+| 記録 \ validator | 旧 validator（`dat/v1alpha1` のみ） | 新 validator |
+|---|---|---|
+| `dat/v1alpha1`（`sources` なし） | 受理 | 受理（集計の扱いは §5.5.8） |
+| `dat/v1alpha1` で `sources` あり | 拒否 | 拒否（`sources` は v1alpha2 のみ） |
+| `dat/v1alpha2`（`sources` あり・なし） | **拒否**（`apiVersion` の const） | 受理 |
+| `dat/v1alpha2` で `sources` と `triggers` を併記 | 拒否 | 拒否 |
+
+**旧 `sum` の挙動**（`scripts/run_observation.py` の `summarize`、origin/main `a24004f` で確認）: validator を通らない記録を `skipped invalid: ...` と出して飛ばし、残りの記録で表を出したうえで exit 1 を返す。このため、旧版で新形式を含む store を集計すると、**新形式を除いた部分集計**の表が出る。
+
+移行手順:
+
+1. 同じ store を読むすべての読取側（`sum` を実行する環境、記録を読む共有先・スクリプト）を新版に上げる
+2. 全読取側の更新が終わるまで、記録側は新形式（`dat/v1alpha2`）を書かない。記録側の plugin を先に上げた場合も、`apiVersion: dat/v1alpha1` で書き続ける
+3. 2 の唯一の例外: 旧版しか使えない読取側が長く残るときは、新形式の記録を別の store（例: `--store` で別ディレクトリ）に分けて保存し、旧版にはその store を読ませない。新版の `sum` は両方の store を別々に集計し、結果を合算するときは §5.5.8 の扱いに従う。現行 CLI の `observationId` 重複検査（`save` と `sum`）は 1 つの store の中だけなので、合算の前に両 store を横断して `observationId` の重複を確認し、重複があれば合算を止め、該当する実記録を照合してどちらを残すか決めてから集計し直す
+4. 全読取側の更新後に、新しい記録から `apiVersion: dat/v1alpha2` と `rework.sources` を書く
+5. 既存の `dat/v1alpha1` 記録は書き換えない。出どころを遡って推測で埋めない
+6. `skipped invalid` を 1 件でも出して exit 1 になった `sum` の表は、全件集計として扱わない（DOGFOODING や Issue へ転記しない）。exit code を見ずに表を使う処理があれば、移行前に exit code を確認するよう直す
+
+これらと「旧 validator が新しい記録を拒否すること」は、実装 PR の移行ガイド（CHANGELOG）にも書く。
+
+**版と公開の判定**: plugin の minor を上げることは Human 判断 V1 として記録する。ただし `docs/RELEASE_READINESS.md` は `scripts/` の validator・CLI の入力・出力・exit code を公開契約とし、依存され得る出力の変更を breaking の例に挙げている。`sum` の出力の追加・変更が breaking かどうかは本設計では決めず、実装 PR と release PR で変更後の出力契約・判定根拠・利用者の移行方法を確定して記録する。breaking または判定不能なら、同文書の規定（判定不能時は STOP して Human が判断、breaking を含む版は Human が公開）に従い、最終的な版の数字は release 時の判定に従う。
 
 ## 6. 保存先と秘匿
 

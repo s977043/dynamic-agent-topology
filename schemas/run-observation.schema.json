@@ -25,7 +25,10 @@
   ],
   "properties": {
     "apiVersion": {
-      "const": "dat/v1alpha1"
+      "enum": [
+        "dat/v1alpha1",
+        "dat/v1alpha2"
+      ]
     },
     "kind": {
       "const": "RunObservation"
@@ -363,6 +366,22 @@
               "unknown"
             ]
           }
+        },
+        "sources": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "spec-change",
+              "human-return",
+              "review-finding",
+              "ci-failure",
+              "self-correction",
+              "unknown"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/countOrUnknown"
+          }
         }
       },
       "additionalProperties": false
@@ -397,6 +416,36 @@
     }
   },
   "additionalProperties": false,
+  "if": {
+    "properties": {
+      "apiVersion": {
+        "const": "dat/v1alpha1"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "rework": {
+        "not": {
+          "required": [
+            "sources"
+          ]
+        }
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "rework": {
+        "not": {
+          "required": [
+            "sources",
+            "triggers"
+          ]
+        }
+      }
+    }
+  },
   "$defs": {
     "triState": {
       "enum": [

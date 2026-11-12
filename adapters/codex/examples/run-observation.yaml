@@ -1,4 +1,4 @@
-apiVersion: dat/v1alpha1
+apiVersion: dat/v1alpha2
 kind: RunObservation
 metadata:
   observationId: obs-cx-0001

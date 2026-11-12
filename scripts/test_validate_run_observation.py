@@ -37,6 +37,15 @@ EXPECTED_ERRORS = {
     "redaction-absolute-path-windows": "absolute path",
     "redaction-high-entropy-string": "high-entropy string",
     "basis-organizer-with-grounding-review": "'organizer' is allowed only without a grounding review",
+    "schema-rework-sources-in-v1alpha1": "schema: rework:",
+    "schema-rework-sources-with-triggers": "schema: rework:",
+    "schema-rework-source-not-in-enum": "schema: rework/sources",
+    "rework-sources-exceed-count": "values do not add up to rework.count",
+    "rework-sources-sum-mismatch": "values do not add up to rework.count",
+    "rework-sources-unknown-exceeds-count": "plus one per unknown value exceed rework.count",
+    "rework-sources-count-unknown-empty": "when rework.count is unknown",
+    "rework-sources-count-zero-nonzero": "values do not add up to rework.count",
+    "rework-sources-count-zero-unknown": "plus one per unknown value exceed rework.count",
 }
 
 # Token-like values are assembled at run time so the repository holds no token-shaped string.

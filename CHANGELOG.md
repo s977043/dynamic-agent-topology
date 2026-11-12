@@ -6,6 +6,32 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+### Added
+
+- RunObservation `apiVersion: dat/v1alpha2` with the optional `rework.sources`: the count of `rework.count` per source (`spec-change`, `human-return`, `review-finding`, `ci-failure`, `self-correction`, `unknown`), as designed in `docs/RUN_OBSERVATION_DESIGN.md` §5.5 (#321, #322). `schemas/run-observation.schema.json` accepts both `dat/v1alpha1` and `dat/v1alpha2`, allows `rework.sources` only in `dat/v1alpha2`, and rejects `rework.sources` together with `rework.triggers`; `scripts/validate_run_observation.py` checks the sources against `rework.count` (§5.5.3, §5.5.4). `rework.triggers` is deprecated in `dat/v1alpha2`.
+- `scripts/run_observation.py sum` prints a `rework by source` section after the existing tables and the `endedAt unknown` line, just before the closing notice: a line `excluded: invalid: N (not in the table; the table counts the M valid records)`, always printed, and, when there are valid records, a table per topology with the exclusions of §5.5.8. The existing tables and lines are unchanged in content and order.
+
+### Changed
+
+- `scripts/run_observation.py sum --store A --store B`: before this change argparse kept only the last value, so only `B` was counted; now `A` and `B` are counted together, `observationId` is checked across them, and a duplicate across the stores stops with exit 1 and no tables. `save` still uses only the last `--store`.
+- The plugin version in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` is now `0.4.0` (Human decision V1 in #321). The adapter examples now use `dat/v1alpha2`.
+
+### Compatibility judgement (`docs/RELEASE_READINESS.md`, Compatibility boundary)
+
+- Schema and validator: every previously valid `dat/v1alpha1` record stays valid with the same meaning; `dat/v1alpha2` and `rework.sources` are additions. Not breaking for this repository's validator; the old validator rejecting new records is covered under Migration.
+- Repeated `--store` in `sum`: **breaking**. The same previously accepted input now gives a different count and can give a different exit code ("changes an exit code or output that callers may depend on").
+- The added `rework by source` section in `sum`: **cannot be determined from the rules; a Human decision is needed.** It is appended without changing existing lines, but the rules do not say whether the full output text (for example the lines before the closing notice, or the total line count) is output that callers may depend on. Per the rules this is a STOP for the release decision.
+
+### Migration
+
+- Callers that pass `--store` more than once to `sum`: pass only the store you mean to count (the previous behavior used the last one). To count several stores together, pass them all and resolve any duplicate `observationId` it reports.
+- Callers that parse `sum` output: read the existing tables by their header lines rather than by position or by "everything up to the notice", and ignore the `rework by source` section, or update the parser to it. The existing tables are unchanged.
+
+- A validator or `sum` before this change accepts only `dat/v1alpha1` and **rejects every `dat/v1alpha2` record**. An old `sum` on a store with new records prints `skipped invalid` for them, prints tables of the remaining records only, and exits 1.
+- Update every reader of a store (each environment that runs `sum`, shared copies, scripts that read records) before any recorder writes `dat/v1alpha2`. Until then keep writing `apiVersion: dat/v1alpha1` without `rework.sources`, even with the new plugin. If an old reader must stay, save new records in a separate store and do not let the old reader read it; the new `sum` with both `--store` options stops on an `observationId` duplicated across the stores.
+- Do not rewrite existing `dat/v1alpha1` records, and do not infer `rework.sources` from `rework.triggers` or from memory.
+- Do not treat a `sum` table that came with exit code 1 (`skipped invalid`) as a full count; check the exit code in any process that reuses the tables.
+
 ## 0.6.0 — 2026-11-11
 
 Content candidate: `876c05f129a5187a8aa9b04be8106d16e9f1f4b6`.

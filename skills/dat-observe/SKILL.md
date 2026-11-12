@@ -20,6 +20,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 
 1. **値を集める**: このセッションで実際に行った委託・レビュー・手戻り・人の確認、PR の状態など、確認できる情報源だけを使う。
 2. **YAML を書く**: 記録例の形で、作業中のリポジトリの外（一時ディレクトリ）に書く。
+   - 記録例は `apiVersion: dat/v1alpha2`。同じ store を読むすべての読取側（`sum` を実行する環境など）を新版に上げるまでは、`apiVersion: dat/v1alpha1` で書き、`rework.sources` を入れない（旧版は `dat/v1alpha2` の記録を拒否する）。条件と手順は設計 [§5.5.9](../../docs/RUN_OBSERVATION_DESIGN.md#559-互換性移行公開) の移行手順に従う
    - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
    - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない
@@ -27,7 +28,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
    - `verification` が `yes` 以外のときの `verifierKind` の扱いは設計 §5.4 を読む（検証なしの形は [adapters/codex/examples/run-observation.yaml](../../adapters/codex/examples/run-observation.yaml)）
    - `taskDifficulty`（`trivial` / `standard` / `hard` / `unknown`）は構成を選ぶ前に決めた区分を書く。結果を見てから付けない
    - `outcome: interrupted` なら `interruptionKind`（`human-decision` / `ownership` / `environment` / `failure` / `unknown`）を書く
-   - 手戻りがあれば `rework.triggers`（`review-finding` / `self-correction` / `spec-change` / `ci-failure` / `unknown`）を書く
+   - 手戻りの出どころ別の回数（`rework.sources`）と `apiVersion`・`rework.triggers` との関係は設計 [§5.5](../../docs/RUN_OBSERVATION_DESIGN.md#55-reworksources出どころ別の回数321) を読む
    - `model[].effort` と `usage`（`totalTokens`・`costUsd`）は確認できた値だけ書き、分からなければ `unknown`
    - `reviews[].decision` は `approve` / `changes-requested` / `comment` / `unknown` のいずれかで書く
    - `startedAt` / `endedAt` はウェーブの開始・終了時に控えておく。期間の集計は `endedAt` で行う（[docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)）
@@ -48,7 +49,7 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 python <DAT のパス>/scripts/run_observation.py sum --store ~/.dat/observations
 ```
 
-出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md) に従う。Python が使えないときは集計できないと報告する。
+出力の表をそのまま示す。`warning: not counted` や `skipped invalid` の行があれば、件数に入っていないファイルとして一緒に示す。期間・除外の規則は [docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)、出どころ別の表の読み方は設計 [§5.5.8](../../docs/RUN_OBSERVATION_DESIGN.md#558-記録の扱い集計の分母) に従う。Python が使えないときは集計できないと報告する。
 
 ## しないこと
 

@@ -151,7 +151,27 @@ def check_counts(record):
     tasks = record["tasks"]
     if "unknown" not in (tasks["total"], tasks["delegated"]) and tasks["delegated"] > tasks["total"]:
         errors.append("tasks.delegated: greater than tasks.total")
-    return errors
+    return errors + check_rework_sources(record["rework"])
+
+
+def check_rework_sources(rework):
+    """Check rework.sources against rework.count (design section 5.5.3 and 5.5.4)."""
+    if "sources" not in rework:
+        return []
+    count, values = rework["count"], list(rework["sources"].values())
+    known_total = sum(v for v in values if v != "unknown")
+    unknown_values = values.count("unknown")
+    if count == "unknown":
+        if not known_total and not unknown_values:
+            return ["rework.sources: must contain a source of at least 1 or unknown when rework.count is unknown"]
+        return []
+    if unknown_values:
+        if known_total + unknown_values > count:
+            return ["rework.sources: known values plus one per unknown value exceed rework.count"]
+        return []
+    if known_total != count:
+        return ["rework.sources: values do not add up to rework.count"]
+    return []
 
 
 def root_review(reviews, artifacts):

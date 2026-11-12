@@ -12,7 +12,7 @@
 
 - 対象は store 直下の `<store>/<project>/<observationId>.yaml` だけ。それより深い・浅い位置の YAML は数えない。`run_observation.py sum` はそうしたファイルを `warning: not counted ...` として出す
 - validator を通らない記録は数えない（`sum` は `skipped invalid` として出す）
-- `observationId` は store 全体で一意とする。`run_observation.py save` は、同じ `observationId`（ファイル名または記録内の `metadata.observationId`）が store のどこかにあれば保存を拒否する。store に読めない・解析できない YAML が 1 件でもあれば、重複を確かめられないので、パスと理由を示して保存を拒否する（記録は書き込まない）。`sum` は集計対象の記録に重複があれば該当パスを示して終了コード 1 で止まり、表を出さない。重複は件数を出す前に解消する
+- `observationId` は store 全体で一意とする。`run_observation.py save` は、同じ `observationId`（ファイル名または記録内の `metadata.observationId`）が store のどこかにあれば保存を拒否する。store に読めない・解析できない YAML が 1 件でもあれば、重複を確かめられないので、パスと理由を示して保存を拒否する（記録は書き込まない）。`sum` は集計対象の記録に重複があれば該当パスを示して終了コード 1 で止まり、表を出さない。重複は件数を出す前に解消する。`sum` に `--store` を複数渡したときは、store を横断して同じように確かめる
 
 ## 3. 期間で数えるときの基準時刻
 
@@ -55,7 +55,8 @@
 次の項目は任意で、ない記録は「未記録」として数える（`unknown` とは区別しない）。比較に使う場合は、記録がある件数を分母と一緒に示す。
 
 - `interruptionKind`: `outcome: interrupted` の中断の種類。`interrupted` で欠けていると validator が警告する（エラーにはしない）
-- `rework.triggers`: 手戻りのきっかけ
+- `rework.triggers`: 手戻りのきっかけ（`dat/v1alpha2` では非推奨）
+- `rework.sources`: 手戻りの出どころ別の回数（`dat/v1alpha2` のみ）。集計での扱いは [設計 §5.5.8](RUN_OBSERVATION_DESIGN.md#558-記録の扱い集計の分母)
 - `taskDifficulty`: 作業の難度。構成を選ぶ前に記録する（結果を見てから付けない）
 - `model[].effort`: モデルの Effort
 - `usage.totalTokens` / `usage.costUsd`: token 数と費用。分からなければ `unknown`

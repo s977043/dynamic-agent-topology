@@ -6,6 +6,41 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.6.0 — 2026-11-11
+
+Content candidate: `876c05f129a5187a8aa9b04be8106d16e9f1f4b6`.
+
+Previous boundary: tag `v0.5.0` (`2144faf2cb9843bb317f842195f865098199e758`).
+
+### Breaking
+
+- `scripts/compare_paired_blocks.py` now rejects an `--exclude BLOCK_ID=REASON` whose block ID appears in more than one scenario of the input, with a `ValueError` message (`excluded block IDs are ambiguous across scenarios`) and exit code 2; 0.5.0 accepted it (#289). Migration: when excluding a block ID that is reused across scenarios, pass input files for one scenario per run.
+- `scripts/compare_paired_blocks.py` now computes `meanTotalTokensRatio` and `meanWallClockMsRatio` from complete pairs only (blocks where both conditions have the metric), reported in the new `pairedMetricSummary` field; in 0.5.0 they were the ratio of the descriptive `conditionMeans`, which could use different observed populations (#289). Migration: the same input can give a different ratio; do not compare 0.6.0 ratios directly with ratios produced by 0.5.0 when any paired block misses a metric, and re-run 0.5.0 comparisons with 0.6.0 when a ratio is reused. `conditionMeans` keeps its previous meaning.
+- `scripts/hard_task_calibrate.py` now rejects an aborted run record (`status` `aborted-timeout` or another aborted status) unless `tokenUsageKnown` is `true` with an integer `totalTokens`, or `false` with no `totalTokens`. The check is in `read_record()`, so it also applies to the existing `run` resume and `summarize`; a 0.5.0 record with `status: aborted-timeout` and `totalTokens` but no `tokenUsageKnown` is now refused (#307, #309). The existing `run` now also collects the trace after a timeout, records whether token usage is known, and stops the batch when the usage after a timeout is unknown or when `docker stop` after a timeout fails (#307, #309, #310, #311). Migration: set `tokenUsageKnown: true` and `totalTokens` only for runs whose usage was confirmed from the trace; for unconfirmed usage set `tokenUsageKnown: false` and remove `totalTokens`, and do not fill in estimated values. A consistent record with unknown usage is read by `summarize` (and left out of the token totals), but resuming the batch still stops until its usage is recorded. A token count taken from the trace collected after a timeout is a lower bound: it excludes usage not recorded before the stop. Before resuming a stopped batch, confirm that the run's container has stopped.
+- `scripts/review_package.py` now also fetches the PR from the REST API and stops with exit code 1 (`SystemExit` with a message) without writing the package when that fetch fails or the snapshot is inconsistent (PR number mismatch, missing or invalid head / base SHA, or a head SHA or base ref that differs from `gh pr view`); 0.5.0 had no such stop (#297). Migration: when it stops on an inconsistent snapshot, re-run after the PR head and base are stable; when the REST fetch fails, fix access and re-run. No package is produced in either case.
+
+### Added
+
+- `pairedMetricSummary` in the `scripts/compare_paired_blocks.py` output: per metric, the complete-pair count, missing blocks with their missing conditions, and the paired means (#289). `docs/METRICS.md` describes the populations, and `docs/HUMAN_ATTENTION_PILOT.md` and `docs/human-attention-pilot/` add a Human Attention measurement procedure and a one-pair packet (#289, #290).
+- Hard-task screening mode in `scripts/hard_task_calibrate.py` (`screen-plan`, `screen`, `screen-summarize`) with the runbook update (#244; #307), task descriptions for orders 6 to 44 except the pre-excluded orders 10, 11, 16, 26, 28, 32, and 38 (#304), and a draft pre-screening exclusion addendum to the preregistration (#305).
+- `scripts/subagent_folding_oracle.py`, a synthetic oracle, and `docs/SUBAGENT_FOLDING_DESIGN.md` with a minimum verification plan; spec-lint runs `scripts/test_subagent_folding_oracle.py` (#288).
+- Runtime canary records under `docs/runtime-canary/`: one manually dispatched T0/T1 pair with independent grading (#293), repeated grading with Verifier execution evidence (#300), and live runtime conditions (#301). These are observations, not a T0/T1 comparison result.
+- Codex Cloud verification results and Docker measurements in `adapters/codex/` (#291, #292).
+- `docs/ADOPTION.md` connects task-level selection and role sharing to existing observations (#306).
+- Research note on Auctopus PI-led evidence gates as a verification candidate, registered in `knowledge/sources.yaml`; it is not an adopted contract (#296, #298).
+
+### Changed
+
+- `scripts/hard_task_calibrate.py`: fixes from the screening rehearsal and reviews (stop and aggregation defects, review recommendations, `write_record` keeps the umask and resume checks are stronger) (#309, #310, #311, #315); the compatibility impact on existing records and `run` is listed under Breaking.
+- `scripts/review_package.py` reads the PR base SHA from the REST API for gh 2.46 compatibility, and `pr-diff.patch` is now built from `{base SHA}...{head}` instead of `origin/{base}...{head}` (#297); the new stop is listed under Breaking. Tests cover bases other than `main` (#299, #303).
+- `AGENTS.md` and `docs/AGENT_HARNESS.md` define the scope of "check scripts" for rule-change PRs (#313).
+- `docs/RELEASE_READINESS.md` records `v0.5.0` in the current release line and the completed EXP-001 state (#284, #285); `docs/CURRENT_EXECUTION_PLAN.md` is synced (#308, #312).
+- CI dependencies are bumped: `check-jsonschema` 0.39.0 and the GitHub Actions group (#282, #314). The relay test in `scripts/test_model_role_split_pilot.py` no longer lets server completion cancel reader pacing (#301). A regression test fixes the `write_record` temporary-file refusal and unchanged umask (#316).
+
+### Experiment status
+
+- No EXP-001 frozen input or evaluation semantic changed. Hard-task screening, Human Attention, Subagent folding, and runtime canary work are preparation and observations; no T0/T1 or topology comparison result is claimed in this release. The plugin version is unchanged.
+
 ## 0.5.0 — 2026-11-02
 
 Content candidate: `5cf7ba04218e390f0f4faec0f05f5aceae0dfce2`.

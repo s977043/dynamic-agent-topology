@@ -112,7 +112,7 @@ A reviewer must verify that failed, cancelled, skipped, stale, or superseded wor
 
 These are pre-publication gates, including when a human publishes a breaking release. Human-only publication changes who performs the operation, not when the evidence is required. Required `main` checks must pass on the release commit before tagging; when release-commit Scorecard evidence is required, it must also pass before tagging, not as a follow-up after the tag or GitHub Release is published. The recent-result option above remains limited to human publication without supply-chain changes.
 
-The Scorecard workflow (`.github/workflows/scorecard.yml`) runs on pushes to `main` and on its schedule, not on release PR heads. After merge, wait for the run whose head SHA equals the release commit, and record its URL and successful conclusion. A successful content-candidate or PR-head check does not substitute for this evidence. If the required run is missing, pending, or unsuccessful, keep publication pending and follow Publication failure.
+The Scorecard workflow (`.github/workflows/scorecard.yml`) runs on pushes to `main` and on its schedule, not on release PR heads. When release-commit Scorecard evidence is required, after merge, wait for the run whose head SHA equals the release commit, and record its URL and successful conclusion. A successful content-candidate or PR-head check does not substitute for this evidence. If the required run is missing, pending, or unsuccessful, keep publication pending and follow Publication failure.
 
 ## Metadata gate
 

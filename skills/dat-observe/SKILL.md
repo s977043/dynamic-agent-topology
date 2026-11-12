@@ -21,15 +21,16 @@ description: 1 回の作業単位（ウェーブ）の完了時に、実際の�
 1. **値を集める**: このセッションで実際に行った委託・レビュー・手戻り・人の確認、PR の状態など、確認できる情報源だけを使う。
 2. **YAML を書く**: 記録例の形で、作業中のリポジトリの外（一時ディレクトリ）に書く。
    - 記録例は `apiVersion: dat/v1alpha2`。同じ store を読むすべての読取側（`sum` を実行する環境など）を新版に上げるまでは、`apiVersion: dat/v1alpha1` で書き、`rework.sources` を入れない（旧版は `dat/v1alpha2` の記録を拒否する）。条件と手順は設計 [§5.5.9](../../docs/RUN_OBSERVATION_DESIGN.md#559-互換性移行公開) の移行手順に従う
-   - 分からない値は `unknown`。0・`[]`・`false` で補わない。レビューなしは `reviews: []`、手戻りなしは `rework.count: 0` と明記する
+   - 分からない値、レビューや手戻りがなかったときの書き方は設計 [§5.3](../../docs/RUN_OBSERVATION_DESIGN.md#53-unknown-と-0-の区別) で確かめてから書く
    - `metadata.project` は作業中のリポジトリのディレクトリ名（worktree なら親リポジトリ名。導入先に `.dat/project.yaml` があればその `metadata.name`）。private なら仮名（例: `project-a`）
    - `metadata.datVersion` は記録時に参照した DAT 仕様（リポジトリ）の版で、プラグインのルートにある `CITATION.cff` の `version`（導入先に `.dat/dat.lock.yaml` があればその版）。plugin manifest の `version`（プラグインの版）とは別の契約なので使わない
    - `topologyEquivalent` と `topologyBasis`（`independentReview` を含む）は設計 [§5.2](../../docs/RUN_OBSERVATION_DESIGN.md#52-topologyequivalent-の判定基準) に従って決める
    - `verification` が `yes` 以外のときの `verifierKind` の扱いは設計 §5.4 を読む（検証なしの形は [adapters/codex/examples/run-observation.yaml](../../adapters/codex/examples/run-observation.yaml)）
-   - `taskDifficulty` は構成を選ぶ前に控えておく。`interruptionKind` などの任意項目の扱いは [docs/OBSERVATION_MEASUREMENT.md §7](../../docs/OBSERVATION_MEASUREMENT.md#7-任意項目)、値は schema に従う
+   - `taskDifficulty` は構成を選ぶ前に控えておく。任意項目の扱いは [docs/OBSERVATION_MEASUREMENT.md §7](../../docs/OBSERVATION_MEASUREMENT.md#7-任意項目)、値は schema に従う
+   - 中断したウェーブ（`outcome: interrupted`）では、同 §7 に沿って `interruptionKind` を書く
    - 手戻りの出どころ別の回数（`rework.sources`）と `apiVersion`・`rework.triggers` との関係は設計 [§5.5](../../docs/RUN_OBSERVATION_DESIGN.md#55-reworksources出どころ別の回数321) を読む
    - `model[].effort` と `usage`（`totalTokens`・`costUsd`）は確認できた値だけ書き、分からなければ `unknown`
-   - `reviews[]` の項目は設計 [§5.1](../../docs/RUN_OBSERVATION_DESIGN.md#51-項目)、値は schema に従う
+   - `reviews[]` の項目は設計 [§5.1](../../docs/RUN_OBSERVATION_DESIGN.md#51-項目)、`decision` の値は [docs/OBSERVATION_MEASUREMENT.md §6](../../docs/OBSERVATION_MEASUREMENT.md#6-集計時の正規化) の正規値に従う
    - `startedAt` / `endedAt` はウェーブの開始・終了時に控えておく。期間の集計は `endedAt` で行う（[docs/OBSERVATION_MEASUREMENT.md](../../docs/OBSERVATION_MEASUREMENT.md)）
 3. **秘匿を確かめる**（保存前の必須条件。全文字列値が対象）: エージェント自身が全文字列値を読み、次を含まないことを確かめる。CLI の `OK` はこの確認の代わりにならない（validator が見るのは長さ・絶対パス・既知のトークン形式だけ）。秘密情報・トークン、private source、プロンプトや会話の本文、レビュー本文、個人環境の絶対パスを含めない。private な PR・ブランチ・リポジトリ名・個人名は仮名にする。`outcomeReason` は改行なしの 1 行。
 4. **保存先**: リポジトリの外の 1 か所。`--store` か環境変数 `DAT_OBSERVATION_STORE` で指定し、指定がなければ `~/.dat/observations` を案内する。

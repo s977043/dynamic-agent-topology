@@ -81,7 +81,7 @@ Before opening a release PR:
 
 ### Current release line
 
-`v0.3.0`, `v0.4.0`, `v0.4.1`, and `v0.5.0` are published; `v0.4.0` points to release commit `f43e83e` (PR #264), `v0.4.1` points to release commit `4475b30` (PR #267), and `v0.5.0` points to release commit `2144faf` (PR #283). The previous boundary for the next release is `v0.5.0`. The next version must be decided in the release PR from the actual candidate diff and the project's evolving compatibility policy; no next version is pre-selected.
+`v0.3.0`, `v0.4.0`, `v0.4.1`, `v0.5.0`, and `v0.6.0` are published; `v0.4.0` points to release commit `f43e83e` (PR #264), `v0.4.1` points to release commit `4475b30` (PR #267), `v0.5.0` points to release commit `2144faf` (PR #283), and `v0.6.0` points to release commit `efc4e66` (PR #317). The previous boundary for the next release is `v0.6.0`. The next version must be decided in the release PR from the actual candidate diff and the project's evolving compatibility policy; no next version is pre-selected.
 
 Do not publish `v0.2.1` from current `main`. If the historical `0.2.1` release is ever published, its tag must point to the historical content point documented in `CHANGELOG.md`.
 

@@ -5,7 +5,7 @@
 ## 確認済みの到達点
 
 - Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。基準mainは `5b443b33cf7a7e932cb758e73954d68226bec991`（#319まで統合）。取得時点でOpen Issue **12**（#31/#88/#93/#159/#220/#223/#244/#248/#268/#287/#295/#302）、Open PR **0**（本計画PRの作成前）。件数はcheckpointであり、本計画PRや他者の更新で変動します。
-- **v0.6.0公開済み**（2026-11-12T17:09:39Z公開、#317）。v0.5.0（#283）・v0.4.0（#264）・v0.4.1（#267）も公開済み。公開タグを移動しません。
+- **v0.7.0公開済み**（checkpoint後の追記。2026-11-13T07:32:55Z公開、#327）。v0.6.0（2026-11-12T17:09:39Z公開、#317）・v0.5.0（#283）・v0.4.0（#264）・v0.4.1（#267）も公開済み。公開タグを移動しません。
 - EXP-001 [#15](https://github.com/s977043/dynamic-agent-topology/issues/15)はcompleted/closed、Pilot限定 **Keep T0**。[Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) completed revision3、33 original blobsを保持。過去Runの再実行・再prepare・Frozen変更の許可ではありません。
 - 2026-10-26以降に通常PR・release PRとして#256〜#307の43件がmerge済み。主なもの:
   - #220予備キット: #257 network none、#261 teardown検出、#262 CI配線、#263 事後改善。
@@ -55,7 +55,7 @@ Operatorの判断（[判断材料](https://github.com/s977043/dynamic-agent-topo
 
 | Issue | 現在の証拠 | 残る判断・実行条件 |
 |---|---|---|
-| [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | v0.6.0まで公開済み（2026-11-12T17:09:39Z公開） | security関連6設定は未確認。closeはHuman判断 |
+| [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | v0.7.0まで公開済み（v0.7.0はcheckpoint後の追記、2026-11-13T07:32:55Z公開） | security関連6設定は未確認。closeはHuman判断 |
 | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) | 再現可能なbaseline failureが未取得。#244の進展を参照 | EXP-001全成功を回復効果の母集団にしない |
 | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) | #82/#211を候補armとして吸収済み | 母集団・予算・事前登録が必要。Human同意はEXP-002→EXP-003の順序だけ |
 | [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | 規則変更PRの記録先。最新コメントは#318（2026-11-12T00:21Z） | Actions PR作成許可の管理者確認。規則・Guard変更のmergeはHuman。#313のallowlist運用は5本merge または2026-12-31まで観察し、検査を弱めたことを理由とするHumanの差し戻しが1本でもあれば#313を戻す（判定はHuman）。進捗は#316時点で2/5で、#317〜#319がallowlist運用に該当するかは未確認（#315は#159の記録で1/5、#316は#316のコメントで2本目と記録。#159には未記録）。差し戻しの有無は未確認 |

@@ -69,7 +69,7 @@ Operatorの判断（[判断材料](https://github.com/s977043/dynamic-agent-topo
 | [#287](https://github.com/s977043/dynamic-agent-topology/issues/287) | 1ペア計測パケット（#290、merge済み）を用意 | Operatorの実測待ち。秒数・回答・品質判定は未取得 |
 | [#295](https://github.com/s977043/dynamic-agent-topology/issues/295) | 研究ノート（#296/#298）とschema-only負の対照 | C1〜C8のOracle・T0/T1比較・有料モデル実行は未実施 |
 | [#302](https://github.com/s977043/dynamic-agent-topology/issues/302) | relayテストはMacで20/20成功（初回の失敗は再現せず、原因未特定） | 実モデル反復の起動条件はOperator判断 |
-| [#321](https://github.com/s977043/dynamic-agent-topology/issues/321) | 設計#322、実装#323（plugin 0.4.0・`dat/v1alpha2`）、後続#325・#326がmerge済み。v0.7.0で公開 | sumの出どころ別の節の追加が互換性を壊すかはHuman判断（CHANGELOGに「判定不能」と記録）。読取側を更新してからv1alpha2で記録を始め、測定期間の記録でH-srcを判定する。判定までopen |
+| [#321](https://github.com/s977043/dynamic-agent-topology/issues/321) | 設計#322、実装#323（plugin 0.4.0・`dat/v1alpha2`）、後続#325・#326がmerge済み。v0.7.0で公開 | 出どころ別の節の追加はHuman判断（2026-11-13）でbreakingとしてv0.7.0のCHANGELOGに記録。読取側を更新してからv1alpha2で記録を始め、測定期間の記録でH-srcを判定する。判定までopen |
 
 ## 変更ごとの3ループ
 

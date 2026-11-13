@@ -6,7 +6,7 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
-## 0.7.0
+## 0.7.0 — 2026-11-13
 
 Content candidate: `b9c791f69fad6776f5161376a7957e432d2ba082`.
 

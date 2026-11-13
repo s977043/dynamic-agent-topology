@@ -1,11 +1,11 @@
 # 残タスクの実行計画
 
-> **As-of checkpoint: 2026-11-12T17:31Z UTC（GitHub read-only再確認）。** これは実行許可・採用・Run acceptance・Merge承認そのものではありません。main / PR head / 必須CI / 独立レビュー / Human判断を作業ごとに再取得します。古いcheckpointはGit履歴を参照してください。
+> **As-of checkpoint: 2026-11-13T08:30Z UTC（GitHub read-only再確認）。** これは実行許可・採用・Run acceptance・Merge承認そのものではありません。main / PR head / 必須CI / 独立レビュー / Human判断を作業ごとに再取得します。古いcheckpointはGit履歴を参照してください。
 
 ## 確認済みの到達点
 
-- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。基準mainは `5b443b33cf7a7e932cb758e73954d68226bec991`（#319まで統合）。取得時点でOpen Issue **12**（#31/#88/#93/#159/#220/#223/#244/#248/#268/#287/#295/#302）、Open PR **0**（本計画PRの作成前）。件数はcheckpointであり、本計画PRや他者の更新で変動します。
-- **v0.7.0公開済み**（checkpoint後の追記。2026-11-13T07:32:55Z公開、#327）。v0.6.0（2026-11-12T17:09:39Z公開、#317）・v0.5.0（#283）・v0.4.0（#264）・v0.4.1（#267）も公開済み。公開タグを移動しません。
+- Repository: [s977043/dynamic-agent-topology](https://github.com/s977043/dynamic-agent-topology)。基準mainは `c350786bd9e9341e1eed744ab440f6b402d5b0c4`（#328まで統合）。取得時点でOpen Issue **13**（#31/#88/#93/#159/#220/#223/#244/#248/#268/#287/#295/#302/#321）、Open PR **0**（本計画PRの作成前）。件数はcheckpointであり、本計画PRや他者の更新で変動します。
+- **v0.7.0公開済み**（2026-11-13T07:32:55Z公開、#327、release commit `ffee057`）。v0.6.0（2026-11-12T17:09:39Z公開、#317）・v0.5.0（#283）・v0.4.0（#264）・v0.4.1（#267）も公開済み。公開タグを移動しません。
 - EXP-001 [#15](https://github.com/s977043/dynamic-agent-topology/issues/15)はcompleted/closed、Pilot限定 **Keep T0**。[Freeze](../experiments/EXP-001-t0-vs-t1/pilot/FREEZE.md) completed revision3、33 original blobsを保持。過去Runの再実行・再prepare・Frozen変更の許可ではありません。
 - 2026-10-26以降に通常PR・release PRとして#256〜#307の43件がmerge済み。主なもの:
   - #220予備キット: #257 network none、#261 teardown検出、#262 CI配線、#263 事後改善。
@@ -14,7 +14,8 @@
   - #287 Human Attention: #289 paired比較の修正、#290 1ペア計測パケット（計測は未実施）。
   - #291/#292 Codex Cloud検証・Docker実測手順、#293 手動dispatchの1組canary、#300 canary反復採点、#301 live比較のruntime条件、#296/#298 Auctopus研究ノート（#295、未採用）、#297/#299/#303 review packageの互換性・テスト、#306 タスク単位の選定と観測の接続。
 - 2026-11-07〜08に#308（本計画同期）、#309〜#311（#244 キット修正。#310・#311は規則変更PRとしてHuman merge）、#288（#248 合成oracle、Human merge）がmerge済み。
-- 2026-11-09〜12に#312（前回の本計画同期）、#313（規則変更PRの「検査スクリプト」の範囲）、#314（github-actions更新）、#315・#316（#244 `write_record` のumask・再開検証と回帰テスト）、#317（v0.6.0 release）、#318（公開前のmain CIとScorecardの確認順）、#319（Current release lineをv0.6.0に）がmerge済み。
+- 2026-11-09〜12に#312（本計画同期）、#313（規則変更PRの「検査スクリプト」の範囲）、#314（github-actions更新）、#315・#316（#244 `write_record` のumask・再開検証と回帰テスト）、#317（v0.6.0 release）、#318（公開前のmain CIとScorecardの確認順）、#319（Current release lineをv0.6.0に）がmerge済み。
+- 2026-11-12〜13に#320（前回の本計画同期）、#322・#323・#325・#326（#321 reworkの出どころ別の回数。設計、`rework.sources`と`dat/v1alpha2`の実装、dat-observe skillの正本リンク化、移行手順と集計の分母）、#327（v0.7.0 release）、#328（Current release lineをv0.7.0に）がmerge済み。
 - 研究ノートは未採用候補のままで、source台帳の`adopted: []`を維持しています。canaryや合成fixtureのPASSは構成の効果証拠ではありません。
 
 ## #244 スクリーニング起動前の状態
@@ -33,7 +34,7 @@ Operatorの判断（[判断材料](https://github.com/s977043/dynamic-agent-topo
 | D3 | Codex 0.160.1 Linuxバイナリの採用 | 未回答（Agentが計算したSHA-256は過去の記録と一致。公式hashとの照合は未実施） |
 | D4 | gpt-6.1-sol / highの提供 | 未回答・未確認 |
 
-キット修正はmerge済みです（#309〜#311、追加で#315・#316）。残る起動条件はD1〜D4で、揃うまでスクリーニングを起動しません（[#244の最新コメント](https://github.com/s977043/dynamic-agent-topology/issues/244)、2026-11-08T17:39Z。2026-11-12T17:31Z時点でそれ以降のコメントはなく、回答状況は上表のまま）。起動はOperatorが行い、最初のRunでSIMULATEDの項目と実際のtraceの大きさを確かめます。
+キット修正はmerge済みです（#309〜#311、追加で#315・#316）。残る起動条件はD1〜D4で、揃うまでスクリーニングを起動しません（[#244の最新コメント](https://github.com/s977043/dynamic-agent-topology/issues/244)、2026-11-08T17:39Z。2026-11-13T08:30Z時点でそれ以降のコメントはなく、回答状況は上表のまま）。起動はOperatorが行い、最初のRunでSIMULATEDの項目と実際のtraceの大きさを確かめます。
 
 ## 次の実行順序
 
@@ -42,31 +43,33 @@ Operatorの判断（[判断材料](https://github.com/s977043/dynamic-agent-topo
 | 完了 | #257 / #258 / #307 / #308 ほか | 上記到達点のとおり | 再計上しない |
 | 完了 | #244 キット修正（#309 / #310 / #311 / #315 / #316） | 集計、停止記録、`phase`、`run.json` の原子的保存、trace の行分割、待機時間の説明、`write_record` の umask 不変と再開検証 | 再計上しない |
 | 完了 | #317 / #318 / #319 | v0.6.0 公開、公開前の確認順、Current release line | 再計上しない |
+| 完了 | #320 / #322 / #323 / #325 / #326 / #327 / #328 | 本計画同期、#321 の設計・実装・後続 docs、v0.7.0 公開、Current release line | 再計上しない。#321 の H-src 判定は下表 |
 | 完了 | #288（#248） | 合成oracleと最小検証計画。独立レビューはCodexとRiver Reviewが両方MERGE_OK、Human merge | 再計上しない。合成oracleのPASSを効果証拠にしない |
 | P1 | #244 host 側の展開時間 | 回収後の tar の展開（`tarfile.open`・`getmembers`・`extractall`）に上限がない。本番の最初の Run で trace の大きさを確かめてから判断する | 上限を入れるかは実測後に決める。それまで runbook は処理全体の時間を保証しない |
 | P0 | #244 Operator判断 | D1・D3・D4の回答、D2案Aの仕組みの記録 | 揃うまでスクリーニングを起動しない。Agentは判断を代行しない |
 | P1 | #248 | 実モデルでのF0/F1比較（NOT_TESTED） | 事前登録・独立oracle・費用見積もり・Operator条件が揃うまで実行しない |
 | P1 | #302 | Mac Claude CodeでのT0/T1実モデル反復の実行条件 | Operator判断待ち。model起動はOperator |
 | P1 | #287 | #290の1ペア計測パケットの手順でOperatorが実測する | Agentの作業は残っていない。秒数・回答・品質判定は未取得 |
-| P1 | #223 / #268 / #295 | 未決事項・研究ノートの次段階 | 判定規則の変更と公開を混同しない。未計測を計測済みにしない |
+| P1 | #223 / #268 / #295 / #321 | 未決事項・研究ノートの次段階 | 判定規則の変更と公開を混同しない。未計測を計測済みにしない |
 | P2 | #31 / #159 / #88 / #93 / #220 | 管理者確認・事前登録・実測条件の整理 | 設定を推測でPASSにしない。前提未達はUNKNOWN/DEFER |
 
 ## Open Issueの残タスクと再開条件
 
 | Issue | 現在の証拠 | 残る判断・実行条件 |
 |---|---|---|
-| [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | v0.7.0まで公開済み（v0.7.0はcheckpoint後の追記、2026-11-13T07:32:55Z公開） | security関連6設定は未確認。closeはHuman判断 |
+| [#31](https://github.com/s977043/dynamic-agent-topology/issues/31) | v0.7.0まで公開済み（2026-11-13T07:32:55Z公開） | security関連6設定は未確認。closeはHuman判断 |
 | [#88](https://github.com/s977043/dynamic-agent-topology/issues/88) | 再現可能なbaseline failureが未取得。#244の進展を参照 | EXP-001全成功を回復効果の母集団にしない |
 | [#93](https://github.com/s977043/dynamic-agent-topology/issues/93) | #82/#211を候補armとして吸収済み | 母集団・予算・事前登録が必要。Human同意はEXP-002→EXP-003の順序だけ |
-| [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | 規則変更PRの記録先。最新コメントは#318（2026-11-12T00:21Z） | Actions PR作成許可の管理者確認。規則・Guard変更のmergeはHuman。#313のallowlist運用は5本merge または2026-12-31まで観察し、検査を弱めたことを理由とするHumanの差し戻しが1本でもあれば#313を戻す（判定はHuman）。進捗は#316時点で2/5で、#317〜#319がallowlist運用に該当するかは未確認（#315は#159の記録で1/5、#316は#316のコメントで2本目と記録。#159には未記録）。差し戻しの有無は未確認 |
+| [#159](https://github.com/s977043/dynamic-agent-topology/issues/159) | 規則変更PRの記録先。最新コメントはallowlist観察の数え直し（[issuecomment-6839753959](https://github.com/s977043/dynamic-agent-topology/issues/159#issuecomment-6839753959)、2026-11-13T00:11Z） | Actions PR作成許可の管理者確認。規則・Guard変更のmergeはHuman。#313のallowlist運用は5本merge または2026-12-31まで観察し、検査を弱めたことを理由とするHumanの差し戻しが1本でもあれば#313を戻す（判定はHuman）。進捗は2/5（#315・#316）で、#317〜#326はallowlistの2ファイルを含まないため非該当。#315・#316の差し戻し・revertの有無は未確認 |
 | [#220](https://github.com/s977043/dynamic-agent-topology/issues/220) | 予備キット#254と修正#257/#261/#263。資格情報は案D（Operator承認） | 実効permission・認証・課金境界は未実測。FAIL/NOT_TESTEDが残る間model起動なし |
-| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | H1支持23件/7project、H2支持23/23（Agent報告） | 原store・ログの独立監査は未実施。公開転記は設計§6、Releaseの公開はバージョンごとのHumanのyが前提 |
+| [#223](https://github.com/s977043/dynamic-agent-topology/issues/223) | H1支持23件/7project、H2支持23/23（Agent報告）。reworkの出どころ別の回数は#321に分離（採否と版の判断は#321） | 原store・ログの独立監査は未実施。公開転記は設計§6、Releaseの公開はバージョンごとのHumanのyが前提 |
 | [#244](https://github.com/s977043/dynamic-agent-topology/issues/244) | 上記「#244 スクリーニング起動前の状態」 | D1〜D4（キット修正はmerge済み）。評価予算は選定後の見積もりで再承認 |
 | [#248](https://github.com/s977043/dynamic-agent-topology/issues/248) | #288（合成oracle 34テスト）merge済み。実モデル検証はNOT_TESTED | 事前登録・独立oracle・費用・Operator条件を満たしてから実行 |
 | [#268](https://github.com/s977043/dynamic-agent-topology/issues/268) | RFC・P0 Journey・#276/#277の対応がmerge済み | 分岐順の変更（breaking）は仮説H-A2の検証後 |
 | [#287](https://github.com/s977043/dynamic-agent-topology/issues/287) | 1ペア計測パケット（#290、merge済み）を用意 | Operatorの実測待ち。秒数・回答・品質判定は未取得 |
 | [#295](https://github.com/s977043/dynamic-agent-topology/issues/295) | 研究ノート（#296/#298）とschema-only負の対照 | C1〜C8のOracle・T0/T1比較・有料モデル実行は未実施 |
 | [#302](https://github.com/s977043/dynamic-agent-topology/issues/302) | relayテストはMacで20/20成功（初回の失敗は再現せず、原因未特定） | 実モデル反復の起動条件はOperator判断 |
+| [#321](https://github.com/s977043/dynamic-agent-topology/issues/321) | 設計#322、実装#323（plugin 0.4.0・`dat/v1alpha2`）、後続#325・#326がmerge済み。v0.7.0で公開 | sumの出どころ別の節の追加が互換性を壊すかはHuman判断（CHANGELOGに「判定不能」と記録）。読取側を更新してからv1alpha2で記録を始め、測定期間の記録でH-srcを判定する。判定までopen |
 
 ## 変更ごとの3ループ
 

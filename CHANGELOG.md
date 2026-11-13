@@ -6,6 +6,16 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ## Unreleased
 
+## 0.7.0
+
+Content candidate: `b9c791f69fad6776f5161376a7957e432d2ba082`.
+
+Previous boundary: tag `v0.6.0` (`efc4e66c14dc795af1223a57362177ecc0371c4a`).
+
+### Breaking
+
+- `scripts/run_observation.py sum --store A --store B`: before this change argparse kept only the last value, so only `B` was counted; now `A` and `B` are counted together, `observationId` is checked across them, and a duplicate across the stores stops with exit 1 and no tables (#323). `save` still uses only the last `--store`. Migration: see Migration below.
+
 ### Added
 
 - RunObservation `apiVersion: dat/v1alpha2` with the optional `rework.sources`: the count of `rework.count` per source (`spec-change`, `human-return`, `review-finding`, `ci-failure`, `self-correction`, `unknown`), as designed in `docs/RUN_OBSERVATION_DESIGN.md` §5.5 (#321, #322). `schemas/run-observation.schema.json` accepts both `dat/v1alpha1` and `dat/v1alpha2`, allows `rework.sources` only in `dat/v1alpha2`, and rejects `rework.sources` together with `rework.triggers`; `scripts/validate_run_observation.py` checks the sources against `rework.count` (§5.5.3, §5.5.4). `rework.triggers` is deprecated in `dat/v1alpha2`.
@@ -13,14 +23,15 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 
 ### Changed
 
-- `scripts/run_observation.py sum --store A --store B`: before this change argparse kept only the last value, so only `B` was counted; now `A` and `B` are counted together, `observationId` is checked across them, and a duplicate across the stores stops with exit 1 and no tables. `save` still uses only the last `--store`.
 - The plugin version in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` is now `0.4.0` (Human decision V1 in #321). The adapter examples now use `dat/v1alpha2`.
+- `skills/dat-observe/SKILL.md` links decision rules and value lists to the canonical files instead of restating them (#325); the `rework.sources` migration steps and the `sum` denominators in the docs match the implementation (#326).
+- `docs/RELEASE_READINESS.md` records `v0.6.0` in the current release line and clarifies that the release commit's `main` CI and Scorecard are checked before publication (#318, #319); `docs/CURRENT_EXECUTION_PLAN.md` is synced (#320).
 
 ### Compatibility judgement (`docs/RELEASE_READINESS.md`, Compatibility boundary)
 
 - Schema and validator: every previously valid `dat/v1alpha1` record stays valid with the same meaning; `dat/v1alpha2` and `rework.sources` are additions. Not breaking for this repository's validator; the old validator rejecting new records is covered under Migration.
 - Repeated `--store` in `sum`: **breaking**. The same previously accepted input now gives a different count and can give a different exit code ("changes an exit code or output that callers may depend on").
-- The added `rework by source` section in `sum`: **cannot be determined from the rules; a Human decision is needed.** It is appended without changing existing lines, but the rules do not say whether the full output text (for example the lines before the closing notice, or the total line count) is output that callers may depend on. Per the rules this is a STOP for the release decision.
+- The added `rework by source` section in `sum`: **cannot be determined from the rules; a Human decision is needed.** It is appended without changing existing lines, but the rules do not say whether the full output text (for example the lines before the closing notice, or the total line count) is output that callers may depend on. Per the rules this is a STOP for the release decision; the Human decision is recorded in the release PR.
 
 ### Migration
 
@@ -31,6 +42,10 @@ This project uses SemVer-style `MAJOR.MINOR.PATCH` version identifiers while the
 - Update every reader of a store (each environment that runs `sum`, shared copies, scripts that read records) before any recorder writes `dat/v1alpha2`. Until then keep writing `apiVersion: dat/v1alpha1` without `rework.sources`, even with the new plugin. If an old reader must stay, save new records in a separate store and do not let the old reader read it; the new `sum` with both `--store` options stops on an `observationId` duplicated across the stores.
 - Do not rewrite existing `dat/v1alpha1` records, and do not infer `rework.sources` from `rework.triggers` or from memory.
 - Do not treat a `sum` table that came with exit code 1 (`skipped invalid`) as a full count; check the exit code in any process that reuses the tables.
+
+### Experiment status
+
+- No EXP-001 frozen input or evaluation semantic changed. `rework.sources` is a new recording field; no T0/T1 or topology comparison result is claimed in this release.
 
 ## 0.6.0 — 2026-11-11
 

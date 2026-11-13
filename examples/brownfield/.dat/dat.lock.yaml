@@ -4,7 +4,7 @@ metadata:
   name: example-web-app
 spec:
   dat:
-    version: "0.6.0"
+    version: "0.7.0"
     apiVersion: dat/v1alpha1
     source: https://github.com/s977043/dynamic-agent-topology
     pinMode: floating

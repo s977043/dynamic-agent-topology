@@ -242,3 +242,43 @@ Claude CodeではSkillのモデル呼出しと`/skill-name`直接起動のHook�
   **P1実行はHOLD**。次はOperator候補環境の版・設定正本、F0/F1配置先、
   JSONL等のイベント対応とTool拒否方式をread-onlyで照合する。
   新Runner・Schema・依存は追加しない。
+
+### P0 Operator向け引継ぎ（2026-11-17、未実施）
+
+Operatorの候補端末で、**モデルを起動せず**目安100分（最大2時間で中断）で次を確認する。
+この管理作業環境で確認したCLI版やfeature表示をOperator実機の結果として転記しない。
+最初に`git rev-parse --show-toplevel`を手元だけで確認し、Owner/Operatorが指定した
+DAT checkoutのrootであることを照合する。異なるリポジトリならSTOPし、パスは公開しない。
+`git rev-parse HEAD`はそのrootで実行し、対象branchとPRの期待HEADも別途照合する。
+
+```sh
+git rev-parse --show-toplevel
+git branch --show-current
+git rev-parse HEAD
+codex --version
+codex features list
+codex exec --help
+# Claude Codeを候補に含める場合のみ（未インストールならUNKNOWNと記録）
+claude --version
+claude --help
+```
+
+`codex exec`（`--json`を付けた場合も含む）、`claude -p`、モデルへの試験指示は
+このread-only手順には**含めない**。未インストール・未対応のコマンドは
+失敗を記録し、推測で成功に置き換えない。
+上記CLIは版・feature・helpの確認入口に過ぎない。実体定義・権限・Trace対応は
+設定の正本を別途read-onlyで照合し、公開Issue/PRには脱識別結果だけを記録する。
+
+| 記録欄 | P0で残す内容（機密部分は伏せる） | 未記入時の扱い |
+| --- | --- | --- |
+| 環境・版 | Operator候補端末種別、Runtime/CLI版、対象commit、確認日 | UNKNOWN |
+| F0 / F1定義 | 同一配送ETAタスクに対応する専門Subagentとdomain Skillの定義・ロード経路、起動手順。現DATには対になる実体が未整備 | 未整備ならHOLD |
+| 実効権限の確認方法 | 親mode、F0/F1のTool allow/deny、workspace・通信境界、拒否を確認する負の試験の計画 | 強制方法不明ならHOLD |
+| 独立証拠の確認方法 | activation、Tool入出力、拒否、失敗・再試行、usage、欠測を採取する経路と`ExecutionTrace`/oracleへの変換損失 | 真正性・欠測未確認はNOT_TESTED |
+| 実行承認 | Operator、使用Model/Effort、失敗・中断・再試行を含む全legの総額上限、承認済みの非公開証拠保存先、通信先、停止条件、独立Reviewer | 未承認ならP1 HOLD |
+
+共有するのは上記の**脱識別した判定と根拠**のみ。生の認証設定、APIキー、
+ユーザー固有パス、AATのprivate資料、生Transcriptを公開Issue/PRへ貼らない。
+P0は手段と未確認点の特定までを完了条件とする。F0/F1実activation・同等権限・
+Trace完全性は引き続きNOT_TESTEDで、時間内に未解決の前提が残ればHOLDを維持する。
+P1はDAT Operator/HOTL承認後にのみ実行する。

@@ -1,8 +1,11 @@
 # Subagent folding: 最小検証計画と合成oracle（#248）
 
-状態: **PROPOSED / 実モデル NOT_TESTED / 独立レビュー待ち**。
+状態（2026-11-15再確認）: **合成oracle検証済み / 実モデル NOT_TESTED / Runtime実行可能性HOLD**。
 本書は実験開始、予算消費、採用、既定設定変更の許可ではない。
-基準main: `7eae35b2f29bb0903aab21f3637d587c48c2c7ea`（2026-11-03取得）。
+初期実装時の基準main: `7eae35b2f29bb0903aab21f3637d587c48c2c7ea`（2026-11-03取得）。
+現行確認main: `c350786bd9e9341e1eed744ab440f6b402d5b0c4`（2026-11-15取得）。
+合成oracleを含む [PR #288](https://github.com/s977043/dynamic-agent-topology/pull/288) は
+2026-11-08にマージ済み（レビュー経緯はPRを参照）。実モデルのfold/keep判定は未実施。
 追跡: [Issue #248](https://github.com/s977043/dynamic-agent-topology/issues/248)。
 
 ## 1. 今回答える問い
@@ -133,7 +136,7 @@ provider側で制御不能なキャッシュや実行環境の差は交絡とし
 後続の効果評価では、対象母集団、実用上の品質非劣化幅、コスト/遅延の改善幅、
 必要block数、不確実性の扱いを結果を見る前に固定する。本書はその効果評価の事前登録ではない。
 
-## 5. 今回の5ループと引継ぎ
+## 5. 初期実装時の5ループと引継ぎ（履歴）
 
 すべて作成セッションの**自己レビュー**。別セッション独立レビューの代替ではない。
 
@@ -160,6 +163,122 @@ Issue #248、PRの最新headと4ファイルの全差分を一次材料として
 - 既存CI/EXP-001/Schema/Skills/権限を弱めず、追加依存や課金経路がないか。
 - 上記コマンドとPython 3.12 CIを再確認し、実測準備の未達を維持しているか。
 
-本PRはspec-lintへの検証step追加を含むため、同種の#279と現行AGENTS/Harnessに従い規則変更PRとして扱い、Humanがmergeする。既存検査は弱めない。別モデルの独立レビュー、未解決必須指摘0、最新headの必須CI成功を確認し、Issue #159へリンクを記録する。モデル相違の証跡がなければ別モデルレビュー条件を満たしたと扱わない。
-このPRがmergeしてもIssue #248は閉じない。残タスクはRuntime接続・事前登録・Operator実測・
+初期PR #288はspec-lintへの検証step追加を含むため、同種の#279と当時のAGENTS/Harnessに従い規則変更PRとして扱い、Humanがmergeする条件だった。既存検査は弱めない。別モデルの独立レビュー、未解決必須指摘0、最新headの必須CI成功を確認し、Issue #159へリンクを記録する。モデル相違の証跡がなければ別モデルレビュー条件を満たしたと扱わない。
+初期PR #288がmergeしてもIssue #248は閉じない。残タスクはRuntime接続・事前登録・Operator実測・
 限定的な結果評価であり、本準備PRの完了とは分離する。
+
+## 6. P0 Runtime実行可能性チェック（2026-11-15）
+
+最初のVertical Sliceは新しいAgent・Skill・Runnerの作成ではなく、
+**F0/F1を同一Runtimeで起動・観測するための手段と、権限制約を事前に特定できるか**
+のread-only確認とする。実際の起動・発火・権限強制の検証はOperator/HOTL承認後に分離する。
+設計書の合成ケースは選定済みで、34件のoracleテストはPython 3.12.14でPASS。
+`validate_semantics.py`と`validate_experiments.py`も同じmainでPASSした。
+これらは実Runtimeの検証ではない。
+
+| 確認項目 | 2026-11-15の根拠 | 現在の判定 |
+| --- | --- | --- |
+| DATのF0/F1設計・合成oracle | §3〜4、PR #288のmerged内容 | 準備済み（実モデル未実行） |
+| DATからRuntime設定の自動適用 | `adapters/{codex,claude-code}/README.md`はManual Adapter | 未実装（手動対応が必要） |
+| CodexのContext/Tool/Workspace分離 | `adapters/codex/capabilities.yaml`では該当3項目が`unknown` | 実効境界未確認 |
+| Claude Codeの分離機能 | `adapters/claude-code/capabilities.yaml`では`native`と宣言 | 当該実行環境での発火未確認 |
+| F0専門Subagentの起動とF1 Skillロード | Runtime由来のactivation traceなし | NOT_TESTED |
+| F0/F1の実効Model/Effort・Tool・Permission同等性 | 実行時の独立観測なし | NOT_TESTED |
+| 生traceの真正性・欠測とoracleへの変換 | §3のoracleは合成`Event`のみを受理 | NOT_TESTED |
+| Operator・予算・通信先・証拠保存先 | #248の実行条件が未承認 | HOLD |
+
+### P0の着手順と判定
+
+1. 候補Runtime・CLI version・対象commitを記録し、read-onlyの専門処理を1つ選ぶ。
+   独立Reviewer/Verifierや承認主体はfold候補から除外する。
+2. F0のSubagent起動方法とF1のSkill読込み方法、各々の正本・配布経路を棚卸しする。
+   **定義・インストール済み**と**実際に発火した**ことの証拠要件を分け、
+   後者は実行まではNOT_TESTEDと記録する。
+3. 両armのTool/Permission設定と強制方法の候補を対応表にし、F1に権限を単純にunionしない。
+   Codexの`unknown`を説明なしに`native`へ読み替えない。
+4. 生のTool結果・最終応答・activation・欠測を独立取得する予定の手段を特定し、
+   `ExecutionTrace`/`RunEvaluation`/`blockId`への対応と変換損失の候補を記録する。
+   自己申告・合成fixture・メタデータ比較器の結果だけで真正性を認定しない。
+5. 起動手順・観測手段・権限制約の静的な前提が特定できなければ**HOLD**。
+   特定できた場合に限り、held-outケース、全leg予算、再試行・中断規則と
+   DATのAgent Harness規約に基づくOperator/HOTL実行承認を別途取得する。
+   承認後の限定feasibilityで
+   初めて実際のactivation・実効権限・Trace完全性を確認する。
+
+現時点のGOはP0の読み取り調査とオフライン検査に限定する。
+12 Run/6 paired blocksは承認後のfeasibility候補であり、品質非劣性・p95・採用効果は判定しない。
+Secret/PIIの外部送信、権限拡大、欠測のPASS化、未承認の有料モデル起動はSTOPとする。
+
+### P0 read-only調査の追加結果（2026-11-15）
+
+最初の候補Runtimeは**Codex CLI**。今回の管理作業環境で以下を静的に確認した。
+この環境はOperatorの実測環境やユーザーのMacを代表しない。モデル起動は行っていない。
+
+| 項目 | 今回確認した事実 | 未解決の境界 |
+| --- | --- | --- |
+| CLIの版 | この環境は`codex-cli 0.167.0-alpha.4`、Python 3.12.14 | Operator環境の版・実効Model/Effortは未固定 |
+| Codex F0起動候補 | `codex features list`に`multi_agent: stable true`が表示される | 専門Subagentの実登録・起動・Context/Tool分離はNOT_TESTED |
+| Codex F1 Skill候補 | DATには配布用`dat-select`/`dat-observe` Skillが存在 | 配送ETAのdomain Skillと対応するF0専門Roleは未定義 |
+| Project設定 | `.codex/config.toml`はapproval/sandboxとPython環境の設定 | F0/F1のTool/Permission対応設定は未定義。ユーザー設定は未確認 |
+| Trace候補 | `codex exec --help`にJSONL event出力の`--json`が存在 | activation・全Tool結果・失敗leg・権限拒否・usageを欠測なく取得可能か不明 |
+| DATへの変換 | 既存`ExecutionTrace`/`RunEvaluation` Schemaを確認 | 生JSONLからoracleの配送手順イベントへの真正性を保った変換は未実装 |
+
+Claude Codeは**代替候補の仕様確認のみ**であり、この作業環境では`claude` CLIを確認できなかった。
+公式文書では、Subagentの`tools`/`disallowedTools`はTool制限に使えるが、
+Skillの`allowed-tools`は呼び出しturnの**許可の事前付与**であり、使用可能Toolの制限ではない。
+F1へのfoldで、`allowed-tools`だけをF0の権限隔離の代替としない。
+mainのmodeが`bypassPermissions`、`acceptEdits`、`auto`の場合、Subagentの
+`permissionMode`指定もmainのmodeに従うことがある。両armの**実効mode・Tool allow/deny・
+拒否結果**を確認し、同等に強制できなければHOLDする。
+Claude CodeではSkillのモデル呼出しと`/skill-name`直接起動のHook経路も異なるため、
+どちらを測るかを固定して独立したTranscript/Tool結果と照合する。
+
+- Claude Code公式: [Subagents](https://code.claude.com/docs/en/sub-agents)、
+  [Skills](https://code.claude.com/docs/en/skills)、[Hooks](https://code.claude.com/docs/en/hooks)
+  （2026-11-15参照）。
+- DATの`RunObservation`はウェーブ管理記録であり、モデルの生`ExecutionTrace`でも
+  oracleの入力でもない。合成fixtureのPASSを実トレースの真正性に転用しない。
+- 同一RuntimeでのF0/F1の起動・同等権限・独立Traceを静的に確証できていないため、
+  **P1実行はHOLD**。次はOperator候補環境の版・設定正本、F0/F1配置先、
+  JSONL等のイベント対応とTool拒否方式をread-onlyで照合する。
+  新Runner・Schema・依存は追加しない。
+
+### P0 Operator向け引継ぎ（2026-11-17、未実施）
+
+Operatorの候補端末で、**モデルを起動せず**目安100分（最大2時間で中断）で次を確認する。
+この管理作業環境で確認したCLI版やfeature表示をOperator実機の結果として転記しない。
+最初に`git rev-parse --show-toplevel`を手元だけで確認し、Owner/Operatorが指定した
+DAT checkoutのrootであることを照合する。異なるリポジトリならSTOPし、パスは公開しない。
+`git rev-parse HEAD`はそのrootで実行し、対象branchとPRの期待HEADも別途照合する。
+
+```sh
+git rev-parse --show-toplevel
+git branch --show-current
+git rev-parse HEAD
+codex --version
+codex features list
+codex exec --help
+# Claude Codeを候補に含める場合のみ（未インストールならUNKNOWNと記録）
+claude --version
+claude --help
+```
+
+`codex exec`（`--json`を付けた場合も含む）、`claude -p`、モデルへの試験指示は
+このread-only手順には**含めない**。未インストール・未対応のコマンドは
+失敗を記録し、推測で成功に置き換えない。
+上記CLIは版・feature・helpの確認入口に過ぎない。実体定義・権限・Trace対応は
+設定の正本を別途read-onlyで照合し、公開Issue/PRには脱識別結果だけを記録する。
+
+| 記録欄 | P0で残す内容（機密部分は伏せる） | 未記入時の扱い |
+| --- | --- | --- |
+| 環境・版 | Operator候補端末種別、Runtime/CLI版、対象commit、確認日 | UNKNOWN |
+| F0 / F1定義 | 同一配送ETAタスクに対応する専門Subagentとdomain Skillの定義・ロード経路、起動手順。現DATには対になる実体が未整備 | 未整備ならHOLD |
+| 実効権限の確認方法 | 親mode、F0/F1のTool allow/deny、workspace・通信境界、拒否を確認する負の試験の計画 | 強制方法不明ならHOLD |
+| 独立証拠の確認方法 | activation、Tool入出力、拒否、失敗・再試行、usage、欠測を採取する経路と`ExecutionTrace`/oracleへの変換損失 | 真正性・欠測未確認はNOT_TESTED |
+| 実行承認 | Operator、使用Model/Effort、失敗・中断・再試行を含む全legの総額上限、承認済みの非公開証拠保存先、通信先、停止条件、独立Reviewer | 未承認ならP1 HOLD |
+
+共有するのは上記の**脱識別した判定と根拠**のみ。生の認証設定、APIキー、
+ユーザー固有パス、AATのprivate資料、生Transcriptを公開Issue/PRへ貼らない。
+P0は手段と未確認点の特定までを完了条件とする。F0/F1実activation・同等権限・
+Trace完全性は引き続きNOT_TESTEDで、時間内に未解決の前提が残ればHOLDを維持する。
+P1はDAT Operator/HOTL承認後にのみ実行する。

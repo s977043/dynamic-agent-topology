@@ -274,6 +274,23 @@ sources:
     url: https://code.claude.com/docs/en/workflows
     adopted: []
 
+  - id: anthropic-claude-fable-5-2-announcement-2026
+    type: product-announcement
+    title: 'Introducing Claude Fable 5.2 and Claude Mythos 5.2'
+    url: https://www.anthropic.com/claude-fable-and-mythos-5-2
+    published_at: '2026-11-09'
+    adopted: []
+  - id: anthropic-claude-fable-5-2-prompting-2026
+    type: product-documentation
+    title: 'Prompting Claude Fable 5.2'
+    url: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-2
+    adopted: []
+  - id: anthropic-cost-intelligence-2026
+    type: product-documentation
+    title: 'Optimizing for cost and intelligence'
+    url: https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence
+    adopted: []
+
   - id: openai-gpt6-software-maintenance-2026
     type: engineering-report
     title: Maintaining software with the GPT-6 family

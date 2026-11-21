@@ -168,3 +168,41 @@ N1〜N5は**効果の性能測定とは別の安全性ゲート**。権限が不
 - 文書/出典の検証と最小作業計画のみ。本研究の比較対象となる実Claude CLI、Subagent/Team/Workflow、実験Runは**実行していない**。開発作業に用いるCodexのレビュー用サブエージェントとは区別する。
 - 停止条件: 出典の矛盾、Work Unit/モデル/permissionが固定できない、独立Reviewが無い、Human Gate未解消、品質床・費用上限未合意。
 - 次の受け渡し: #93でG1のAC・budget・適格Taskを定め、G2以降は許可された実行環境・独立Reviewerが揃った時のみ実施する。
+
+## 8. 2026-11-18 追記：Claude Fable 5.2のAdvisor / Orchestrator候補
+
+> **RESEARCH ONLY / NOT ADOPTED / NO PAID RUN AUTHORIZATION**。本節はモデル発表に伴う差分の記録であり、上記A〜Eの比較設計、[#93](https://github.com/s977043/dynamic-agent-topology/issues/93)の実験順序、[#244](https://github.com/s977043/dynamic-agent-topology/issues/244)の事前登録、DATのRuntime/Permission/Policy契約を変更しない。調査日: 2026-11-18 JST。該当Sourceはいずれも`knowledge/sources.yaml`で`adopted: []`。
+
+### 8.1 外部Source ClaimとDATの観測を分離する
+
+| 区分 | 2026-11-18時点に確認した内容 | DAT側の扱い |
+| --- | --- | --- |
+| 公式発表 | Anthropicは2026-11-09にFable 5.2を公開。高難度の相談を受けるAdvisor、比較的単純な作業を小型モデルへ委譲するOrchestratorの利用を紹介。API公表単価は100万input tokens当たり$8、output tokens当たり$40（fast modeは各$16/$80）。[公式発表](https://www.anthropic.com/claude-fable-and-mythos-5-2) | Runtimeでの利用可能性、契約内使用量、追加料金は未確認。用途の紹介はDATでの効果証拠ではない。 |
+| 公式プロンプトガイド | Fable 5.2のSubagent起動はHarness/Task/Effortに依存し、委譲のし過ぎ、古い指示による過剰承認、コード所有者の文言による依頼外変更、preserved thinkingのprefix checkに注意を促す。[Prompting Claude Fable 5.2](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-2) | 既存PromptやSkillsへ一律に文言を足さず、実際のspawn・tool権限・差分・prefix errorを観測する候補に留める。 |
+| 公式コスト調査 | Anthropic内部の大規模欠陥探索評価では、Opus 5.5＋Sonnet 5.5 SubagentsをFable 5.2＋Sonnet 5.5 Subagentsへ置き換えると、品質が概ね同等で約19%のコスト増と報告。Orchestratorの優位性はTask条件に依存。[Optimizing for cost and intelligence](https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence) | この値は当該内部Taskの比較であり、DATや一般的な開発作業の期待値として使わない。全legの費用・成功率を測る必要がある。 |
+| 二次入力 | 利用者提供の投稿要約には「20人以上のシニア開発者相当」「開発コスト90%削減」という主張があるが、元の投稿URL・添付プロンプト原画像・比較ログは本研究入力にない。Anthropicの「コード変更の90%超をClaudeが作成」という別の公式記述はコスト削減率ではない。 | **UNVERIFIED**。人数換算や90%費用削減を成果・採用閾値・ベンチマーク結果に転用しない。 |
+
+### 8.2 既存のOwnerに対する差分だけを扱う
+
+- **#93 / 本ノート**: Orchestrationと委譲の`package effect`、選択的なcompound strategy。新しい「Fable司令官」Role、T4 Topology、常用Ruleは追加しない。
+- **[#220](https://github.com/s977043/dynamic-agent-topology/issues/220)**: Model/Role/Effortの比較と追加課金なしの制約。Fableの請求経路が未確認なら同Issueの許容モデルとして扱わない。
+- **[#248](https://github.com/s977043/dynamic-agent-topology/issues/248)**: Subagent境界をfold/keepする限界寄与。Fableの自発的委譲を新たな価値として仮定しない。
+- **[#244](https://github.com/s977043/dynamic-agent-topology/issues/244) / [#302](https://github.com/s977043/dynamic-agent-topology/issues/302)**: 難Taskの母集団とRuntime readinessの先行作業。#244で固定済みのCodex/Model/Effort/試行条件にFableを混入させない。
+- **[#268](https://github.com/s977043/dynamic-agent-topology/issues/268)**: R0の先頭`low complexity/ambiguity`ルールが`risk: high`でもT0へ到達する可能性（既知のG-A2）。実験前の安全確認事項だが、本研究差分でRouting Policyを変更しない。
+
+### 8.3 反証可能な追加仮説（未事前登録・未実行）
+
+| ID | 仮説・反例 | 比較上の注意 |
+| --- | --- | --- |
+| F52-H1 Advisor | 明確な難所・回復可能な失敗があるTaskでは、必要時だけの高性能Advisor相談が、固定した独立Oracleでの品質または検証済み成功1件当たりの費用を改善する場合がある。相談しない方が速く安いTaskを負例とする。 | 既存の[Advisor研究](claude-code-advisor-readonly-researcher-2026-10.md)と[#88](https://github.com/s977043/dynamic-agent-topology/issues/88)の範囲で検討。Codex→Fable相談はClaude Code公式Advisorと同じ機能ではなく、クロスProvider経路・追加依存・請求が**未実装／未確認**。 |
+| F52-H2 Orchestrator | 独立Work Unitが多く1セッションのContextを超えるTaskでは、FableをCoordinatorに置き小型Workerへ委譲する構成に、品質床を満たした時間・費用上の利点がある場合がある。直列依存・共有ファイル競合・単純Taskを負例とする。 | 最初は同Runtime/Model/EffortのA/Bなど既存対照を優先。Fable単独 vs Fable＋小型Workerは**Topology・Worker Modelが同時に変わるbundle treatment**。効果を1要因に帰属しない。 |
+| F52-H3 Safety / overhead | Role上Read-onlyでも実Tool制限を確認しない構成では境界逸脱が起こり得る。Subagent追加は人間の確認待ち・handoff・retries・全leg costを増やし得る。 | [Agent Teams公式資料](https://code.claude.com/docs/en/agent-teams)に起動時のteammate別permission mode制約がある。使い捨ての非秘密fixtureで拒否のnegative caseと許可のpositive caseを検証し、未試行・拒否・失敗を分離する。 |
+
+### 8.4 最小実行順序とNo-go
+
+1. **Research intake（今回）**: 一次資料の所在・範囲・未検証の主張を既存Source台帳と本ノートに記録。静的Validator、33 frozen blobs、独立PRレビューを確認する。**実モデル起動・Runtime設定変更なし**。
+2. **既存Gateの解消（別Owner）**: #244/#302のOperator判断、#93/#220の対象Taskと受理Oracle、必要モデルの利用条件、実効権限、全leg予算・停止手段を揃える。既存`docs/POST_EXP001_EVALUATION_DESIGN.md`のEXP-002→EXP-003の順序をFable発表だけで変更しない。
+3. **探索Pilot（将来・別承認）**: 同一revision、fresh session/workspace、事前固定Task/AC/Oracle、counterbalanced block、実際のspawn/委譲/解決Model/Effortを記録。まずT0/T1等の単一因子比較、必要性が確認できた場合だけAdvisor／複合Orchestratorを別studyとして検討する。
+4. **判定**: `taskSuccess`・重大見逃し・境界違反を品質床とし、全Agentのuncached/cached tokens・retry・wall-clock・human interventions/attentionを分けて記録。未実行・欠測・交絡・sample不足は`INCONCLUSIVE`。改善が実証されなければ`Keep T0 / DEFER`。
+
+**NO-GO**: Operatorの課金・モデル起動承認なし、Fableの実効課金経路／権限／usage不明、独立Oracleなし、Read-onlyの実効拒否未確認、同じTaskへ複数の変更因子を無記録で混入、秘密/生Traceの公開、Human-owned merge/approvalの代行。研究ノートのPR統合は、実験開始やCanonical Topology採用の承認ではない。

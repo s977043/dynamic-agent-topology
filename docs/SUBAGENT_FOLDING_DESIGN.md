@@ -180,8 +180,7 @@ Issue #248、PRの最新headと4ファイルの全差分を一次材料として
 | --- | --- | --- |
 | DATのF0/F1設計・合成oracle | §3〜4、PR #288のmerged内容 | 準備済み（実モデル未実行） |
 | DATからRuntime設定の自動適用 | `adapters/{codex,claude-code}/README.md`はManual Adapter | 未実装（手動対応が必要） |
-| CodexのContext/Tool/Workspace分離 | `adapters/codex/capabilities.yaml`では該当3項目が`unknown` | 実効境界未確認 |
-| Claude Codeの分離機能 | `adapters/claude-code/capabilities.yaml`では`native`と宣言 | 当該実行環境での発火未確認 |
+| Runtime Capabilityの宣言と実効検査 | [Codex Adapter](../adapters/codex/README.md) / [Claude Code Adapter](../adapters/claude-code/README.md) に実行方式別の根拠を分離 | 実効境界・発火はNOT_TESTED |
 | F0専門Subagentの起動とF1 Skillロード | Runtime由来のactivation traceなし | NOT_TESTED |
 | F0/F1の実効Model/Effort・Tool・Permission同等性 | 実行時の独立観測なし | NOT_TESTED |
 | 生traceの真正性・欠測とoracleへの変換 | §3のoracleは合成`Event`のみを受理 | NOT_TESTED |
@@ -195,7 +194,7 @@ Issue #248、PRの最新headと4ファイルの全差分を一次材料として
    **定義・インストール済み**と**実際に発火した**ことの証拠要件を分け、
    後者は実行まではNOT_TESTEDと記録する。
 3. 両armのTool/Permission設定と強制方法の候補を対応表にし、F1に権限を単純にunionしない。
-   Codexの`unknown`を説明なしに`native`へ読み替えない。
+   Capability宣言を実効権限の証明と読み替えない。Runtime別の確認はAdapterの正本に従う。
 4. 生のTool結果・最終応答・activation・欠測を独立取得する予定の手段を特定し、
    `ExecutionTrace`/`RunEvaluation`/`blockId`への対応と変換損失の候補を記録する。
    自己申告・合成fixture・メタデータ比較器の結果だけで真正性を認定しない。
@@ -211,37 +210,11 @@ Secret/PIIの外部送信、権限拡大、欠測のPASS化、未承認の有料
 
 ### P0 read-only調査の追加結果（2026-11-15）
 
-最初の候補Runtimeは**Codex CLI**。今回の管理作業環境で以下を静的に確認した。
-この環境はOperatorの実測環境やユーザーのMacを代表しない。モデル起動は行っていない。
+初期候補Runtimeの静的調査は管理作業環境で実施した履歴であり、Operator実機の状態ではない。実モデルは起動していない。Runtime固有のCLI版・機能宣言・権限・Trace候補と読み取り専用コマンドは、[Codex Adapter](../adapters/codex/README.md)および[Claude Code Adapter](../adapters/claude-code/README.md)に分離して記録する。
 
-| 項目 | 今回確認した事実 | 未解決の境界 |
-| --- | --- | --- |
-| CLIの版 | この環境は`codex-cli 0.167.0-alpha.4`、Python 3.12.14 | Operator環境の版・実効Model/Effortは未固定 |
-| Codex F0起動候補 | `codex features list`に`multi_agent: stable true`が表示される | 専門Subagentの実登録・起動・Context/Tool分離はNOT_TESTED |
-| Codex F1 Skill候補 | DATには配布用`dat-select`/`dat-observe` Skillが存在 | 配送ETAのdomain Skillと対応するF0専門Roleは未定義 |
-| Project設定 | `.codex/config.toml`はapproval/sandboxとPython環境の設定 | F0/F1のTool/Permission対応設定は未定義。ユーザー設定は未確認 |
-| Trace候補 | `codex exec --help`にJSONL event出力の`--json`が存在 | activation・全Tool結果・失敗leg・権限拒否・usageを欠測なく取得可能か不明 |
-| DATへの変換 | 既存`ExecutionTrace`/`RunEvaluation` Schemaを確認 | 生JSONLからoracleの配送手順イベントへの真正性を保った変換は未実装 |
+DAT共通の未解決事項は、同一配送ETAタスクに対応するF0/F1実体、両armの実効権限の同等性、独立に取得したactivation・Tool結果・usageと欠測、`ExecutionTrace`/oracleへの変換損失である。`RunObservation`はウェーブ管理記録であり、実Runtime Traceやoracleの入力ではない。合成oracleのPASSを実測に転用しない。
 
-Claude Codeは**代替候補の仕様確認のみ**であり、この作業環境では`claude` CLIを確認できなかった。
-公式文書では、Subagentの`tools`/`disallowedTools`はTool制限に使えるが、
-Skillの`allowed-tools`は呼び出しturnの**許可の事前付与**であり、使用可能Toolの制限ではない。
-F1へのfoldで、`allowed-tools`だけをF0の権限隔離の代替としない。
-mainのmodeが`bypassPermissions`、`acceptEdits`、`auto`の場合、Subagentの
-`permissionMode`指定もmainのmodeに従うことがある。両armの**実効mode・Tool allow/deny・
-拒否結果**を確認し、同等に強制できなければHOLDする。
-Claude CodeではSkillのモデル呼出しと`/skill-name`直接起動のHook経路も異なるため、
-どちらを測るかを固定して独立したTranscript/Tool結果と照合する。
-
-- Claude Code公式: [Subagents](https://code.claude.com/docs/en/sub-agents)、
-  [Skills](https://code.claude.com/docs/en/skills)、[Hooks](https://code.claude.com/docs/en/hooks)
-  （2026-11-15参照）。
-- DATの`RunObservation`はウェーブ管理記録であり、モデルの生`ExecutionTrace`でも
-  oracleの入力でもない。合成fixtureのPASSを実トレースの真正性に転用しない。
-- 同一RuntimeでのF0/F1の起動・同等権限・独立Traceを静的に確証できていないため、
-  **P1実行はHOLD**。次はOperator候補環境の版・設定正本、F0/F1配置先、
-  JSONL等のイベント対応とTool拒否方式をread-onlyで照合する。
-  新Runner・Schema・依存は追加しない。
+**P1実行はHOLD**。Operator候補環境の版・設定正本、F0/F1配置先、Tool拒否と独立Evidence取得方法をread-onlyで確認するまで、実モデル実行・新Runner/Schema/依存追加は行わない。
 
 ### P0 Operator向け引継ぎ（2026-11-17、未実施）
 
@@ -255,19 +228,9 @@ DAT checkoutのrootであることを照合する。異なるリポジトリな�
 git rev-parse --show-toplevel
 git branch --show-current
 git rev-parse HEAD
-codex --version
-codex features list
-codex exec --help
-# Claude Codeを候補に含める場合のみ（未インストールならUNKNOWNと記録）
-claude --version
-claude --help
 ```
 
-`codex exec`（`--json`を付けた場合も含む）、`claude -p`、モデルへの試験指示は
-このread-only手順には**含めない**。未インストール・未対応のコマンドは
-失敗を記録し、推測で成功に置き換えない。
-上記CLIは版・feature・helpの確認入口に過ぎない。実体定義・権限・Trace対応は
-設定の正本を別途read-onlyで照合し、公開Issue/PRには脱識別結果だけを記録する。
+Runtime別のversion/feature/help確認コマンドは上記Adapterを参照する。モデルの実行・権限の負側probe・有料実行は、このread-only手順に**含めない**。未インストール・未対応の項目はUNKNOWNと記録し、推測でPASSに変えない。実体定義・権限・Trace対応は設定の正本を別途read-onlyで照合し、公開Issue/PRには脱識別結果だけを記録する。
 
 | 記録欄 | P0で残す内容（機密部分は伏せる） | 未記入時の扱い |
 | --- | --- | --- |

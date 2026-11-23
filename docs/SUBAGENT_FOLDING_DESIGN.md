@@ -7,6 +7,7 @@
 合成oracleを含む [PR #288](https://github.com/s977043/dynamic-agent-topology/pull/288) は
 2026-11-08にマージ済み（レビュー経緯はPRを参照）。実モデルのfold/keep判定は未実施。
 追跡: [Issue #248](https://github.com/s977043/dynamic-agent-topology/issues/248)。
+関連比較: [Anthropic Research型Multi-Agentとfoldingの評価計画](ANTHROPIC_RESEARCH_ARCHITECTURE_EVAL.md)（#93と#248の研究責務を分離）。
 
 ## 1. 今回答える問い
 

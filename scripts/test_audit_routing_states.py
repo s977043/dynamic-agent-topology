@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from audit_routing_states import OTHER, audit, load_rules, select_first_match
+from audit_routing_states import ROOT, OTHER, audit, load_rules, select_first_match
 
 
 BASE = [
@@ -39,6 +39,11 @@ class RoutingAuditTests(unittest.TestCase):
     def test_missing_explicit_candidate_is_undecidable_not_pass(self):
         result = audit(BASE[:1])
         self.assertEqual(result["candidate_invariant"]["status"], "NOT_EVALUATED")
+
+    def test_repository_r0_policy_can_be_audited_without_fixing_outcome(self):
+        result = audit(load_rules(ROOT / "policies/routing/R0_dynamic.yaml"))
+        self.assertGreater(result["states_checked"], 0)
+        self.assertEqual(sum(result["selection_counts"].values()), result["states_checked"])
 
     def test_invalid_policy_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

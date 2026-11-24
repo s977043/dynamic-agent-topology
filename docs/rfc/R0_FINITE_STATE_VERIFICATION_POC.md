@@ -53,7 +53,7 @@ PYTHONDONTWRITEBYTECODE=1 python scripts/test_audit_routing_states.py -v
 | T2選択 | 6 |
 | 分岐一致なし | 9 |
 | H1に対する反例 | **2** |
-| 合成ルールに対するテスト | **5件 PASS**（Python 3.13.5） |
+| 合成ルールに対するテスト | **6件 PASS**（Python 3.13.5） |
 
 H1反例は、`complexity=low`・`ambiguity=low`・`risk=high` で、`existingEvidence=strong` と OTHER の2分類。いずれも先頭分岐がT0を返す。これは **構文上の分岐順の再現**であり、「実際の高リスク作業におけるT0の安全性」や「T2の優位性」の測定結果ではない。
 
@@ -62,7 +62,8 @@ H1反例は、`complexity=low`・`ambiguity=low`・`risk=high` で、`existingEv
 2. 衝突する合成ルールに対して反例が検出されること（negative）。
 3. 高リスクの分岐を先頭に置いた合成ルールでは、同じ候補に対する反例が無いこと（positive）。
 4. 検査対象となる明示ルールが無い場合、`NOT_EVALUATED` になること。
-5. 不正な空条件のポリシーが拒否されること。
+5. 実際のR0 YAMLを読み込み探索できること（分岐の結果自体は固定しない）。
+6. 不正な空条件のポリシーが拒否されること。
 
 この診断コマンドの終了コード0は「探索が正常終了した」だけであり、H1の承認や検証PASSを意味しない。入力ファイルの欠損・不正では終了コード2。新規スクリプトは**既存必須CIへ未配線**であり、PRのCI成功は本PoCテストの自動実行を意味しない。
 
